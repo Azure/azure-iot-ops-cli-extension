@@ -958,15 +958,15 @@ def test_namespace_mqtt_asset_dataset_lifecycle_operations(require_init, tracked
 
 # ==================== EXPORT/IMPORT INTEGRATION TESTS ====================
 
-def test_namespace_asset_datapoint_export_import_json_roundtrip(
+def test_custom_asset_datapoint_export_import_json_roundtrip(
     require_init, tracked_resources: List[str], tracked_files: List[str]
 ):
     """
-    Test complete export/import workflow for datapoints in JSON format.
+    Test complete export/import workflow for Custom asset datapoints in JSON format.
     WHY: Validates most common backup/restore workflow - ensures data integrity
     through full export → delete → import cycle.
     """
-    logger.warning("Starting test_namespace_asset_datapoint_export_import_json_roundtrip")
+    logger.warning("Starting test_custom_asset_datapoint_export_import_json_roundtrip")
     instance_name = require_init["instanceName"]
     resource_group = require_init["resourceGroup"]
     device_name = f"dev-export-{generate_random_string(8, force_lower=True)}"
@@ -1079,14 +1079,14 @@ def test_namespace_asset_datapoint_export_import_json_roundtrip(
     logger.warning("Test completed successfully.")
 
 
-def test_namespace_asset_datapoint_export_import_csv_format(
+def test_opcua_asset_datapoint_export_import_csv_format(
     require_init, tracked_resources: List[str], tracked_files: List[str]
 ):
     """
-    Test CSV format export/import for DOE web UI compatibility.
+    Test CSV format export/import for OPC UA asset datapoints and DOE web UI compatibility.
     WHY: CSV is critical for interoperability with DOE web interface.
     """
-    logger.warning("Starting test_namespace_asset_datapoint_export_import_csv_format")
+    logger.warning("Starting test_opcua_asset_datapoint_export_import_csv_format")
     instance_name = require_init["instanceName"]
     resource_group = require_init["resourceGroup"]
     device_name = f"dev-csv-{generate_random_string(8, force_lower=True)}"
@@ -1175,14 +1175,15 @@ def test_namespace_asset_datapoint_export_import_csv_format(
     logger.warning("Test completed successfully.")
 
 
-def test_namespace_asset_dataset_export_import_roundtrip(
+def test_rest_asset_dataset_export_import_roundtrip(
     require_init, tracked_resources: List[str], tracked_files: List[str]
 ):
     """
-    Test bulk dataset export/import workflow.
-    WHY: Validates backup/restore of entire dataset configurations (without datapoints).
+    Test bulk REST asset dataset export/import workflow.
+    WHY: Validates backup/restore of entire dataset configurations for REST assets.
+    NOTE: REST assets don't have datapoints - datasets are the data items.
     """
-    logger.warning("Starting test_namespace_asset_dataset_export_import_roundtrip")
+    logger.warning("Starting test_rest_asset_dataset_export_import_roundtrip")
     instance_name = require_init["instanceName"]
     resource_group = require_init["resourceGroup"]
     device_name = f"dev-bulk-{generate_random_string(8, force_lower=True)}"
@@ -1278,14 +1279,14 @@ def test_namespace_asset_dataset_export_import_roundtrip(
     logger.warning("Test completed successfully.")
 
 
-def test_namespace_asset_datapoint_import_skip_duplicates(
+def test_custom_asset_datapoint_import_skip_duplicates(
     require_init, tracked_resources: List[str], tracked_files: List[str]
 ):
     """
-    Test duplicate-skip behavior during datapoint import.
+    Test duplicate-skip behavior during Custom asset datapoint import.
     WHY: Prevents data loss - ensures existing datapoints not overwritten accidentally.
     """
-    logger.warning("Starting test_namespace_asset_datapoint_import_skip_duplicates")
+    logger.warning("Starting test_custom_asset_datapoint_import_skip_duplicates")
     instance_name = require_init["instanceName"]
     resource_group = require_init["resourceGroup"]
     device_name = f"dev-dup-{generate_random_string(8, force_lower=True)}"
@@ -1375,14 +1376,14 @@ def test_namespace_asset_datapoint_import_skip_duplicates(
     logger.warning("Test completed successfully.")
 
 
-def test_namespace_asset_dataset_export_yaml_format(
+def test_custom_asset_dataset_export_yaml_format(
     require_init, tracked_resources: List[str], tracked_files: List[str]
 ):
     """
-    Test YAML format export for datasets.
+    Test YAML format export for Custom asset datasets.
     WHY: YAML is human-readable and commonly used in DevOps workflows.
     """
-    logger.warning("Starting test_namespace_asset_dataset_export_yaml_format")
+    logger.warning("Starting test_custom_asset_dataset_export_yaml_format")
     instance_name = require_init["instanceName"]
     resource_group = require_init["resourceGroup"]
     device_name = f"dev-yaml-{generate_random_string(8, force_lower=True)}"
@@ -1453,3 +1454,653 @@ def test_namespace_asset_dataset_export_yaml_format(
     assert len(imported_datasets) == 1
     assert imported_datasets[0]["name"] == dataset_name
     logger.warning("Test completed successfully.")
+
+
+# ==================== VALIDATION INTEGRATION TESTS ====================
+
+def test_custom_asset_datapoint_import_with_malformed_json_rejected(
+    require_init, tracked_resources: List[str], tracked_files: List[str]
+):
+    """
+    Test that Custom asset datapoint import file with malformed JSON is rejected immediately.
+    WHY: File parsing errors must be caught before network calls.
+    Priority: HIGH - Basic input validation
+    """
+    logger.warning("Starting test_custom_asset_datapoint_import_with_malformed_json_rejected")
+    instance_name = require_init["instanceName"]
+    resource_group = require_init["resourceGroup"]
+    device_name = f"dev-malformed-{generate_random_string(8, force_lower=True)}"
+    endpoint_name = f"custom-{generate_random_string(8)}"
+    asset_name = f"asset-malformed-{generate_random_string(8, force_lower=True)}"
+    dataset_name = f"dataset-{generate_random_string(6, force_lower=True)}"
+
+    # Setup: Create device, endpoint, asset, and dataset
+    logger.warning("Creating device...")
+    result = run(
+        f"az iot ops ns device create --name {device_name} --instance {instance_name} "
+        f"-g {resource_group}"
+    )
+    tracked_resources.append(result["id"])
+
+    logger.warning("Creating endpoint...")
+    run(
+        f"az iot ops ns device endpoint inbound add custom --name {endpoint_name} "
+        f"--instance {instance_name} -g {resource_group} --device {device_name} "
+        f"--endpoint-address 'http://192.168.1.100:8000/api' --endpoint-type custom"
+    )
+
+    logger.warning("Creating asset...")
+    asset = run(
+        f"az iot ops ns asset custom create --name {asset_name} --instance {instance_name} "
+        f"-g {resource_group} --device {device_name} --endpoint {endpoint_name}"
+    )
+    tracked_resources.append(asset["id"])
+
+    logger.warning("Creating dataset...")
+    run(
+        f"az iot ops ns asset custom dataset add --asset {asset_name} "
+        f"--instance {instance_name} -g {resource_group} --name {dataset_name} "
+        f"--data-source sensor/data"
+    )
+
+    # Create malformed JSON file
+    import tempfile
+    import os
+    malformed_json_content = '[{"name": "dp1", "dataSource": "source1"'  # Missing closing brackets
+    
+    fd, malformed_file = tempfile.mkstemp(suffix='.json', text=True)
+    tracked_files.append(malformed_file)
+    try:
+        os.write(fd, malformed_json_content.encode('utf-8'))
+    finally:
+        os.close(fd)
+
+    logger.warning(f"Created malformed JSON file: {malformed_file}")
+
+    # Attempt import - should fail
+    logger.warning("Attempting to import malformed JSON...")
+    
+    try:
+        run(
+            f"az iot ops ns asset custom datapoint import --asset {asset_name} "
+            f"--instance {instance_name} -g {resource_group} --dataset {dataset_name} "
+            f"--input-file {malformed_file}",
+            expect_failure=True
+        )
+        # If we get here without exception, the command didn't fail as expected
+        assert False, "Import should have failed with malformed JSON"
+    except Exception as e:
+        error_msg = str(e).lower()
+        # Verify error mentions JSON parsing
+        assert "json" in error_msg or "parse" in error_msg or "invalid" in error_msg, \
+            f"Error should mention JSON/parsing issue: {e}"
+        logger.warning(f"Import correctly rejected with error: {e}")
+
+    # Verify no datapoints were created
+    datapoints_list = run(
+        f"az iot ops ns asset custom datapoint list --asset {asset_name} "
+        f"--instance {instance_name} -g {resource_group} --dataset {dataset_name}"
+    )
+    assert len(datapoints_list) == 0, "No datapoints should be created when JSON is malformed"
+
+    logger.warning("Test completed successfully - malformed JSON was rejected.")
+
+
+def test_datapoint_import_with_invalid_configuration_rejected_opcua(
+    require_init, tracked_resources: List[str], tracked_files: List[str]
+):
+    """
+    Test that OPC UA datapoints with invalid configuration are rejected.
+    WHY: End-to-end validation that bad data is caught before persistence.
+    
+    Validation rules (OPC UA connector metadata JSON schema):
+    - samplingInterval: minimum -1 (so -1000 is INVALID, -1 is VALID)
+    - queueSize: minimum 0 (so negative is INVALID)
+    
+    Priority: HIGH - Invalid configuration rejection
+    """
+    logger.warning("Starting test_datapoint_import_with_invalid_configuration_rejected_opcua")
+    instance_name = require_init["instanceName"]
+    resource_group = require_init["resourceGroup"]
+    device_name = f"dev-invalid-{generate_random_string(8, force_lower=True)}"
+    endpoint_name = f"opcua-{generate_random_string(8)}"
+    asset_name = f"asset-invalid-{generate_random_string(8, force_lower=True)}"
+    dataset_name = f"dataset-{generate_random_string(6, force_lower=True)}"
+
+    # Setup: Create OPC UA asset
+    logger.warning("Creating device...")
+    result = run(
+        f"az iot ops ns device create --name {device_name} --instance {instance_name} "
+        f"-g {resource_group}"
+    )
+    tracked_resources.append(result["id"])
+
+    logger.warning("Creating OPC UA endpoint...")
+    run(
+        f"az iot ops ns device endpoint inbound add opcua --name {endpoint_name} "
+        f"--instance {instance_name} -g {resource_group} --device {device_name} "
+        f"--endpoint-address 'opc.tcp://192.168.1.200:4840'"
+    )
+
+    logger.warning("Creating OPC UA asset...")
+    asset = run(
+        f"az iot ops ns asset opcua create --name {asset_name} --instance {instance_name} "
+        f"-g {resource_group} --device {device_name} --endpoint {endpoint_name}"
+    )
+    tracked_resources.append(asset["id"])
+
+    logger.warning("Creating dataset...")
+    run(
+        f"az iot ops ns asset opcua dataset add --asset {asset_name} "
+        f"--instance {instance_name} -g {resource_group} --name {dataset_name} "
+        f"--data-source \"ns=2;i=1000\" --publish-int 1000"
+    )
+
+    # Create JSON file with invalid configuration (negative samplingInterval)
+    import tempfile
+    import os
+    
+    invalid_datapoints = [
+        {
+            "name": "temp_invalid",
+            "dataSource": "ns=2;i=2001",
+            "dataPointConfiguration": json.dumps({"samplingInterval": -1000, "queueSize": 10})  # -1000 < -1 (minimum), INVALID!
+        }
+    ]
+    
+    fd, invalid_file = tempfile.mkstemp(suffix='.json', text=True)
+    tracked_files.append(invalid_file)
+    try:
+        os.write(fd, json.dumps(invalid_datapoints).encode('utf-8'))
+    finally:
+        os.close(fd)
+
+    logger.warning(f"Created file with invalid configuration: {invalid_file}")
+
+    # Attempt import - should fail with validation error
+    logger.warning("Attempting to import datapoints with invalid configuration...")
+    
+    try:
+        run(
+            f"az iot ops ns asset opcua datapoint import --asset {asset_name} "
+            f"--instance {instance_name} -g {resource_group} --dataset {dataset_name} "
+            f"--input-file {invalid_file}",
+            expect_failure=True
+        )
+        assert False, "Import should have failed with invalid configuration"
+    except Exception as e:
+        error_msg = str(e).lower()
+        # Verify error mentions validation
+        assert "validat" in error_msg, f"Error should mention validation: {e}"
+        logger.warning(f"Import correctly rejected with validation error: {e}")
+
+    # Verify no datapoints were created
+    datapoints_list = run(
+        f"az iot ops ns asset opcua datapoint list --asset {asset_name} "
+        f"--instance {instance_name} -g {resource_group} --dataset {dataset_name}"
+    )
+    assert len(datapoints_list) == 0, "No datapoints should be created when validation fails"
+
+    logger.warning("Test completed successfully - invalid configuration was rejected.")
+
+
+def test_opcua_datapoint_add_with_invalid_configuration_rejected(
+    require_init, tracked_resources: List[str]
+):
+    """
+    Test that adding an OPC UA datapoint with invalid configuration via CLI is rejected.
+    WHY: Validation should work for direct add operations, not just import.
+    
+    Validation rules (OPC UA):
+    - samplingInterval: minimum -1 (so -500 is INVALID, -1 is VALID)
+    
+    Priority: HIGH - Validation in all entry points
+    """
+    logger.warning("Starting test_opcua_datapoint_add_with_invalid_configuration_rejected")
+    instance_name = require_init["instanceName"]
+    resource_group = require_init["resourceGroup"]
+    device_name = f"dev-add-invalid-{generate_random_string(8, force_lower=True)}"
+    endpoint_name = f"opcua-{generate_random_string(8)}"
+    asset_name = f"asset-add-{generate_random_string(8, force_lower=True)}"
+    dataset_name = f"dataset-{generate_random_string(6, force_lower=True)}"
+
+    # Setup
+    logger.warning("Creating device...")
+    result = run(
+        f"az iot ops ns device create --name {device_name} --instance {instance_name} "
+        f"-g {resource_group}"
+    )
+    tracked_resources.append(result["id"])
+
+    logger.warning("Creating OPC UA endpoint...")
+    run(
+        f"az iot ops ns device endpoint inbound add opcua --name {endpoint_name} "
+        f"--instance {instance_name} -g {resource_group} --device {device_name} "
+        f"--endpoint-address 'opc.tcp://192.168.1.200:4840'"
+    )
+
+    logger.warning("Creating OPC UA asset...")
+    asset = run(
+        f"az iot ops ns asset opcua create --name {asset_name} --instance {instance_name} "
+        f"-g {resource_group} --device {device_name} --endpoint {endpoint_name}"
+    )
+    tracked_resources.append(asset["id"])
+
+    logger.warning("Creating dataset...")
+    run(
+        f"az iot ops ns asset opcua dataset add --asset {asset_name} "
+        f"--instance {instance_name} -g {resource_group} --name {dataset_name} "
+        f"--data-source \"ns=2;i=1000\" --publish-int 1000"
+    )
+
+    # Attempt to add datapoint with negative sampling interval
+    logger.warning("Attempting to add datapoint with negative sampling interval...")
+    
+    try:
+        run(
+            f"az iot ops ns asset opcua datapoint add --asset {asset_name} "
+            f"--instance {instance_name} -g {resource_group} --dataset {dataset_name} "
+            f"--name temp_invalid --data-source \"ns=2;i=2001\" "
+            f"--sampling-int -500 --queue-size 10",  # -500 < -1 (minimum), INVALID!
+            expect_failure=True
+        )
+        assert False, "Add should have failed with negative sampling interval"
+    except Exception as e:
+        error_msg = str(e).lower()
+        # Verify error mentions validation or negative value
+        assert ("validat" in error_msg or "negative" in error_msg or 
+                "minimum" in error_msg or "invalid" in error_msg), \
+                f"Error should mention validation issue: {e}"
+        logger.warning(f"Add correctly rejected with error: {e}")
+
+    # Verify no datapoints were created
+    datapoints_list = run(
+        f"az iot ops ns asset opcua datapoint list --asset {asset_name} "
+        f"--instance {instance_name} -g {resource_group} --dataset {dataset_name}"
+    )
+    assert len(datapoints_list) == 0, "No datapoints should be created when validation fails"
+
+    logger.warning("Test completed successfully - invalid add was rejected.")
+
+
+def test_opcua_dataset_import_with_invalid_configuration_rejected(
+    require_init, tracked_resources: List[str], tracked_files: List[str]
+):
+    """
+    Test that OPC UA datasets with invalid configuration are rejected during import.
+    WHY: Dataset-level validation must work end-to-end.
+    
+    Validation rules (OPC UA):
+    - publishingInterval: minimum -1 (so -1000 is INVALID, -1 is VALID)
+    
+    Priority: HIGH - Dataset validation
+    """
+    logger.warning("Starting test_opcua_dataset_import_with_invalid_configuration_rejected")
+    instance_name = require_init["instanceName"]
+    resource_group = require_init["resourceGroup"]
+    device_name = f"dev-ds-invalid-{generate_random_string(8, force_lower=True)}"
+    endpoint_name = f"opcua-{generate_random_string(8)}"
+    asset_name = f"asset-ds-{generate_random_string(8, force_lower=True)}"
+
+    # Setup
+    logger.warning("Creating device...")
+    result = run(
+        f"az iot ops ns device create --name {device_name} --instance {instance_name} "
+        f"-g {resource_group}"
+    )
+    tracked_resources.append(result["id"])
+
+    logger.warning("Creating OPC UA endpoint...")
+    run(
+        f"az iot ops ns device endpoint inbound add opcua --name {endpoint_name} "
+        f"--instance {instance_name} -g {resource_group} --device {device_name} "
+        f"--endpoint-address 'opc.tcp://192.168.1.200:4840'"
+    )
+
+    logger.warning("Creating OPC UA asset...")
+    asset = run(
+        f"az iot ops ns asset opcua create --name {asset_name} --instance {instance_name} "
+        f"-g {resource_group} --device {device_name} --endpoint {endpoint_name}"
+    )
+    tracked_resources.append(asset["id"])
+
+    # Create JSON file with invalid dataset configuration
+    import tempfile
+    import os
+    
+    invalid_datasets = [
+        {
+            "name": f"dataset-invalid-{generate_random_string(6)}",
+            "dataSource": "ns=2;i=1000",
+            "datasetConfiguration": json.dumps({
+                "publishingInterval": -1000,  # -1000 < -1 (minimum), INVALID!
+                "samplingInterval": 500
+            }),
+            "dataPoints": []
+        }
+    ]
+    
+    fd, invalid_file = tempfile.mkstemp(suffix='.json', text=True)
+    tracked_files.append(invalid_file)
+    try:
+        os.write(fd, json.dumps(invalid_datasets).encode('utf-8'))
+    finally:
+        os.close(fd)
+
+    logger.warning(f"Created file with invalid dataset configuration: {invalid_file}")
+
+    # Attempt import - should fail with validation error
+    logger.warning("Attempting to import dataset with invalid configuration...")
+    
+    try:
+        run(
+            f"az iot ops ns asset opcua dataset import --asset {asset_name} "
+            f"--instance {instance_name} -g {resource_group} --input-file {invalid_file}",
+            expect_failure=True
+        )
+        assert False, "Import should have failed with invalid dataset configuration"
+    except Exception as e:
+        error_msg = str(e).lower()
+        # Verify error mentions validation
+        assert "validat" in error_msg, f"Error should mention validation: {e}"
+        logger.warning(f"Import correctly rejected with validation error: {e}")
+
+    # Verify no datasets were created
+    datasets_list = run(
+        f"az iot ops ns asset opcua dataset list --asset {asset_name} "
+        f"--instance {instance_name} -g {resource_group}"
+    )
+    assert len(datasets_list) == 0, "No datasets should be created when validation fails"
+
+    logger.warning("Test completed successfully - invalid dataset configuration was rejected.")
+
+
+def test_opcua_datapoint_import_with_mixed_valid_invalid_rejected(
+    require_init, tracked_resources: List[str], tracked_files: List[str]
+):
+    """
+    Test that OPC UA import with mixed valid/invalid datapoints rejects entire batch.
+    WHY: Validation should be atomic - all or nothing to prevent partial state.
+    
+    Validation rules (OPC UA):
+    - samplingInterval: minimum -1 (so -500 in mixed batch is INVALID)
+    
+    Priority: HIGH - Atomic validation
+    """
+    logger.warning("Starting test_opcua_datapoint_import_with_mixed_valid_invalid_rejected")
+    instance_name = require_init["instanceName"]
+    resource_group = require_init["resourceGroup"]
+    device_name = f"dev-mixed-{generate_random_string(8, force_lower=True)}"
+    endpoint_name = f"opcua-{generate_random_string(8)}"
+    asset_name = f"asset-mixed-{generate_random_string(8, force_lower=True)}"
+    dataset_name = f"dataset-{generate_random_string(6, force_lower=True)}"
+
+    # Setup
+    logger.warning("Creating device...")
+    result = run(
+        f"az iot ops ns device create --name {device_name} --instance {instance_name} "
+        f"-g {resource_group}"
+    )
+    tracked_resources.append(result["id"])
+
+    logger.warning("Creating OPC UA endpoint...")
+    run(
+        f"az iot ops ns device endpoint inbound add opcua --name {endpoint_name} "
+        f"--instance {instance_name} -g {resource_group} --device {device_name} "
+        f"--endpoint-address 'opc.tcp://192.168.1.200:4840'"
+    )
+
+    logger.warning("Creating OPC UA asset...")
+    asset = run(
+        f"az iot ops ns asset opcua create --name {asset_name} --instance {instance_name} "
+        f"-g {resource_group} --device {device_name} --endpoint {endpoint_name}"
+    )
+    tracked_resources.append(asset["id"])
+
+    logger.warning("Creating dataset...")
+    run(
+        f"az iot ops ns asset opcua dataset add --asset {asset_name} "
+        f"--instance {instance_name} -g {resource_group} --name {dataset_name} "
+        f"--data-source \"ns=2;i=1000\" --publish-int 1000"
+    )
+
+    # Create file with 3 datapoints: 2 valid, 1 invalid
+    import tempfile
+    import os
+    
+    mixed_datapoints = [
+        {
+            "name": "temp_valid",
+            "dataSource": "ns=2;i=2001",
+            "dataPointConfiguration": json.dumps({"samplingInterval": 1000, "queueSize": 10})
+        },
+        {
+            "name": "pressure_invalid",
+            "dataSource": "ns=2;i=2002",
+            "dataPointConfiguration": json.dumps({"samplingInterval": -500, "queueSize": 5})  # -500 < -1, INVALID!
+        },
+        {
+            "name": "humidity_valid",
+            "dataSource": "ns=2;i=2003",
+            "dataPointConfiguration": json.dumps({"samplingInterval": 2000, "queueSize": 8})
+        }
+    ]
+    
+    fd, mixed_file = tempfile.mkstemp(suffix='.json', text=True)
+    tracked_files.append(mixed_file)
+    try:
+        os.write(fd, json.dumps(mixed_datapoints).encode('utf-8'))
+    finally:
+        os.close(fd)
+
+    logger.warning(f"Created file with mixed valid/invalid datapoints: {mixed_file}")
+
+    # Attempt import - should fail due to one invalid datapoint
+    logger.warning("Attempting to import mixed valid/invalid datapoints...")
+    
+    try:
+        run(
+            f"az iot ops ns asset opcua datapoint import --asset {asset_name} "
+            f"--instance {instance_name} -g {resource_group} --dataset {dataset_name} "
+            f"--input-file {mixed_file}",
+            expect_failure=True
+        )
+        assert False, "Import should have failed due to invalid datapoint in batch"
+    except Exception as e:
+        error_msg = str(e)
+        error_msg_lower = error_msg.lower()
+        # Verify error mentions validation and the invalid datapoint
+        assert "validat" in error_msg_lower, f"Error should mention validation: {e}"
+        assert "pressure_invalid" in error_msg or "1 data point" in error_msg, \
+            f"Error should identify the invalid datapoint: {e}"
+        logger.warning(f"Import correctly rejected entire batch: {e}")
+
+    # Verify NO datapoints were created (atomic failure)
+    datapoints_list = run(
+        f"az iot ops ns asset opcua datapoint list --asset {asset_name} "
+        f"--instance {instance_name} -g {resource_group} --dataset {dataset_name}"
+    )
+    assert len(datapoints_list) == 0, \
+        "No datapoints should be created when batch contains invalid items (atomic validation)"
+
+    logger.warning("Test completed successfully - entire batch was rejected atomically.")
+
+
+def test_opcua_datapoint_import_with_valid_configuration_succeeds(
+    require_init, tracked_resources: List[str], tracked_files: List[str]
+):
+    """
+    Test that valid OPC UA datapoints pass validation and are imported successfully.
+    WHY: Verify validation doesn't break valid scenarios (positive test).
+    Priority: HIGH - Regression prevention
+    """
+    logger.warning("Starting test_opcua_datapoint_import_with_valid_configuration_succeeds")
+    instance_name = require_init["instanceName"]
+    resource_group = require_init["resourceGroup"]
+    device_name = f"dev-valid-{generate_random_string(8, force_lower=True)}"
+    endpoint_name = f"opcua-{generate_random_string(8)}"
+    asset_name = f"asset-valid-{generate_random_string(8, force_lower=True)}"
+    dataset_name = f"dataset-{generate_random_string(6, force_lower=True)}"
+
+    # Setup
+    logger.warning("Creating device...")
+    result = run(
+        f"az iot ops ns device create --name {device_name} --instance {instance_name} "
+        f"-g {resource_group}"
+    )
+    tracked_resources.append(result["id"])
+
+    logger.warning("Creating OPC UA endpoint...")
+    run(
+        f"az iot ops ns device endpoint inbound add opcua --name {endpoint_name} "
+        f"--instance {instance_name} -g {resource_group} --device {device_name} "
+        f"--endpoint-address 'opc.tcp://192.168.1.200:4840'"
+    )
+
+    logger.warning("Creating OPC UA asset...")
+    asset = run(
+        f"az iot ops ns asset opcua create --name {asset_name} --instance {instance_name} "
+        f"-g {resource_group} --device {device_name} --endpoint {endpoint_name}"
+    )
+    tracked_resources.append(asset["id"])
+
+    logger.warning("Creating dataset...")
+    run(
+        f"az iot ops ns asset opcua dataset add --asset {asset_name} "
+        f"--instance {instance_name} -g {resource_group} --name {dataset_name} "
+        f"--data-source \"ns=2;i=1000\" --publish-int 1000"
+    )
+
+    # Create file with valid datapoints
+    import tempfile
+    import os
+    
+    valid_datapoints = [
+        {
+            "name": "temp_valid",
+            "dataSource": "ns=2;i=2001",
+            "dataPointConfiguration": json.dumps({"samplingInterval": 1000, "queueSize": 10})
+        },
+        {
+            "name": "pressure_valid",
+            "dataSource": "ns=2;i=2002",
+            "dataPointConfiguration": json.dumps({"samplingInterval": 500, "queueSize": 5})
+        }
+    ]
+    
+    fd, valid_file = tempfile.mkstemp(suffix='.json', text=True)
+    tracked_files.append(valid_file)
+    try:
+        os.write(fd, json.dumps(valid_datapoints).encode('utf-8'))
+    finally:
+        os.close(fd)
+
+    logger.warning(f"Created file with valid datapoints: {valid_file}")
+
+    # Import should succeed
+    logger.warning("Importing valid datapoints...")
+    imported = run(
+        f"az iot ops ns asset opcua datapoint import --asset {asset_name} "
+        f"--instance {instance_name} -g {resource_group} --dataset {dataset_name} "
+        f"--input-file {valid_file}"
+    )
+
+    # Verify datapoints were created
+    assert len(imported) == 2, f"Should import 2 datapoints, got {len(imported)}"
+    datapoint_names = [dp["name"] for dp in imported]
+    assert "temp_valid" in datapoint_names
+    assert "pressure_valid" in datapoint_names
+
+    logger.warning("Test completed successfully - valid datapoints were imported.")
+
+
+def test_opcua_datapoint_import_with_negative_one_sampling_interval_succeeds(
+    require_init, tracked_resources: List[str], tracked_files: List[str]
+):
+    """
+    Test that OPC UA samplingInterval: -1 is VALID (special value meaning "use default").
+    WHY: Schema defines minimum: -1, so -1 should pass but -2 or lower should fail.
+    Priority: HIGH - Edge case validation
+    """
+    logger.warning("Starting test_opcua_datapoint_import_with_negative_one_sampling_interval_succeeds")
+    instance_name = require_init["instanceName"]
+    resource_group = require_init["resourceGroup"]
+    device_name = f"dev-neg1-{generate_random_string(8, force_lower=True)}"
+    endpoint_name = f"opcua-{generate_random_string(8)}"
+    asset_name = f"asset-neg1-{generate_random_string(8, force_lower=True)}"
+    dataset_name = f"dataset-{generate_random_string(6, force_lower=True)}"
+
+    # Setup
+    logger.warning("Creating device...")
+    result = run(
+        f"az iot ops ns device create --name {device_name} --instance {instance_name} "
+        f"-g {resource_group}"
+    )
+    tracked_resources.append(result["id"])
+
+    logger.warning("Creating OPC UA endpoint...")
+    run(
+        f"az iot ops ns device endpoint inbound add opcua --name {endpoint_name} "
+        f"--instance {instance_name} -g {resource_group} --device {device_name} "
+        f"--endpoint-address 'opc.tcp://192.168.1.200:4840'"
+    )
+
+    logger.warning("Creating OPC UA asset...")
+    asset = run(
+        f"az iot ops ns asset opcua create --name {asset_name} --instance {instance_name} "
+        f"-g {resource_group} --device {device_name} --endpoint {endpoint_name}"
+    )
+    tracked_resources.append(asset["id"])
+
+    logger.warning("Creating dataset...")
+    run(
+        f"az iot ops ns asset opcua dataset add --asset {asset_name} "
+        f"--instance {instance_name} -g {resource_group} --name {dataset_name} "
+        f"--data-source \"ns=2;i=1000\" --publish-int 1000"
+    )
+
+    # Create file with samplingInterval: -1 (valid - means "use default")
+    import tempfile
+    import os
+    
+    datapoints_with_neg1 = [
+        {
+            "name": "temp_default",
+            "dataSource": "ns=2;i=2001",
+            "dataPointConfiguration": json.dumps({"samplingInterval": -1, "queueSize": 10})  # -1 is VALID
+        },
+        {
+            "name": "pressure_default",
+            "dataSource": "ns=2;i=2002",
+            "dataPointConfiguration": json.dumps({"samplingInterval": -1, "queueSize": 5})
+        }
+    ]
+    
+    fd, neg1_file = tempfile.mkstemp(suffix='.json', text=True)
+    tracked_files.append(neg1_file)
+    try:
+        os.write(fd, json.dumps(datapoints_with_neg1).encode('utf-8'))
+    finally:
+        os.close(fd)
+
+    logger.warning(f"Created file with samplingInterval: -1 (use default): {neg1_file}")
+
+    # Import should SUCCEED (samplingInterval: -1 is valid per schema minimum: -1)
+    logger.warning("Importing datapoints with samplingInterval: -1...")
+    imported = run(
+        f"az iot ops ns asset opcua datapoint import --asset {asset_name} "
+        f"--instance {instance_name} -g {resource_group} --dataset {dataset_name} "
+        f"--input-file {neg1_file}"
+    )
+
+    # Verify datapoints were created successfully
+    assert len(imported) == 2, f"Should import 2 datapoints, got {len(imported)}"
+    datapoint_names = [dp["name"] for dp in imported]
+    assert "temp_default" in datapoint_names
+    assert "pressure_default" in datapoint_names
+
+    logger.warning("Test completed successfully - samplingInterval: -1 was accepted as valid.")
+
+
+
+

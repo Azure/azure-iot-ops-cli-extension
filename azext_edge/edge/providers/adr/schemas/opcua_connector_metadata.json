@@ -1,0 +1,429 @@
+{
+    "$schema": "https://raw.githubusercontent.com/Azure/iot-operations-sdks/refs/heads/main/doc/akri_connector/connector-metadata-schema.json",
+    "name": "AzureIoTOperationsOPCUAConnector",
+    "description": "Azure IoT Operations connector for OPC UA.",
+    "version": "1.2.82",
+    "isPreview": false,
+    "maintainer": "mschierd@microsoft.com",
+    "vendor": "Microsoft",
+    "imageConfigurationSettings": {
+        "imageName": "aio-connectors/supervisor",
+        "tag": "1.2.82"
+    },
+    "supportedArchitectures": [
+        "linux/amd64"
+    ],
+    "endpointsEnabledByDefault": true,
+    "inboundEndpoints": [
+        {
+            "endpointType": "Microsoft.OpcUa",
+            "supportedAuthenticationTypes": [
+                "usernamePassword",
+                "anonymous"
+            ],
+            "description": "An OPC UA endpoint",
+            "assetsEnabledByDefault": true,
+            "fields": {
+                "address": {
+                    "input": "required",
+                    "exampleValue": "opc.tcp://your-opcua-server-address:4840/",
+                    "description": "The address of the OPC UA server to connect with in the format: <tcp address>:<port>/<path>."
+                }
+            },
+            "additionalConfigurationSchema": {
+                "$schema": "http://json-schema.org/draft-07/schema#",
+                "$id": "https://azure-iot-operations/schemas/assetendpointprofile/additionalconfiguration/opcua/1.3.0.json",
+                "title": "AIO OPC UA Device Inbound Endpoint Additional Configuration Schema",
+                "description": "Schema for the additional configuration of OPC UA inbound endpoint of an device in Azure Industrial Operations",
+                "type": "object",
+                "properties": {
+                    "applicationName": {
+                        "type": "string",
+                        "default": "OPC UA Broker",
+                        "description": "Name that is used if AIO OPC UA Connector needs to create own (self-signed) certificate"
+                    },
+                    "keepAliveMilliseconds": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "default": 10000,
+                        "description": "Keep alive interval, to maintain session between OPC UA server and AIO OPC UA Connector"
+                    },
+                    "defaults": {
+                        "type": "object",
+                        "properties": {
+                            "publishingIntervalMilliseconds": {
+                                "type": "integer",
+                                "minimum": -1,
+                                "default": 1000,
+                                "description": "Default interval used to send value changes from OPC UA server to AIO OPC UA Connector"
+                            },
+                            "samplingIntervalMilliseconds": {
+                                "type": "integer",
+                                "minimum": -1,
+                                "default": 1000,
+                                "description": "Default interval used to sample values of observed datapoints on the OPC UA server"
+                            },
+                            "queueSize": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "default": 1,
+                                "description": "Default size of the queue that contains datapoint value changes on the OPC UA server"
+                            },
+                            "keyFrameCount": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "default": 0,
+                                "description": "Default multiplier of the `publishing interval`, defines which value change should be a keyframe (contains all values, even if they haven't changed)"
+                            }
+                        }
+                    },
+                    "session": {
+                        "type": "object",
+                        "properties": {
+                            "timeoutMilliseconds": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "default": 60000,
+                                "description": "Time after which the session is closed if there was no message from the OPC UA server"
+                            },
+                            "keepAliveIntervalMilliseconds": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "default": 10000,
+                                "description": "Keep alive interval, to maintain session between OPC UA server and AIO OPC UA Connector"
+                            },
+                            "reconnectPeriodMilliseconds": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "default": 2000,
+                                "description": "Default waiting time used in between session reconnects"
+                            },
+                            "reconnectExponentialBackOffMilliseconds": {
+                                "type": "integer",
+                                "minimum": -1,
+                                "default": 10000,
+                                "description": "Exponential backoff time used during session reconnects"
+                            },
+                            "enableTracingHeaders": {
+                                "type": "boolean",
+                                "default": false,
+                                "description": "Send W3C tracing information along with OPC UA service calls"
+                            }
+                        }
+                    },
+                    "subscription": {
+                        "type": "object",
+                        "properties": {
+                            "maxItems": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "default": 1000,
+                                "description": "Maximum number of datapoints/events added to one subscription"
+                            },
+                            "lifeTimeMilliseconds": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "default": 60000,
+                                "description": "Time after which the subscription is closed if there was no message from the OPC UA server"
+                            }
+                        }
+                    },
+                    "security": {
+                        "type": "object",
+                        "properties": {
+                            "autoAcceptUntrustedServerCertificates": {
+                                "type": "boolean",
+                                "default": false,
+                                "description": "Automatically accept untrusted server certificates"
+                            },
+                            "securityPolicy": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ],
+                                "enum": [
+                                    "http://opcfoundation.org/UA/SecurityPolicy#None",
+                                    "http://opcfoundation.org/UA/SecurityPolicy#Basic128Rsa15",
+                                    "http://opcfoundation.org/UA/SecurityPolicy#Basic256",
+                                    "http://opcfoundation.org/UA/SecurityPolicy#Basic256Sha256",
+                                    "http://opcfoundation.org/UA/SecurityPolicy#Aes128_Sha256_RsaOaep",
+                                    "http://opcfoundation.org/UA/SecurityPolicy#Aes256_Sha256_RsaPss",
+                                    null
+                                ],
+                                "default": null,
+                                "description": "Security policy used to establish secure channel with the OPC UA server"
+                            },
+                            "securityMode": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ],
+                                "enum": [
+                                    "none",
+                                    "sign",
+                                    "signAndEncrypt",
+                                    null
+                                ],
+                                "default": null,
+                                "description": "Security mode used to communicate within secure channel with the OPC UA server"
+                            }
+                        }
+                    },
+                    "runAssetDiscovery": {
+                        "type": "boolean",
+                        "default": false,
+                        "description": "Automatically run OPC UA asset discovery every 10min"
+                    },
+                    "syncPropertiesIntoStateStore": {
+                        "type": "boolean",
+                        "default": false,
+                        "description": "Read properties of datapoints and write them into AIO MQTT Distributed State Store"
+                    }
+                }
+            },
+            "datasets": {
+                "limits": {
+                    "minimum": 0
+                },
+                "fields": {
+                    "dataSource": {
+                        "input": "unsupported"
+                    },
+                    "typeRef": {
+                        "input": "optional"
+                    }
+                },
+                "destinations": {
+                    "supportedDestinations": [
+                        "Mqtt"
+                    ]
+                },
+                "datasetConfigurationSchema": {
+                    "$schema": "http://json-schema.org/draft-07/schema#",
+                    "$id": "https://azure-iot-operations/schemas/asset/datasetconfiguration/opcua/1.2.0.json",
+                    "title": "AIO OPC UA Asset Dataset Additional Configuration Schema",
+                    "description": "Schema for the additional configuration of OPC UA asset dataset in Azure Industrial Operations",
+                    "type": "object",
+                    "properties": {
+                        "publishingInterval": {
+                            "type": "integer",
+                            "minimum": -1,
+                            "default": 1000,
+                            "description": "Interval used to send value changes from OPC UA server to AIO OPC UA Connector - overwrites the default interval"
+                        },
+                        "samplingInterval": {
+                            "type": "integer",
+                            "minimum": -1,
+                            "default": 1000,
+                            "description": "Interval used to sample values of observed datapoints on the OPC UA server - overwrites the default interval"
+                        },
+                        "queueSize": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "default": 1,
+                            "description": "Size of the queue that contains datapoint value changes on the OPC UA server - overwrites the default size"
+                        },
+                        "keyFrameCount": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "default": 0,
+                            "description": "Multiplier of the `publishing interval`, defines which value change should be a keyframe (contains all values, even if they haven't changed) - overwrites the default count"
+                        },
+                        "startInstance": {
+                            "type": "string",
+                            "default": null,
+                            "description": "Expanded node id of OPC UA node that defines root for browse path addressing"
+                        }
+                    }
+                },
+                "dataPoints": {
+                    "limits": {
+                        "minimum": 1
+                    },
+                    "fields": {
+                        "dataSource": {
+                            "input": "required",
+                            "description": "OPC UA expanded node id or relative browse path, to identify the OPC UA variable node in the address space",
+                            "exampleValue": "nsu=http://microsoft.com/Opc/OpcPlc/;s=DipData"
+                        },
+                        "typeRef": {
+                            "input": "optional"
+                        }
+                    },
+                    "dataPointConfigurationSchema": {
+                        "$schema": "http://json-schema.org/draft-07/schema#",
+                        "$id": "https://azure-iot-operations/schemas/asset/datapointconfiguration/opcua/1.0.0.json",
+                        "title": "AIO OPC UA Asset Data-Point Additional Configuration Schema",
+                        "description": "Schema for the additional configuration of OPC UA asset data-point in Azure Industrial Operations",
+                        "type": "object",
+                        "properties": {
+                            "samplingInterval": {
+                                "type": "integer",
+                                "minimum": -1,
+                                "default": 1000,
+                                "description": "Interval used to sample values of observed datapoints on the OPC UA server - overwrites the dataset interval"
+                            },
+                            "queueSize": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "default": 1,
+                                "description": "Size of the queue that contains datapoint value changes on the OPC UA server - overwrites the dataset size"
+                            }
+                        }
+                    }
+                }
+            },
+            "eventGroups": {
+                "limits": {
+                    "minimum": 0
+                },
+                "fields": {
+                    "dataSource": {
+                        "input": "unsupported"
+                    },
+                    "typeRef": {
+                        "input": "optional"
+                    }
+                },
+                "eventGroupConfigurationSchema": {
+                    "$schema": "http://json-schema.org/draft-07/schema#",
+                    "$id": "https://azure-iot-operations/schemas/asset/eventgroupconfiguration/opcua/1.0.0.json",
+                    "title": "AIO OPC UA Asset EventGroup Additional Configuration Schema",
+                    "description": "Schema for the additional configuration of OPC UA asset event group in Azure Industrial Operations",
+                    "type": "object",
+                    "properties": {
+                        "publishingInterval": {
+                            "type": "integer",
+                            "minimum": -1,
+                            "default": 1000,
+                            "description": "Interval used to send value changes from OPC UA server to AIO OPC UA Connector - overwrites the default interval"
+                        },
+                        "samplingInterval": {
+                            "type": "integer",
+                            "minimum": -1,
+                            "default": 0,
+                            "description": "Interval used to evaluate event on the OPC UA server - overwrites the default interval"
+                        },
+                        "queueSize": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "default": 10000,
+                            "description": "Size of the queue that contains event notifications on the OPC UA server - overwrites the default size"
+                        }
+                    }
+                },
+                "events": {
+                    "limits": {
+                        "minimum": 1
+                    },
+                    "fields": {
+                        "dataSource": {
+                            "input": "required",
+                            "description": "Expanded Node Id of the source object whose EventNotifier attribute includes reporting bit",
+                            "exampleValue": "ns=0;i=2253"
+                        },
+                        "typeRef": {
+                            "input": "optional",
+                            "description": "Expanded Node Id of the OPC UA Node defining an EventType (used for filtering)",
+                            "exampleValue": "ns=0;i=2041"
+                        }
+                    },
+                    "destinations": {
+                        "supportedDestinations": [
+                            "Mqtt"
+                        ]
+                    },
+                    "eventConfigurationSchema": {
+                        "$schema": "http://json-schema.org/draft-07/schema#",
+                        "$id": "https://azure-iot-operations/schemas/asset/eventconfiguration/opcua/1.3.0.json",
+                        "title": "AIO OPC UA Asset Event Additional Configuration Schema",
+                        "description": "Schema for the additional configuration of OPC UA asset event in Azure Industrial Operations",
+                        "type": "object",
+                        "properties": {
+                            "samplingInterval": {
+                                "type": "integer",
+                                "minimum": -1,
+                                "default": 0,
+                                "description": "Interval used to evaluate event on the OPC UA server - overwrites the event group interval"
+                            },
+                            "queueSize": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "default": 10000,
+                                "description": "Size of the queue that contains event notifications on the OPC UA server - overwrites the event group size"
+                            },
+                            "startInstance": {
+                                "type": "string",
+                                "default": null,
+                                "description": "Expanded node id of OPC UA node that defines root for browse path addressing"
+                            },
+                            "eventFilter": {
+                                "type": "object",
+                                "description": "Filter the events that should be send from the event notifier to the AIO OPC UA Connector",
+                                "properties": {
+                                    "selectClauses": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "object",
+                                            "properties": {
+                                                "browsePath": {
+                                                    "type": "string",
+                                                    "default": null,
+                                                    "description": "Name of an event field"
+                                                },
+                                                "typeDefinitionId": {
+                                                    "type": "string",
+                                                    "description": "Expanded node id of the event type that should be filtered for"
+                                                },
+                                                "fieldId": {
+                                                    "type": "string",
+                                                    "default": null,
+                                                    "description": "Name overwrite of an event field"
+                                                }
+                                            },
+                                            "required": [
+                                                "browsePath"
+                                            ]
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "managementGroups": {
+                "limits": {
+                    "minimum": 0
+                },
+                "fields": {
+                    "dataSource": {
+                        "input": "unsupported"
+                    },
+                    "typeRef": {
+                        "input": "optional"
+                    }
+                },
+                "managementGroupConfigurationSchema": {},
+                "managementGroupActions": {
+                    "limits": {
+                        "minimum": 1
+                    },
+                    "fields": {
+                        "targetUri": {
+                            "input": "required",
+                            "description": "Expanded Node Id of the OPC UA Node that should be written (Variable Node) or called (MethodId)",
+                            "exampleValue": "nsu=http://microsoft.com/Opc/OpcPlc/Boiler;i=7019"
+                        },
+                        "typeRef": {
+                            "input": "optional",
+                            "description": "Expanded Node Id of the OPC UA Node (Object) that is used to call (ObjectId)",
+                            "exampleValue": "nsu=http://microsoft.com/Opc/OpcPlc/Boiler;i=5019"
+                        }
+                    },
+                    "actionConfigurationSchema": {}
+                }
+            }
+        }
+    ]
+}

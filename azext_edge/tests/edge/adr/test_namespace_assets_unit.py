@@ -10,7 +10,7 @@ import json
 import pytest
 import responses
 
-from azure.cli.core.azclierror import InvalidArgumentValueError
+from azure.cli.core.azclierror import InvalidArgumentValueError, ValidationError
 from azext_edge.edge.commands_namespaces import (
     create_namespace_custom_asset,
     create_namespace_media_asset,
@@ -2122,3 +2122,676 @@ def test_import_dataset_datapoints_into_empty_dataset(
     # All datapoints should be imported
     assert result == new_datapoints
     assert len(result) == 3
+
+
+# ==================== VALIDATION TESTS ====================
+
+def test_validate_datapoint_invalid_json_configuration(mocker):
+    """
+    Test that datapoint with invalid JSON configuration raises ValidationError.
+    WHY: Prevents importing malformed configuration that would break the system.
+    """
+    from azext_edge.edge.providers.adr.validator import ConnectorMetadataValidator
+
+    mock_cmd = mocker.Mock()
+    validator = ConnectorMetadataValidator(
+        cmd=mock_cmd,
+        resource_group_name="test-rg",
+        instance_name="test-instance",
+        endpoint_type="Microsoft.OpcUa",
+        endpoint_version="1.0"
+    )
+
+    # Mock metadata to return empty (skip schema validation, focus on JSON parsing)
+    validator.metadata = {}
+
+    # Datapoint with invalid JSON string in configuration
+    invalid_datapoint = {
+        "name": "temperature1",
+        "dataSource": "ns=2;i=1001",
+        "dataPointConfiguration": "{invalid json here"  # Malformed JSON
+    }
+
+    with pytest.raises(ValidationError) as exc_info:
+        validator.validate_datapoint(invalid_datapoint)
+
+    assert "Invalid dataPointConfiguration JSON" in str(exc_info.value)
+    assert "temperature1" in str(exc_info.value)
+
+
+def test_validate_dataset_invalid_json_configuration(mocker):
+    """
+    Test that dataset with invalid JSON configuration raises ValidationError.
+    WHY: Ensures data integrity at import/create time.
+    """
+    from azext_edge.edge.providers.adr.validator import ConnectorMetadataValidator
+
+    mock_cmd = mocker.Mock()
+    validator = ConnectorMetadataValidator(
+        cmd=mock_cmd,
+        resource_group_name="test-rg",
+        instance_name="test-instance",
+        endpoint_type="Microsoft.OpcUa",
+        endpoint_version="1.0"
+    )
+
+    validator.metadata = {}
+
+    invalid_dataset = {
+        "name": "dataset1",
+        "dataSource": "ns=2;i=1000",
+        "datasetConfiguration": '{"publishingInterval": 1000'  # Missing closing brace
+    }
+
+    with pytest.raises(ValidationError) as exc_info:
+        validator.validate_dataset(invalid_dataset)
+
+    assert "Invalid datasetConfiguration JSON" in str(exc_info.value)
+
+
+def test_validate_datapoint_with_schema_validation(mocker):
+    """
+    Test datapoint validation against a JSON schema.
+    WHY: Validates that configuration follows connector-specific requirements.
+    """
+    from azext_edge.edge.providers.adr.validator import ConnectorMetadataValidator
+
+    mock_cmd = mocker.Mock()
+    validator = ConnectorMetadataValidator(
+        cmd=mock_cmd,
+        resource_group_name="test-rg",
+        instance_name="test-instance",
+        endpoint_type="Microsoft.OpcUa",
+        endpoint_version="1.0"
+    )
+
+    # Mock metadata with schema
+    validator.metadata = {
+        "inboundEndpoints": [
+            {
+                "endpointType": "Microsoft.OpcUa",
+                "datasets": {
+                    "dataPointConfigurationSchema": {
+                        "type": "object",
+                        "properties": {
+                            "samplingInterval": {"type": "integer", "minimum": 0},
+                            "queueSize": {"type": "integer", "minimum": 1}
+                        },
+                        "required": ["samplingInterval"]
+                    }
+                }
+            }
+        ]
+    }
+
+    # Valid datapoint
+    valid_datapoint = {
+        "name": "temperature",
+        "dataSource": "ns=2;i=1001",
+        "dataPointConfiguration": json.dumps({"samplingInterval": 1000, "queueSize": 10})
+    }
+
+    # Should not raise
+    validator.validate_datapoint(valid_datapoint)
+
+    # Invalid datapoint - missing required field
+    invalid_datapoint = {
+        "name": "pressure",
+        "dataSource": "ns=2;i=1002",
+        "dataPointConfiguration": json.dumps({"queueSize": 10})  # Missing samplingInterval
+    }
+
+    with pytest.raises(ValidationError) as exc_info:
+        validator.validate_datapoint(invalid_datapoint)
+
+    assert "Datapoint configuration is invalid" in str(exc_info.value)
+
+
+def test_validate_datapoint_negative_sampling_interval(mocker):
+    """
+    Test that negative sampling interval is rejected by schema validation.
+    WHY: Negative values don't make sense for timing parameters.
+    """
+    from azext_edge.edge.providers.adr.validator import ConnectorMetadataValidator
+
+    mock_cmd = mocker.Mock()
+    validator = ConnectorMetadataValidator(
+        cmd=mock_cmd,
+        resource_group_name="test-rg",
+        instance_name="test-instance",
+        endpoint_type="Microsoft.OpcUa",
+        endpoint_version="1.0"
+    )
+
+    validator.metadata = {
+        "inboundEndpoints": [
+            {
+                "endpointType": "Microsoft.OpcUa",
+                "datasets": {
+                    "dataPointConfigurationSchema": {
+                        "type": "object",
+                        "properties": {
+                            "samplingInterval": {"type": "integer", "minimum": 0}
+                        }
+                    }
+                }
+            }
+        ]
+    }
+
+    invalid_datapoint = {
+        "name": "temp",
+        "dataSource": "ns=2;i=1001",
+        "dataPointConfiguration": json.dumps({"samplingInterval": -1000})  # Negative value
+    }
+
+    with pytest.raises(ValidationError) as exc_info:
+        validator.validate_datapoint(invalid_datapoint)
+
+    assert "Datapoint configuration is invalid" in str(exc_info.value)
+
+
+def test_validate_dataset_with_schema_validation(mocker):
+    """
+    Test dataset validation against a JSON schema.
+    WHY: Ensures dataset configuration meets connector requirements.
+    """
+    from azext_edge.edge.providers.adr.validator import ConnectorMetadataValidator
+
+    mock_cmd = mocker.Mock()
+    validator = ConnectorMetadataValidator(
+        cmd=mock_cmd,
+        resource_group_name="test-rg",
+        instance_name="test-instance",
+        endpoint_type="Microsoft.OpcUa",
+        endpoint_version="1.0"
+    )
+
+    validator.metadata = {
+        "inboundEndpoints": [
+            {
+                "endpointType": "Microsoft.OpcUa",
+                "datasets": {
+                    "datasetConfigurationSchema": {
+                        "type": "object",
+                        "properties": {
+                            "publishingInterval": {"type": "integer", "minimum": 100},
+                            "keyFrameCount": {"type": "integer", "minimum": 1}
+                        },
+                        "required": ["publishingInterval"]
+                    }
+                }
+            }
+        ]
+    }
+
+    # Valid dataset
+    valid_dataset = {
+        "name": "dataset1",
+        "dataSource": "ns=2;i=1000",
+        "datasetConfiguration": json.dumps({"publishingInterval": 1000, "keyFrameCount": 5})
+    }
+
+    validator.validate_dataset(valid_dataset)
+
+    # Invalid dataset - publishingInterval too low
+    invalid_dataset = {
+        "name": "dataset2",
+        "dataSource": "ns=2;i=1000",
+        "datasetConfiguration": json.dumps({"publishingInterval": 50})  # Below minimum
+    }
+
+    with pytest.raises(ValidationError) as exc_info:
+        validator.validate_dataset(invalid_dataset)
+
+    assert "Dataset configuration is invalid" in str(exc_info.value)
+
+
+def test_validate_datapoint_without_configuration(mocker):
+    """
+    Test that datapoint without configuration field is skipped gracefully.
+    WHY: Not all datapoints require custom configuration, should not fail validation.
+    """
+    from azext_edge.edge.providers.adr.validator import ConnectorMetadataValidator
+
+    mock_cmd = mocker.Mock()
+    validator = ConnectorMetadataValidator(
+        cmd=mock_cmd,
+        resource_group_name="test-rg",
+        instance_name="test-instance",
+        endpoint_type="Microsoft.OpcUa",
+        endpoint_version="1.0"
+    )
+
+    validator.metadata = {
+        "inboundEndpoints": [
+            {
+                "endpointType": "Microsoft.OpcUa",
+                "datasets": {
+                    "dataPointConfigurationSchema": {
+                        "type": "object",
+                        "properties": {"samplingInterval": {"type": "integer"}},
+                        "required": ["samplingInterval"]
+                    }
+                }
+            }
+        ]
+    }
+
+    # Datapoint without configuration - should not raise error
+    datapoint_no_config = {
+        "name": "temperature",
+        "dataSource": "ns=2;i=1001"
+        # No dataPointConfiguration field
+    }
+
+    # Should not raise
+    validator.validate_datapoint(datapoint_no_config)
+
+
+def test_validate_datapoint_with_empty_configuration(mocker):
+    """
+    Test that datapoint with empty/null configuration is handled gracefully.
+    WHY: Empty configurations are valid when no custom settings are needed.
+    """
+    from azext_edge.edge.providers.adr.validator import ConnectorMetadataValidator
+
+    mock_cmd = mocker.Mock()
+    validator = ConnectorMetadataValidator(
+        cmd=mock_cmd,
+        resource_group_name="test-rg",
+        instance_name="test-instance",
+        endpoint_type="Microsoft.Custom",
+        endpoint_version="1.0"
+    )
+
+    validator.metadata = {}
+
+    # Datapoint with empty string configuration
+    datapoint_empty = {
+        "name": "sensor1",
+        "dataSource": "sensor/data",
+        "dataPointConfiguration": ""
+    }
+
+    # Should not raise
+    validator.validate_datapoint(datapoint_empty)
+
+    # Datapoint with None configuration
+    datapoint_none = {
+        "name": "sensor2",
+        "dataSource": "sensor/data2",
+        "dataPointConfiguration": None
+    }
+
+    # Should not raise
+    validator.validate_datapoint(datapoint_none)
+
+
+def test_validate_datapoint_wrong_type_in_configuration(mocker):
+    """
+    Test that wrong data types in configuration are rejected.
+    WHY: Type safety prevents runtime errors in the connector.
+    """
+    from azext_edge.edge.providers.adr.validator import ConnectorMetadataValidator
+
+    mock_cmd = mocker.Mock()
+    validator = ConnectorMetadataValidator(
+        cmd=mock_cmd,
+        resource_group_name="test-rg",
+        instance_name="test-instance",
+        endpoint_type="Microsoft.OpcUa",
+        endpoint_version="1.0"
+    )
+
+    validator.metadata = {
+        "inboundEndpoints": [
+            {
+                "endpointType": "Microsoft.OpcUa",
+                "datasets": {
+                    "dataPointConfigurationSchema": {
+                        "type": "object",
+                        "properties": {
+                            "samplingInterval": {"type": "integer"},
+                            "enabled": {"type": "boolean"}
+                        }
+                    }
+                }
+            }
+        ]
+    }
+
+    # String instead of integer
+    wrong_type_datapoint = {
+        "name": "temp",
+        "dataSource": "ns=2;i=1001",
+        "dataPointConfiguration": json.dumps({"samplingInterval": "1000"})  # String not int
+    }
+
+    with pytest.raises(ValidationError) as exc_info:
+        validator.validate_datapoint(wrong_type_datapoint)
+
+    assert "Datapoint configuration is invalid" in str(exc_info.value)
+
+
+def test_import_datapoints_validation_failure_prevents_import(
+    mocked_cmd,
+    mocked_responses: responses,
+    mocked_get_namespace_for_instance,
+    mocked_check_cluster_connectivity,
+    mocker
+):
+    """
+    Test that validation errors prevent datapoint import.
+    WHY: Critical - must not persist invalid data to the system.
+    """
+    asset_name = generate_random_string()
+    dataset_name = "dataset1"
+    instance_name = generate_random_string()
+    instance_resource_group = generate_random_string()
+    input_file = "/tmp/invalid_datapoints.json"
+
+    # Mock validator that raises ValidationError
+    mock_validator = mocker.Mock()
+    mock_validator.validate_datapoint.side_effect = ValidationError("Invalid configuration: samplingInterval must be positive")
+
+    mocker.patch(
+        "azext_edge.edge.providers.adr.validator.ConnectorMetadataValidator.from_asset",
+        return_value=mock_validator
+    )
+
+    namespace_resource = mocked_get_namespace_for_instance.return_value
+    namespace_name = namespace_resource["name"]
+    namespace_resource_group = namespace_resource["resource_group"]
+
+    mock_asset_record = get_namespace_asset_record(
+        asset_name=asset_name,
+        namespace_name=namespace_name,
+        resource_group_name=namespace_resource_group
+    )
+    mock_asset_record["properties"]["datasets"] = [
+        {"name": dataset_name, "dataPoints": []}
+    ]
+
+    # Mock file processing to return invalid datapoints
+    invalid_datapoints = [
+        {"name": "dp1", "dataSource": "source1", "dataPointConfiguration": json.dumps({"samplingInterval": -1000})}
+    ]
+
+    mocker.patch(
+        "azext_edge.edge.providers.adr.assets._process_asset_sub_points_file_path",
+        return_value=invalid_datapoints
+    )
+
+    mocked_responses.add(
+        method=responses.GET,
+        url=get_namespace_asset_mgmt_uri(
+            asset_name=asset_name,
+            namespace_name=namespace_name,
+            resource_group_name=namespace_resource_group
+        ),
+        json=mock_asset_record,
+        status=200,
+        content_type="application/json",
+    )
+
+    from azext_edge.edge.commands_namespaces import import_namespace_asset_dataset_points
+
+    # Should raise ValidationError before any PATCH is attempted
+    with pytest.raises(ValidationError) as exc_info:
+        import_namespace_asset_dataset_points(
+            cmd=mocked_cmd,
+            asset_name=asset_name,
+            dataset_name=dataset_name,
+            instance_name=instance_name,
+            instance_resource_group=instance_resource_group,
+            input_file=input_file,
+            wait_sec=0
+        )
+
+    assert "validation" in str(exc_info.value).lower()
+    # Verify no PATCH was attempted (only GET should have been called)
+    assert len(mocked_responses.calls) == 1
+    assert mocked_responses.calls[0].request.method == "GET"
+
+
+def test_import_datasets_validation_failure_prevents_import(
+    mocked_cmd,
+    mocked_responses: responses,
+    mocked_get_namespace_for_instance,
+    mocked_check_cluster_connectivity,
+    mocker
+):
+    """
+    Test that validation errors prevent dataset import.
+    WHY: Validates that invalid datasets are rejected before persistence.
+    """
+    asset_name = generate_random_string()
+    instance_name = generate_random_string()
+    instance_resource_group = generate_random_string()
+    input_file = "/tmp/invalid_datasets.json"
+
+    # Mock validator that raises ValidationError
+    mock_validator = mocker.Mock()
+    mock_validator.validate_dataset.side_effect = ValidationError("Invalid dataset: publishingInterval too low")
+    mock_validator.validate_datapoint.return_value = None
+
+    mocker.patch(
+        "azext_edge.edge.providers.adr.validator.ConnectorMetadataValidator.from_asset",
+        return_value=mock_validator
+    )
+
+    namespace_resource = mocked_get_namespace_for_instance.return_value
+    namespace_name = namespace_resource["name"]
+    namespace_resource_group = namespace_resource["resource_group"]
+
+    mock_asset_record = get_namespace_asset_record(
+        asset_name=asset_name,
+        namespace_name=namespace_name,
+        resource_group_name=namespace_resource_group
+    )
+    mock_asset_record["properties"]["datasets"] = []
+
+    invalid_datasets = [
+        {
+            "name": "dataset1",
+            "datasetConfiguration": json.dumps({"publishingInterval": 10})  # Too low
+        }
+    ]
+
+    mocker.patch(
+        "azext_edge.edge.util.deserialize_file_content",
+        return_value=invalid_datasets
+    )
+
+    mocked_responses.add(
+        method=responses.GET,
+        url=get_namespace_asset_mgmt_uri(
+            asset_name=asset_name,
+            namespace_name=namespace_name,
+            resource_group_name=namespace_resource_group
+        ),
+        json=mock_asset_record,
+        status=200,
+        content_type="application/json",
+    )
+
+    from azext_edge.edge.commands_namespaces import import_namespace_asset_datasets
+
+    with pytest.raises(ValidationError) as exc_info:
+        import_namespace_asset_datasets(
+            cmd=mocked_cmd,
+            asset_name=asset_name,
+            instance_name=instance_name,
+            instance_resource_group=instance_resource_group,
+            input_file=input_file,
+            wait_sec=0
+        )
+
+    assert "validation" in str(exc_info.value).lower()
+    # Only GET should have been called
+    assert len(mocked_responses.calls) == 1
+
+
+def test_validate_datapoint_additional_properties_allowed(mocker):
+    """
+    Test that additional properties not in schema are allowed (if not strict).
+    WHY: Forward compatibility - new connector versions may add fields.
+    """
+    from azext_edge.edge.providers.adr.validator import ConnectorMetadataValidator
+
+    mock_cmd = mocker.Mock()
+    validator = ConnectorMetadataValidator(
+        cmd=mock_cmd,
+        resource_group_name="test-rg",
+        instance_name="test-instance",
+        endpoint_type="Microsoft.OpcUa",
+        endpoint_version="1.0"
+    )
+
+    # Schema without additionalProperties: false
+    validator.metadata = {
+        "inboundEndpoints": [
+            {
+                "endpointType": "Microsoft.OpcUa",
+                "datasets": {
+                    "dataPointConfigurationSchema": {
+                        "type": "object",
+                        "properties": {
+                            "samplingInterval": {"type": "integer"}
+                        }
+                    }
+                }
+            }
+        ]
+    }
+
+    # Datapoint with extra field not in schema
+    datapoint_with_extra = {
+        "name": "temp",
+        "dataSource": "ns=2;i=1001",
+        "dataPointConfiguration": json.dumps({
+            "samplingInterval": 1000,
+            "customField": "value"  # Not in schema
+        })
+    }
+
+    # Should not raise (additional properties allowed by default)
+    validator.validate_datapoint(datapoint_with_extra)
+
+
+def test_validator_from_asset_missing_device_ref(mocker):
+    """
+    Test validator creation fails when asset has no deviceRef.
+    WHY: deviceRef is required to determine endpoint type for validation.
+    """
+    from azext_edge.edge.providers.adr.validator import ConnectorMetadataValidator
+
+    mock_cmd = mocker.Mock()
+
+    # Asset without deviceRef
+    invalid_asset = {
+        "id": "/subscriptions/sub1/resourceGroups/rg1/providers/Microsoft.DeviceRegistry/namespaces/ns1/assets/asset1",
+        "properties": {
+            "adrNamespace": "/subscriptions/sub1/resourceGroups/rg1/providers/Microsoft.DeviceRegistry/namespaces/ns1"
+            # Missing deviceRef
+        }
+    }
+
+    with pytest.raises(ValidationError) as exc_info:
+        ConnectorMetadataValidator.from_asset(mock_cmd, invalid_asset)
+
+    assert "deviceRef" in str(exc_info.value).lower()
+
+
+def test_validator_from_asset_missing_namespace(mocker):
+    """
+    Test validator creation fails when asset has no adrNamespace.
+    WHY: adrNamespace is required to locate the device.
+    """
+    from azext_edge.edge.providers.adr.validator import ConnectorMetadataValidator
+
+    mock_cmd = mocker.Mock()
+
+    invalid_asset = {
+        "id": "/subscriptions/sub1/resourceGroups/rg1/providers/Microsoft.DeviceRegistry/namespaces/ns1/assets/asset1",
+        "properties": {
+            "deviceRef": {
+                "deviceName": "device1",
+                "endpointName": "endpoint1"
+            }
+            # Missing adrNamespace
+        }
+    }
+
+    with pytest.raises(ValidationError) as exc_info:
+        ConnectorMetadataValidator.from_asset(mock_cmd, invalid_asset)
+
+    assert "adrNamespace" in str(exc_info.value).lower()
+
+
+def test_validate_event_with_invalid_json(mocker):
+    """
+    Test that event with invalid JSON configuration raises ValidationError.
+    WHY: Ensures event configuration integrity.
+    """
+    from azext_edge.edge.providers.adr.validator import ConnectorMetadataValidator
+
+    mock_cmd = mocker.Mock()
+    validator = ConnectorMetadataValidator(
+        cmd=mock_cmd,
+        resource_group_name="test-rg",
+        instance_name="test-instance",
+        endpoint_type="Microsoft.OpcUa",
+        endpoint_version="1.0"
+    )
+
+    validator.metadata = {}
+
+    invalid_event = {
+        "name": "alarm1",
+        "eventConfiguration": '{"queueSize": 10'  # Missing closing brace
+    }
+
+    with pytest.raises(ValidationError) as exc_info:
+        validator.validate_event(invalid_event)
+
+    assert "Invalid eventConfiguration JSON" in str(exc_info.value)
+    assert "alarm1" in str(exc_info.value)
+
+
+def test_validate_no_schema_warning(mocker):
+    """
+    Test that validation is skipped with warning when no schema is available.
+    WHY: Graceful degradation - system should work even without schema.
+    """
+    from azext_edge.edge.providers.adr.validator import ConnectorMetadataValidator
+
+    mock_cmd = mocker.Mock()
+    validator = ConnectorMetadataValidator(
+        cmd=mock_cmd,
+        resource_group_name="test-rg",
+        instance_name="test-instance",
+        endpoint_type="Microsoft.Custom",  # No schema available
+        endpoint_version="1.0"
+    )
+
+    # Empty metadata - no schema
+    validator.metadata = {}
+
+    # Mock logger to verify warning
+    mock_logger = mocker.patch("azext_edge.edge.providers.adr.validator.logger")
+
+    datapoint = {
+        "name": "sensor1",
+        "dataSource": "data/source",
+        "dataPointConfiguration": json.dumps({"customField": "value"})
+    }
+
+    # Should not raise, just warn
+    validator.validate_datapoint(datapoint)
+
+    # Verify warning was logged
+    assert mock_logger.warning.called
+    warning_msg = str(mock_logger.warning.call_args)
+    assert "No datapoint schema found" in warning_msg or "skipping validation" in warning_msg.lower()

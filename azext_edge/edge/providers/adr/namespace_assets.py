@@ -419,16 +419,29 @@ class NamespaceAssets(Queryable):
             default=False,
             **kwargs
         )
-        unmatched_datasets.append(
-            {
-                "name": dataset_name,
-                "dataSource": data_source,
-                "datasetConfiguration": processed_configs.get("datasetsConfiguration"),
-                "destinations": processed_configs.get("datasetsDestinations", []),
-                "dataPoints": [],  # TODO: future pr, add datapoints
-                "typeRef": type_ref
-            }
-        )
+        new_dataset = {
+            "name": dataset_name,
+            "dataSource": data_source,
+            "datasetConfiguration": processed_configs.get("datasetsConfiguration"),
+            "destinations": processed_configs.get("datasetsDestinations", []),
+            "dataPoints": [],  # TODO: future pr, add datapoints
+            "typeRef": type_ref
+        }
+
+        # Validate the dataset configuration against connector metadata
+        try:
+            from .validator import ConnectorMetadataValidator
+            from azure.cli.core.azclierror import ValidationError
+
+            validator = ConnectorMetadataValidator.from_asset(self.cmd, asset, instance_name)
+            validator.validate_dataset(new_dataset)
+            logger.info(f"Dataset '{dataset_name}' configuration validated successfully.")
+        except ValidationError:
+            raise
+        except Exception as e:
+            logger.warning(f"Dataset validation skipped due to error: {e}")
+
+        unmatched_datasets.append(new_dataset)
 
         update_payload = {
             "properties": {
@@ -512,6 +525,19 @@ class NamespaceAssets(Queryable):
             dataset["typeRef"] = type_ref
         if "datasetsDestinations" in processed_configs:
             dataset["destinations"] = processed_configs["datasetsDestinations"]
+
+        # Validate the updated dataset configuration against connector metadata
+        try:
+            from .validator import ConnectorMetadataValidator
+            from azure.cli.core.azclierror import ValidationError
+
+            validator = ConnectorMetadataValidator.from_asset(self.cmd, asset, instance_name)
+            validator.validate_dataset(dataset)
+            logger.info(f"Updated dataset '{dataset_name}' configuration validated successfully.")
+        except ValidationError:
+            raise
+        except Exception as e:
+            logger.warning(f"Dataset validation skipped due to error: {e}")
 
         update_payload = {
             "properties": {
@@ -616,6 +642,20 @@ class NamespaceAssets(Queryable):
             custom_configuration=custom_configuration,
             type_ref=type_ref
         )
+
+        # Validate the datapoint configuration against connector metadata
+        try:
+            from .validator import ConnectorMetadataValidator
+            from azure.cli.core.azclierror import ValidationError
+
+            validator = ConnectorMetadataValidator.from_asset(self.cmd, asset, instance_name)
+            validator.validate_datapoint(datapoint)
+            logger.info(f"Datapoint '{datapoint_name}' configuration validated successfully.")
+        except ValidationError:
+            raise
+        except Exception as e:
+            logger.warning(f"Datapoint validation skipped due to error: {e}")
+
         non_matched_points.append(datapoint)
         dataset["dataPoints"] = non_matched_points
 
@@ -779,7 +819,7 @@ class NamespaceAssets(Queryable):
             from .validator import ConnectorMetadataValidator
             from azure.cli.core.azclierror import ValidationError
 
-            validator = ConnectorMetadataValidator.from_asset(self.cmd, asset)
+            validator = ConnectorMetadataValidator.from_asset(self.cmd, asset, instance_name)
             validation_errors = []
             for idx, point in enumerate(new_data_points):
                 try:
@@ -918,7 +958,7 @@ class NamespaceAssets(Queryable):
                 from .validator import ConnectorMetadataValidator
                 from azure.cli.core.azclierror import ValidationError
 
-                validator = ConnectorMetadataValidator.from_asset(self.cmd, asset)
+                validator = ConnectorMetadataValidator.from_asset(self.cmd, asset, instance_name)
                 validation_errors = []
                 
                 for dataset in new_datasets:

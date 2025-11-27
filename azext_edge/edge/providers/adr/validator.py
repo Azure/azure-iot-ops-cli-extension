@@ -45,13 +45,14 @@ class ConnectorMetadataValidator:
         self.metadata = self._get_metadata()
 
     @classmethod
-    def from_asset(cls, cmd, asset: Dict[str, Any]):
+    def from_asset(cls, cmd, asset: Dict[str, Any], instance_name: str):
         """
         Factory method to create validator from an asset by looking up its device and endpoint.
 
         Args:
             cmd: The Azure CLI command context
             asset: The asset resource dictionary
+            instance_name: The IoT Operations instance name
 
         Returns:
             ConnectorMetadataValidator instance
@@ -69,14 +70,21 @@ class ConnectorMetadataValidator:
 
         resource_group_name = asset_id.resource_group_name
 
-        # Get the namespace from asset
-        adr_namespace = asset.get("adrNamespace") or asset.get("properties", {}).get("adrNamespace")
-        if not adr_namespace:
-            raise ValidationError("Asset does not have adrNamespace specified.")
-
-        namespace_id = parse_resource_id(adr_namespace)
-        if not namespace_id:
-            raise ValidationError(f"Invalid namespace ID: {adr_namespace}")
+        # Parse namespace from asset ID path
+        # Asset ID format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.DeviceRegistry/namespaces/{namespace}/assets/{asset}
+        # The namespace is in the parent path of the asset
+        namespace_name = None
+        if asset_id.resource_type == "Microsoft.DeviceRegistry/namespaces/assets":
+            # namespace_name is in the child_name_1 field
+            namespace_name = asset_id.child_name_1
+        
+        if not namespace_name:
+            raise ValidationError(
+                f"Could not extract namespace from asset ID: {asset_id_str}. "
+                f"Expected format: .../namespaces/{{namespace}}/assets/{{asset}}"
+            )
+        
+        logger.debug(f"Extracted namespace '{namespace_name}' from asset ID")
 
         # Get device reference
         device_ref = asset.get("deviceRef") or asset.get("properties", {}).get("deviceRef", {})
@@ -93,12 +101,12 @@ class ConnectorMetadataValidator:
 
         iotops_client: MicrosoftIoTOperationsManagementService = get_iotops_mgmt_client(
             cmd.cli_ctx.cloud.endpoints.resource_manager,
-            namespace_id.subscription_id,
+            asset_id.subscription_id,
         )
 
         device = iotops_client.device.get(
-            resource_group_name=namespace_id.resource_group_name,
-            namespace_name=namespace_id.resource_name,
+            resource_group_name=resource_group_name,
+            namespace_name=namespace_name,
             device_name=device_name,
         )
 
@@ -115,9 +123,7 @@ class ConnectorMetadataValidator:
         if not endpoint_type:
             raise ValidationError(f"Endpoint '{endpoint_name}' does not have endpointType specified.")
 
-        # Extract instance name from namespace
-        # Namespace format: aio-adr-ns-{instance_name_hash}
-        instance_name = namespace_id.resource_name.replace("-ns-", "-").rsplit("-", 1)[0]  # Heuristic
+        logger.debug(f"Using instance name '{instance_name}' for connector metadata lookup")
 
         return cls(
             cmd=cmd,
@@ -127,13 +133,44 @@ class ConnectorMetadataValidator:
             endpoint_version=endpoint_version,
         )
 
+    def _load_local_opcua_metadata(self) -> Dict[str, Any]:
+        """
+        Loads OPC UA connector metadata from local bundled JSON file.
+
+        Returns:
+            Dict containing the connector metadata JSON, or empty dict if load fails
+        """
+        try:
+            import os
+            # Get the directory where this validator.py file is located
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            schema_file = os.path.join(current_dir, "schemas", "opcua_connector_metadata.json")
+            
+            logger.debug(f"Loading OPC UA metadata from: {schema_file}")
+            
+            if not os.path.exists(schema_file):
+                logger.error(f"OPC UA metadata file not found: {schema_file}")
+                return {}
+            
+            with open(schema_file, 'r', encoding='utf-8') as f:
+                metadata = json.load(f)
+            
+            logger.info(f"Successfully loaded local OPC UA metadata (version {metadata.get('version', 'unknown')})")
+            return metadata
+            
+        except Exception as e:
+            logger.error(f"Failed to load local OPC UA metadata: {e}")
+            return {}
+
     def _get_metadata(self) -> Dict[str, Any]:
         """
         Retrieves the metadata JSON for the connector by:
-        1. Finding the matching Connector Template based on endpoint type/version
-        2. Extracting the connectorMetadataRef (OCI URI)
-        3. Fetching the OCI artifact containing the JSON metadata
-        4. Caching the result for future use
+        1. For OPC UA endpoints, loads from local bundled schema file
+        2. For other endpoints, fetches from OCI registry:
+           - Finding the matching Connector Template based on endpoint type/version
+           - Extracting the connectorMetadataRef (OCI URI)
+           - Fetching the OCI artifact containing the JSON metadata
+        3. Caching the result for future use
 
         Returns:
             Dict containing the connector metadata JSON
@@ -143,6 +180,17 @@ class ConnectorMetadataValidator:
         if cache_key in self._METADATA_CACHE:
             logger.debug(f"Using cached metadata for {cache_key}")
             return self._METADATA_CACHE[cache_key]
+
+        # Use local bundled schema for OPC UA
+        if self.endpoint_type in ["Microsoft.OpcUa", "Microsoft.DeviceRegistry.OpcUa", "opcua"]:
+            logger.info(f"Loading local OPC UA metadata for endpoint type '{self.endpoint_type}'")
+            metadata = self._load_local_opcua_metadata()
+            if metadata:
+                self._METADATA_CACHE[cache_key] = metadata
+                return metadata
+            else:
+                logger.warning("Failed to load local OPC UA metadata, will attempt OCI fetch")
+                # Fall through to OCI fetch as fallback
 
         try:
             # Step 1: Get IoT Operations management client
