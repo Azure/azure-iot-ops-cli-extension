@@ -2512,18 +2512,6 @@ def load_iotops_help():
             text: >
               az iot ops connector opcua client remove --instance instance --resource-group instanceresourcegroup
               --certificate-names testcert.der testcert.pem --yes
-
-    """
-
-    helps[
-        "iot ops connector opcua client show"
-    ] = """
-        type: command
-        short-summary: Show details of secretsync resource 'aio-opc-ua-broker-client-certificate'.
-        examples:
-        - name: Show details of 'aio-opc-ua-broker-client-certificate' secretsync resource.
-          text: >
-            az iot ops connector opcua client show --instance instance --resource-group instanceresourcegroup
     """
 
     helps[
@@ -2726,3 +2714,74 @@ def load_iotops_help():
             az iot ops migrate-assets -n myinstance --resource-group myresourcegroup
             --pattern asset-p1-* asset-eng?-01
     """
+
+    # dataset export/import help
+    for asset_type in ["custom", "opcua", "rest", "sse", "mqtt"]:
+        helps[
+            f"iot ops ns asset {asset_type} dataset export"
+        ] = f"""
+            type: command
+            short-summary: Export datasets to a file.
+            long-summary: |
+                Export datasets to a file in JSON or YAML format.
+            examples:
+            - name: Export datasets to a JSON file.
+              text: >
+                az iot ops ns asset {asset_type} dataset export --asset myasset -g myresourcegroup --output-file mydatasets.json
+            - name: Export datasets to a YAML file.
+              text: >
+                az iot ops ns asset {asset_type} dataset export --asset myasset -g myresourcegroup --output-file mydatasets.yaml --format yaml
+        """
+
+        helps[
+            f"iot ops ns asset {asset_type} dataset import"
+        ] = f"""
+            type: command
+            short-summary: Import datasets from a file.
+            long-summary: |
+                Import datasets from a file in JSON or YAML format.
+                This command will replace any existing datasets with the same name.
+            examples:
+            - name: Import datasets from a JSON file.
+              text: >
+                az iot ops ns asset {asset_type} dataset import --asset myasset -g myresourcegroup --input-file mydatasets.json
+            - name: Import datasets from a YAML file.
+              text: >
+                az iot ops ns asset {asset_type} dataset import --asset myasset -g myresourcegroup --input-file mydatasets.yaml
+        """
+
+    # datapoint export/import help
+    for asset_type in ["custom", "opcua"]:
+        helps[
+            f"iot ops ns asset {asset_type} datapoint export"
+        ] = f"""
+            type: command
+            short-summary: Export datapoints to a file.
+            long-summary: |
+                Export datapoints to a file in CSV, JSON or YAML format.
+            examples:
+            - name: Export datapoints to a CSV file.
+              text: >
+                az iot ops ns asset {asset_type} datapoint export --asset myasset --dataset mydataset -g myresourcegroup --output-file mydatapoints.csv
+            - name: Export datapoints to a JSON file.
+              text: >
+                az iot ops ns asset {asset_type} datapoint export --asset myasset --dataset mydataset -g myresourcegroup --output-file mydatapoints.json --format json
+        """
+
+        helps[
+            f"iot ops ns asset {asset_type} datapoint import"
+        ] = f"""
+            type: command
+            short-summary: Import datapoints from a file.
+            long-summary: |
+                Import datapoints from a file in CSV, JSON or YAML format.
+                This command will append to existing datapoints in the dataset.
+                Duplicates will be skipped or overwritten based on the --replace flag.
+            examples:
+            - name: Import datapoints from a CSV file.
+              text: >
+                az iot ops ns asset {asset_type} datapoint import --asset myasset --dataset mydataset -g myresourcegroup --input-file mydatapoints.csv
+            - name: Import datapoints from a JSON file.
+              text: >
+                az iot ops ns asset {asset_type} datapoint import --asset myasset --dataset mydataset -g myresourcegroup --input-file mydatapoints.json
+        """
