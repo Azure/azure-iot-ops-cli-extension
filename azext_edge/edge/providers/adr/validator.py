@@ -92,8 +92,6 @@ class ConnectorMetadataValidator:
                 f"Expected format: .../namespaces/{{namespace}}/assets/{{asset}}"
             )
 
-        logger.debug(f"Extracted namespace '{namespace_name}' from asset ID")
-
         # Get device reference
         device_ref = asset.get("deviceRef") or asset.get("properties", {}).get("deviceRef", {})
         device_name = device_ref.get("deviceName")
@@ -129,8 +127,6 @@ class ConnectorMetadataValidator:
 
         if not endpoint_type:
             raise ValidationError(f"Endpoint '{endpoint_name}' does not have endpointType specified.")
-
-        logger.debug(f"Using instance name '{instance_name}' for connector metadata lookup")
 
         return cls(
             cmd=cmd,
@@ -196,45 +192,34 @@ class ConnectorMetadataValidator:
             # Step 1: Get IoT Operations management client
             from ...vendor.clients.iotopsmgmt import MicrosoftIoTOperationsManagementService
 
-            logger.debug("Creating IoT Operations management client")
             iotops_client: MicrosoftIoTOperationsManagementService = get_iotops_mgmt_client(
                 self.cmd.cli_ctx.cloud.endpoints.resource_manager,
                 self.cmd.cli_ctx.data.get("subscription_id"),
             )
 
             # Step 2: List all connector templates in the instance
-            logger.debug(
-                f"Listing connector templates for instance '{self.instance_name}' "
-                f"in resource group '{self.resource_group_name}'"
-            )
             connector_templates = list(
                 iotops_client.akri_connector_template.list_by_instance_resource(
                     resource_group_name=self.resource_group_name, instance_name=self.instance_name
                 )
             )
 
-            logger.debug(f"Found {len(connector_templates)} connector templates")
-
             # Step 3: Find matching connector template
             matched_template = None
             for template in connector_templates:
                 template_name = template.get("name")
                 device_endpoint_types = template.get("properties", {}).get("deviceInboundEndpointTypes", [])
-                logger.debug(f"Checking template '{template_name}' with {len(device_endpoint_types)} endpoint types")
 
                 for endpoint_type_info in device_endpoint_types:
                     et = endpoint_type_info.get("endpointType")
                     ev = endpoint_type_info.get("version")
-                    logger.debug(f"  Endpoint: type='{et}', version='{ev}'")
 
                     # Match endpoint type
                     if et != self.endpoint_type:
-                        logger.debug(f"    Type mismatch: '{et}' != '{self.endpoint_type}'")
                         continue
 
                     # Match version (if both specified, they must match; if either is None, match)
                     if self.endpoint_version and ev and self.endpoint_version != ev:
-                        logger.debug(f"    Version mismatch: '{self.endpoint_version}' != '{ev}'")
                         continue
 
                     logger.info(
@@ -256,7 +241,6 @@ class ConnectorMetadataValidator:
 
             # Step 4: Extract connectorMetadataRef
             connector_metadata_ref = matched_template.get("properties", {}).get("connectorMetadataRef")
-            logger.debug(f"Connector metadata reference: {connector_metadata_ref}")
 
             if not connector_metadata_ref:
                 logger.warning(
@@ -303,8 +287,6 @@ class ConnectorMetadataValidator:
             repository = remainder
             tag = "latest"
 
-        logger.debug(f"Parsed OCI reference - Registry: {registry}, Repository: {repository}, Tag: {tag}")
-
         # Handle mcr.microsoft.com specific logic if needed, or generic OCI
         # MCR redirects to data endpoints, so standard requests usually work if we follow redirects.
 
@@ -315,7 +297,6 @@ class ConnectorMetadataValidator:
 
         # 2. Get Manifest
         manifest_url = f"{base_url}/manifests/{tag}"
-        logger.debug(f"Fetching manifest from {manifest_url}")
 
         # Note: For private registries, we'd need authentication (Bearer token).
         # MCR public images usually allow anonymous pull but might require a token handshake.
@@ -323,33 +304,25 @@ class ConnectorMetadataValidator:
 
         token = ConnectorMetadataValidator._get_auth_token(registry, repository)
         if token:
-            logger.debug(f"Using Bearer token for authentication (token length: {len(token)})")
             headers["Authorization"] = f"Bearer {token}"
-        else:
-            logger.debug("No authentication token obtained, attempting anonymous access")
 
-        logger.debug(f"Fetching manifest with headers: {list(headers.keys())}")
         response = requests.get(manifest_url, headers=headers)
-        logger.debug(f"Manifest fetch response: HTTP {response.status_code}")
         if response.status_code != 200:
             raise ValidationError(f"Failed to fetch manifest for {image_ref}: {response.status_code} {response.text}")
 
         manifest = response.json()
-        logger.debug(f"Manifest structure: {json.dumps(manifest, indent=2)}")
 
         # 3. Find the connector-metadata.json layer
         # The connector metadata is stored as a file named "connector-metadata.json" in the OCI artifact
         target_digest = None
 
         layers = manifest.get("layers", [])
-        logger.debug(f"Found {len(layers)} layers in manifest")
 
         # Strategy 1: Look for layer with title annotation containing "connector-metadata.json"
         for idx, layer in enumerate(layers):
             media_type = layer.get("mediaType", "")
             annotations = layer.get("annotations", {})
             title = annotations.get("org.opencontainers.image.title", "")
-            logger.debug(f"Layer {idx}: mediaType={media_type}, title={title}, digest={layer.get('digest')}")
 
             # Match if title ends with connector-metadata.json
             # (handles paths like "azure_iot_operations_rest_connector/connector-metadata.json")
@@ -360,7 +333,6 @@ class ConnectorMetadataValidator:
 
         # Strategy 2: If not found by title, look for application/json media type
         if not target_digest:
-            logger.debug("connector-metadata.json not found by title, trying by media type")
             for layer in layers:
                 media_type = layer.get("mediaType", "")
                 if "json" in media_type.lower():
@@ -381,7 +353,6 @@ class ConnectorMetadataValidator:
 
         # 4. Fetch the Blob
         blob_url = f"{base_url}/blobs/{target_digest}"
-        logger.debug(f"Fetching blob from {blob_url}")
 
         blob_response = requests.get(blob_url, headers=headers)
         if blob_response.status_code != 200:
@@ -389,11 +360,9 @@ class ConnectorMetadataValidator:
 
         # Check if the blob is a tar file (common for OCI artifacts)
         content_type = blob_response.headers.get("Content-Type", "")
-        logger.debug(f"Blob content-type: {content_type}, size: {len(blob_response.content)} bytes")
 
         # If it's a tar file, extract the connector-metadata.json from it
         if "tar" in content_type or blob_response.content[:2] == b"\x1f\x8b":  # Check for gzip magic number too
-            logger.debug("Blob appears to be a tar archive, extracting connector-metadata.json")
             import tarfile
             import io
 
@@ -403,7 +372,6 @@ class ConnectorMetadataValidator:
                 with tarfile.open(fileobj=tar_bytes, mode="r:*") as tar:
                     # List all files in tar
                     member_names = tar.getnames()
-                    logger.debug(f"Tar contains {len(member_names)} files: {member_names[:10]}")  # Show first 10
 
                     # Find connector-metadata.json file (may be in root or subdirectory)
                     metadata_file = None
@@ -431,7 +399,6 @@ class ConnectorMetadataValidator:
 
                     json_content = extracted.read().decode("utf-8")
                     metadata = json.loads(json_content)
-                    logger.debug(f"Successfully extracted and parsed JSON, keys: {list(metadata.keys())}")
 
             except (tarfile.TarError, IOError) as e:
                 logger.error(f"Failed to extract tar archive: {e}")
@@ -440,10 +407,8 @@ class ConnectorMetadataValidator:
             # Try to parse as direct JSON
             try:
                 metadata = blob_response.json()
-                logger.debug(f"Successfully parsed blob as JSON, keys: {list(metadata.keys())}")
             except json.JSONDecodeError as e:
                 logger.error(f"Blob is not valid JSON: {e}")
-                logger.debug(f"Blob content preview: {blob_response.text[:500]}")
                 raise ValidationError(f"Artifact at {image_ref} is not valid JSON.")
 
         # Validate the metadata structure
@@ -474,16 +439,12 @@ class ConnectorMetadataValidator:
         For public registries like MCR, this allows anonymous pull access without credentials.
         """
         auth_url = f"https://{registry}/v2/"
-        logger.debug(f"Attempting to obtain auth token for registry: {registry}, repository: {repository}")
         try:
             # Ping v2 endpoint to get Www-Authenticate header
-            logger.debug(f"Pinging registry v2 endpoint: {auth_url}")
             resp = requests.get(auth_url)
-            logger.debug(f"Registry v2 response: HTTP {resp.status_code}")
 
             if resp.status_code == 401 and "Www-Authenticate" in resp.headers:
                 auth_header = resp.headers["Www-Authenticate"]
-                logger.debug(f"Received WWW-Authenticate header: {auth_header}")
 
                 # Format: Bearer realm="...",service="...",scope="..."
                 # Simple parser
@@ -493,8 +454,6 @@ class ConnectorMetadataValidator:
                         k, v = part.split("=", 1)
                         parts[k.strip()] = v.strip().strip('"')
 
-                logger.debug(f"Parsed auth challenge: realm={parts.get('realm')}, service={parts.get('service')}")
-
                 if "realm" in parts:
                     token_params = {"service": parts.get("service")}
                     if "scope" not in parts:
@@ -502,9 +461,7 @@ class ConnectorMetadataValidator:
                     else:
                         token_params["scope"] = parts.get("scope")
 
-                    logger.debug(f"Requesting token from {parts['realm']} with params: {token_params}")
                     token_resp = requests.get(parts["realm"], params=token_params)
-                    logger.debug(f"Token response: HTTP {token_resp.status_code}")
 
                     if token_resp.status_code == 200:
                         token = token_resp.json().get("token")
@@ -514,8 +471,6 @@ class ConnectorMetadataValidator:
                         return token
                     else:
                         logger.warning(f"Token request failed: {token_resp.status_code} {token_resp.text}")
-            else:
-                logger.debug(f"No authentication required (HTTP {resp.status_code})")
         except Exception as e:
             logger.warning(f"Failed to obtain auth token: {e}")
         return None
