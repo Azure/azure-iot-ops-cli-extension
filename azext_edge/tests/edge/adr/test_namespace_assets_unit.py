@@ -2493,7 +2493,9 @@ def test_import_datapoints_validation_failure_prevents_import(
 
     # Mock validator that raises ValidationError
     mock_validator = mocker.Mock()
-    mock_validator.validate_datapoint.side_effect = ValidationError("Invalid configuration: samplingInterval must be positive")
+    mock_validator.validate_datapoint.side_effect = ValidationError(
+        "Invalid configuration: samplingInterval must be positive"
+    )
 
     mocker.patch(
         "azext_edge.edge.providers.adr.validator.ConnectorMetadataValidator.from_asset",
@@ -2691,9 +2693,15 @@ def test_validator_from_asset_missing_device_ref(mocker):
 
     # Asset without deviceRef
     invalid_asset = {
-        "id": "/subscriptions/sub1/resourceGroups/rg1/providers/Microsoft.DeviceRegistry/namespaces/ns1/assets/asset1",
+        "id": (
+            "/subscriptions/sub1/resourceGroups/rg1/providers/Microsoft.DeviceRegistry/"
+            "namespaces/ns1/assets/asset1"
+        ),
         "properties": {
-            "adrNamespace": "/subscriptions/sub1/resourceGroups/rg1/providers/Microsoft.DeviceRegistry/namespaces/ns1"
+            "adrNamespace": (
+                "/subscriptions/sub1/resourceGroups/rg1/providers/Microsoft.DeviceRegistry/"
+                "namespaces/ns1"
+            )
             # Missing deviceRef
         }
     }
@@ -2714,7 +2722,10 @@ def test_validator_from_asset_missing_namespace(mocker):
     mock_cmd = mocker.Mock()
 
     invalid_asset = {
-        "id": "/subscriptions/sub1/resourceGroups/rg1/providers/Microsoft.DeviceRegistry/namespaces/ns1/assets/asset1",
+        "id": (
+            "/subscriptions/sub1/resourceGroups/rg1/providers/Microsoft.DeviceRegistry/"
+            "namespaces/ns1/assets/asset1"
+        ),
         "properties": {
             "deviceRef": {
                 "deviceName": "device1",

@@ -71,19 +71,20 @@ class ConnectorMetadataValidator:
         resource_group_name = asset_id.resource_group_name
 
         # Parse namespace from asset ID path
-        # Asset ID format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.DeviceRegistry/namespaces/{namespace}/assets/{asset}
+        # Asset ID format:
+        # /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.DeviceRegistry/namespaces/{namespace}/assets/{asset}
         # The namespace is in the parent path of the asset
         namespace_name = None
         if asset_id.resource_type == "Microsoft.DeviceRegistry/namespaces/assets":
             # namespace_name is in the child_name_1 field
             namespace_name = asset_id.child_name_1
-        
+
         if not namespace_name:
             raise ValidationError(
                 f"Could not extract namespace from asset ID: {asset_id_str}. "
                 f"Expected format: .../namespaces/{{namespace}}/assets/{{asset}}"
             )
-        
+
         logger.debug(f"Extracted namespace '{namespace_name}' from asset ID")
 
         # Get device reference
@@ -97,14 +98,13 @@ class ConnectorMetadataValidator:
             )
 
         # Fetch the device to get endpoint type/version
-        from ...vendor.clients.iotopsmgmt import MicrosoftIoTOperationsManagementService
+        from ...util.az_client import get_registry_mgmt_client
 
-        iotops_client: MicrosoftIoTOperationsManagementService = get_iotops_mgmt_client(
-            cmd.cli_ctx.cloud.endpoints.resource_manager,
-            asset_id.subscription_id,
+        registry_client = get_registry_mgmt_client(
+            subscription_id=asset_id.subscription_id,
         )
 
-        device = iotops_client.device.get(
+        device = registry_client.namespace_devices.get(
             resource_group_name=resource_group_name,
             namespace_name=namespace_name,
             device_name=device_name,
@@ -145,21 +145,18 @@ class ConnectorMetadataValidator:
             # Get the directory where this validator.py file is located
             current_dir = os.path.dirname(os.path.abspath(__file__))
             schema_file = os.path.join(current_dir, "schemas", "opcua_connector_metadata.json")
-            
-            logger.debug(f"Loading OPC UA metadata from: {schema_file}")
-            
+
             if not os.path.exists(schema_file):
-                logger.error(f"OPC UA metadata file not found: {schema_file}")
+                logger.warning(f"OPC UA metadata file not found: {schema_file}")
                 return {}
-            
+
             with open(schema_file, 'r', encoding='utf-8') as f:
                 metadata = json.load(f)
-            
-            logger.info(f"Successfully loaded local OPC UA metadata (version {metadata.get('version', 'unknown')})")
+
             return metadata
-            
+
         except Exception as e:
-            logger.error(f"Failed to load local OPC UA metadata: {e}")
+            logger.warning(f"Failed to load local OPC UA metadata: {e}")
             return {}
 
     def _get_metadata(self) -> Dict[str, Any]:
@@ -178,19 +175,15 @@ class ConnectorMetadataValidator:
         # Check cache first
         cache_key = f"{self.endpoint_type}:{self.endpoint_version or 'none'}"
         if cache_key in self._METADATA_CACHE:
-            logger.debug(f"Using cached metadata for {cache_key}")
             return self._METADATA_CACHE[cache_key]
 
         # Use local bundled schema for OPC UA
         if self.endpoint_type in ["Microsoft.OpcUa", "Microsoft.DeviceRegistry.OpcUa", "opcua"]:
-            logger.info(f"Loading local OPC UA metadata for endpoint type '{self.endpoint_type}'")
             metadata = self._load_local_opcua_metadata()
             if metadata:
                 self._METADATA_CACHE[cache_key] = metadata
                 return metadata
-            else:
-                logger.warning("Failed to load local OPC UA metadata, will attempt OCI fetch")
-                # Fall through to OCI fetch as fallback
+            # Fall through to OCI fetch as fallback
 
         try:
             # Step 1: Get IoT Operations management client
@@ -528,20 +521,16 @@ class ConnectorMetadataValidator:
                 - A full dataset object with 'datasetConfiguration' as JSON string
                 - A parsed configuration dictionary (for backward compatibility)
         """
-        logger.debug(f"Validating dataset: {dataset}")
-
         # Check if this is a full dataset object or just the configuration
         if "datasetConfiguration" in dataset:
             # Full dataset object - extract and parse configuration
             config_str = dataset.get("datasetConfiguration")
             if not config_str:
-                logger.debug("No datasetConfiguration found, skipping validation")
                 return
 
             try:
                 config = json.loads(config_str) if isinstance(config_str, str) else config_str
             except (json.JSONDecodeError, TypeError) as e:
-                logger.error(f"Invalid JSON in datasetConfiguration: {e}")
                 raise ValidationError(f"Invalid datasetConfiguration JSON: {e}")
         else:
             # Assume it's already a parsed configuration dict (backward compatibility)
@@ -549,7 +538,6 @@ class ConnectorMetadataValidator:
 
         schema = self._get_schema("datasetConfigurationSchema")
         if schema:
-            logger.debug("Found dataset schema, performing validation")
             self._validate(config, schema, "Dataset")
         else:
             logger.warning(f"No dataset schema found for endpoint type '{self.endpoint_type}' - skipping validation")
@@ -562,32 +550,23 @@ class ConnectorMetadataValidator:
                 - A full datapoint object with 'dataPointConfiguration' as JSON string
                 - A parsed configuration dictionary (for backward compatibility)
         """
-        logger.debug(f"Validating datapoint: {datapoint}")
+        datapoint_name = datapoint.get('name', 'unnamed')
 
         # Check if this is a full datapoint object or just the configuration
         if "dataPointConfiguration" in datapoint:
             # Full datapoint object - extract and parse configuration
             config_str = datapoint.get("dataPointConfiguration")
             if not config_str:
-                logger.debug("No dataPointConfiguration found, skipping validation")
                 return
 
             try:
                 config = json.loads(config_str) if isinstance(config_str, str) else config_str
             except (json.JSONDecodeError, TypeError) as e:
-                datapoint_name = datapoint.get('name', 'unnamed')
-                logger.error(
-                    f"Invalid JSON in dataPointConfiguration for datapoint '{datapoint_name}': {e}"
-                )
                 raise ValidationError(
                     f"Invalid dataPointConfiguration JSON for datapoint '{datapoint_name}': {e}"
                 )
         elif "name" in datapoint or "dataSource" in datapoint:
             # Has datapoint fields but no configuration - skip validation
-            datapoint_name = datapoint.get('name', 'unnamed')
-            logger.debug(
-                f"Datapoint '{datapoint_name}' has no dataPointConfiguration, skipping validation"
-            )
             return
         else:
             # Assume it's already a parsed configuration dict (backward compatibility)
@@ -595,7 +574,6 @@ class ConnectorMetadataValidator:
 
         schema = self._get_schema("dataPointConfigurationSchema")
         if schema:
-            logger.debug("Found datapoint schema, performing validation")
             self._validate(config, schema, "Datapoint")
         else:
             logger.warning(f"No datapoint schema found for endpoint type '{self.endpoint_type}' - skipping validation")
@@ -645,13 +623,10 @@ class ConnectorMetadataValidator:
         """
         Extracts the specific schema from the metadata based on the endpoint type and version.
         """
-        logger.debug(f"Looking for schema '{schema_key}' in metadata for endpoint type '{self.endpoint_type}'")
         inbound_endpoints = self.metadata.get("inboundEndpoints", [])
-        logger.debug(f"Found {len(inbound_endpoints)} inbound endpoints in metadata")
 
-        for idx, endpoint in enumerate(inbound_endpoints):
+        for endpoint in inbound_endpoints:
             endpoint_type = endpoint.get("endpointType")
-            logger.debug(f"Checking endpoint {idx}: type='{endpoint_type}'")
 
             if endpoint_type == self.endpoint_type:
                 logger.debug(f"Matched endpoint type '{self.endpoint_type}', extracting schema for '{schema_key}'")
@@ -664,7 +639,7 @@ class ConnectorMetadataValidator:
                 if schema_key == "datasetConfigurationSchema":
                     schema = endpoint.get("datasets", {}).get("datasetConfigurationSchema")
                 elif schema_key == "dataPointConfigurationSchema":
-                    schema = endpoint.get("datasets", {}).get("dataPointConfigurationSchema")
+                    schema = endpoint.get("datasets", {}).get("dataPoints", {}).get("dataPointConfigurationSchema")
                 elif schema_key == "eventConfigurationSchema":
                     schema = endpoint.get("eventGroups", {}).get("events", {}).get("eventConfigurationSchema")
                 elif schema_key == "eventGroupConfigurationSchema":
@@ -681,24 +656,19 @@ class ConnectorMetadataValidator:
                     schema = endpoint.get("managementGroups", {}).get("managementGroupConfigurationSchema")
 
                 if schema:
-                    logger.debug(f"Found schema for '{schema_key}'")
                     return schema
                 else:
-                    logger.warning(f"Schema key '{schema_key}' not found in endpoint structure")
                     return None
 
-        logger.warning(f"No endpoint found matching type '{self.endpoint_type}'")
         return None
 
     def _validate(self, instance: Dict[str, Any], schema: Dict[str, Any], resource_name: str):
-        logger.debug(f"Validating {resource_name} against schema")
         try:
             from jsonschema import validate
 
             validate(instance=instance, schema=schema)
-            logger.info(f"{resource_name} configuration is valid")
-        except ImportError:
-            logger.warning("jsonschema library not found. Skipping validation.")
+            logger.debug(f"{resource_name} configuration is VALID")
+        except ImportError as e:
+            logger.warning(f"jsonschema library not found: {e}. Skipping validation.")
         except Exception as e:
-            logger.error(f"{resource_name} validation failed: {str(e)}")
             raise ValidationError(f"{resource_name} configuration is invalid: {str(e)}")

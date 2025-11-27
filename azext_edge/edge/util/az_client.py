@@ -290,6 +290,8 @@ class ResourceIdContainer(NamedTuple):
     resource_group_name: str
     resource_name: str
     resource_id: str
+    resource_type: Optional[str] = None
+    child_name_1: Optional[str] = None
 
 
 def parse_resource_id(resource_id: str) -> Optional[ResourceIdContainer]:
@@ -310,11 +312,32 @@ def parse_resource_id(resource_id: str) -> Optional[ResourceIdContainer]:
     resource_group_name = parts[4]
     resource_name = parts[-1]
 
+    resource_type = None
+    child_name_1 = None
+
+    # Try to detect resource type and children
+    if len(parts) >= 7 and parts[5] == "providers":
+        provider = parts[6]
+
+        # Check for nested resources like namespaces/assets
+        # /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.DeviceRegistry/namespaces/{namespace}/assets/{asset}
+        # parts[6] = Microsoft.DeviceRegistry
+        # parts[7] = namespaces
+        # parts[8] = {namespace}
+        # parts[9] = assets
+        # parts[10] = {asset}
+
+        if len(parts) == 11 and parts[7] == "namespaces" and parts[9] == "assets":
+            resource_type = f"{provider}/{parts[7]}/{parts[9]}"
+            child_name_1 = parts[8]
+
     return ResourceIdContainer(
         subscription_id=subscription_id,
         resource_group_name=resource_group_name,
         resource_name=resource_name,
         resource_id=resource_id,
+        resource_type=resource_type,
+        child_name_1=child_name_1,
     )
 
 

@@ -1507,7 +1507,7 @@ def test_custom_asset_datapoint_import_with_malformed_json_rejected(
     import tempfile
     import os
     malformed_json_content = '[{"name": "dp1", "dataSource": "source1"'  # Missing closing brackets
-    
+
     fd, malformed_file = tempfile.mkstemp(suffix='.json', text=True)
     tracked_files.append(malformed_file)
     try:
@@ -1519,7 +1519,7 @@ def test_custom_asset_datapoint_import_with_malformed_json_rejected(
 
     # Attempt import - should fail
     logger.warning("Attempting to import malformed JSON...")
-    
+
     try:
         run(
             f"az iot ops ns asset custom datapoint import --asset {asset_name} "
@@ -1552,11 +1552,11 @@ def test_datapoint_import_with_invalid_configuration_rejected_opcua(
     """
     Test that OPC UA datapoints with invalid configuration are rejected.
     WHY: End-to-end validation that bad data is caught before persistence.
-    
+
     Validation rules (OPC UA connector metadata JSON schema):
     - samplingInterval: minimum -1 (so -1000 is INVALID, -1 is VALID)
     - queueSize: minimum 0 (so negative is INVALID)
-    
+
     Priority: HIGH - Invalid configuration rejection
     """
     logger.warning("Starting test_datapoint_import_with_invalid_configuration_rejected_opcua")
@@ -1599,15 +1599,18 @@ def test_datapoint_import_with_invalid_configuration_rejected_opcua(
     # Create JSON file with invalid configuration (negative samplingInterval)
     import tempfile
     import os
-    
+
     invalid_datapoints = [
         {
             "name": "temp_invalid",
             "dataSource": "ns=2;i=2001",
-            "dataPointConfiguration": json.dumps({"samplingInterval": -1000, "queueSize": 10})  # -1000 < -1 (minimum), INVALID!
+            "dataPointConfiguration": json.dumps({
+                "samplingInterval": -1000,
+                "queueSize": 10
+            })  # -1000 < -1 (minimum), INVALID!
         }
     ]
-    
+
     fd, invalid_file = tempfile.mkstemp(suffix='.json', text=True)
     tracked_files.append(invalid_file)
     try:
@@ -1619,7 +1622,7 @@ def test_datapoint_import_with_invalid_configuration_rejected_opcua(
 
     # Attempt import - should fail with validation error
     logger.warning("Attempting to import datapoints with invalid configuration...")
-    
+
     try:
         run(
             f"az iot ops ns asset opcua datapoint import --asset {asset_name} "
@@ -1650,10 +1653,10 @@ def test_opcua_datapoint_add_with_invalid_configuration_rejected(
     """
     Test that adding an OPC UA datapoint with invalid configuration via CLI is rejected.
     WHY: Validation should work for direct add operations, not just import.
-    
+
     Validation rules (OPC UA):
     - samplingInterval: minimum -1 (so -500 is INVALID, -1 is VALID)
-    
+
     Priority: HIGH - Validation in all entry points
     """
     logger.warning("Starting test_opcua_datapoint_add_with_invalid_configuration_rejected")
@@ -1695,7 +1698,7 @@ def test_opcua_datapoint_add_with_invalid_configuration_rejected(
 
     # Attempt to add datapoint with negative sampling interval
     logger.warning("Attempting to add datapoint with negative sampling interval...")
-    
+
     try:
         run(
             f"az iot ops ns asset opcua datapoint add --asset {asset_name} "
@@ -1708,9 +1711,10 @@ def test_opcua_datapoint_add_with_invalid_configuration_rejected(
     except Exception as e:
         error_msg = str(e).lower()
         # Verify error mentions validation or negative value
-        assert ("validat" in error_msg or "negative" in error_msg or 
-                "minimum" in error_msg or "invalid" in error_msg), \
-                f"Error should mention validation issue: {e}"
+        assert (
+            "validat" in error_msg or "negative" in error_msg
+            or "minimum" in error_msg or "invalid" in error_msg
+        ), f"Error should mention validation issue: {e}"
         logger.warning(f"Add correctly rejected with error: {e}")
 
     # Verify no datapoints were created
@@ -1729,10 +1733,10 @@ def test_opcua_dataset_import_with_invalid_configuration_rejected(
     """
     Test that OPC UA datasets with invalid configuration are rejected during import.
     WHY: Dataset-level validation must work end-to-end.
-    
+
     Validation rules (OPC UA):
     - publishingInterval: minimum -1 (so -1000 is INVALID, -1 is VALID)
-    
+
     Priority: HIGH - Dataset validation
     """
     logger.warning("Starting test_opcua_dataset_import_with_invalid_configuration_rejected")
@@ -1767,7 +1771,7 @@ def test_opcua_dataset_import_with_invalid_configuration_rejected(
     # Create JSON file with invalid dataset configuration
     import tempfile
     import os
-    
+
     invalid_datasets = [
         {
             "name": f"dataset-invalid-{generate_random_string(6)}",
@@ -1779,7 +1783,7 @@ def test_opcua_dataset_import_with_invalid_configuration_rejected(
             "dataPoints": []
         }
     ]
-    
+
     fd, invalid_file = tempfile.mkstemp(suffix='.json', text=True)
     tracked_files.append(invalid_file)
     try:
@@ -1791,7 +1795,7 @@ def test_opcua_dataset_import_with_invalid_configuration_rejected(
 
     # Attempt import - should fail with validation error
     logger.warning("Attempting to import dataset with invalid configuration...")
-    
+
     try:
         run(
             f"az iot ops ns asset opcua dataset import --asset {asset_name} "
@@ -1821,10 +1825,10 @@ def test_opcua_datapoint_import_with_mixed_valid_invalid_rejected(
     """
     Test that OPC UA import with mixed valid/invalid datapoints rejects entire batch.
     WHY: Validation should be atomic - all or nothing to prevent partial state.
-    
+
     Validation rules (OPC UA):
     - samplingInterval: minimum -1 (so -500 in mixed batch is INVALID)
-    
+
     Priority: HIGH - Atomic validation
     """
     logger.warning("Starting test_opcua_datapoint_import_with_mixed_valid_invalid_rejected")
@@ -1867,7 +1871,7 @@ def test_opcua_datapoint_import_with_mixed_valid_invalid_rejected(
     # Create file with 3 datapoints: 2 valid, 1 invalid
     import tempfile
     import os
-    
+
     mixed_datapoints = [
         {
             "name": "temp_valid",
@@ -1877,7 +1881,10 @@ def test_opcua_datapoint_import_with_mixed_valid_invalid_rejected(
         {
             "name": "pressure_invalid",
             "dataSource": "ns=2;i=2002",
-            "dataPointConfiguration": json.dumps({"samplingInterval": -500, "queueSize": 5})  # -500 < -1, INVALID!
+            "dataPointConfiguration": json.dumps({
+                "samplingInterval": -500,
+                "queueSize": 5
+            })  # -500 < -1, INVALID!
         },
         {
             "name": "humidity_valid",
@@ -1885,7 +1892,7 @@ def test_opcua_datapoint_import_with_mixed_valid_invalid_rejected(
             "dataPointConfiguration": json.dumps({"samplingInterval": 2000, "queueSize": 8})
         }
     ]
-    
+
     fd, mixed_file = tempfile.mkstemp(suffix='.json', text=True)
     tracked_files.append(mixed_file)
     try:
@@ -1897,7 +1904,7 @@ def test_opcua_datapoint_import_with_mixed_valid_invalid_rejected(
 
     # Attempt import - should fail due to one invalid datapoint
     logger.warning("Attempting to import mixed valid/invalid datapoints...")
-    
+
     try:
         run(
             f"az iot ops ns asset opcua datapoint import --asset {asset_name} "
@@ -1974,7 +1981,7 @@ def test_opcua_datapoint_import_with_valid_configuration_succeeds(
     # Create file with valid datapoints
     import tempfile
     import os
-    
+
     valid_datapoints = [
         {
             "name": "temp_valid",
@@ -1987,7 +1994,7 @@ def test_opcua_datapoint_import_with_valid_configuration_succeeds(
             "dataPointConfiguration": json.dumps({"samplingInterval": 500, "queueSize": 5})
         }
     ]
-    
+
     fd, valid_file = tempfile.mkstemp(suffix='.json', text=True)
     tracked_files.append(valid_file)
     try:
@@ -2062,7 +2069,7 @@ def test_opcua_datapoint_import_with_negative_one_sampling_interval_succeeds(
     # Create file with samplingInterval: -1 (valid - means "use default")
     import tempfile
     import os
-    
+
     datapoints_with_neg1 = [
         {
             "name": "temp_default",
@@ -2075,7 +2082,7 @@ def test_opcua_datapoint_import_with_negative_one_sampling_interval_succeeds(
             "dataPointConfiguration": json.dumps({"samplingInterval": -1, "queueSize": 5})
         }
     ]
-    
+
     fd, neg1_file = tempfile.mkstemp(suffix='.json', text=True)
     tracked_files.append(neg1_file)
     try:
@@ -2100,7 +2107,3 @@ def test_opcua_datapoint_import_with_negative_one_sampling_interval_succeeds(
     assert "pressure_default" in datapoint_names
 
     logger.warning("Test completed successfully - samplingInterval: -1 was accepted as valid.")
-
-
-
-

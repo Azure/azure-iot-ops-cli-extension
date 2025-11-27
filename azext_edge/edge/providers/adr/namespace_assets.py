@@ -814,7 +814,6 @@ class NamespaceAssets(Queryable):
         )
 
         # Validate all data points against connector metadata
-        logger.info(f"Validating {len(new_data_points)} data points against connector metadata...")
         try:
             from .validator import ConnectorMetadataValidator
             from azure.cli.core.azclierror import ValidationError
@@ -824,15 +823,8 @@ class NamespaceAssets(Queryable):
             for idx, point in enumerate(new_data_points):
                 try:
                     validator.validate_datapoint(point)
-                    logger.debug(
-                        f"Data point {idx + 1}/{len(new_data_points)} "
-                        f"('{point.get('name', 'unnamed')}') validation passed."
-                    )
                 except Exception as e:
                     validation_errors.append(f"Data point '{point.get('name', 'unnamed')}': {e}")
-                    logger.error(
-                        f"Data point '{point.get('name', 'unnamed')}' validation failed: {e}"
-                    )
 
             if validation_errors:
                 error_msg = (
@@ -953,43 +945,31 @@ class NamespaceAssets(Queryable):
 
         # Validate all new datasets and their datapoints against connector metadata
         if new_datasets:
-            logger.info(f"Validating {len(new_datasets)} new dataset(s) against connector metadata...")
             try:
                 from .validator import ConnectorMetadataValidator
                 from azure.cli.core.azclierror import ValidationError
 
                 validator = ConnectorMetadataValidator.from_asset(self.cmd, asset, instance_name)
                 validation_errors = []
-                
+
                 for dataset in new_datasets:
                     dataset_name = dataset.get("name", "unnamed")
-                    
+
                     # Validate dataset itself if it has datasetConfiguration
                     try:
                         validator.validate_dataset(dataset)
-                        logger.debug(f"Dataset '{dataset_name}' configuration validation passed.")
                     except Exception as e:
                         validation_errors.append(f"Dataset '{dataset_name}' configuration: {e}")
-                        logger.error(f"Dataset '{dataset_name}' configuration validation failed: {e}")
-                    
+
                     # Validate all datapoints in the dataset
                     datapoints = dataset.get("dataPoints", [])
                     if datapoints:
-                        logger.debug(f"Validating {len(datapoints)} datapoint(s) in dataset '{dataset_name}'...")
                         for idx, point in enumerate(datapoints):
                             try:
                                 validator.validate_datapoint(point)
-                                logger.debug(
-                                    f"  Datapoint {idx + 1}/{len(datapoints)} "
-                                    f"('{point.get('name', 'unnamed')}') validation passed."
-                                )
                             except Exception as e:
                                 validation_errors.append(
                                     f"Dataset '{dataset_name}', datapoint '{point.get('name', 'unnamed')}': {e}"
-                                )
-                                logger.error(
-                                    f"Dataset '{dataset_name}', datapoint '{point.get('name', 'unnamed')}' "
-                                    f"validation failed: {e}"
                                 )
 
                 if validation_errors:
