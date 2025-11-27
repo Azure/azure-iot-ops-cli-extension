@@ -2515,6 +2515,17 @@ def load_iotops_help():
     """
 
     helps[
+        "iot ops connector opcua client show"
+    ] = """
+        type: command
+        short-summary: Show details of secretsync resource 'aio-opc-ua-broker-client-certificate'.
+        examples:
+        - name: Show details of 'aio-opc-ua-broker-client-certificate' secretsync resource.
+          text: >
+            az iot ops connector opcua client show --instance instance --resource-group instanceresourcegroup
+    """
+
+    helps[
         "iot ops schema version"
     ] = """
         type: group
