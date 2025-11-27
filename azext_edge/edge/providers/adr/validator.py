@@ -58,7 +58,7 @@ class ConnectorMetadataValidator:
             ConnectorMetadataValidator instance
         """
         # Extract resource group and instance from asset's extended location or ID
-        from ...util.az_client import parse_resource_id
+        from ...util.id_tools import parse_resource_id
 
         asset_id_str = asset.get("id", "")
         if not asset_id_str:
@@ -68,16 +68,23 @@ class ConnectorMetadataValidator:
         if not asset_id:
             raise ValidationError(f"Invalid asset ID: {asset_id_str}")
 
-        resource_group_name = asset_id.resource_group_name
+        resource_group_name = asset_id.get("resource_group")
 
         # Parse namespace from asset ID path
         # Asset ID format:
         # /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.DeviceRegistry/namespaces/{namespace}/assets/{asset}
-        # The namespace is in the parent path of the asset
+        # After parsing:
+        # - namespace: "Microsoft.DeviceRegistry"
+        # - type: "namespaces", name: "{namespace}"
+        # - child_type_1: "assets", child_name_1: "{asset}"
         namespace_name = None
-        if asset_id.resource_type == "Microsoft.DeviceRegistry/namespaces/assets":
-            # namespace_name is in the child_name_1 field
-            namespace_name = asset_id.child_name_1
+        if (
+            asset_id.get("namespace") == "Microsoft.DeviceRegistry"
+            and asset_id.get("type") == "namespaces"
+            and asset_id.get("child_type_1") == "assets"
+        ):
+            # namespace_name is in the "name" field (the namespaces resource name)
+            namespace_name = asset_id.get("name")
 
         if not namespace_name:
             raise ValidationError(
@@ -101,7 +108,7 @@ class ConnectorMetadataValidator:
         from ...util.az_client import get_registry_mgmt_client
 
         registry_client = get_registry_mgmt_client(
-            subscription_id=asset_id.subscription_id,
+            subscription_id=asset_id.get("subscription"),
         )
 
         device = registry_client.namespace_devices.get(

@@ -2211,20 +2211,20 @@ def test_validate_datapoint_with_schema_validation(mocker):
             {
                 "endpointType": "Microsoft.OpcUa",
                 "datasets": {
-                    "dataPointConfigurationSchema": {
-                        "type": "object",
-                        "properties": {
-                            "samplingInterval": {"type": "integer", "minimum": 0},
-                            "queueSize": {"type": "integer", "minimum": 1}
-                        },
-                        "required": ["samplingInterval"]
+                    "dataPoints": {
+                        "dataPointConfigurationSchema": {
+                            "type": "object",
+                            "properties": {
+                                "samplingInterval": {"type": "integer", "minimum": 0},
+                                "queueSize": {"type": "integer", "minimum": 1}
+                            },
+                            "required": ["samplingInterval"]
+                        }
                     }
                 }
             }
         ]
-    }
-
-    # Valid datapoint
+    }    # Valid datapoint
     valid_datapoint = {
         "name": "temperature",
         "dataSource": "ns=2;i=1001",
@@ -2268,10 +2268,12 @@ def test_validate_datapoint_negative_sampling_interval(mocker):
             {
                 "endpointType": "Microsoft.OpcUa",
                 "datasets": {
-                    "dataPointConfigurationSchema": {
-                        "type": "object",
-                        "properties": {
-                            "samplingInterval": {"type": "integer", "minimum": 0}
+                    "dataPoints": {
+                        "dataPointConfigurationSchema": {
+                            "type": "object",
+                            "properties": {
+                                "samplingInterval": {"type": "integer", "minimum": 0}
+                            }
                         }
                     }
                 }
@@ -2449,11 +2451,13 @@ def test_validate_datapoint_wrong_type_in_configuration(mocker):
             {
                 "endpointType": "Microsoft.OpcUa",
                 "datasets": {
-                    "dataPointConfigurationSchema": {
-                        "type": "object",
-                        "properties": {
-                            "samplingInterval": {"type": "integer"},
-                            "enabled": {"type": "boolean"}
+                    "dataPoints": {
+                        "dataPointConfigurationSchema": {
+                            "type": "object",
+                            "properties": {
+                                "samplingInterval": {"type": "integer"},
+                                "enabled": {"type": "boolean"}
+                            }
                         }
                     }
                 }
@@ -2707,38 +2711,38 @@ def test_validator_from_asset_missing_device_ref(mocker):
     }
 
     with pytest.raises(ValidationError) as exc_info:
-        ConnectorMetadataValidator.from_asset(mock_cmd, invalid_asset)
+        ConnectorMetadataValidator.from_asset(mock_cmd, invalid_asset, instance_name="test-instance")
 
-    assert "deviceRef" in str(exc_info.value).lower()
+    assert "deviceref" in str(exc_info.value).lower()
 
 
 def test_validator_from_asset_missing_namespace(mocker):
     """
-    Test validator creation fails when asset has no adrNamespace.
-    WHY: adrNamespace is required to locate the device.
+    Test validator creation fails when namespace cannot be extracted from asset ID.
+    WHY: namespace is required to locate the device.
     """
     from azext_edge.edge.providers.adr.validator import ConnectorMetadataValidator
 
     mock_cmd = mocker.Mock()
 
+    # Asset with an ID that doesn't follow the expected namespaces/assets structure
     invalid_asset = {
         "id": (
             "/subscriptions/sub1/resourceGroups/rg1/providers/Microsoft.DeviceRegistry/"
-            "namespaces/ns1/assets/asset1"
+            "assets/asset1"
         ),
         "properties": {
             "deviceRef": {
                 "deviceName": "device1",
                 "endpointName": "endpoint1"
             }
-            # Missing adrNamespace
         }
     }
 
     with pytest.raises(ValidationError) as exc_info:
-        ConnectorMetadataValidator.from_asset(mock_cmd, invalid_asset)
+        ConnectorMetadataValidator.from_asset(mock_cmd, invalid_asset, instance_name="test-instance")
 
-    assert "adrNamespace" in str(exc_info.value).lower()
+    assert "namespace" in str(exc_info.value).lower()
 
 
 def test_validate_event_with_invalid_json(mocker):
