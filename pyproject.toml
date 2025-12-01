@@ -54,3 +54,4 @@ azext_edge = ["azext_metadata.json"]
 # Pytest configuration (from setup.cfg)
 [tool.pytest.ini_options]
 junit_family = "xunit1"
+timeout_method = "thread"
