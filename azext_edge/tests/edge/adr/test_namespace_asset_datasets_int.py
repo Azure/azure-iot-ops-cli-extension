@@ -1465,8 +1465,9 @@ def test_custom_asset_datapoint_import_with_malformed_json_rejected(
     except Exception as e:
         error_msg = str(e).lower()
         # Verify error mentions JSON parsing
-        assert "json" in error_msg or "parse" in error_msg or "invalid" in error_msg, \
-            f"Error should mention JSON/parsing issue: {e}"
+        # The error message from json.loads typically looks like "Expecting ',' delimiter: line 1 column 41 (char 40)"
+        assert "expecting" in error_msg or "delimiter" in error_msg or "line" in error_msg, \
+            f"Error should be a JSON parsing error: {e}"
 
     # Verify no datapoints were created
     datapoints_list = run(
