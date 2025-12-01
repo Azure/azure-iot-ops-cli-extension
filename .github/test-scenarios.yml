@@ -17,6 +17,10 @@ scenarios:
     description: "Cloud tests"
     tox_env: python-rpsaas-int
 
+  - name: upgrade
+    description: "Upgrade tests"
+    tox_env: python-upgrade-int
+
   - name: redeploy
     description: "Redeployment tests"
     test_redeploy: true
