@@ -70,7 +70,8 @@ def test_dataflow_profile(dataflow_profile_test_setup, tracked_resources):
         except CLIInternalError as e:
             if "Conflict" in str(e) and attempt < max_update_retries - 1:
                 logger.warning(
-                    f"Conflict during update (attempt {attempt + 1}/{max_update_retries}). Retrying in {retry_delay}s..."
+                    f"Conflict during update (attempt {attempt + 1}/{max_update_retries})"
+                    f"Retrying in {retry_delay}s..."
                 )
                 sleep(retry_delay)
             else:
