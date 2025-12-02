@@ -499,7 +499,7 @@ class ConnectorMetadataValidator:
             config = dataset
 
         schema = self._get_schema("datasetConfigurationSchema")
-        if schema:
+        if schema is not None:
             self._validate(config, schema, "Dataset")
         else:
             logger.warning(f"No dataset schema found for endpoint type '{self.endpoint_type}' - skipping validation")
@@ -535,7 +535,7 @@ class ConnectorMetadataValidator:
             config = datapoint
 
         schema = self._get_schema("dataPointConfigurationSchema")
-        if schema:
+        if schema is not None:
             self._validate(config, schema, "Datapoint")
         else:
             logger.warning(f"No datapoint schema found for endpoint type '{self.endpoint_type}' - skipping validation")
@@ -573,7 +573,7 @@ class ConnectorMetadataValidator:
             config = event
 
         schema = self._get_schema("eventConfigurationSchema")
-        if schema:
+        if schema is not None:
             logger.debug("Found event schema, performing validation")
             self._validate(config, schema, "Event")
         else:
@@ -617,7 +617,7 @@ class ConnectorMetadataValidator:
                 elif schema_key == "managementGroupConfigurationSchema":
                     schema = endpoint.get("managementGroups", {}).get("managementGroupConfigurationSchema")
 
-                if schema:
+                if schema is not None:
                     return schema
                 else:
                     return None
