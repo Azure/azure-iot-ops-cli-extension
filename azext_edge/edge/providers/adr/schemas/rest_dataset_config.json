@@ -1,0 +1,12 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "REST Dataset Config Schema",
+    "description": "The JSON schema for both the default dataset configuration field on an asset and dataset-specific configuration fields",
+    "type": "object",
+    "properties": {
+        "samplingIntervalInMilliseconds": {
+            "description": "How frequently to sample each dataset in milliseconds",
+            "type": "integer"
+        }
+    }
+}

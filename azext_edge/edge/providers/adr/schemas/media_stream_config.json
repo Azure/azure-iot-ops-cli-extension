@@ -1,0 +1,204 @@
+{
+    "$id": "https://azure-iot-operations/schemas/asset/streamconfiguration/media.json",
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "AIO Media Asset stream configuration schema",
+    "description": "Schema of an Asset's stream configuration for endpointType Microsoft.Media",
+    "type": "object",
+    "properties": {
+        "taskType": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "taskType"
+    ],
+    "oneOf": [
+        {
+            "properties": {
+                "taskType": {
+                    "const": "snapshot-to-mqtt"
+                },
+                "autostart": {
+                    "type": "boolean",
+                    "description": "Whether to start immediately. The default is true.",
+                    "default": true
+                },
+                "format": {
+                    "type": "string",
+                    "enum": [
+                        "png",
+                        "bmp",
+                        "jpg",
+                        "jpeg",
+                        "tif",
+                        "tiff"
+                    ],
+                    "description": "The image format for the snapshot. The default is jpeg.",
+                    "default": "jpeg"
+                },
+                "snapshotsPerSecond": {
+                    "type": "number",
+                    "minimum": 0,
+                    "description": "The number of snapshots per second to capture. Default is 1. If empty or 0, the source frame rate will be used. Example: 30 for a 30 snapshots per second; 0.0167 for approximately one snapshot per minute.",
+                    "default": 1
+                }
+            }
+        },
+        {
+            "properties": {
+                "taskType": {
+                    "const": "snapshot-to-fs"
+                },
+                "autostart": {
+                    "type": "boolean",
+                    "description": "Whether to start immediately. The default is true.",
+                    "default": true
+                },
+                "format": {
+                    "type": "string",
+                    "enum": [
+                        "png",
+                        "bmp",
+                        "jpg",
+                        "jpeg",
+                        "tif",
+                        "tiff"
+                    ],
+                    "description": "The image format for the snapshot. Default is png.",
+                    "default": "png"
+                },
+                "snapshotsPerSecond": {
+                    "type": "number",
+                    "minimum": 0,
+                    "description": "The number of snapshots per second to capture. Default is 1. If empty or 0, the source frame rate will be used. Example: 30 for a 30 snapshots per second; 0.0167 for approximately one snapshot per minute.",
+                    "default": 1
+                },
+                "path": {
+                    "type": "string",
+                    "description": "The path where snapshot will be written, by default set by the broker as /tmp/<namespace>/data/<asset>.",
+                    "default": ""
+                }
+            }
+        },
+        {
+            "properties": {
+                "taskType": {
+                    "const": "clip-to-fs"
+                },
+                "autostart": {
+                    "type": "boolean",
+                    "description": "Whether to start immediately. The default is true.",
+                    "default": true
+                },
+                "format": {
+                    "type": "string",
+                    "enum": [
+                        "avi",
+                        "mp4",
+                        "mkv",
+                        "mts",
+                        "mjpeg",
+                        "mpg",
+                        "mpeg",
+                        "flv",
+                        "webm"
+                    ],
+                    "description": "The video clip format. The default is mkv.",
+                    "default": "mkv"
+                },
+                "duration": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "description": "The duration of each clip segment, in seconds. The default is 60 seconds.",
+                    "default": 60
+                },
+                "path": {
+                    "type": "string",
+                    "description": "The path where clips will be written, by default set by the connector as /tmp/<namespace>/data/<asset>.",
+                    "default": ""
+                }
+            }
+        },
+        {
+            "properties": {
+                "taskType": {
+                    "const": "stream-to-rtsp"
+                },
+                "autostart": {
+                    "type": "boolean",
+                    "description": "Whether to start immediately. The default is true.",
+                    "default": true
+                },
+                "mediaServerAddress": {
+                    "type": "string",
+                    "description": "The media server address or IP. The default is media-server.media-server.svc.cluster.local",
+                    "default": "media-server.media-server.svc.cluster.local"
+                },
+                "mediaServerPort": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "description": "The media server port. The default is 8554.",
+                    "default": 8554
+                },
+                "mediaServerPath": {
+                    "type": "string",
+                    "description": "The media server path, by default set by the connector as <namespace>/data/<asset>.",
+                    "default": ""
+                },
+                "mediaServerUsernameRef": {
+                    "type": "string",
+                    "description": "The media server username reference. The default is empty.",
+                    "default": ""
+                },
+                "mediaServerPasswordRef": {
+                    "type": "string",
+                    "description": "The media server password reference. The default is empty.",
+                    "default": ""
+                }
+            }
+        },
+        {
+            "properties": {
+                "taskType": {
+                    "const": "stream-to-rtsps"
+                },
+                "autostart": {
+                    "type": "boolean",
+                    "description": "Whether to start immediately. The default is true.",
+                    "default": true
+                },
+                "mediaServerAddress": {
+                    "type": "string",
+                    "description": "The media server address or IP. The default is media-server.media-server.svc.cluster.local",
+                    "default": "media-server.media-server.svc.cluster.local"
+                },
+                "mediaServerPort": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "description": "The media server port. The default is 8554.",
+                    "default": 8554
+                },
+                "mediaServerPath": {
+                    "type": "string",
+                    "description": "The media server path, by default set by the connector as <namespace>/data/<asset>.",
+                    "default": ""
+                },
+                "mediaServerUsernameRef": {
+                    "type": "string",
+                    "description": "The media server username reference. The default is empty.",
+                    "default": ""
+                },
+                "mediaServerPasswordRef": {
+                    "type": "string",
+                    "description": "The media server password reference. The default is empty.",
+                    "default": ""
+                },
+                "mediaServerCertificateRef": {
+                    "type": "string",
+                    "description": "The media server certificate reference. The default is empty.",
+                    "default": ""
+                }
+            }
+        }
+    ]
+}

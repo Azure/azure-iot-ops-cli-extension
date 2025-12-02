@@ -1,0 +1,33 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "https://azure-iot-operations/schemas/asset/defaultdatasetsconfiguration/opcua/1.2.0.json",
+    "title": "AIO OPC UA Asset Default Datasets Additional Configuration Schema",
+    "description": "Schema for the additional configuration of OPC UA asset default datasets in Azure Industrial Operations",
+    "type": "object",
+    "properties": {
+        "publishingInterval": {
+            "type": "integer",
+            "minimum": -1,
+            "default": 1000
+        },
+        "samplingInterval": {
+            "type": "integer",
+            "minimum": -1,
+            "default": 1000
+        },
+        "queueSize": {
+            "type": "integer",
+            "minimum": 0,
+            "default": 1
+        },
+        "keyFrameCount": {
+            "type": "integer",
+            "minimum": 0,
+            "default": 0
+        },
+        "startInstance": {
+            "type": "string",
+            "default": null
+        }
+    }
+}

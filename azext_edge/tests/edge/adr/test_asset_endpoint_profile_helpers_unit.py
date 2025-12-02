@@ -14,7 +14,6 @@ from azure.cli.core.azclierror import (
 
 from azext_edge.edge.providers.adr.specs import SecurityPolicy, SecurityMode
 from azext_edge.edge.providers.adr.asset_endpoint_profiles import (
-    _assert_above_min,
     _build_opcua_config,
     _build_query_body,
     _update_properties,
@@ -22,17 +21,6 @@ from azext_edge.edge.providers.adr.asset_endpoint_profiles import (
 )
 from azext_edge.edge.providers.adr.helpers import process_authentication
 from ...generators import generate_random_string
-
-
-@pytest.mark.parametrize("value", [-1, 100])
-@pytest.mark.parametrize("minimum", [-1, 0])
-def test_assert_above_min(value, minimum):
-    param = generate_random_string()
-    result = _assert_above_min(param=param, value=value, minimum=minimum)
-    if value < minimum:
-        assert param in result
-    else:
-        assert result == ""
 
 
 @pytest.mark.parametrize("original_config", [
@@ -176,23 +164,42 @@ def test_build_opcua_config_error(req):
             **req
         )
     assert e.value.error_msg
-    min_dict = {
-        "default_publishing_interval": (-1, "--default-publishing-int"),
-        "default_sampling_interval": (-1, "--default-sampling-int"),
-        "default_queue_size": (0, "--default-queue-size"),
-        "keep_alive": (0, "--keep-alive"),
-        "session_timeout": (0, "--session-timeout"),
-        "session_keep_alive": (0, "--session-keep-alive"),
-        "session_reconnect_period": (0, "--session-reconnect-period"),
-        "session_reconnect_exponential_back_off": (-1, "--session-reconnect-backoff"),
-        "sub_max_items": (1, "--subscription-max-items"),
-        "sub_life_time": (0, "--subscription-life-time"),
+
+    # Map request parameters to schema property paths
+    param_map = {
+        "default_publishing_interval": "defaults.publishingIntervalMilliseconds",
+        "default_sampling_interval": "defaults.samplingIntervalMilliseconds",
+        "default_queue_size": "defaults.queueSize",
+        "keep_alive": "keepAliveMilliseconds",
+        "session_timeout": "session.timeoutMilliseconds",
+        "session_keep_alive": "session.keepAliveIntervalMilliseconds",
+        "session_reconnect_period": "session.reconnectPeriodMilliseconds",
+        "session_reconnect_exponential_back_off": "session.reconnectExponentialBackOffMilliseconds",
+        "sub_max_items": "subscription.maxItems",
+        "sub_life_time": "subscription.lifeTimeMilliseconds",
     }
+
+    # Define minimum values for each parameter based on the schema
+    min_dict = {
+        "default_publishing_interval": -1,
+        "default_sampling_interval": -1,
+        "default_queue_size": 0,
+        "keep_alive": 0,
+        "session_timeout": 0,
+        "session_keep_alive": 0,
+        "session_reconnect_period": 0,
+        "session_reconnect_exponential_back_off": -1,
+        "sub_max_items": 1,
+        "sub_life_time": 0,
+    }
+
     expected_error_params = [
-        param for param in req if (min_dict.get(param) is not None) and (req[param] < min_dict[param][0])
+        param for param in req if (min_dict.get(param) is not None) and (req[param] < min_dict[param])
     ]
+
     for param in expected_error_params:
-        assert f"{min_dict[param][1]} needs to be at least {min_dict[param][0]}." in e.value.error_msg
+        property_path = param_map[param]
+        assert f"Property '{property_path}' is invalid" in e.value.error_msg
 
 
 @pytest.mark.parametrize("asset_endpoint_profile_name", [None, generate_random_string()])
