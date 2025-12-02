@@ -35,6 +35,7 @@ from .common import (
     MIN_INSTANCE_VERSION_FOR_CM_MIGRATE,
     MIN_INSTANCE_VERSION_V1_FOR_V2_UPGRADE,
     MIN_INSTANCE_VERSION_V2,
+    PROVISIONING_STATE_SUCCESS,
     ConfigSyncModeType,
 )
 from .migration import SecretSyncMigrationManager
@@ -399,7 +400,7 @@ def format_extension_row(ext: "ExtensionUpgradeState") -> Tuple[str, str, str]:
     """
     try:
         status_indicator = ""
-        if ext.provisioning_state and ext.provisioning_state.lower() != "succeeded":
+        if ext.provisioning_state and ext.provisioning_state.lower() != PROVISIONING_STATE_SUCCESS.lower():
             status_indicator = f" [yellow]({ext.provisioning_state})[/yellow]"
 
         if ext.operation_type == ExtensionOperation.DELETE:
@@ -645,7 +646,7 @@ class ConfigOverride:
         self.version = version
         self.train = train
 
-    def is_empty(self):
+    def is_empty(self) -> bool:
         return not any([self.config, self.config_sync_mode, self.version, self.train])
 
 
@@ -790,12 +791,23 @@ class ClusterUpgradeState:
     def _refresh_upgrade_state(self) -> List["ExtensionUpgradeState"]:
         ext_queue: List["ExtensionUpgradeState"] = []
 
-        if not self.extensions_map.get(EXTENSION_TYPE_OPS):
+        ops_extension = self.extensions_map.get(EXTENSION_TYPE_OPS)
+        if not ops_extension:
             raise ValidationError(
                 "The cluster backing the instance has an invalid state. IoT Operations extension not detected."
             )
 
-        # Check what operations we need
+        # Build IoT Operations extension state first and validate upgrade compatibility.
+        ops_moniker = EXTENSION_TYPE_TO_MONIKER_MAP[EXTENSION_TYPE_OPS]
+        ops_upgrade_state = ExtensionUpgradeState(
+            extension=ops_extension,
+            desired_version_map=self.init_version_map.get(ops_moniker, {}),
+            desired_config=self.desired_config_map.get(ops_moniker),
+            override=self.override_map.get(ops_moniker),
+            force=self.force,
+        )
+        ops_upgrade_state.validate_upgrade()
+
         should_delete_platform = self._should_delete_platform()
         should_create_certmanager = self._should_create_certmanager(deleting_platform=should_delete_platform)
 
@@ -840,6 +852,11 @@ class ClusterUpgradeState:
 
             # Skip certmanager if we're creating it (already handled above)
             if ext_type == EXTENSION_TYPE_CM and should_create_certmanager:
+                continue
+
+            # Use pre-built ops_upgrade_state for IoT Operations extension
+            if ext_type == EXTENSION_TYPE_OPS:
+                ext_queue.append(ops_upgrade_state)
                 continue
 
             if extension:
@@ -888,7 +905,7 @@ class ClusterUpgradeState:
         if not ops_extension:
             return False
 
-        ops_override = self.override_map.get(EXTENSION_MONIKER_OPS, ConfigOverride())
+        ops_override = self.override_map.get(EXTENSION_MONIKER_OPS) or ConfigOverride()
 
         # Priority: override > init_version_map > current version
         target_version = (
@@ -1012,6 +1029,20 @@ class ExtensionUpgradeState:
 
         return payload
 
+    def validate_upgrade(self) -> None:
+        """Validate the upgrade path for this extension.
+
+        Should be called early to ensure upgrade compatibility before
+        computing dependent operations (e.g., platform deletion, certmanager creation).
+
+        Raises:
+            ValidationError: If the upgrade is not valid (e.g., downgrade, incompatible versions).
+        """
+        # Always validate if there's an override version (user explicitly requested upgrade)
+        # or if there's a version delta or non-success state
+        if self._has_delta_in_version() or self._has_non_success_state():
+            self._validate_version_upgrade()
+
     def _should_migrate_mqtt_config(self) -> bool:
         if not self.extension:
             return False
@@ -1078,27 +1109,42 @@ class ExtensionUpgradeState:
         return self._mqtt_migration_config
 
     def _has_delta_in_version(self) -> bool:
-        # Can't have delta if no current version (CREATE/DELETE operations)
-        if not self.extension or not self.current_version[0]:
+        # Can't have delta if no current version
+        if not self.extension:
             return False
 
-        return bool(self.override.version) or (
-            self.desired_version[0]
-            and self.semver.parse(self.desired_version[0]) > self.semver.parse(self.current_version[0])
+        # User explicitly provided a version override - always consider this a delta
+        if self.override.version:
+            return True
+
+        # Can't compare versions if current version is unknown
+        if not self.current_version[0]:
+            return False
+
+        # Check if desired version is greater than current
+        return self.desired_version[0] and self.semver.parse(self.desired_version[0]) > self.semver.parse(
+            self.current_version[0]
         )
 
     def _has_delta_in_train(self) -> bool:
-        # Can't have delta if no current version
-        if not self.extension or not self.current_version[0]:
+        # Can't have delta if no extension
+        if not self.extension:
             return False
 
-        return bool(self.override.train) or (
+        # User explicitly provided a train override - always consider this a delta
+        if self.override.train:
+            return True
+
+        # Can't compare trains if current version/train is unknown
+        if not self.current_version[0] or not self.current_version[1]:
+            return False
+
+        # Check if train differs (only when versions are compatible and no version override)
+        return (
             self.desired_version[0]
-            and self.current_version[0]
+            and self.desired_version[1]
             and self.semver.parse(self.desired_version[0]) >= self.semver.parse(self.current_version[0])
             and not self.override.version
-            and self.desired_version[1]
-            and self.current_version[1]
             and self.desired_version[1].lower() != self.current_version[1].lower()
         )
 
@@ -1135,7 +1181,7 @@ class ExtensionUpgradeState:
         """
         Determines if the extension has a non-success provisioning state.
         """
-        return self.provisioning_state.lower() not in {"succeeded"}
+        return self.provisioning_state.lower() != PROVISIONING_STATE_SUCCESS.lower()
 
     def _validate_version_upgrade(self):
         # Skip validation for CREATE/DELETE operations
@@ -1145,9 +1191,25 @@ class ExtensionUpgradeState:
         if self.force:
             return
 
-        # Need both versions to validate
-        if not self.current_version[0] or not self.desired_version[0]:
-            return
+        # Validate required fields are present
+        if not self.current_version[0]:
+            raise ValidationError(
+                f"Unable to determine installed version for {self.moniker} extension. Cannot validate upgrade path."
+            )
+        if not self.desired_version[0]:
+            raise ValidationError(
+                f"Unable to determine target version for {self.moniker} extension. Cannot validate upgrade path."
+            )
+        if not self.current_version[1]:
+            raise ValidationError(
+                f"Unable to determine release train for installed {self.moniker} extension. "
+                "Cannot validate upgrade path."
+            )
+        if not self.desired_version[1]:
+            raise ValidationError(
+                f"Unable to determine target release train for {self.moniker} extension. "
+                "Cannot validate upgrade path."
+            )
 
         parsed_current = self.semver.parse(self.current_version[0])
         parsed_desired = self.semver.parse(self.desired_version[0])

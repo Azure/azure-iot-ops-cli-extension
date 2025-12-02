@@ -1329,8 +1329,16 @@ def load_adr_arguments(self, _):
                 nargs="+",
             )
 
+        with self.argument_context(f"iot ops ns asset mqtt {command}") as context:
+            context.argument(
+                "dataset_destinations",
+                options_list=["--dataset-dest", "--dsd"],
+                help=DEST_HELP_DATASET_BROKER_OR_MQTT,
+                nargs="+",
+            )
+
     # shared dataset, event, stream, management arguments
-    for asset_type in ("custom", "opcua", "onvif", "media", "rest", "sse"):
+    for asset_type in ("custom", "opcua", "onvif", "media", "rest", "sse", "mqtt"):
         with self.argument_context(f"iot ops ns asset {asset_type} dataset") as context:
             context.argument(
                 "asset_name",
@@ -1622,6 +1630,14 @@ def load_adr_arguments(self, _):
         )
 
     with self.argument_context("iot ops ns asset sse dataset") as context:
+        context.argument(
+            "dataset_destinations",
+            options_list=["--destination", "--dest"],
+            help=DEST_HELP_DATASET_BROKER_OR_MQTT,
+            nargs="+",
+        )
+
+    with self.argument_context("iot ops ns asset mqtt dataset") as context:
         context.argument(
             "dataset_destinations",
             options_list=["--destination", "--dest"],

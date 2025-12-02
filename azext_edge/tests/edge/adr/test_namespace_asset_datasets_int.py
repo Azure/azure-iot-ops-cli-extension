@@ -798,3 +798,156 @@ def test_namespace_sse_asset_dataset_lifecycle_operations(require_init, tracked_
 
     remaining_dataset_names = [dataset["name"] for dataset in datasets_list_after_remove]
     assert dataset_name_1 not in remaining_dataset_names
+
+
+def test_namespace_mqtt_asset_dataset_lifecycle_operations(require_init, tracked_resources: List[str]):
+    """Test complete lifecycle of MQTT asset dataset operations."""
+    # Setup test variables
+    instance_name = require_init["instanceName"]
+    resource_group = require_init["resourceGroup"]
+    device_name = f"dev-{generate_random_string(8, force_lower=True)}"
+    endpoint_name = f"mqtt-{generate_random_string(8)}"
+    asset_name = f"mqtt-{generate_random_string(8, force_lower=True)}"
+    dataset_name_1 = f"dataset{generate_random_string(6, force_lower=True)}"
+
+    # Create Device
+    result = run(
+        f"az iot ops ns device create --name {device_name} --instance {instance_name} "
+        f"-g {resource_group}"
+    )
+    tracked_resources.append(result["id"])
+
+    # Create device endpoint
+    run(
+        f"az iot ops ns device endpoint inbound add mqtt --name {endpoint_name} "
+        f"--instance {instance_name} -g {resource_group} --device {device_name} "
+        f"--endpoint-address 'aio-broker:18883'"
+    )
+
+    # Create MQTT asset
+    asset_mqtt = run(
+        f"az iot ops ns asset mqtt create --name {asset_name} --instance {instance_name} "
+        f"-g {resource_group} --device {device_name} --endpoint {endpoint_name}"
+    )
+    tracked_resources.append(asset_mqtt["id"])
+
+    # 1. CREATE DATASET
+    dataset_data_source = "factory/temperature"
+    dataset_destinations = "topic=telemetry/mqtt/temperature qos=Qos1 retain=Keep ttl=3600"
+
+    # Add MQTT asset dataset (NOTE: MQTT datasets support BrokerStateStore and MQTT destinations only, no events)
+    dataset_result = run(
+        f"az iot ops ns asset mqtt dataset add --asset {asset_name} "
+        f"--instance {instance_name} -g {resource_group} --name {dataset_name_1} "
+        f"--data-source {dataset_data_source} "
+        f"--destination {dataset_destinations}"
+    )
+
+    assert_dataset_properties(
+        dataset_result,
+        name=dataset_name_1,
+        data_source=dataset_data_source,
+        asset_type="mqtt",
+    )
+
+    # 2. LIST DATASETS
+    datasets_list = run(
+        f"az iot ops ns asset mqtt dataset list --asset {asset_name} "
+        f"--instance {instance_name} -g {resource_group}"
+    )
+
+    dataset_names = [dataset["name"] for dataset in datasets_list]
+    assert dataset_name_1 in dataset_names
+    assert len(datasets_list) >= 1
+
+    # 3. SHOW DATASET
+    dataset_show = run(
+        f"az iot ops ns asset mqtt dataset show --asset {asset_name} "
+        f"--instance {instance_name} -g {resource_group} --name {dataset_name_1}"
+    )
+
+    assert_dataset_properties(
+        dataset_show,
+        name=dataset_name_1,
+        data_source=dataset_data_source,
+        asset_type="mqtt",
+    )
+
+    # 4. UPDATE DATASET
+    updated_destinations = "topic=telemetry/mqtt/temperature_v2 qos=Qos0 retain=Never ttl=1800"
+
+    updated_dataset = run(
+        f"az iot ops ns asset mqtt dataset update --asset {asset_name} "
+        f"--instance {instance_name} -g {resource_group} --name {dataset_name_1} "
+        f"--destination {updated_destinations}"
+    )
+
+    assert_dataset_properties(
+        updated_dataset,
+        name=dataset_name_1,
+        asset_type="mqtt",
+    )
+
+    # 5. TEST DATASET REPLACE FUNCTIONALITY
+    # Replace dataset with --replace flag
+    replaced_data_source = "factory/temperature/replaced"
+    broker_destinations = "key=mqtt-data-cache"
+
+    replaced_dataset = run(
+        f"az iot ops ns asset mqtt dataset add --asset {asset_name} "
+        f"--instance {instance_name} -g {resource_group} --name {dataset_name_1} "
+        f"--data-source {replaced_data_source} --dest {broker_destinations} "
+        f"--replace"
+    )
+
+    assert_dataset_properties(
+        replaced_dataset,
+        name=dataset_name_1,
+        asset_type="mqtt",
+    )
+
+    # 6. SHOW REPLACED DATASET
+    replaced_dataset_show = run(
+        f"az iot ops ns asset mqtt dataset show --asset {asset_name} "
+        f"--instance {instance_name} -g {resource_group} --name {dataset_name_1}"
+    )
+
+    assert_dataset_properties(
+        replaced_dataset_show,
+        name=dataset_name_1,
+        data_source=replaced_data_source,
+        asset_type="mqtt",
+    )
+
+    # 7. CREATE ADDITIONAL DATASET
+    dataset_name_2 = f"dataset2{generate_random_string(6, force_lower=True)}"
+    dataset_2_destinations = "topic=telemetry/mqtt/pressure qos=Qos1 retain=Keep ttl=7200"
+
+    dataset_2_result = run(
+        f"az iot ops ns asset mqtt dataset add --asset {asset_name} "
+        f"--instance {instance_name} -g {resource_group} --name {dataset_name_2} "
+        f"--data-source factory/pressure "
+        f"--destination {dataset_2_destinations}"
+    )
+
+    assert_dataset_properties(
+        dataset_2_result,
+        name=dataset_name_2,
+        data_source="factory/pressure",
+        asset_type="mqtt",
+    )
+
+    # 8. REMOVE DATASET
+    run(
+        f"az iot ops ns asset mqtt dataset remove --asset {asset_name} "
+        f"--instance {instance_name} -g {resource_group} --name {dataset_name_1}"
+    )
+
+    # Verify dataset removal
+    datasets_list_after_remove = run(
+        f"az iot ops ns asset mqtt dataset list --asset {asset_name} "
+        f"--instance {instance_name} -g {resource_group}"
+    )
+
+    remaining_dataset_names = [dataset["name"] for dataset in datasets_list_after_remove]
+    assert dataset_name_1 not in remaining_dataset_names
