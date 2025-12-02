@@ -20,6 +20,7 @@ scenarios:
   - name: upgrade
     description: "Upgrade tests"
     tox_env: python-upgrade-int
+    parallel: false
 
   - name: redeploy
     description: "Redeployment tests"

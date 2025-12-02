@@ -48,7 +48,7 @@ def upgrade_int_setup(settings):
     }
 
 
-@pytest.mark.rpsaas
+@pytest.mark.upgrade
 @pytest.mark.timeout(1800)  # 30 minutes
 def test_upgrade(upgrade_int_setup):
     additional_args = upgrade_int_setup["additionalUpgradeArgs"] or ""
