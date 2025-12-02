@@ -227,6 +227,10 @@ def run(command: str, shell_mode: bool = True, expect_failure: bool = False) -> 
         # logger since pytest can cut off long commands
         logger.error(f"Command `{command}` failed.")
         raise CLIInternalError(result.stderr)
+    elif expect_failure and result.returncode != 0:
+        # Command failed as expected.
+        # Raise exception with stderr so tests can verify the error message.
+        raise CLIInternalError(result.stderr)
 
     if result.stdout:
         try:
