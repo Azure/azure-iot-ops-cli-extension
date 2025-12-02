@@ -307,7 +307,7 @@ class ConnectorMetadataValidator:
         if token:
             headers["Authorization"] = f"Bearer {token}"
 
-        response = requests.get(manifest_url, headers=headers)
+        response = requests.get(manifest_url, headers=headers, timeout=30)
         if response.status_code != 200:
             raise ValidationError(f"Failed to fetch manifest for {image_ref}: {response.status_code} {response.text}")
 
@@ -320,8 +320,7 @@ class ConnectorMetadataValidator:
         layers = manifest.get("layers", [])
 
         # Strategy 1: Look for layer with title annotation containing "connector-metadata.json"
-        for idx, layer in enumerate(layers):
-            media_type = layer.get("mediaType", "")
+        for layer in layers:
             annotations = layer.get("annotations", {})
             title = annotations.get("org.opencontainers.image.title", "")
 
@@ -355,7 +354,7 @@ class ConnectorMetadataValidator:
         # 4. Fetch the Blob
         blob_url = f"{base_url}/blobs/{target_digest}"
 
-        blob_response = requests.get(blob_url, headers=headers)
+        blob_response = requests.get(blob_url, headers=headers, timeout=30)
         if blob_response.status_code != 200:
             raise ValidationError(f"Failed to fetch blob {target_digest}: {blob_response.status_code}")
 
@@ -442,7 +441,7 @@ class ConnectorMetadataValidator:
         auth_url = f"https://{registry}/v2/"
         try:
             # Ping v2 endpoint to get Www-Authenticate header
-            resp = requests.get(auth_url)
+            resp = requests.get(auth_url, timeout=30)
 
             if resp.status_code == 401 and "Www-Authenticate" in resp.headers:
                 auth_header = resp.headers["Www-Authenticate"]
@@ -462,7 +461,7 @@ class ConnectorMetadataValidator:
                     else:
                         token_params["scope"] = parts.get("scope")
 
-                    token_resp = requests.get(parts["realm"], params=token_params)
+                    token_resp = requests.get(parts["realm"], params=token_params, timeout=30)
 
                     if token_resp.status_code == 200:
                         token = token_resp.json().get("token")
