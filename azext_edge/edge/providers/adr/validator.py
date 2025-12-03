@@ -182,7 +182,7 @@ class ConnectorMetadataValidator:
             return self._METADATA_CACHE[cache_key]
 
         # Use local bundled schema for OPC UA
-        if self.endpoint_type in ["Microsoft.OpcUa", "Microsoft.DeviceRegistry.OpcUa", "opcua"]:
+        if self.endpoint_type.lower() in ["microsoft.opcua", "microsoft.deviceregistry.opcua", "opcua"]:
             metadata = self._load_local_opcua_metadata()
             if metadata:
                 self._METADATA_CACHE[cache_key] = metadata
@@ -194,8 +194,8 @@ class ConnectorMetadataValidator:
             from ...vendor.clients.iotopsmgmt import MicrosoftIoTOperationsManagementService
 
             iotops_client: MicrosoftIoTOperationsManagementService = get_iotops_mgmt_client(
-                self.cmd.cli_ctx.cloud.endpoints.resource_manager,
-                self.cmd.cli_ctx.data.get("subscription_id"),
+                subscription_id=self.cmd.cli_ctx.data.get("subscription_id"),
+                endpoint=self.cmd.cli_ctx.cloud.endpoints.resource_manager,
             )
 
             # Step 2: List all connector templates in the instance

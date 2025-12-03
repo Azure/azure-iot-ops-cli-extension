@@ -6,7 +6,13 @@
 
 """
 Integration tests for ConnectorMetadataValidator.
-These tests validate the complete flow: Asset → Device → Connector Template → OCI Metadata → Validation
+
+These tests employ a "Hybrid" approach:
+1. **Mocked Control Plane**: Azure Management interactions (Resource Graph, IoT Ops Client) are mocked.
+   This isolates the tests from Azure resource provisioning requirements and API latency.
+2. **Real Data Plane**: The tests perform actual HTTP requests to the Microsoft Container Registry (MCR).
+   This validates that the code can correctly fetch, decompress, and parse the real-world schemas
+   currently published in production, ensuring resilience against schema changes or artifact structure updates.
 """
 
 import pytest
@@ -93,6 +99,37 @@ class TestConnectorMetadataValidatorIntegration:
 
         # Verify connector template was queried
         mock_client.akri_connector_template.list_by_instance_resource.assert_called_once()
+
+        # Verify client initialization (Regression check for argument order bug)
+        mock_get_client.assert_called_once_with(
+            subscription_id=cmd.cli_ctx.data.get("subscription_id"),
+            endpoint=cmd.cli_ctx.cloud.endpoints.resource_manager,
+        )
+
+    @patch("azext_edge.edge.providers.adr.validator.get_iotops_mgmt_client")
+    def test_opcua_case_insensitivity_uses_local_schema(self, mock_get_client):
+        """
+        Regression Test: Verify that 'Microsoft.opcua' (lowercase) correctly matches
+        the local schema logic and DOES NOT attempt to fetch from OCI.
+        """
+        cmd = self._create_mock_cmd()
+
+        # Initialize with lowercase 'opcua' which previously triggered a bug (fallback to OCI)
+        validator = ConnectorMetadataValidator(
+            cmd=cmd,
+            resource_group_name="rg",
+            instance_name="instance",
+            endpoint_type="Microsoft.opcua",  # Mixed/Lower case
+            endpoint_version="1.0",
+        )
+
+        # Should have loaded metadata
+        assert validator.metadata is not None
+        # Should be the local OPC UA metadata (check for a known key or value)
+        assert "inboundEndpoints" in validator.metadata
+
+        # CRITICAL: Ensure we did NOT try to use the client to fetch from OCI
+        mock_get_client.assert_not_called()
 
     @patch("azext_edge.edge.providers.adr.validator.get_iotops_mgmt_client")
     def test_onvif_constructor_no_version(self, mock_get_client):
