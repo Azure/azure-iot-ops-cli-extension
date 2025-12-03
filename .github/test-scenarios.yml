@@ -1,5 +1,15 @@
-# Integration test scenarios.
-# Fields: name (required), description, tox_env (optional), needs_trust (bool), test_redeploy (bool), parallel (bool, default: true), init_args, create_args, env (array of single-key maps).
+# Integration test scenario definitions for building test matrix
+
+# Scenario configuration format:
+# - name: Required string identifier for the scenario
+# - description: Optional string description (defaults to name if not provided)
+# - tox_env: Optional string specifying the tox environment to run
+# - needs_trust: Optional boolean for workload identity trust setup (default: false)
+# - init_args: Optional string with extra arguments for 'ops init' command
+# - create_args: Optional string with extra arguments for 'ops create' command
+# - test_redeploy: Optional boolean to test redeployment in the scenario (default: false)
+# - env: Optional list of environment variable dictionaries with key-value pairs
+# - parallel: Optional boolean controlling parallel execution in pytest-xdist (default: true)
 
 scenarios:
   - name: edge

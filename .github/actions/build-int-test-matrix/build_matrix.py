@@ -10,21 +10,29 @@ from json import dumps
 
 from yaml import safe_load
 
-# Known fields in test scenario object
+# These are fields we expect in test scenario object, used for warnings if unknown fields are added
 KNOWN_FIELDS = {
-    "name",
-    "description",
-    "tox_env",
-    "needs_trust",
-    "init_args",
-    "create_args",
-    "test_redeploy",
-    "env",
-    "parallel",
+    "name",  # Scenario name key
+    "description",  # Test description, title for workflow job
+    "tox_env",  # Tox environment to run
+    "needs_trust",  # Whether the scenario requires workload identity trust setup
+    "init_args",  # Extra args for 'ops init' command
+    "create_args",  # Extra args for 'ops create' command
+    "test_redeploy",  # Whether to test redeployment in the scenario
+    "env",  # Custom environment variable dict for the scenario
+    "parallel",  # Controls parallel execution in pytest-xdist
 }
 
 
 def process_scenarios(scenarios: list[dict], user_selected: str) -> list[dict]:
+    """
+    Process and normalize test scenarios from configuration.
+    Args:
+        scenarios: List of raw scenario dictionaries from configuration.
+        user_selected: Comma-separated string of user-selected scenario names to include.
+    Returns:
+        List of processed and normalized scenario dictionaries.
+    """
     selected_scenarios = [item.strip() for item in user_selected.split(",") if item.strip()]
 
     processed_scenarios: list[dict] = []
@@ -40,7 +48,8 @@ def process_scenarios(scenarios: list[dict], user_selected: str) -> list[dict]:
         if unknown:
             fields = ", ".join(sorted(unknown))
             print(
-                "::warning file=.github/test-scenarios.yml::" f"Scenario '{name}' contains unknown fields: {fields}",
+                "::warning file=.github/test-scenarios.yml::"
+                f"Scenario '{name}' contains unknown fields that not be used: {fields}",
             )
 
         # Parse scenario custom environment variables
@@ -69,6 +78,13 @@ def process_scenarios(scenarios: list[dict], user_selected: str) -> list[dict]:
 
 
 def main() -> None:
+    """
+    Helper utility to build test scenario matrix for GitHub Actions.
+    Uses the following environment variables:
+    - TEST_SCENARIO_FILE: Path to YAML file with test scenarios (default: .github/test-scenarios.yml)
+    - TEST_SCENARIOS: Comma-separated override string of scenario names to run (default: empty/all)
+    Outputs the resulting matrix as JSON to GITHUB_OUTPUT for pipeline use or stdout for local testing.
+    """
     config_path = os.getenv("TEST_SCENARIO_FILE", ".github/test-scenarios.yml")
     custom_scenarios = os.getenv("TEST_SCENARIOS", "")
 
