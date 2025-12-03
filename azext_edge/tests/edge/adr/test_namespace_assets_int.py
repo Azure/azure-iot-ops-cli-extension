@@ -327,11 +327,13 @@ def test_namespace_asset_1p_types(require_init, tracked_resources: List[str]):
     endpoint_name_media = f"media-{generate_random_string(8)}"
     endpoint_name_rest = f"rest-{generate_random_string(8)}"
     endpoint_name_sse = f"sse-{generate_random_string(8)}"
+    endpoint_name_mqtt = f"mqtt-{generate_random_string(8)}"
     asset_name_onvif = f"onvif-{generate_random_string(8, force_lower=True)}"
     asset_name_opcua = f"opcua-{generate_random_string(8, force_lower=True)}"
     asset_name_media = f"media-{generate_random_string(8, force_lower=True)}"
     asset_name_rest = f"rest-{generate_random_string(8, force_lower=True)}"
     asset_name_sse = f"sse-{generate_random_string(8, force_lower=True)}"
+    asset_name_mqtt = f"mqtt-{generate_random_string(8, force_lower=True)}"
 
     # Tags and attributes
     common_tags = {"env": "test", "purpose": "automation"}
@@ -351,12 +353,16 @@ def test_namespace_asset_1p_types(require_init, tracked_resources: List[str]):
         (endpoint_name_media, "media"),
         (endpoint_name_rest, "rest"),
         (endpoint_name_sse, "sse"),
+        (endpoint_name_mqtt, "mqtt"),
     ]:
         command = (
             f"az iot ops ns device endpoint inbound add {endpoint_type} --name {endpoint_name} "
             f"--instance {instance_name} -g {resource_group} --device {device_name} "
-            "--endpoint-address 'http://192.168.1.100:8000/onvif/device_service'"
         )
+        if endpoint_type == "mqtt":
+            command += "--endpoint-address 'aio-broker:18883'"
+        else:
+            command += "--endpoint-address 'http://192.168.1.100:8000/onvif/device_service'"
         if endpoint_type == "custom":
             command += " --endpoint-type custom"
         run(command)
@@ -508,6 +514,36 @@ def test_namespace_asset_1p_types(require_init, tracked_resources: List[str]):
         custom_location=custom_location,
     )
 
+    # 6. Create MQTT asset with maximum inputs
+    asset_mqtt = run(
+        f"az iot ops ns asset mqtt create --name {asset_name_mqtt} --instance {instance_name} "
+        f"-g {resource_group} --device {device_name} --endpoint {endpoint_name_mqtt} "
+        "--description \"In-cluster MQTT Stream\" --display-name \"Factory MQTT Subscriber\" "
+        "--model \"MQTT-SUB-100\" --manufacturer \"BrokerCorp\" --serial-number \"MQTT-12345\" "
+        "--documentation-uri \"https://example.com/docs/mqtt\" "
+        "--external-asset-id \"EXT-MQTT-01\" --hardware-revision \"v1.0\" "
+        f"--attribute {' '.join(common_attrs)} --tags {' '.join([f'{k}={v}' for k, v in common_tags.items()])}"
+    )
+    tracked_resources.append(asset_mqtt["id"])
+
+    assert_asset_properties(
+        asset_mqtt,
+        name=asset_name_mqtt,
+        device=device_name,
+        endpoint=endpoint_name_mqtt,
+        description="In-cluster MQTT Stream",
+        display_name="Factory MQTT Subscriber",
+        model="MQTT-SUB-100",
+        manufacturer="BrokerCorp",
+        serial_number="MQTT-12345",
+        documentation_uri="https://example.com/docs/mqtt",
+        external_asset_id="EXT-MQTT-01",
+        attributes=common_attrs,
+        tags=common_tags,
+        hardware_revision="v1.0",
+        custom_location=custom_location,
+    )
+
     # 1. Update ONVIF asset
     updated_onvif = run(
         f"az iot ops ns asset onvif update --name {asset_name_onvif} --instance {instance_name} "
@@ -574,6 +610,17 @@ def test_namespace_asset_1p_types(require_init, tracked_resources: List[str]):
         updated_sse,
         name=asset_name_sse,
         description="Updated SSE Event Source",
+    )
+
+    # 6. Update MQTT asset
+    updated_mqtt = run(
+        f"az iot ops ns asset mqtt update --name {asset_name_mqtt} --instance {instance_name} "
+        f"-g {resource_group} --description \"Updated MQTT Stream\""
+    )
+    assert_asset_properties(
+        updated_mqtt,
+        name=asset_name_mqtt,
+        description="Updated MQTT Stream",
     )
 
 

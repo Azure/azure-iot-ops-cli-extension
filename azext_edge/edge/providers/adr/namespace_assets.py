@@ -392,7 +392,7 @@ class NamespaceAssets(Queryable):
         asset_type: str,
         dataset_name: str,
         data_source: str,
-        type_ref: Optional[str] = None,  # TODO: check where type ref is supported
+        type_ref: Optional[str] = None,
         replace: bool = False,
         # TODO: future pr, import datapoints from file
         **kwargs

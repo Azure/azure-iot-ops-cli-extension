@@ -5,24 +5,7 @@
 # ----------------------------------------------------------------------------------------------
 
 from .common import TopicRetain, DestinationQos
-
-
-def _format_enum_list(values: list) -> str:
-    """
-    Format a list of enum values with proper grammar.
-    - 2 values: `Value1` and `Value2`
-    - 3+ values: `Value1`, `Value2`, and `Value3`
-    """
-    if len(values) == 0:
-        return ""
-    elif len(values) == 1:
-        return f"`{values[0]}`"
-    elif len(values) == 2:
-        return f"`{values[0]}` and `{values[1]}`"
-    else:
-        # 3 or more values: use commas with "and" before last
-        formatted = ", ".join(f"`{v}`" for v in values[:-1])
-        return f"{formatted}, and `{values[-1]}`"
+from ...util.common import format_value_list
 
 
 # Base Strings
@@ -65,8 +48,8 @@ UNRECOGNIZED_TRANS_AUTH_PROP_ERROR = "Transport authentication ({0}) has unrecog
 
 # Destination Help Text Constants
 # These are calculated once to avoid repeated list comprehension on every help call
-_RETAIN_VALUES = _format_enum_list(TopicRetain.list())
-_QOS_VALUES = _format_enum_list(DestinationQos.list())
+_RETAIN_VALUES = format_value_list(TopicRetain.list())
+_QOS_VALUES = format_value_list(DestinationQos.list())
 
 # Common help text fragments for destinations
 DEST_HELP_MQTT_VALUES = (

@@ -44,6 +44,7 @@ class DeviceEndpointType(ListableEnum):
     MEDIA = "Microsoft.Media"
     REST = "Microsoft.Http"
     SSE = "Microsoft.SSEHttp"
+    MQTT = "Microsoft.Mqtt"
 
     @classmethod
     def get_type_from_keyword(cls, keyword: str, return_custom_keyword: bool = True) -> Optional[str]:
@@ -58,7 +59,8 @@ class DeviceEndpointType(ListableEnum):
             "opcua": cls.OPCUA.value,
             "onvif": cls.ONVIF.value,
             "media": cls.MEDIA.value,
-            "rest": cls.REST.value
+            "rest": cls.REST.value,
+            "mqtt": cls.MQTT.value
         }
         return mapped_types.get(keyword.lower(), "custom" if return_custom_keyword else keyword)
 

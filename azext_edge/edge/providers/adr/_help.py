@@ -870,6 +870,25 @@ def load_iotops_adr_help():
     """
 
     helps[
+        "iot ops ns device endpoint inbound add mqtt"
+    ] = """
+        type: command
+        short-summary: Add an MQTT inbound endpoint to a device in a Device Registry namespace.
+
+        examples:
+        - name: Add a basic MQTT endpoint to a device connecting to in-cluster broker
+          text: >
+            az iot ops ns device endpoint inbound add mqtt --device mydevice --instance myInstance
+            -g myInstanceResourceGroup --name myMqttEndpoint --endpoint-address "aio-broker:18883"
+
+        - name: Add an MQTT endpoint with version specification
+          text: >
+            az iot ops ns device endpoint inbound add mqtt --device mydevice --instance myInstance
+            -g myInstanceResourceGroup --name myMqttEndpoint --endpoint-address "aio-broker:18883"
+            --version "0.3.4"
+    """
+
+    helps[
         "iot ops ns asset"
     ] = """
         type: group
@@ -3071,4 +3090,141 @@ def load_iotops_adr_help():
           text: >
             az iot ops ns asset sse event remove --asset mysseAsset --instance myInstance
             -g myInstanceResourceGroup --event-group alertEvents --name temperature
+    """
+
+    # MQTT connector help
+    helps[
+        "iot ops ns asset mqtt"
+    ] = """
+        type: group
+        short-summary: Manage namespaced assets that point to MQTT device endpoints.
+    """
+
+    helps[
+        "iot ops ns asset mqtt create"
+    ] = """
+        type: command
+        short-summary: Create an MQTT namespaced asset in an IoT Operations instance.
+
+        examples:
+        - name: Create a basic MQTT asset
+          text: >
+            az iot ops ns asset mqtt create --name myMqttAsset --instance myInstance -g myInstanceResourceGroup
+            --device myMqttDevice --endpoint myMqttEndpoint
+
+        - name: Create an MQTT asset with dataset destination
+          text: >
+            az iot ops ns asset mqtt create --name myMqttAsset --instance myInstance -g myInstanceResourceGroup
+            --device myMqttDevice --endpoint myMqttEndpoint
+            --dataset-dest topic="factory/mqtt/data" retain=Never qos=Qos1 ttl=3600
+
+        - name: Create an MQTT asset with BrokerStateStore destination
+          text: >
+            az iot ops ns asset mqtt create --name myMqttAsset --instance myInstance -g myInstanceResourceGroup
+            --device myMqttDevice --endpoint myMqttEndpoint
+            --dataset-dest key="mqtt-data-cache"
+
+        - name: Create an MQTT asset with metadata
+          text: >
+            az iot ops ns asset mqtt create --name myMqttAsset --instance myInstance -g myInstanceResourceGroup
+            --device myMqttDevice --endpoint myMqttEndpoint --description "In-cluster MQTT topic subscriber"
+            --display-name "Factory MQTT Stream" --model "MQTT-SUB-100" --manufacturer "BrokerCorp"
+    """
+
+    helps[
+        "iot ops ns asset mqtt update"
+    ] = """
+        type: command
+        short-summary: Update an MQTT namespaced asset in an IoT Operations instance.
+
+        examples:
+        - name: Update MQTT asset dataset destination
+          text: >
+            az iot ops ns asset mqtt update --name myMqttAsset --instance myInstance -g myInstanceResourceGroup
+            --dataset-dest topic="updated/mqtt/data" retain=Keep qos=Qos1 ttl=7200
+
+        - name: Update MQTT asset metadata
+          text: >
+            az iot ops ns asset mqtt update --name myMqttAsset --instance myInstance -g myInstanceResourceGroup
+            --description "Updated MQTT topic subscriber"
+    """
+
+    helps[
+        "iot ops ns asset mqtt dataset"
+    ] = """
+        type: group
+        short-summary: Manage datasets for MQTT namespaced assets.
+    """
+
+    helps[
+        "iot ops ns asset mqtt dataset add"
+    ] = """
+        type: command
+        short-summary: Add a dataset to an MQTT namespaced asset in an IoT Operations instance.
+
+        examples:
+        - name: Add a dataset to an MQTT asset with MQTT topic
+          text: >
+            az iot ops ns asset mqtt dataset add --asset myMqttAsset --instance myInstance
+            -g myInstanceResourceGroup --name sensorData --data-source "some/mqtt/topic"
+            --dest topic="factory/processed/data" retain=Keep qos=Qos1 ttl=3600
+
+        - name: Add a dataset with BrokerStateStore destination
+          text: >
+            az iot ops ns asset mqtt dataset add --asset myMqttAsset --instance myInstance
+            -g myInstanceResourceGroup --name sensorData --data-source "some/mqtt/topic"
+            --dest key="mqtt-data-store"
+    """
+
+    helps[
+        "iot ops ns asset mqtt dataset list"
+    ] = """
+        type: command
+        short-summary: List datasets for an MQTT namespaced asset in an IoT Operations instance.
+
+        examples:
+        - name: List all datasets for an MQTT asset
+          text: >
+            az iot ops ns asset mqtt dataset list --asset myMqttAsset --instance myInstance
+            -g myInstanceResourceGroup
+    """
+
+    helps[
+        "iot ops ns asset mqtt dataset remove"
+    ] = """
+        type: command
+        short-summary: Remove a dataset from an MQTT namespaced asset in an IoT Operations instance.
+
+        examples:
+        - name: Remove a dataset from an MQTT asset
+          text: >
+            az iot ops ns asset mqtt dataset remove --asset myMqttAsset --instance myInstance
+            -g myInstanceResourceGroup --name sensorData
+    """
+
+    helps[
+        "iot ops ns asset mqtt dataset show"
+    ] = """
+        type: command
+        short-summary: Show details of a dataset for an MQTT namespaced asset in an IoT Operations instance.
+
+        examples:
+        - name: Show dataset details
+          text: >
+            az iot ops ns asset mqtt dataset show --asset myMqttAsset --instance myInstance
+            -g myInstanceResourceGroup --name sensorData
+    """
+
+    helps[
+        "iot ops ns asset mqtt dataset update"
+    ] = """
+        type: command
+        short-summary: Update a dataset for an MQTT namespaced asset in an IoT Operations instance.
+
+        examples:
+        - name: Update MQTT dataset destination
+          text: >
+            az iot ops ns asset mqtt dataset update --asset myMqttAsset --instance myInstance
+            -g myInstanceResourceGroup --name sensorData
+            --dest topic="updated/mqtt/topic" retain=Never qos=Qos0 ttl=1800
     """

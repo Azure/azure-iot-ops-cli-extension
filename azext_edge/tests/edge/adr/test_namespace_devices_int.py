@@ -32,6 +32,7 @@ def test_namespace_device_lifecycle_operations(require_init, tracked_resources: 
     endpoint_name_custom = f"custom-{generate_random_string(8)}"
     endpoint_name_rest = f"rest-{generate_random_string(8)}"
     endpoint_name_sse = f"sse-{generate_random_string(8)}"
+    endpoint_name_mqtt = f"mqtt-{generate_random_string(8)}"
 
     # Create 1st device with minimal inputs
     result = run(
@@ -309,18 +310,38 @@ def test_namespace_device_lifecycle_operations(require_init, tracked_resources: 
         version="1.1",
     )
 
+    # Add MQTT endpoint (no authentication, in-cluster broker only)
+    mqtt_endpoint_address = "aio-broker:18883"
+    result = run(
+        f"az iot ops ns device endpoint inbound add mqtt --device {device_name_2} "
+        f"--instance {instance_name} -g {resource_group} --name {endpoint_name_mqtt} "
+        f"--endpoint-address {mqtt_endpoint_address} "
+        f"--version 0.3.4"
+    )
+    assert_namespace_device_endpoint_props(
+        result,
+        endpoint_name=endpoint_name_mqtt,
+        endpoint_type=DeviceEndpointType.MQTT.value,
+        endpoint_address=mqtt_endpoint_address,
+        accept_invalid_hostnames=True,
+        accept_invalid_certificates=True,
+        authentication_method="Anonymous",
+        version="0.3.4",
+    )
+
     # List (all) endpoints
     result = run(
         f"az iot ops ns device endpoint list --device {device_name_2} "
         f"--instance {instance_name} -g {resource_group}"
     )
-    assert len(result["inbound"]) == 6
+    assert len(result["inbound"]) == 7
     assert endpoint_name_onvif in result["inbound"]
     assert endpoint_name_media in result["inbound"]
     assert endpoint_name_opcua in result["inbound"]
     assert endpoint_name_custom in result["inbound"]
     assert endpoint_name_rest in result["inbound"]
     assert endpoint_name_sse in result["inbound"]
+    assert endpoint_name_mqtt in result["inbound"]
 
     # List inbound endpoints option a
     result_1 = run(
@@ -333,7 +354,7 @@ def test_namespace_device_lifecycle_operations(require_init, tracked_resources: 
         f"az iot ops ns device endpoint inbound list --device {device_name_2} "
         f"--instance {instance_name} -g {resource_group}"
     )
-    assert len(result_1) == len(result_2) == 6
+    assert len(result_1) == len(result_2) == 7
     assert result_1 == result_2
     assert endpoint_name_onvif in result_1
     assert endpoint_name_media in result_1
@@ -341,6 +362,7 @@ def test_namespace_device_lifecycle_operations(require_init, tracked_resources: 
     assert endpoint_name_custom in result_1
     assert endpoint_name_rest in result_1
     assert endpoint_name_sse in result_1
+    assert endpoint_name_mqtt in result_1
 
     # List inbound endpoints with specific type
     result = run(
@@ -351,19 +373,19 @@ def test_namespace_device_lifecycle_operations(require_init, tracked_resources: 
     assert endpoint_name_media in result
     assert endpoint_name_custom not in result
 
-    # Remove endpoints (including the certificate authenticated REST endpoint and SSE endpoint)
+    # Remove endpoints (REST cert-auth, SSE username-auth, MQTT anonymous)
     try:
         result = run(
             f"az iot ops ns device endpoint inbound remove --device {device_name_2} "
             f"--instance {instance_name} -g {resource_group} "
-            f"--endpoint {endpoint_name_onvif} {endpoint_name_media} {endpoint_name_rest} {endpoint_name_sse} -y"
+            f"--endpoint {endpoint_name_onvif} {endpoint_name_media} {endpoint_name_rest} "
+            f"{endpoint_name_sse} {endpoint_name_mqtt} -y"
         )
     except CLIInternalError as e:
         # TODO - disable once bug is fixed / test is passing
         if "400216" in str(e) and "Invalid Address is specified" in str(e):
             pytest.xfail(f"Service-side validation bug: 400216 Invalid Address during endpoint remove: {e}")
         raise
-
     # Filter out None values (removed endpoints) to get only active endpoints
     active_endpoints = {k: v for k, v in result.items() if v is not None}
     assert len(active_endpoints) == 2
@@ -376,6 +398,8 @@ def test_namespace_device_lifecycle_operations(require_init, tracked_resources: 
     assert result[endpoint_name_rest] is None
     assert endpoint_name_sse in result
     assert result[endpoint_name_sse] is None
+    assert endpoint_name_mqtt in result
+    assert result[endpoint_name_mqtt] is None
     # Remaining endpoints should be present with their configurations
     assert endpoint_name_opcua in active_endpoints
     assert endpoint_name_custom in active_endpoints

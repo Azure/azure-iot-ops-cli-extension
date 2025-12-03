@@ -285,6 +285,7 @@ def load_iotops_commands(self, _):
         cmd_group.command("opcua", "add_inbound_opcua_device_endpoint")
         cmd_group.command("rest", "add_inbound_rest_device_endpoint")
         cmd_group.command("sse", "add_inbound_sse_device_endpoint")
+        cmd_group.command("mqtt", "add_inbound_mqtt_device_endpoint")
 
     with self.command_group(
         "iot ops ns asset",
@@ -295,7 +296,7 @@ def load_iotops_commands(self, _):
         cmd_group.show_command("show", "show_namespace_asset")
 
     # create and update
-    for asset_type in ["custom", "media", "onvif", "opcua", "rest", "sse"]:
+    for asset_type in ["custom", "media", "onvif", "opcua", "rest", "sse", "mqtt"]:
         with self.command_group(
             f"iot ops ns asset {asset_type}",
             command_type=namespace_resource_ops,
@@ -304,7 +305,7 @@ def load_iotops_commands(self, _):
             cmd_group.command("update", f"update_namespace_{asset_type}_asset")
 
     # dataset
-    for asset_type in ["custom", "opcua", "rest", "sse"]:
+    for asset_type in ["custom", "opcua", "rest", "sse", "mqtt"]:
         with self.command_group(
             f"iot ops ns asset {asset_type} dataset",
             command_type=namespace_resource_ops,

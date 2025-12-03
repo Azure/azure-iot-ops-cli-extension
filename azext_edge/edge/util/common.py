@@ -297,3 +297,37 @@ def str_to_bool(s: str) -> bool:
         return False
 
     raise ValueError(f"Invalid boolean string: {s}. Use 'true' or 'false'.")
+
+
+def format_value_list(values: List[str]) -> str:
+    """
+    Format a list of string values with proper grammar for display in help text or error messages.
+
+    Args:
+        values: A list of string values (e.g., from EnumClass.list())
+
+    Returns:
+        Formatted string with proper grammar:
+        - 0 values: empty string
+        - 1 value: `Value1`
+        - 2 values: `Value1` and `Value2`
+        - 3+ values: `Value1`, `Value2`, and `Value3`
+
+    Example:
+        >>> format_value_list(["Keep", "Never"])
+        '`Keep` and `Never`'
+        >>> format_value_list(["Qos0", "Qos1", "Qos2"])
+        '`Qos0`, `Qos1`, and `Qos2`'
+    """
+    if not values:
+        return ""
+
+    if len(values) == 1:
+        return f"`{values[0]}`"
+
+    if len(values) == 2:
+        return f"`{values[0]}` and `{values[1]}`"
+
+    # 3 or more values: use commas with "and" before last
+    formatted = ", ".join(f"`{v}`" for v in values[:-1])
+    return f"{formatted}, and `{values[-1]}`"

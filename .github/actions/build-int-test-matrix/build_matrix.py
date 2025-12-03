@@ -4,7 +4,10 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 import os
+import sys
+from contextlib import nullcontext
 from json import dumps
+
 from yaml import safe_load
 
 # Known fields in test scenario object
@@ -37,8 +40,7 @@ def process_scenarios(scenarios: list[dict], user_selected: str) -> list[dict]:
         if unknown:
             fields = ", ".join(sorted(unknown))
             print(
-                "::warning file=.github/test-scenarios.yml::"
-                f"Scenario '{name}' contains unknown fields: {fields}",
+                "::warning file=.github/test-scenarios.yml::" f"Scenario '{name}' contains unknown fields: {fields}",
             )
 
         # Parse scenario custom environment variables
@@ -78,15 +80,13 @@ def main() -> None:
     test_scenarios = process_scenarios(config.get("scenarios", []), custom_scenarios)
 
     # Convert to JSON
+    print(f"Matrix:\n{dumps(test_scenarios, indent=2)}")
     matrix_json = dumps(test_scenarios)
-    print(f"Matrix: {matrix_json}")
 
-    # Write to github action output
+    # Write to github action output or stdout
     output_path = os.environ.get("GITHUB_OUTPUT")
-    if not output_path:
-        raise RuntimeError("GITHUB_OUTPUT environment variable is not set")
-
-    with open(output_path, "a", encoding="utf-8") as out:
+    ctx = open(output_path, "a", encoding="utf-8") if output_path else nullcontext(sys.stdout)
+    with ctx as out:
         out.write(f"scenarios={matrix_json}\n")
 
 

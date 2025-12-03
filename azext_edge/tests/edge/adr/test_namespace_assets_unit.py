@@ -18,6 +18,7 @@ from azext_edge.edge.commands_namespaces import (
     create_namespace_opcua_asset,
     create_namespace_rest_asset,
     create_namespace_sse_asset,
+    create_namespace_mqtt_asset,
     show_namespace_asset,
     delete_namespace_asset,
     update_namespace_custom_asset,
@@ -26,6 +27,7 @@ from azext_edge.edge.commands_namespaces import (
     update_namespace_opcua_asset,
     update_namespace_rest_asset,
     update_namespace_sse_asset,
+    update_namespace_mqtt_asset,
     query_namespace_assets
 )
 from azext_edge.edge.providers.adr.namespace_assets import _process_configs
@@ -153,6 +155,7 @@ def add_device_get_call(
     ["opcua", {}],
     ["rest", {}],
     ["sse", {}],
+    ["mqtt", {}],
     # CUSTOM
     [
         "custom",
@@ -235,6 +238,20 @@ def add_device_get_call(
             "default_dataset_destinations": ["key=sse-data-cache"],
             "default_event_destinations": ["topic=/contoso/sse/alerts", "retain=Keep", "qos=Qos1", "ttl=3600"]
         }
+    ],
+    # MQTT (In-cluster MQTT broker)
+    [
+        "mqtt",
+        {
+            "default_dataset_destinations": ["topic=/contoso/mqtt/data", "retain=Keep", "qos=Qos1", "ttl=3600"]
+        }
+    ],
+    # MQTT with BrokerStateStore destinations
+    [
+        "mqtt",
+        {
+            "default_dataset_destinations": ["key=mqtt-data-cache"]
+        }
     ]
 ])
 def test_create_namespace_asset(
@@ -301,6 +318,7 @@ def test_create_namespace_asset(
         "opcua": create_namespace_opcua_asset,
         "rest": create_namespace_rest_asset,
         "sse": create_namespace_sse_asset,
+        "mqtt": create_namespace_mqtt_asset,
     }
     result = type_to_command[asset_type](
         cmd=mocked_cmd,
@@ -345,7 +363,8 @@ def test_create_namespace_asset(
     ["onvif", create_namespace_onvif_asset],
     ["opcua", create_namespace_opcua_asset],
     ["rest", create_namespace_rest_asset],
-    ["sse", create_namespace_sse_asset]
+    ["sse", create_namespace_sse_asset],
+    ["mqtt", create_namespace_mqtt_asset]
 ])
 def test_create_namespace_asset_error(
     mocked_cmd,
@@ -381,7 +400,8 @@ def test_create_namespace_asset_error(
         "onvif": DeviceEndpointType.MEDIA.value,
         "opcua": DeviceEndpointType.ONVIF.value,
         "rest": DeviceEndpointType.OPCUA.value,
-        "sse": DeviceEndpointType.MEDIA.value
+        "sse": DeviceEndpointType.MEDIA.value,
+        "mqtt": DeviceEndpointType.REST.value
     }
     mock_device_record["properties"]["endpoints"]["inbound"] = {
         device_endpoint_name: {"endpointType": incorrect_types[asset_type]}
@@ -670,6 +690,13 @@ def test_show_namespace_asset(
             "default_dataset_destinations": ["topic=/contoso/sse/updated-data", "retain=Keep", "qos=Qos1", "ttl=1800"],
             "default_event_destinations": ["topic=/contoso/sse/updated-events", "retain=Never", "qos=Qos0", "ttl=3600"]
         }
+    ],
+    # MQTT (In-cluster MQTT broker)
+    [
+        "mqtt",
+        {
+            "default_dataset_destinations": ["topic=/contoso/mqtt/updated-data", "retain=Keep", "qos=Qos1", "ttl=1800"]
+        }
     ]
 ])
 @pytest.mark.parametrize("original_properties", [
@@ -796,6 +823,7 @@ def test_update_namespace_asset(
         "opcua": update_namespace_opcua_asset,
         "rest": update_namespace_rest_asset,
         "sse": update_namespace_sse_asset,
+        "mqtt": update_namespace_mqtt_asset,
     }
 
     # Execute the update command
