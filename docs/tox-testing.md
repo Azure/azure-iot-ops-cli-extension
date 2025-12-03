@@ -12,15 +12,19 @@ Our [current tox config](../tox.ini) contains the following environments, and ca
 - **python, py3\***: Runs unit tests using a specific python version. `python` will run the default version from your `PATH`
   - Command: `pytest -k _unit ./azext_edge/tests`
 
-- **python-{init,e2e,rpsaas,wlif,edge,all}-int**: Runs integration tests for specific scenarios.
+- **python-{init,e2e,rpsaas,upgrade,long,wlif,edge,all}-int**: Runs integration tests for specific scenarios.
   - Scenarios:
     - `python-init-int`: Tests for `ops init`/create.
     - `python-e2e-int`: End-to-end pipeline tests.
     - `python-rpsaas-int`: RPSaaS (cloud side) only.
+    - `python-upgrade-int`: Azure IoT Operations upgrade tests.
+    - `python-long-int`: Long-running tests.
     - `python-wlif-int`: Workload identity setup required.
     - `python-edge-int`: All non-RPSaaS tests (edge).
     - `python-all-int`: All non-init related tests.
   - Command: `pytest -k "_int.py" -m {SCENARIO}` (uses pytest markers to determine tests)
+
+  Note: any test without an explicit mark will be grouped into `edge` tests.
 
 - **report**: Generates code coverage reports in JSON, HTML, and terminal formats.
   - Use **tox -e clean** to reset local coverage files, as most tests run with `--cov-append` by default

@@ -16,14 +16,24 @@
 - ### [Tox tests](tox.yml)
 Run unit tests and linter
 - ### [Integration tests](int_test.yml)
-Run tests (including AIO deployment) against a live cluster. Cluster name, key-vault, and service
-principal arguments will be auto-populated during the workflow run.
+Run tests (including AIO deployment) against a live cluster.
+Uses a scenario-based matrix system defined in [`.github/test-scenarios.yml`](../test-scenarios.yml).
+Cluster name, schema registry, and instance name will be auto-populated during the workflow run.
   - Inputs:
-    - `resource_group`: `string` - Resource Group to test in
+    - `resource-group`: `string` - Resource Group to test in
+    - `test-scenarios`: `string` - Comma-separated list of scenarios to run (e.g., "rpsaas,upgrade"). If empty, all scenarios run.
     - `custom-locations-oid`: `string` - Custom Locations OID
-    - `runtime-init-args`: `string` - Additional init arguments (beyond cluster name, resource group,
-      key vault, and service principal arguments)
+    - `runtime-init-args`: `string` - Additional init arguments (beyond cluster name, resource group, schema registry)
+    - `runtime-create-args`: `string` - Additional create arguments (beyond cluster name, resource group, instance name)
     - `init-continue-on-error`: `bool` - Continue on error for init integration tests
+    - `keep-on-failure`: `number` - Number of minutes to keep cluster(s) active on failure (max 240 min)
+  - Available Scenarios:
+    - `edge`: Default edge/cluster tests
+    - `insecure-listener`: Tests with insecure listener deployment
+    - `rpsaas`: Cloud-side (RPSaaS) tests
+    - `upgrade`: Azure IoT Operations upgrade tests (runs serially)
+    - `redeploy`: Tests cluster redeployment functionality
+    - `trustbundle`: Workload identity federation tests (runs serially)
 - ### [Cluster Cleanup](cluster_cleanup.yml)
 Used to clean up a resource group after AIO deployment testing.
   - Inputs:
