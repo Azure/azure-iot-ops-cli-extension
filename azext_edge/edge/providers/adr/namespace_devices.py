@@ -60,6 +60,7 @@ class DeviceEndpointType(ListableEnum):
             "onvif": cls.ONVIF.value,
             "media": cls.MEDIA.value,
             "rest": cls.REST.value,
+            "sse": cls.SSE.value,
             "mqtt": cls.MQTT.value
         }
         return mapped_types.get(keyword.lower(), "custom" if return_custom_keyword else keyword)
