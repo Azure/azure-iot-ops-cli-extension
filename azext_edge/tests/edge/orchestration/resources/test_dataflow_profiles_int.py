@@ -5,7 +5,6 @@
 # ----------------------------------------------------------------------------------------------
 
 import pytest
-from time import sleep
 
 from ....generators import generate_random_string
 from ....helpers import run
