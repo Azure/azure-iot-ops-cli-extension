@@ -10,7 +10,6 @@ pre-commit
 pylint==3.0.3
 flake8
 pytest-xdist
-pytest-timeout
 pytest-rerunfailures
 tox
 build

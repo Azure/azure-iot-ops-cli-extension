@@ -5,7 +5,6 @@
 # ----------------------------------------------------------------------------------------------
 
 from random import randint
-from time import sleep
 import json
 import pytest
 from knack.log import get_logger

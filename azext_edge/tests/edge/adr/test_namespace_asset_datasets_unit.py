@@ -16,6 +16,7 @@ from azext_edge.edge.commands_namespaces import (
     add_namespace_opcua_asset_dataset,
     add_namespace_rest_asset_dataset,
     add_namespace_sse_asset_dataset,
+    add_namespace_mqtt_asset_dataset,
     list_namespace_asset_datasets,
     remove_namespace_asset_dataset,
     show_namespace_asset_dataset,
@@ -23,6 +24,7 @@ from azext_edge.edge.commands_namespaces import (
     update_namespace_opcua_asset_dataset,
     update_namespace_rest_asset_dataset,
     update_namespace_sse_asset_dataset,
+    update_namespace_mqtt_asset_dataset,
     add_namespace_custom_asset_dataset_point,
     add_namespace_opcua_asset_dataset_point,
     list_namespace_asset_dataset_points,
@@ -101,6 +103,8 @@ def generate_dataset(dataset_name: Optional[str] = None, num_data_points: int = 
     }),
     # SSE asset dataset with minimal config
     ("sse", add_namespace_sse_asset_dataset, {}),
+    # MQTT asset dataset with minimal config
+    ("mqtt", add_namespace_mqtt_asset_dataset, {}),
 ])
 @pytest.mark.parametrize("destination_params", [
     {},  # No destinations
@@ -749,6 +753,8 @@ def test_show_namespace_asset_dataset(
     }),
     # SSE asset dataset with minimal config
     ("sse", update_namespace_sse_asset_dataset, {}),
+    # MQTT asset dataset with minimal config
+    ("mqtt", update_namespace_mqtt_asset_dataset, {}),
 ])
 def test_update_namespace_asset_dataset(
     mocked_cmd,
