@@ -740,6 +740,273 @@ class NamespaceAssets(Queryable):
             )
             return _get_sub_property(asset, dataset_name, property_key="datasets")["dataPoints"]
 
+    def export_dataset_datapoints(
+        self,
+        asset_name: str,
+        dataset_name: str,
+        instance_name: str,
+        instance_resource_group: str,
+        format: str = "json",
+        output_dir: str = ".",
+    ):
+        """Export datapoints from a dataset to a file."""
+        from ...util import dump_content_to_file
+
+        asset = self.show(
+            asset_name=asset_name,
+            instance_name=instance_name,
+            resource_group=instance_resource_group
+        )
+        dataset = _get_sub_property(asset, dataset_name, property_key="datasets")
+        datapoints = dataset.get("dataPoints", [])
+
+        fieldnames = None
+        if format == "csv":
+            # Convert to CSV format
+            default_configuration = dataset.get("datasetConfiguration", "{}")
+            if default_configuration == "{}":
+                default_configuration = asset["properties"].get("defaultDatasetsConfiguration", "{}")
+            from .assets import _convert_sub_points_to_csv
+            fieldnames = _convert_sub_points_to_csv(
+                sub_points=datapoints,
+                sub_point_type="dataPoints",
+                default_configuration=default_configuration,
+                portal_friendly=True
+            )
+
+        file_path = dump_content_to_file(
+            content=datapoints,
+            file_name=f"{asset_name}_datapoint_{dataset_name}",
+            extension=format,
+            fieldnames=fieldnames,
+            output_dir=output_dir,
+            replace=False
+        )
+        return {"file_path": file_path}
+
+    def import_dataset_datapoints(
+        self,
+        asset_name: str,
+        dataset_name: str,
+        instance_name: str,
+        instance_resource_group: str,
+        input_file: str,
+        **kwargs
+    ):
+        """Import datapoints into a dataset from a file."""
+        asset = self.show(
+            asset_name=asset_name,
+            instance_name=instance_name,
+            resource_group=instance_resource_group,
+            check_cluster=True
+        )
+        namespace = parse_resource_id(asset["id"])
+
+        dataset = _get_sub_property(asset, dataset_name, property_key="datasets")
+
+        # Process file and merge with existing datapoints
+        from .assets import _process_asset_sub_points_file_path
+        new_data_points = _process_asset_sub_points_file_path(
+            file_path=input_file,
+            original_items=dataset.get("dataPoints", []),
+            point_key="name",
+            replace=False  # Default: skip duplicates
+        )
+
+        # Validate all data points against connector metadata
+        try:
+            from .validator import ConnectorMetadataValidator
+            from azure.cli.core.azclierror import ValidationError
+
+            validator = ConnectorMetadataValidator.from_asset(self.cmd, asset, instance_name)
+            validation_errors = []
+            for idx, point in enumerate(new_data_points):
+                try:
+                    validator.validate_datapoint(point)
+                except Exception as e:
+                    validation_errors.append(f"Data point '{point.get('name', 'unnamed')}': {e}")
+
+            if validation_errors:
+                error_msg = (
+                    f"{len(validation_errors)} data point(s) failed validation and cannot be imported. "
+                    f"These errors will cause the backend to reject the request.\n\nValidation errors:\n"
+                    + "\n".join(f"  - {err}" for err in validation_errors)
+                )
+                raise ValidationError(error_msg)
+            else:
+                logger.info(f"All {len(new_data_points)} data points validated successfully.")
+        except ValidationError:
+            raise
+        except Exception as e:
+            logger.warning(f"Data point validation skipped due to error: {e}")
+
+        # Remove observabilityMode if present (not supported in ADR)
+        for point in new_data_points:
+            point.pop("observabilityMode", None)
+
+        dataset["dataPoints"] = new_data_points
+
+        update_payload = {
+            "properties": {
+                "datasets": asset["properties"]["datasets"]
+            }
+        }
+
+        with console.status(f"Updating asset {asset_name}..."):
+            poller = self.ops.begin_update(
+                resource_group_name=namespace["resource_group"],
+                namespace_name=namespace["name"],
+                asset_name=asset_name,
+                properties=update_payload
+            )
+            wait_for_terminal_state(poller, **kwargs)
+            asset = self.show(
+                asset_name=asset_name,
+                namespace_name=namespace["name"],
+                resource_group=namespace["resource_group"],
+            )
+            return _get_sub_property(asset, dataset_name, property_key="datasets")["dataPoints"]
+
+    def export_datasets(
+        self,
+        asset_name: str,
+        instance_name: str,
+        instance_resource_group: str,
+        format: str = "json",
+        output_dir: str = ".",
+    ):
+        """Export all datasets from an asset to a file."""
+        from ...util import dump_content_to_file
+
+        asset = self.show(
+            asset_name=asset_name,
+            instance_name=instance_name,
+            resource_group=instance_resource_group
+        )
+        datasets = asset["properties"].get("datasets", [])
+
+        # Remove dataPoints from each dataset for cleaner export
+        datasets_export = []
+        for dataset in datasets:
+            dataset_copy = dataset.copy()
+            dataset_copy.pop("dataPoints", None)
+            datasets_export.append(dataset_copy)
+
+        file_path = dump_content_to_file(
+            content=datasets_export,
+            file_name=f"{asset_name}_dataset",
+            extension=format,
+            fieldnames=None,
+            output_dir=output_dir,
+            replace=False
+        )
+        return {"file_path": file_path}
+
+    def import_datasets(
+        self,
+        asset_name: str,
+        instance_name: str,
+        instance_resource_group: str,
+        input_file: str,
+        **kwargs
+    ):
+        """Import datasets into an asset from a file."""
+        from ...util import deserialize_file_content
+
+        asset = self.show(
+            asset_name=asset_name,
+            instance_name=instance_name,
+            resource_group=instance_resource_group,
+            check_cluster=True
+        )
+        namespace = parse_resource_id(asset["id"])
+
+        # Deserialize file
+        file_datasets = list(deserialize_file_content(file_path=input_file))
+
+        # Get existing datasets
+        existing_datasets = asset["properties"].get("datasets", [])
+        existing_datasets_dict = {ds["name"]: ds for ds in existing_datasets}
+
+        # Collect new datasets for validation
+        new_datasets = []
+        for file_dataset in file_datasets:
+            dataset_name = file_dataset.get("name")
+            if dataset_name in existing_datasets_dict:
+                logger.warning(
+                    f"Dataset '{dataset_name}' already exists in asset '{asset_name}' and will be ignored."
+                )
+            else:
+                # Initialize dataPoints as empty array if not present
+                if "dataPoints" not in file_dataset:
+                    file_dataset["dataPoints"] = []
+                new_datasets.append(file_dataset)
+                existing_datasets_dict[dataset_name] = file_dataset
+
+        # Validate all new datasets and their datapoints against connector metadata
+        if new_datasets:
+            try:
+                from .validator import ConnectorMetadataValidator
+                from azure.cli.core.azclierror import ValidationError
+
+                validator = ConnectorMetadataValidator.from_asset(self.cmd, asset, instance_name)
+                validation_errors = []
+
+                for dataset in new_datasets:
+                    dataset_name = dataset.get("name", "unnamed")
+
+                    # Validate dataset itself if it has datasetConfiguration
+                    try:
+                        validator.validate_dataset(dataset)
+                    except Exception as e:
+                        validation_errors.append(f"Dataset '{dataset_name}' configuration: {e}")
+
+                    # Validate all datapoints in the dataset
+                    datapoints = dataset.get("dataPoints", [])
+                    if datapoints:
+                        for idx, point in enumerate(datapoints):
+                            try:
+                                validator.validate_datapoint(point)
+                            except Exception as e:
+                                validation_errors.append(
+                                    f"Dataset '{dataset_name}', datapoint '{point.get('name', 'unnamed')}': {e}"
+                                )
+
+                if validation_errors:
+                    error_msg = (
+                        f"{len(validation_errors)} validation error(s) found and cannot be imported. "
+                        f"These errors will cause the backend to reject the request.\n\nValidation errors:\n"
+                        + "\n".join(f"  - {err}" for err in validation_errors)
+                    )
+                    raise ValidationError(error_msg)
+                else:
+                    logger.info(f"All {len(new_datasets)} dataset(s) validated successfully.")
+            except ValidationError:
+                raise
+            except Exception as e:
+                logger.warning(f"Dataset validation skipped due to error: {e}")
+
+        update_payload = {
+            "properties": {
+                "datasets": list(existing_datasets_dict.values())
+            }
+        }
+
+        with console.status(f"Updating asset {asset_name}..."):
+            poller = self.ops.begin_update(
+                resource_group_name=namespace["resource_group"],
+                namespace_name=namespace["name"],
+                asset_name=asset_name,
+                properties=update_payload
+            )
+            wait_for_terminal_state(poller, **kwargs)
+            asset = self.show(
+                asset_name=asset_name,
+                namespace_name=namespace["name"],
+                resource_group=namespace["resource_group"],
+            )
+            return asset["properties"].get("datasets", [])
+
     # EVENT GROUPS - allowed for opcua, and custom assets
     def add_event_group(
         self,
