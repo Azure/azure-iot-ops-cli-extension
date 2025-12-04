@@ -1030,7 +1030,7 @@ def test_namespace_asset_dataset_import_export_operations(
 
     # Verify file exists and content
     assert os.path.exists(expected_export_file)
-    with open(expected_export_file, "r") as f:
+    with open(expected_export_file, "r", encoding="utf-8") as f:
         content = json.load(f)
         assert len(content) == 1
         assert content[0]["name"] == dataset_name_1
@@ -1058,7 +1058,7 @@ def test_namespace_asset_dataset_import_export_operations(
         }
     ]
 
-    with open(import_file_new, "w") as f:
+    with open(import_file_new, "w", encoding="utf-8") as f:
         json.dump(new_dataset_payload, f)
 
     # Import the new dataset
@@ -1132,7 +1132,7 @@ def test_namespace_asset_dataset_import_export_operations(
         "datasetConfiguration": "{ this is not valid json }"
     }]
 
-    with open(import_file_invalid, "w") as f:
+    with open(import_file_invalid, "w", encoding="utf-8") as f:
         json.dump(invalid_payload, f)
 
     # Expect failure
@@ -1207,7 +1207,7 @@ def test_namespace_asset_datapoint_import_export_operations(
 
     # Verify Export
     assert os.path.exists(export_file)
-    with open(export_file, "r") as f:
+    with open(export_file, "r", encoding="utf-8") as f:
         exported_data = json.load(f)
 
     # Should be a list of datapoints
@@ -1227,7 +1227,7 @@ def test_namespace_asset_datapoint_import_export_operations(
         }
     ]
 
-    with open(import_file_new, "w") as f:
+    with open(import_file_new, "w", encoding="utf-8") as f:
         json.dump(new_datapoint_payload, f)
 
     # Import the new datapoint
@@ -1289,7 +1289,7 @@ def test_namespace_asset_datapoint_import_export_operations(
         "dataPointConfiguration": "{ this is not valid json }"
     }]
 
-    with open(import_file_invalid, "w") as f:
+    with open(import_file_invalid, "w", encoding="utf-8") as f:
         json.dump(invalid_payload, f)
 
     # Expect failure
@@ -1353,7 +1353,7 @@ def test_namespace_opcua_dataset_import_export_operations(
 
     # Verify JSON
     assert os.path.exists(export_file)
-    with open(export_file, "r") as f:
+    with open(export_file, "r", encoding="utf-8") as f:
         content = json.load(f)
         assert len(content) == 1
         config = json.loads(content[0]["datasetConfiguration"])
@@ -1444,7 +1444,7 @@ def test_namespace_rest_dataset_import_export_operations(
 
     # Verify JSON
     assert os.path.exists(export_file)
-    with open(export_file, "r") as f:
+    with open(export_file, "r", encoding="utf-8") as f:
         content = json.load(f)
         assert len(content) == 1
         config = json.loads(content[0]["datasetConfiguration"])

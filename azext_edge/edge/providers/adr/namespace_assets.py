@@ -820,7 +820,7 @@ class NamespaceAssets(Queryable):
 
             validator = ConnectorMetadataValidator.from_asset(self.cmd, asset, instance_name)
             validation_errors = []
-            for idx, point in enumerate(new_data_points):
+            for _, point in enumerate(new_data_points):
                 try:
                     validator.validate_datapoint(point)
                 except Exception as e:
@@ -964,7 +964,7 @@ class NamespaceAssets(Queryable):
                     # Validate all datapoints in the dataset
                     datapoints = dataset.get("dataPoints", [])
                     if datapoints:
-                        for idx, point in enumerate(datapoints):
+                        for _, point in enumerate(datapoints):
                             try:
                                 validator.validate_datapoint(point)
                             except Exception as e:
