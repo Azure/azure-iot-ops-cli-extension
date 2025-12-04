@@ -951,3 +951,191 @@ def test_namespace_mqtt_asset_dataset_lifecycle_operations(require_init, tracked
 
     remaining_dataset_names = [dataset["name"] for dataset in datasets_list_after_remove]
     assert dataset_name_1 not in remaining_dataset_names
+
+
+def test_namespace_asset_dataset_import_export_operations(
+    require_init, tracked_resources: List[str], tracked_files: List[str]
+):
+    """Test import and export operations for asset datasets and datapoints."""
+    # Setup test variables
+    instance_name = require_init["instanceName"]
+    resource_group = require_init["resourceGroup"]
+    device_name = f"dev-{generate_random_string(8, force_lower=True)}"
+    endpoint_name = f"custom-{generate_random_string(8)}"
+    asset_name = f"custom-{generate_random_string(8, force_lower=True)}"
+    dataset_name_1 = f"dataset{generate_random_string(6, force_lower=True)}"
+    dataset_name_2 = f"dataset2{generate_random_string(6, force_lower=True)}"
+    datapoint_name_1 = f"dp1-{generate_random_string(6, force_lower=True)}"
+    datapoint_name_2 = f"dp2-{generate_random_string(6, force_lower=True)}"
+
+    # Create Device
+    result = run(
+        f"az iot ops ns device create --name {device_name} --instance {instance_name} "
+        f"-g {resource_group}"
+    )
+    tracked_resources.append(result["id"])
+
+    # Create device endpoint
+    run(
+        f"az iot ops ns device endpoint inbound add custom --name {endpoint_name} "
+        f"--instance {instance_name} -g {resource_group} --device {device_name} "
+        f"--endpoint-address 'http://192.168.1.100:8000/custom/service' "
+        "--endpoint-type custom"
+    )
+
+    # Create Custom asset
+    asset_custom = run(
+        f"az iot ops ns asset custom create --name {asset_name} --instance {instance_name} "
+        f"-g {resource_group} --device {device_name} --endpoint {endpoint_name} "
+        f"--description \"Custom Device for Import/Export Testing\""
+    )
+    tracked_resources.append(asset_custom["id"])
+
+    # 1. SETUP INITIAL STATE
+    # Add a dataset and datapoint to export later
+    dataset_data_source = "sensor/temperature"
+    custom_config_path, custom_config = create_config_file(tracked_files)
+
+    run(
+        f"az iot ops ns asset custom dataset add --asset {asset_name} "
+        f"--instance {instance_name} -g {resource_group} --name {dataset_name_1} "
+        f"--data-source {dataset_data_source} "
+        f"--config {custom_config_path}"
+    )
+
+    datapoint_data_source = "sensor/temperature/value"
+    run(
+        f"az iot ops ns asset custom datapoint add --asset {asset_name} "
+        f"--instance {instance_name} -g {resource_group} --dataset {dataset_name_1} "
+        f"--name {datapoint_name_1} --data-source {datapoint_data_source} "
+        f"--config {custom_config_path}"
+    )
+
+    # 2. TEST EXPORT
+    # Export the current datasets to a file
+    import os
+    import json
+    
+    # Use current directory for export
+    output_dir = "."
+    expected_export_file = f"{asset_name}_dataset.json"
+    tracked_files.append(expected_export_file)
+    
+    run(
+        f"az iot ops ns asset custom dataset export --asset {asset_name} "
+        f"--instance {instance_name} -g {resource_group} --output-dir {output_dir}"
+    )
+
+    # Verify file exists and content
+    assert os.path.exists(expected_export_file)
+    with open(expected_export_file, "r") as f:
+        content = json.load(f)
+        assert len(content) == 1
+        assert content[0]["name"] == dataset_name_1
+        assert content[0]["dataSource"] == dataset_data_source
+        # Verify dataPoints are STRIPPED during export
+        assert "dataPoints" not in content[0] or not content[0]["dataPoints"]
+
+    # 3. TEST IMPORT (ADD NEW)
+    # Create a new import file with a NEW dataset and datapoint
+    import_file_new = "dataset_import_new.json"
+    tracked_files.append(import_file_new)
+    
+    new_dataset_payload = [
+        {
+            "name": dataset_name_2,
+            "dataSource": "sensor/humidity",
+            "datasetConfiguration": json.dumps(custom_config),
+            "dataPoints": [
+                {
+                    "name": datapoint_name_2,
+                    "dataSource": "sensor/humidity/value",
+                    "dataPointConfiguration": json.dumps(custom_config)
+                }
+            ]
+        }
+    ]
+    
+    with open(import_file_new, "w") as f:
+        json.dump(new_dataset_payload, f)
+
+    # Import the new dataset
+    run(
+        f"az iot ops ns asset custom dataset import --asset {asset_name} "
+        f"--instance {instance_name} -g {resource_group} --input-file {import_file_new}"
+    )
+
+    # Verify new dataset exists
+    datasets_list = run(
+        f"az iot ops ns asset custom dataset list --asset {asset_name} "
+        f"--instance {instance_name} -g {resource_group}"
+    )
+    dataset_names = [d["name"] for d in datasets_list]
+    assert dataset_name_1 in dataset_names
+    assert dataset_name_2 in dataset_names
+
+    # Verify new datapoint exists
+    datapoints_list = run(
+        f"az iot ops ns asset custom datapoint list --asset {asset_name} "
+        f"--instance {instance_name} -g {resource_group} --dataset {dataset_name_2}"
+    )
+    datapoint_names = [dp["name"] for dp in datapoints_list]
+    assert datapoint_name_2 in datapoint_names
+
+    # 4. TEST IMPORT (RESTORE EXPORTED)
+    # Remove the first dataset
+    run(
+        f"az iot ops ns asset custom dataset remove --asset {asset_name} "
+        f"--instance {instance_name} -g {resource_group} --name {dataset_name_1}"
+    )
+    
+    # Verify removal
+    datasets_list = run(
+        f"az iot ops ns asset custom dataset list --asset {asset_name} "
+        f"--instance {instance_name} -g {resource_group}"
+    )
+    dataset_names = [d["name"] for d in datasets_list]
+    assert dataset_name_1 not in dataset_names
+
+    # Import the originally exported file
+    run(
+        f"az iot ops ns asset custom dataset import --asset {asset_name} "
+        f"--instance {instance_name} -g {resource_group} --input-file {expected_export_file}"
+    )
+
+    # Verify dataset is restored (without datapoints)
+    datasets_list = run(
+        f"az iot ops ns asset custom dataset list --asset {asset_name} "
+        f"--instance {instance_name} -g {resource_group}"
+    )
+    dataset_names = [d["name"] for d in datasets_list]
+    assert dataset_name_1 in dataset_names
+
+    # Verify datapoints are empty for restored dataset
+    datapoints_list = run(
+        f"az iot ops ns asset custom datapoint list --asset {asset_name} "
+        f"--instance {instance_name} -g {resource_group} --dataset {dataset_name_1}"
+    )
+    assert len(datapoints_list) == 0
+
+    # 5. TEST IMPORT VALIDATION (FAILURE)
+    # Create an invalid import file (invalid datasetConfiguration)
+    import_file_invalid = "dataset_import_invalid.json"
+    tracked_files.append(import_file_invalid)
+    
+    # Provide a malformed JSON string for configuration to trigger CLI validation error
+    invalid_payload = [{
+        "name": "invalid_ds",
+        "dataSource": "sensor/invalid",
+        "datasetConfiguration": "{ this is not valid json }" 
+    }]
+    
+    with open(import_file_invalid, "w") as f:
+        json.dump(invalid_payload, f)
+
+    # Expect failure
+    run(
+        f"az iot ops ns asset custom dataset import --asset {asset_name} "
+        f"--instance {instance_name} -g {resource_group} --input-file {import_file_invalid}",
+        expect_failure=True
+    )
