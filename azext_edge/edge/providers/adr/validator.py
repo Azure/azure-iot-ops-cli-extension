@@ -216,7 +216,7 @@ class ConnectorMetadataValidator:
                     ev = endpoint_type_info.get("version")
 
                     # Match endpoint type
-                    if et != self.endpoint_type:
+                    if not et or et.lower() != self.endpoint_type.lower():
                         continue
 
                     # Match version (if both specified, they must match; if either is None, match)
@@ -590,7 +590,7 @@ class ConnectorMetadataValidator:
         for endpoint in inbound_endpoints:
             endpoint_type = endpoint.get("endpointType")
 
-            if endpoint_type == self.endpoint_type:
+            if endpoint_type and endpoint_type.lower() == self.endpoint_type.lower():
                 logger.debug(f"Matched endpoint type '{self.endpoint_type}', extracting schema for '{schema_key}'")
                 # Version check if needed, for now assume type is unique or we take the first match
                 # if self.endpoint_version and endpoint.get("version") != self.endpoint_version:
