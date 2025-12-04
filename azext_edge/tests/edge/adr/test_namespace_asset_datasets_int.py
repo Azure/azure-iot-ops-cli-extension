@@ -1299,3 +1299,181 @@ def test_namespace_asset_datapoint_import_export_operations(
         f"--input-file {import_file_invalid}",
         expect_failure=True
     )
+
+
+def test_namespace_opcua_dataset_import_export_operations(
+    require_init, tracked_resources: List[str], tracked_files: List[str]
+):
+    """Test OPC UA Dataset Import/Export."""
+    # Setup
+    instance_name = require_init["instanceName"]
+    resource_group = require_init["resourceGroup"]
+    device_name = f"dev-{generate_random_string(8, force_lower=True)}"
+    endpoint_name = f"opcua-{generate_random_string(8)}"
+    asset_name = f"opcua-{generate_random_string(8, force_lower=True)}"
+    asset_name_2 = f"opcua-2-{generate_random_string(8, force_lower=True)}"
+    dataset_name = f"dataset{generate_random_string(6, force_lower=True)}"
+
+    # Create Device
+    result = run(
+        f"az iot ops ns device create --name {device_name} --instance {instance_name} "
+        f"-g {resource_group}"
+    )
+    tracked_resources.append(result["id"])
+
+    # Create Endpoint
+    run(
+        f"az iot ops ns device endpoint inbound add opcua --name {endpoint_name} "
+        f"--instance {instance_name} -g {resource_group} --device {device_name} "
+        f"--endpoint-address 'opc.tcp://192.168.1.200:4840/OPCUA/Server'"
+    )
+
+    # Create Asset 1
+    asset_1 = run(
+        f"az iot ops ns asset opcua create --name {asset_name} --instance {instance_name} "
+        f"-g {resource_group} --device {device_name} --endpoint {endpoint_name}"
+    )
+    tracked_resources.append(asset_1["id"])
+
+    # Add Dataset
+    run(
+        f"az iot ops ns asset opcua dataset add --asset {asset_name} "
+        f"--instance {instance_name} -g {resource_group} --name {dataset_name} "
+        f"--data-source 'ns=2;i=1001' "
+        f"--publish-int 1000 --sampling-int 500 --queue-size 10"
+    )
+
+    # Export
+    run(
+        f"az iot ops ns asset opcua dataset export --asset {asset_name} "
+        f"--instance {instance_name} -g {resource_group} --output-dir ."
+    )
+    export_file = f"{asset_name}_dataset.json"
+    tracked_files.append(export_file)
+
+    # Verify JSON
+    assert os.path.exists(export_file)
+    with open(export_file, "r") as f:
+        content = json.load(f)
+        assert len(content) == 1
+        config = json.loads(content[0]["datasetConfiguration"])
+        # OPC UA specific checks
+        assert config.get("publishingInterval") == 1000
+        assert config.get("samplingInterval") == 500
+        assert config.get("queueSize") == 10
+
+    # Create Asset 2
+    asset_2 = run(
+        f"az iot ops ns asset opcua create --name {asset_name_2} --instance {instance_name} "
+        f"-g {resource_group} --device {device_name} --endpoint {endpoint_name}"
+    )
+    tracked_resources.append(asset_2["id"])
+
+    # Import to Asset 2
+    run(
+        f"az iot ops ns asset opcua dataset import --asset {asset_name_2} "
+        f"--instance {instance_name} -g {resource_group} --input-file {export_file}"
+    )
+
+    # Verify State
+    shown_dataset = run(
+        f"az iot ops ns asset opcua dataset show --asset {asset_name_2} "
+        f"--instance {instance_name} -g {resource_group} --name {dataset_name}"
+    )
+    assert_dataset_properties(
+        shown_dataset,
+        name=dataset_name,
+        asset_type="opcua"
+    )
+    # Manual check for OPC UA properties
+    config = json.loads(shown_dataset["datasetConfiguration"])
+    assert config.get("publishingInterval") == 1000
+    assert config.get("samplingInterval") == 500
+    assert config.get("queueSize") == 10
+
+
+def test_namespace_rest_dataset_import_export_operations(
+    require_init, tracked_resources: List[str], tracked_files: List[str]
+):
+    """Test REST Dataset Import/Export."""
+    # Setup
+    instance_name = require_init["instanceName"]
+    resource_group = require_init["resourceGroup"]
+    device_name = f"dev-{generate_random_string(8, force_lower=True)}"
+    endpoint_name = f"rest-{generate_random_string(8)}"
+    asset_name = f"rest-{generate_random_string(8, force_lower=True)}"
+    asset_name_2 = f"rest-2-{generate_random_string(8, force_lower=True)}"
+    dataset_name = f"dataset{generate_random_string(6, force_lower=True)}"
+
+    # Create Device
+    result = run(
+        f"az iot ops ns device create --name {device_name} --instance {instance_name} "
+        f"-g {resource_group}"
+    )
+    tracked_resources.append(result["id"])
+
+    # Create Endpoint
+    run(
+        f"az iot ops ns device endpoint inbound add rest --name {endpoint_name} "
+        f"--instance {instance_name} -g {resource_group} --device {device_name} "
+        f"--endpoint-address 'https://api.example.com'"
+    )
+
+    # Create Asset 1
+    asset_1 = run(
+        f"az iot ops ns asset rest create --name {asset_name} --instance {instance_name} "
+        f"-g {resource_group} --device {device_name} --endpoint {endpoint_name}"
+    )
+    tracked_resources.append(asset_1["id"])
+
+    # Add Dataset
+    run(
+        f"az iot ops ns asset rest dataset add --asset {asset_name} "
+        f"--instance {instance_name} -g {resource_group} --name {dataset_name} "
+        f"--data-source '/api/data' "
+        f"--sampling-int 500"
+    )
+
+    # Export
+    run(
+        f"az iot ops ns asset rest dataset export --asset {asset_name} "
+        f"--instance {instance_name} -g {resource_group} --output-dir ."
+    )
+    export_file = f"{asset_name}_dataset.json"
+    tracked_files.append(export_file)
+
+    # Verify JSON
+    assert os.path.exists(export_file)
+    with open(export_file, "r") as f:
+        content = json.load(f)
+        assert len(content) == 1
+        config = json.loads(content[0]["datasetConfiguration"])
+        # REST specific checks
+        assert config.get("samplingIntervalInMilliseconds") == 500
+
+    # Create Asset 2
+    asset_2 = run(
+        f"az iot ops ns asset rest create --name {asset_name_2} --instance {instance_name} "
+        f"-g {resource_group} --device {device_name} --endpoint {endpoint_name}"
+    )
+    tracked_resources.append(asset_2["id"])
+
+    # Import to Asset 2
+    run(
+        f"az iot ops ns asset rest dataset import --asset {asset_name_2} "
+        f"--instance {instance_name} -g {resource_group} --input-file {export_file}"
+    )
+
+    # Verify State
+    shown_dataset = run(
+        f"az iot ops ns asset rest dataset show --asset {asset_name_2} "
+        f"--instance {instance_name} -g {resource_group} --name {dataset_name}"
+    )
+    assert_dataset_properties(
+        shown_dataset,
+        name=dataset_name,
+        asset_type="rest"
+    )
+    # Manual check for REST properties
+    config = json.loads(shown_dataset["datasetConfiguration"])
+    assert config.get("samplingIntervalInMilliseconds") == 500

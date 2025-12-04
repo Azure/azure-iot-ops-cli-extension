@@ -2726,8 +2726,8 @@ def load_iotops_help():
             --pattern asset-p1-* asset-eng?-01
     """
 
-    # dataset export/import help
-    for asset_type in ["custom", "opcua", "rest", "sse", "mqtt"]:
+    # dataset export/import help - only for asset types that have these commands registered (custom, opcua, rest)
+    for asset_type in ["custom", "opcua", "rest"]:
         helps[
             f"iot ops ns asset {asset_type} dataset export"
         ] = f"""
@@ -2738,10 +2738,10 @@ def load_iotops_help():
             examples:
             - name: Export datasets to a JSON file.
               text: >
-                az iot ops ns asset {asset_type} dataset export --asset myasset -g myresourcegroup --output-file mydatasets.json
+                az iot ops ns asset {asset_type} dataset export --asset myasset --instance myinstance -g myresourcegroup --output-dir .
             - name: Export datasets to a YAML file.
               text: >
-                az iot ops ns asset {asset_type} dataset export --asset myasset -g myresourcegroup --output-file mydatasets.yaml --format yaml
+                az iot ops ns asset {asset_type} dataset export --asset myasset --instance myinstance -g myresourcegroup --output-dir . --format yaml
         """
 
         helps[
@@ -2755,13 +2755,13 @@ def load_iotops_help():
             examples:
             - name: Import datasets from a JSON file.
               text: >
-                az iot ops ns asset {asset_type} dataset import --asset myasset -g myresourcegroup --input-file mydatasets.json
+                az iot ops ns asset {asset_type} dataset import --asset myasset --instance myinstance -g myresourcegroup --input-file mydatasets.json
             - name: Import datasets from a YAML file.
               text: >
-                az iot ops ns asset {asset_type} dataset import --asset myasset -g myresourcegroup --input-file mydatasets.yaml
+                az iot ops ns asset {asset_type} dataset import --asset myasset --instance myinstance -g myresourcegroup --input-file mydatasets.yaml
         """
 
-    # datapoint export/import help
+    # datapoint export/import help - only for asset types that have these commands registered (custom, opcua)
     for asset_type in ["custom", "opcua"]:
         helps[
             f"iot ops ns asset {asset_type} datapoint export"
@@ -2773,10 +2773,10 @@ def load_iotops_help():
             examples:
             - name: Export datapoints to a CSV file.
               text: >
-                az iot ops ns asset {asset_type} datapoint export --asset myasset --dataset mydataset -g myresourcegroup --output-file mydatapoints.csv
+                az iot ops ns asset {asset_type} datapoint export --asset myasset --dataset mydataset --instance myinstance -g myresourcegroup --output-dir .
             - name: Export datapoints to a JSON file.
               text: >
-                az iot ops ns asset {asset_type} datapoint export --asset myasset --dataset mydataset -g myresourcegroup --output-file mydatapoints.json --format json
+                az iot ops ns asset {asset_type} datapoint export --asset myasset --dataset mydataset --instance myinstance -g myresourcegroup --output-dir . --format json
         """
 
         helps[
@@ -2791,8 +2791,8 @@ def load_iotops_help():
             examples:
             - name: Import datapoints from a CSV file.
               text: >
-                az iot ops ns asset {asset_type} datapoint import --asset myasset --dataset mydataset -g myresourcegroup --input-file mydatapoints.csv
+                az iot ops ns asset {asset_type} datapoint import --asset myasset --dataset mydataset --instance myinstance -g myresourcegroup --input-file mydatapoints.csv
             - name: Import datapoints from a JSON file.
               text: >
-                az iot ops ns asset {asset_type} datapoint import --asset myasset --dataset mydataset -g myresourcegroup --input-file mydatapoints.json
+                az iot ops ns asset {asset_type} datapoint import --asset myasset --dataset mydataset --instance myinstance -g myresourcegroup --input-file mydatapoints.json
         """

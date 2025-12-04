@@ -1876,3 +1876,47 @@ def load_adr_arguments(self, _):
             options_list=["--config"],
             help="Custom action configuration as a JSON string or file path. ",
         )
+
+    # Dataset export/import parameters for custom, opcua, rest asset types
+    for asset_type in ("custom", "opcua", "rest"):
+        with self.argument_context(f"iot ops ns asset {asset_type} dataset export") as context:
+            context.argument(
+                "format",
+                options_list=["--format"],
+                arg_type=get_enum_type(["json", "yaml"]),
+                help="Output file format. Default is json.",
+            )
+            context.argument(
+                "output_dir",
+                options_list=["--output-dir", "--od"],
+                help="Output directory for the exported file. Default is current directory.",
+            )
+
+        with self.argument_context(f"iot ops ns asset {asset_type} dataset import") as context:
+            context.argument(
+                "input_file",
+                options_list=["--input-file", "--if"],
+                help="Path to the file containing datasets to import.",
+            )
+
+    # Datapoint export/import parameters for custom, opcua asset types
+    for asset_type in ("custom", "opcua"):
+        with self.argument_context(f"iot ops ns asset {asset_type} datapoint export") as context:
+            context.argument(
+                "format",
+                options_list=["--format"],
+                arg_type=get_enum_type(["json", "csv", "yaml"]),
+                help="Output file format. Default is json.",
+            )
+            context.argument(
+                "output_dir",
+                options_list=["--output-dir", "--od"],
+                help="Output directory for the exported file. Default is current directory.",
+            )
+
+        with self.argument_context(f"iot ops ns asset {asset_type} datapoint import") as context:
+            context.argument(
+                "input_file",
+                options_list=["--input-file", "--if"],
+                help="Path to the file containing datapoints to import.",
+            )
