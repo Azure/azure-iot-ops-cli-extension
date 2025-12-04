@@ -1848,5 +1848,3 @@ def load_iotops_arguments(self, _):
             arg_type=get_three_state_flag(),
             help="Provides key version attributes in console output.",
         )
-
-
