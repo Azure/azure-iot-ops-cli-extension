@@ -1877,8 +1877,8 @@ def load_adr_arguments(self, _):
             help="Custom action configuration as a JSON string or file path. ",
         )
 
-    # Dataset export/import parameters for custom, opcua, rest asset types
-    for asset_type in ("custom", "opcua", "rest"):
+    # Dataset export/import parameters for custom, opcua, rest, sse, mqtt asset types
+    for asset_type in ("custom", "opcua", "rest", "sse", "mqtt"):
         with self.argument_context(f"iot ops ns asset {asset_type} dataset export") as context:
             context.argument(
                 "format",
