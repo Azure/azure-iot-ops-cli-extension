@@ -35,6 +35,19 @@ def process_scenarios(scenarios: list[dict], user_selected: str) -> list[dict]:
     """
     selected_scenarios = [item.strip() for item in user_selected.split(",") if item.strip()]
 
+    # Validate provided scenarios exist in configuration
+    if selected_scenarios:
+        available_scenarios = {scenario["name"] for scenario in scenarios}
+        invalid_scenarios = set(selected_scenarios) - available_scenarios
+        if invalid_scenarios:
+            invalid_list = ", ".join(sorted(invalid_scenarios))
+            available_list = ", ".join(sorted(available_scenarios))
+            print(
+                "::warning file=.github/test-scenarios.yml::"
+                f"Invalid scenario names specified: {invalid_list}. "
+                f"Available scenarios: {available_list}",
+            )
+
     processed_scenarios: list[dict] = []
     for scenario in scenarios:
         name = scenario["name"]
@@ -91,9 +104,18 @@ def main() -> None:
     # Load TEST_SCENARIO_FILE
     with open(config_path, "r", encoding="utf-8") as f:
         config = safe_load(f) or {}
+    config_scenarios = config.get("scenarios", [])
 
     # Filter based on user input
-    test_scenarios = process_scenarios(config.get("scenarios", []), custom_scenarios)
+    test_scenarios = process_scenarios(config_scenarios, custom_scenarios)
+
+    # Exit if no valid scenarios
+    if not test_scenarios:
+        print("::error::No valid scenarios to run. Validate scenario input and configuration file.")
+        print(f"Config file path: {config_path}")
+        print(f"Available scenarios: {[s.get('name') for s in config_scenarios]}")
+        print(f"Provided scenarios: {custom_scenarios}")
+        sys.exit(1)
 
     # Convert to JSON
     print(f"Matrix:\n{dumps(test_scenarios, indent=2)}")
