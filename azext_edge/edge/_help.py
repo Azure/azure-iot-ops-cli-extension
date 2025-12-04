@@ -2726,8 +2726,8 @@ def load_iotops_help():
             --pattern asset-p1-* asset-eng?-01
     """
 
-    # dataset export/import help - only for asset types that have these commands registered (custom, opcua, rest)
-    for asset_type in ["custom", "opcua", "rest"]:
+    # dataset export/import help - only for asset types that have these commands registered (custom, opcua, rest, sse, mqtt)
+    for asset_type in ["custom", "opcua", "rest", "sse", "mqtt"]:
         helps[
             f"iot ops ns asset {asset_type} dataset export"
         ] = f"""
