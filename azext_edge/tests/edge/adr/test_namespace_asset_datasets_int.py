@@ -5,6 +5,8 @@
 # ----------------------------------------------------------------------------------------------
 
 import pytest
+import json
+import os
 from typing import List
 
 from ...generators import generate_random_string
@@ -1015,12 +1017,12 @@ def test_namespace_asset_dataset_import_export_operations(
     # Export the current datasets to a file
     import os
     import json
-    
+
     # Use current directory for export
     output_dir = "."
     expected_export_file = f"{asset_name}_dataset.json"
     tracked_files.append(expected_export_file)
-    
+
     run(
         f"az iot ops ns asset custom dataset export --asset {asset_name} "
         f"--instance {instance_name} -g {resource_group} --output-dir {output_dir}"
@@ -1040,7 +1042,7 @@ def test_namespace_asset_dataset_import_export_operations(
     # Create a new import file with a NEW dataset and datapoint
     import_file_new = "dataset_import_new.json"
     tracked_files.append(import_file_new)
-    
+
     new_dataset_payload = [
         {
             "name": dataset_name_2,
@@ -1055,7 +1057,7 @@ def test_namespace_asset_dataset_import_export_operations(
             ]
         }
     ]
-    
+
     with open(import_file_new, "w") as f:
         json.dump(new_dataset_payload, f)
 
@@ -1088,7 +1090,7 @@ def test_namespace_asset_dataset_import_export_operations(
         f"az iot ops ns asset custom dataset remove --asset {asset_name} "
         f"--instance {instance_name} -g {resource_group} --name {dataset_name_1}"
     )
-    
+
     # Verify removal
     datasets_list = run(
         f"az iot ops ns asset custom dataset list --asset {asset_name} "
@@ -1122,14 +1124,14 @@ def test_namespace_asset_dataset_import_export_operations(
     # Create an invalid import file (invalid datasetConfiguration)
     import_file_invalid = "dataset_import_invalid.json"
     tracked_files.append(import_file_invalid)
-    
+
     # Provide a malformed JSON string for configuration to trigger CLI validation error
     invalid_payload = [{
         "name": "invalid_ds",
         "dataSource": "sensor/invalid",
-        "datasetConfiguration": "{ this is not valid json }" 
+        "datasetConfiguration": "{ this is not valid json }"
     }]
-    
+
     with open(import_file_invalid, "w") as f:
         json.dump(invalid_payload, f)
 
@@ -1137,5 +1139,163 @@ def test_namespace_asset_dataset_import_export_operations(
     run(
         f"az iot ops ns asset custom dataset import --asset {asset_name} "
         f"--instance {instance_name} -g {resource_group} --input-file {import_file_invalid}",
+        expect_failure=True
+    )
+
+
+def test_namespace_asset_datapoint_import_export_operations(
+    require_init, tracked_resources: List[str], tracked_files: List[str]
+):
+    """Test granular datapoint import and export operations."""
+    # Setup test variables
+    instance_name = require_init["instanceName"]
+    resource_group = require_init["resourceGroup"]
+    device_name = f"dev-{generate_random_string(8, force_lower=True)}"
+    endpoint_name = f"custom-{generate_random_string(8)}"
+    asset_name = f"custom-{generate_random_string(8, force_lower=True)}"
+    dataset_name = f"dataset{generate_random_string(6, force_lower=True)}"
+    datapoint_name_1 = f"dp1-{generate_random_string(6, force_lower=True)}"
+    datapoint_name_2 = f"dp2-{generate_random_string(6, force_lower=True)}"
+
+    # Create Device
+    result = run(
+        f"az iot ops ns device create --name {device_name} --instance {instance_name} "
+        f"-g {resource_group}"
+    )
+    tracked_resources.append(result["id"])
+
+    # Create device endpoint
+    run(
+        f"az iot ops ns device endpoint inbound add custom --name {endpoint_name} "
+        f"--instance {instance_name} -g {resource_group} --device {device_name} "
+        f"--endpoint-address 'http://192.168.1.100:8000/custom/service' "
+        "--endpoint-type custom"
+    )
+
+    # Create Custom asset
+    asset_custom = run(
+        f"az iot ops ns asset custom create --name {asset_name} --instance {instance_name} "
+        f"-g {resource_group} --device {device_name} --endpoint {endpoint_name} "
+        f"--description \"Custom Device for Datapoint Testing\""
+    )
+    tracked_resources.append(asset_custom["id"])
+
+    # Create Dataset
+    run(
+        f"az iot ops ns asset custom dataset add --asset {asset_name} "
+        f"--instance {instance_name} -g {resource_group} --name {dataset_name} "
+        f"--data-source sensor/data"
+    )
+
+    # 1. SETUP INITIAL STATE
+    # Add first datapoint
+    run(
+        f"az iot ops ns asset custom datapoint add --asset {asset_name} "
+        f"--instance {instance_name} -g {resource_group} --dataset {dataset_name} "
+        f"--name {datapoint_name_1} --data-source sensor/temp"
+    )
+
+    # 2. TEST EXPORT
+    # Export Datapoints
+    run(
+        f"az iot ops ns asset custom datapoint export --asset {asset_name} "
+        f"--instance {instance_name} -g {resource_group} --dataset {dataset_name} "
+        f"--output-dir ."
+    )
+    export_file = f"{asset_name}_datapoint_{dataset_name}.json"
+    tracked_files.append(export_file)
+
+    # Verify Export
+    assert os.path.exists(export_file)
+    with open(export_file, "r") as f:
+        exported_data = json.load(f)
+
+    # Should be a list of datapoints
+    assert isinstance(exported_data, list)
+    assert len(exported_data) == 1
+    assert exported_data[0]["name"] == datapoint_name_1
+
+    # 3. TEST IMPORT (ADD NEW)
+    # Create a new import file with a NEW datapoint
+    import_file_new = "datapoint_import_new.json"
+    tracked_files.append(import_file_new)
+
+    new_datapoint_payload = [
+        {
+            "name": datapoint_name_2,
+            "dataSource": "sensor/humid",
+        }
+    ]
+
+    with open(import_file_new, "w") as f:
+        json.dump(new_datapoint_payload, f)
+
+    # Import the new datapoint
+    run(
+        f"az iot ops ns asset custom datapoint import --asset {asset_name} "
+        f"--instance {instance_name} -g {resource_group} --dataset {dataset_name} "
+        f"--input-file {import_file_new}"
+    )
+
+    # Verify new datapoint exists
+    datapoints_list = run(
+        f"az iot ops ns asset custom datapoint list --asset {asset_name} "
+        f"--instance {instance_name} -g {resource_group} --dataset {dataset_name}"
+    )
+    datapoint_names = [dp["name"] for dp in datapoints_list]
+    assert datapoint_name_1 in datapoint_names
+    assert datapoint_name_2 in datapoint_names
+
+    # 4. TEST IMPORT (RESTORE EXPORTED)
+    # Remove the first datapoint
+    run(
+        f"az iot ops ns asset custom datapoint remove --asset {asset_name} "
+        f"--instance {instance_name} -g {resource_group} --dataset {dataset_name} "
+        f"--name {datapoint_name_1}"
+    )
+
+    # Verify removal
+    datapoints_list = run(
+        f"az iot ops ns asset custom datapoint list --asset {asset_name} "
+        f"--instance {instance_name} -g {resource_group} --dataset {dataset_name}"
+    )
+    datapoint_names = [dp["name"] for dp in datapoints_list]
+    assert datapoint_name_1 not in datapoint_names
+
+    # Import the originally exported file
+    run(
+        f"az iot ops ns asset custom datapoint import --asset {asset_name} "
+        f"--instance {instance_name} -g {resource_group} --dataset {dataset_name} "
+        f"--input-file {export_file}"
+    )
+
+    # Verify datapoint is restored
+    datapoints_list = run(
+        f"az iot ops ns asset custom datapoint list --asset {asset_name} "
+        f"--instance {instance_name} -g {resource_group} --dataset {dataset_name}"
+    )
+    datapoint_names = [dp["name"] for dp in datapoints_list]
+    assert datapoint_name_1 in datapoint_names
+
+    # 5. TEST IMPORT VALIDATION (FAILURE)
+    # Create an invalid import file
+    import_file_invalid = "datapoint_import_invalid.json"
+    tracked_files.append(import_file_invalid)
+
+    # Provide a malformed JSON string for configuration to trigger CLI validation error
+    invalid_payload = [{
+        "name": "invalid_dp",
+        "dataSource": "sensor/invalid",
+        "dataPointConfiguration": "{ this is not valid json }"
+    }]
+
+    with open(import_file_invalid, "w") as f:
+        json.dump(invalid_payload, f)
+
+    # Expect failure
+    run(
+        f"az iot ops ns asset custom datapoint import --asset {asset_name} "
+        f"--instance {instance_name} -g {resource_group} --dataset {dataset_name} "
+        f"--input-file {import_file_invalid}",
         expect_failure=True
     )
