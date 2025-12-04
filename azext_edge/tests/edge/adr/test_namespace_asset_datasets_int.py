@@ -1477,3 +1477,194 @@ def test_namespace_rest_dataset_import_export_operations(
     # Manual check for REST properties
     config = json.loads(shown_dataset["datasetConfiguration"])
     assert config.get("samplingIntervalInMilliseconds") == 500
+
+
+def test_namespace_asset_dataset_datapoint_formats_import_export(
+    require_init, tracked_resources: List[str], tracked_files: List[str]
+):
+    """Test CSV and YAML import/export operations for datasets and datapoints."""
+    import yaml
+    import csv
+    # Setup test variables
+    instance_name = require_init["instanceName"]
+    resource_group = require_init["resourceGroup"]
+    device_name = f"dev-{generate_random_string(8, force_lower=True)}"
+    endpoint_name = f"custom-{generate_random_string(8)}"
+    asset_name = f"custom-{generate_random_string(8, force_lower=True)}"
+    dataset_name = f"dataset{generate_random_string(6, force_lower=True)}"
+    datapoint_name = f"dp{generate_random_string(6, force_lower=True)}"
+
+    # Create Device
+    result = run(
+        f"az iot ops ns device create --name {device_name} --instance {instance_name} "
+        f"-g {resource_group}"
+    )
+    tracked_resources.append(result["id"])
+
+    # Create device endpoint
+    run(
+        f"az iot ops ns device endpoint inbound add custom --name {endpoint_name} "
+        f"--instance {instance_name} -g {resource_group} --device {device_name} "
+        f"--endpoint-address 'http://192.168.1.100:8000/custom/service' "
+        "--endpoint-type custom"
+    )
+
+    # Create Custom asset
+    asset_custom = run(
+        f"az iot ops ns asset custom create --name {asset_name} --instance {instance_name} "
+        f"-g {resource_group} --device {device_name} --endpoint {endpoint_name} "
+        f"--description \"Custom Device for Format Testing\""
+    )
+    tracked_resources.append(asset_custom["id"])
+
+    # Add initial dataset and datapoint
+    run(
+        f"az iot ops ns asset custom dataset add --asset {asset_name} "
+        f"--instance {instance_name} -g {resource_group} --name {dataset_name} "
+        f"--data-source sensor/data"
+    )
+    run(
+        f"az iot ops ns asset custom datapoint add --asset {asset_name} "
+        f"--instance {instance_name} -g {resource_group} --dataset {dataset_name} "
+        f"--name {datapoint_name} --data-source sensor/value"
+    )
+
+    # --- DATASET YAML ---
+    dataset_yaml_file = f"{asset_name}_dataset.yaml"
+    tracked_files.append(dataset_yaml_file)
+
+    # Export
+    run(
+        f"az iot ops ns asset custom dataset export --asset {asset_name} "
+        f"--instance {instance_name} -g {resource_group} --output-dir . --format yaml"
+    )
+
+    assert os.path.exists(dataset_yaml_file)
+    with open(dataset_yaml_file, "r", encoding="utf-8") as f:
+        content = yaml.safe_load(f)
+        assert isinstance(content, list)
+        assert len(content) == 1
+        assert content[0]["name"] == dataset_name
+
+    # Import (New Dataset)
+    dataset_name_yaml = f"{dataset_name}_yaml"
+    content[0]["name"] = dataset_name_yaml
+    content[0]["dataSource"] = "sensor/data_yaml"
+
+    dataset_import_yaml = "dataset_import.yaml"
+    tracked_files.append(dataset_import_yaml)
+    with open(dataset_import_yaml, "w", encoding="utf-8") as f:
+        yaml.dump(content, f)
+
+    run(
+        f"az iot ops ns asset custom dataset import --asset {asset_name} "
+        f"--instance {instance_name} -g {resource_group} --input-file {dataset_import_yaml}"
+    )
+
+    # Verify
+    datasets_list = run(
+        f"az iot ops ns asset custom dataset list --asset {asset_name} "
+        f"--instance {instance_name} -g {resource_group}"
+    )
+    names = [d["name"] for d in datasets_list]
+    assert dataset_name_yaml in names
+
+    # --- DATAPOINT YAML ---
+    datapoint_yaml_file = f"{asset_name}_datapoint_{dataset_name}.yaml"
+    tracked_files.append(datapoint_yaml_file)
+
+    # Export
+    run(
+        f"az iot ops ns asset custom datapoint export --asset {asset_name} "
+        f"--instance {instance_name} -g {resource_group} --dataset {dataset_name} "
+        f"--output-dir . --format yaml"
+    )
+
+    assert os.path.exists(datapoint_yaml_file)
+    with open(datapoint_yaml_file, "r", encoding="utf-8") as f:
+        content = yaml.safe_load(f)
+        assert isinstance(content, list)
+        assert len(content) == 1
+        assert content[0]["name"] == datapoint_name
+
+    # Import (New Datapoint)
+    datapoint_name_yaml = f"{datapoint_name}_yaml"
+    content[0]["name"] = datapoint_name_yaml
+    content[0]["dataSource"] = "sensor/value_yaml"
+
+    datapoint_import_yaml = "datapoint_import.yaml"
+    tracked_files.append(datapoint_import_yaml)
+    with open(datapoint_import_yaml, "w", encoding="utf-8") as f:
+        yaml.dump(content, f)
+
+    run(
+        f"az iot ops ns asset custom datapoint import --asset {asset_name} "
+        f"--instance {instance_name} -g {resource_group} --dataset {dataset_name} "
+        f"--input-file {datapoint_import_yaml}"
+    )
+
+    # Verify
+    datapoints_list = run(
+        f"az iot ops ns asset custom datapoint list --asset {asset_name} "
+        f"--instance {instance_name} -g {resource_group} --dataset {dataset_name}"
+    )
+    names = [d["name"] for d in datapoints_list]
+    assert datapoint_name_yaml in names
+
+    # --- DATAPOINT CSV ---
+    datapoint_csv_file = f"{asset_name}_datapoint_{dataset_name}.csv"
+    tracked_files.append(datapoint_csv_file)
+
+    # Export
+    run(
+        f"az iot ops ns asset custom datapoint export --asset {asset_name} "
+        f"--instance {instance_name} -g {resource_group} --dataset {dataset_name} "
+        f"--output-dir . --format csv"
+    )
+
+    assert os.path.exists(datapoint_csv_file)
+    csv_rows = []
+    with open(datapoint_csv_file, "r", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            csv_rows.append(row)
+
+    assert len(csv_rows) >= 2  # Original + YAML one
+
+    # Import (New Datapoint from CSV)
+    datapoint_name_csv = f"{datapoint_name}_csv"
+
+    new_row = csv_rows[0].copy()
+    # Update for new point - handle Portal Friendly headers
+    if "TagName" in new_row:
+        new_row["TagName"] = datapoint_name_csv
+        new_row["NodeID"] = "sensor/value_csv"
+    elif "Name" in new_row:
+        new_row["Name"] = datapoint_name_csv
+        new_row["Data Source"] = "sensor/value_csv"
+    else:
+        # Fallback if headers are raw property names
+        new_row["name"] = datapoint_name_csv
+        new_row["dataSource"] = "sensor/value_csv"
+
+    datapoint_import_csv = "datapoint_import.csv"
+    tracked_files.append(datapoint_import_csv)
+
+    with open(datapoint_import_csv, "w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=new_row.keys())
+        writer.writeheader()
+        writer.writerow(new_row)
+
+    run(
+        f"az iot ops ns asset custom datapoint import --asset {asset_name} "
+        f"--instance {instance_name} -g {resource_group} --dataset {dataset_name} "
+        f"--input-file {datapoint_import_csv}"
+    )
+
+    # Verify
+    datapoints_list = run(
+        f"az iot ops ns asset custom datapoint list --asset {asset_name} "
+        f"--instance {instance_name} -g {resource_group} --dataset {dataset_name}"
+    )
+    names = [d["name"] for d in datapoints_list]
+    assert datapoint_name_csv in names
