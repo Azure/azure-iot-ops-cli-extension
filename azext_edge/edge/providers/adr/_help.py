@@ -2849,8 +2849,101 @@ def load_iotops_adr_help():
             --disable
     """
 
-    # NOTE: SSE assets do not support dataset commands (add/list/show/remove/update/export/import)
-    # The command_map.py only registers dataset commands for custom, opcua, and rest asset types
+    helps[
+        "iot ops ns asset sse dataset"
+    ] = """
+        type: group
+        short-summary: Manage datasets for SSE namespaced assets.
+    """
+
+    helps[
+        "iot ops ns asset sse dataset add"
+    ] = """
+        type: command
+        short-summary: Add a dataset to an SSE namespaced asset in an IoT Operations instance.
+
+        examples:
+        - name: Add a basic dataset to an SSE asset
+          text: >
+            az iot ops ns asset sse dataset add --asset mysseAsset --instance myInstance
+            -g myInstanceResourceGroup --name sensorData --data-source "temperature"
+
+        - name: Add a dataset with MQTT destination
+          text: >
+            az iot ops ns asset sse dataset add --asset mysseAsset --instance myInstance
+            -g myInstanceResourceGroup --name eventData --data-source "events"
+            --dest topic="factory/sse/events" retain=Never qos=Qos1 ttl=3600
+
+        - name: Add a dataset with BrokerStateStore destination
+          text: >
+            az iot ops ns asset sse dataset add --asset mysseAsset --instance myInstance
+            -g myInstanceResourceGroup --name cacheData --data-source "metrics"
+            --dest key="sse-metrics-cache"
+
+        - name: Replace an existing dataset
+          text: >
+            az iot ops ns asset sse dataset add --asset mysseAsset --instance myInstance
+            -g myInstanceResourceGroup --name sensorData --data-source "humidity" --replace
+    """
+
+    helps[
+        "iot ops ns asset sse dataset list"
+    ] = """
+        type: command
+        short-summary: List datasets for an SSE namespaced asset in an IoT Operations instance.
+
+        examples:
+        - name: List all datasets for an SSE asset
+          text: >
+            az iot ops ns asset sse dataset list --asset mysseAsset --instance myInstance
+            -g myInstanceResourceGroup
+    """
+
+    helps[
+        "iot ops ns asset sse dataset remove"
+    ] = """
+        type: command
+        short-summary: Remove a dataset from an SSE namespaced asset in an IoT Operations instance.
+
+        examples:
+        - name: Remove a dataset from an SSE asset
+          text: >
+            az iot ops ns asset sse dataset remove --asset mysseAsset --instance myInstance
+            -g myInstanceResourceGroup --name sensorData
+    """
+
+    helps[
+        "iot ops ns asset sse dataset show"
+    ] = """
+        type: command
+        short-summary: Show details of a dataset for an SSE namespaced asset in an IoT Operations instance.
+
+        examples:
+        - name: Show dataset details
+          text: >
+            az iot ops ns asset sse dataset show --asset mysseAsset --instance myInstance
+            -g myInstanceResourceGroup --name sensorData
+    """
+
+    helps[
+        "iot ops ns asset sse dataset update"
+    ] = """
+        type: command
+        short-summary: Update a dataset for an SSE namespaced asset in an IoT Operations instance.
+
+        examples:
+        - name: Update dataset destination to MQTT
+          text: >
+            az iot ops ns asset sse dataset update --asset mysseAsset --instance myInstance
+            -g myInstanceResourceGroup --name sensorData
+            --dest topic="factory/sse/updated/sensor" retain=Keep qos=Qos1 ttl=3600
+
+        - name: Update dataset destination to BrokerStateStore
+          text: >
+            az iot ops ns asset sse dataset update --asset mysseAsset --instance myInstance
+            -g myInstanceResourceGroup --name metricsData
+            --dest key="updated-sse-metrics"
+    """
 
     helps[
         "iot ops ns asset sse event-group"
@@ -3056,5 +3149,82 @@ def load_iotops_adr_help():
             --description "Updated MQTT topic subscriber"
     """
 
-    # NOTE: MQTT assets do not support dataset commands (add/list/show/remove/update/export/import)
-    # The command_map.py only registers dataset commands for custom, opcua, and rest asset types
+    helps[
+        "iot ops ns asset mqtt dataset"
+    ] = """
+        type: group
+        short-summary: Manage datasets for MQTT namespaced assets.
+    """
+
+    helps[
+        "iot ops ns asset mqtt dataset add"
+    ] = """
+        type: command
+        short-summary: Add a dataset to an MQTT namespaced asset in an IoT Operations instance.
+
+        examples:
+        - name: Add a dataset to an MQTT asset with MQTT topic
+          text: >
+            az iot ops ns asset mqtt dataset add --asset myMqttAsset --instance myInstance
+            -g myInstanceResourceGroup --name sensorData --data-source "some/mqtt/topic"
+            --dest topic="factory/processed/data" retain=Keep qos=Qos1 ttl=3600
+
+        - name: Add a dataset with BrokerStateStore destination
+          text: >
+            az iot ops ns asset mqtt dataset add --asset myMqttAsset --instance myInstance
+            -g myInstanceResourceGroup --name sensorData --data-source "some/mqtt/topic"
+            --dest key="mqtt-data-store"
+    """
+
+    helps[
+        "iot ops ns asset mqtt dataset list"
+    ] = """
+        type: command
+        short-summary: List datasets for an MQTT namespaced asset in an IoT Operations instance.
+
+        examples:
+        - name: List all datasets for an MQTT asset
+          text: >
+            az iot ops ns asset mqtt dataset list --asset myMqttAsset --instance myInstance
+            -g myInstanceResourceGroup
+    """
+
+    helps[
+        "iot ops ns asset mqtt dataset remove"
+    ] = """
+        type: command
+        short-summary: Remove a dataset from an MQTT namespaced asset in an IoT Operations instance.
+
+        examples:
+        - name: Remove a dataset from an MQTT asset
+          text: >
+            az iot ops ns asset mqtt dataset remove --asset myMqttAsset --instance myInstance
+            -g myInstanceResourceGroup --name sensorData
+    """
+
+    helps[
+        "iot ops ns asset mqtt dataset show"
+    ] = """
+        type: command
+        short-summary: Show details of a dataset for an MQTT namespaced asset in an IoT Operations instance.
+
+        examples:
+        - name: Show dataset details
+          text: >
+            az iot ops ns asset mqtt dataset show --asset myMqttAsset --instance myInstance
+            -g myInstanceResourceGroup --name sensorData
+    """
+
+    helps[
+        "iot ops ns asset mqtt dataset update"
+    ] = """
+        type: command
+        short-summary: Update a dataset for an MQTT namespaced asset in an IoT Operations instance.
+
+        examples:
+        - name: Update MQTT dataset destination
+          text: >
+            az iot ops ns asset mqtt dataset update --asset myMqttAsset --instance myInstance
+            -g myInstanceResourceGroup --name sensorData
+            --dest topic="updated/mqtt/topic" retain=Never qos=Qos0 ttl=1800
+    """

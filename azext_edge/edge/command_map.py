@@ -305,7 +305,7 @@ def load_iotops_commands(self, _):
             cmd_group.command("update", f"update_namespace_{asset_type}_asset")
 
     # dataset
-    for asset_type in ["custom", "opcua", "rest"]:
+    for asset_type in ["custom", "opcua", "rest", "sse", "mqtt"]:
         with self.command_group(
             f"iot ops ns asset {asset_type} dataset",
             command_type=namespace_resource_ops,
