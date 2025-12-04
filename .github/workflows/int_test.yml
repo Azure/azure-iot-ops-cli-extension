@@ -1,4 +1,5 @@
 name: Integration tests
+run-name: "Integration tests [${{ inputs.test-scenarios != '' && inputs.test-scenarios || 'all' }}]"
 on:
   schedule:
     - cron: "0 9 * * *" # Run daily at 1:00 AM Pacific Time (9:00 AM UTC)
@@ -141,6 +142,8 @@ jobs:
 
   unit-test:
     name: "Run linter and unit tests"
+    # Ensure matrix build succeeded before running any tests
+    needs: build-matrix
     runs-on: ubuntu-24.04
     steps:
       - name: "Checkout Source"
@@ -164,7 +167,7 @@ jobs:
           include-hidden-files: true
   int-test:
     needs: [setup, build-matrix]
-    if: ${{ needs.build-matrix.outputs.matrix != '[]' }}
+    if: ${{ success() && needs.build-matrix.outputs.matrix != '[]' }}
     env:
       CLUSTER_NAME: "opt${{ github.run_number }}${{ matrix.scenario.name }}"
       INSTANCE_NAME: "inst${{ github.run_number }}${{ matrix.scenario.name }}"
@@ -326,6 +329,7 @@ jobs:
           done
       - name: "Delete Cluster for redeployment"
         if: ${{ matrix.scenario.test_redeploy }}
+        timeout-minutes: 30
         run: |
           az iot ops delete -n ${{ env.INSTANCE_NAME }} -g ${{ env.RESOURCE_GROUP }} -y
       - name: "Redeploy cluster via tox"
