@@ -1153,6 +1153,8 @@ def test_clone_scale(
     total_pages = aep_pages + asset_pages + 1
 
     expected_params = deepcopy(TEMPLATE_PARAMS_SET)
+    # Split content for assets/AEPs doesn't need namespace-specific parameters
+    expected_params.discard("adrNamespaceLocation")
     if not clone_scenario.api_config.v2_enabled:
         expected_params.discard("adrNamespaceId")
 
@@ -1662,9 +1664,11 @@ def _replace_instance(context: dict):
     if v2_enabled:
         namespace_resource_id = properties.get("adrNamespaceRef", {}).get("resourceId")
         if namespace_resource_id:
-            properties["adrNamespaceRef"][
-                "resourceId"
-            ] = "[resourceId('Microsoft.DeviceRegistry/namespaces', parameters('adrNamespaceId').name)]"
+            properties["adrNamespaceRef"]["resourceId"] = (
+                "[resourceId(parameters('adrNamespaceId').subscription, "
+                "parameters('adrNamespaceId').resourceGroup, "
+                "'Microsoft.DeviceRegistry/namespaces', parameters('adrNamespaceId').name)]"
+            )
         spc_resource_id = properties.get("defaultSecretProviderClassRef", {}).get("resourceId")
         if spc_resource_id:
             properties["defaultSecretProviderClassRef"]["resourceId"] = (
@@ -1730,8 +1734,26 @@ def _get_ns_asset_name(**kwargs: dict) -> str:
     return f"[concat(parameters('adrNamespaceId').name, '/{kwargs['config']['name']}')]"
 
 
+def _replace_namespace_asset_resource(context: dict) -> dict:
+    """Replacement function for namespace devices and assets."""
+    api_version = _get_asset_api_version(**context)
+    payload = {
+        "apiVersion": api_version,
+        "location": "[parameters('adrNamespaceLocation')]",
+        "extendedLocation": {
+            "name": (
+                "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', "
+                "subscription().subscriptionId, parameters('clusterResourceGroup')), "
+                "'Microsoft.ExtendedLocation/customLocations', parameters('customLocationName'))]"
+            ),
+            "type": "CustomLocation",
+        },
+        "name": _get_ns_asset_name(**context),
+    }
+    return payload
+
+
 _replace_asset_resource = partial(_replace_generic_resource, api_version_callback=_get_asset_api_version)
-_replace_namespace_asset_resource = partial(_replace_asset_resource, name_callback=_get_ns_asset_name)
 _replace_secretsync_resource = partial(_replace_generic_resource, api_version=SECRET_SYNC_API_VERSION)
 
 
@@ -1793,7 +1815,7 @@ class CloneAssertor:
         assert isinstance(content["parameters"], dict), "Parameters key should be a dictionary"
         expected_parameter_key_set = EXPECTED_PARAMETER_KEYS.copy()
         if self.api_config.v2_enabled:
-            expected_parameter_key_set = expected_parameter_key_set.union({"adrNamespaceId"})
+            expected_parameter_key_set = expected_parameter_key_set.union({"adrNamespaceId", "adrNamespaceLocation"})
         assert set(content["parameters"].keys()) == expected_parameter_key_set, "Unexpected keys in parameters content"
         assert content["parameters"]["clusterName"] == {"type": "string"}
         assert content["parameters"]["clusterNamespace"] == {
@@ -1836,6 +1858,16 @@ class CloneAssertor:
             "type": "bool",
             "defaultValue": True,
         }
+        if self.api_config.v2_enabled:
+            parsed_ns_id = parse_resource_id(self.resource_configs["adrNamespaceId"])
+            assert content["parameters"]["adrNamespaceId"] == {
+                "type": "object",
+                "defaultValue": {
+                    "subscription": parsed_ns_id["subscription"],
+                    "resourceGroup": parsed_ns_id["resource_group"],
+                    "name": parsed_ns_id["name"],
+                },
+            }
 
         self._assert_resources(content)
 
@@ -2039,9 +2071,12 @@ class CloneAssertor:
             ]:
                 expected_parameters["instanceName"] = {"type": "string"}
             else:
-                expected_parameters["location"] = {"type": "string"}
                 if resource_config_key in ["namespaceAssets", "namespaceDevices"]:
+                    expected_parameters["adrNamespaceLocation"] = {"type": "string"}
                     expected_parameters["adrNamespaceId"] = {"type": "object"}
+                    expected_parameters["clusterResourceGroup"] = {"type": "string"}
+                else:
+                    expected_parameters["location"] = {"type": "string"}
 
             assert template["parameters"] == expected_parameters
             assert isinstance(template["resources"], list), "Deployment resources key should be a list"
@@ -2097,10 +2132,21 @@ class CloneAssertor:
                             "[resourceId('microsoft.iotoperations/instances', parameters('instanceName'))]"
                         )
                     elif dep in chunks_map:
-                        depends_on.append(
-                            "[resourceId('Microsoft.Resources/deployments', "
-                            f"concat(parameters('resourceSlug'), '_{dep}_{chunks_map[dep]}'))]"
-                        )
+                        # Namespace assets use cross-RG dependency on namespace devices
+                        if plural == "namespaceAssets" and dep == "namespaceDevices":
+                            depends_on.append(
+                                "[extensionResourceId("
+                                "format('/subscriptions/{0}/resourceGroups/{1}', "
+                                "parameters('adrNamespaceId').subscription, "
+                                "parameters('adrNamespaceId').resourceGroup), "
+                                "'Microsoft.Resources/deployments', "
+                                f"concat(parameters('resourceSlug'), '_{dep}_{chunks_map[dep]}'))]"
+                            )
+                        else:
+                            depends_on.append(
+                                "[resourceId('Microsoft.Resources/deployments', "
+                                f"concat(parameters('resourceSlug'), '_{dep}_{chunks_map[dep]}'))]"
+                            )
             elif plural in broker_related:
                 depends_on.append(
                     "[resourceId('microsoft.iotoperations/instances/brokers', parameters('instanceName'), 'default')]"
@@ -2184,9 +2230,12 @@ class CloneAssertor:
             ]:
                 expected_params["instanceName"] = {"value": "[parameters('instanceName')]"}
             else:
-                expected_params["location"] = {"value": "[parameters('location')]"}
                 if resource_key in ["namespaceDevices", "namespaceAssets"]:
                     expected_params["adrNamespaceId"] = {"value": "[parameters('adrNamespaceId')]"}
+                    expected_params["adrNamespaceLocation"] = {"value": "[parameters('adrNamespaceLocation')]"}
+                    expected_params["clusterResourceGroup"] = {"value": "[resourceGroup().name]"}
+                else:
+                    expected_params["location"] = {"value": "[parameters('location')]"}
 
             assert deployment["properties"]["parameters"] == expected_params
 

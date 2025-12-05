@@ -111,7 +111,6 @@ class InitTargets:
         self.adr_namespace_resource_id = ensure_resource_id(
             adr_namespace_resource_id,
             match_context={
-                "resource_group": resource_group_name,
                 "resource_provider": "Microsoft.DeviceRegistry",
                 "resource_type": "namespaces",
             },

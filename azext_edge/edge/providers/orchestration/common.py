@@ -358,6 +358,7 @@ class CloneTemplateParams(Enum):
     LOCATION = "location"
     APPLY_ROLE_ASSIGNMENTS = "applyRoleAssignments"
     ADR_NAMESPACE_ID = "adrNamespaceId"
+    ADR_NAMESPACE_LOCATION = "adrNamespaceLocation"
 
 
 class X509FileExtension(Enum):

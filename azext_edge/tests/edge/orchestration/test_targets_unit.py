@@ -301,13 +301,20 @@ def verify_extension_in_template(
             instance_name=generate_random_string(),
             custom_broker_config={generate_random_string(): generate_random_string()},
         ),
-        # User trust
+        # User trust - with namespace in same RG as instance
         build_target_scenario(
             cluster_name=generate_random_string(),
             resource_group_name=DEFAULT_RESOURCE_GROUP,
             schema_registry_resource_id=get_schema_registry_id(),
             adr_namespace_resource_id=get_ns_resource_id(DEFAULT_RESOURCE_GROUP),
             user_trust=True,
+        ),
+        # Cross-RG namespace support - namespace in different RG than instance
+        build_target_scenario(
+            cluster_name=generate_random_string(),
+            resource_group_name=DEFAULT_RESOURCE_GROUP,  # Instance in DEFAULT_RESOURCE_GROUP
+            schema_registry_resource_id=get_schema_registry_id(),
+            adr_namespace_resource_id=get_ns_resource_id("different-namespace-rg"),  # Namespace in different RG
         ),
         # Persistence configuration
         build_target_scenario(
@@ -650,17 +657,6 @@ def test_extension_config_manager():
             ),
             InvalidArgumentValueError,
             f"--sr-resource-id value must be of type {ADR_RP}/schemaRegistries.",
-        ),
-        # Namespace resource group mismatch
-        (
-            build_target_scenario(
-                cluster_name=generate_random_string(),
-                resource_group_name="instancegroup",
-                schema_registry_resource_id=get_schema_registry_id(),
-                adr_namespace_resource_id=get_ns_resource_id(),
-            ),
-            InvalidArgumentValueError,
-            "--ns-resource-id value must match the resource group 'instancegroup'.",
         ),
         # Wrong resource type for namespace
         (

@@ -735,11 +735,6 @@ def assert_cluster_prechecks(mock_prechecks: Dict[str, Mock], target_scenario: d
                     resource_path="/namespaces/mynamespace",
                 ),
             },
-            raises=ExceptionMeta(
-                exc_type=InvalidArgumentValueError,
-                exc_msg=re.compile(r"--ns-resource-id value must match the resource group '(.+)'."),
-            ),
-            omit_http_methods=frozenset([responses.PUT, responses.POST, responses.GET, responses.HEAD]),
         ),
         build_target_scenario(
             apiControl={
