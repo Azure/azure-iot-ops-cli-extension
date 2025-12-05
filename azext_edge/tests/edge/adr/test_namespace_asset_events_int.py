@@ -824,3 +824,370 @@ def test_namespace_asset_event_export_import_operations(
     assert event_group_name_1 in group_names
     assert event_group_name_2 in group_names
     assert new_event_group_name in group_names
+
+    # 6. VERIFY EVENTS ARE STRIPPED DURING EVENT GROUP EXPORT
+    # The exported event groups should not contain events (similar to datasets not containing dataPoints)
+    for eg in exported_data:
+        assert "events" not in eg or not eg.get("events"), \
+            "Events should be stripped during event-group export"
+
+    # 7. TEST REMOVE AND RESTORE CYCLE FOR EVENT GROUPS
+    # First, re-export to get fresh data that includes both original event groups
+    reexport_result = run(
+        f"az iot ops ns asset custom event-group export --asset {asset_name} --instance {instance_name} "
+        f"-g {resource_group} --format json --od {output_dir} --replace"
+    )
+    reexport_file_path = reexport_result["file_path"]
+    tracked_files.append(reexport_file_path)
+
+    # Read the re-exported data to verify eg1 is still there
+    with open(reexport_file_path, "r") as f:
+        reexported_data = json.load(f)
+    reexported_group_names = [eg["name"] for eg in reexported_data]
+    assert event_group_name_1 in reexported_group_names, \
+        f"Event group {event_group_name_1} should be in re-exported data before removal"
+
+    # Remove the first event group
+    run(
+        f"az iot ops ns asset custom event-group remove --asset {asset_name} --instance {instance_name} "
+        f"-g {resource_group} --name {event_group_name_1}"
+    )
+
+    # Verify removal
+    event_groups_after_remove = run(
+        f"az iot ops ns asset custom event-group list --asset {asset_name} --instance {instance_name} "
+        f"-g {resource_group}"
+    )
+    group_names_after_remove = [eg["name"] for eg in event_groups_after_remove]
+    assert event_group_name_1 not in group_names_after_remove
+
+    # Import the re-exported file to restore (this file contains eg1 from before removal)
+    run(
+        f"az iot ops ns asset custom event-group import --asset {asset_name} --instance {instance_name} "
+        f"-g {resource_group} --if {reexport_file_path}"
+    )
+
+    # Verify event group is restored (without events, since they were stripped)
+    event_groups_after_restore = run(
+        f"az iot ops ns asset custom event-group list --asset {asset_name} --instance {instance_name} "
+        f"-g {resource_group}"
+    )
+    group_names_after_restore = [eg["name"] for eg in event_groups_after_restore]
+    assert event_group_name_1 in group_names_after_restore
+
+    # Verify events are empty for restored event group (since they were stripped during export)
+    events_after_restore = run(
+        f"az iot ops ns asset custom event list --asset {asset_name} --instance {instance_name} "
+        f"-g {resource_group} --event-group {event_group_name_1}"
+    )
+    assert len(events_after_restore) == 0, \
+        "Restored event group should have no events (stripped during export)"
+
+    # 8. TEST REMOVE AND RESTORE CYCLE FOR INDIVIDUAL EVENTS
+    # First, add events back to the restored event group for this test
+    run(
+        f"az iot ops ns asset custom event add --asset {asset_name} --instance {instance_name} "
+        f"-g {resource_group} --event-group {event_group_name_1} --name {event_name_1} "
+        f"--data-source event.data.restored.1"
+    )
+
+    # Export events again
+    events_export_for_restore = run(
+        f"az iot ops ns asset custom event export --asset {asset_name} --instance {instance_name} "
+        f"-g {resource_group} --event-group {event_group_name_1} --format json --od {output_dir} --replace"
+    )
+    events_restore_file = events_export_for_restore["file_path"]
+    tracked_files.append(events_restore_file)
+
+    # Remove the event
+    run(
+        f"az iot ops ns asset custom event remove --asset {asset_name} --instance {instance_name} "
+        f"-g {resource_group} --event-group {event_group_name_1} --name {event_name_1}"
+    )
+
+    # Verify removal
+    events_after_event_remove = run(
+        f"az iot ops ns asset custom event list --asset {asset_name} --instance {instance_name} "
+        f"-g {resource_group} --event-group {event_group_name_1}"
+    )
+    event_names_after_remove = [ev["name"] for ev in events_after_event_remove]
+    assert event_name_1 not in event_names_after_remove
+
+    # Import to restore
+    run(
+        f"az iot ops ns asset custom event import --asset {asset_name} --instance {instance_name} "
+        f"-g {resource_group} --event-group {event_group_name_1} --if {events_restore_file}"
+    )
+
+    # Verify event is restored
+    events_after_event_restore = run(
+        f"az iot ops ns asset custom event list --asset {asset_name} --instance {instance_name} "
+        f"-g {resource_group} --event-group {event_group_name_1}"
+    )
+    event_names_after_restore = [ev["name"] for ev in events_after_event_restore]
+    assert event_name_1 in event_names_after_restore
+
+    # 9. TEST IMPORT VALIDATION (FAILURE) - Invalid event group configuration
+    import_file_invalid_eg = f"/tmp/import_event_groups_invalid_{generate_random_string(8)}.json"
+    tracked_files.append(import_file_invalid_eg)
+
+    # Provide a malformed JSON string for configuration to trigger CLI validation error
+    invalid_eg_payload = [{
+        "name": "invalid_eg",
+        "dataSource": "event/invalid",
+        "eventGroupConfiguration": "{ this is not valid json }"
+    }]
+
+    with open(import_file_invalid_eg, "w") as f:
+        json.dump(invalid_eg_payload, f)
+
+    # Expect failure
+    run(
+        f"az iot ops ns asset custom event-group import --asset {asset_name} --instance {instance_name} "
+        f"-g {resource_group} --if {import_file_invalid_eg}",
+        expect_failure=True
+    )
+
+    # 10. TEST IMPORT VALIDATION (FAILURE) - Invalid event configuration
+    import_file_invalid_ev = f"/tmp/import_events_invalid_{generate_random_string(8)}.json"
+    tracked_files.append(import_file_invalid_ev)
+
+    # Provide a malformed JSON string for configuration to trigger CLI validation error
+    invalid_ev_payload = [{
+        "name": "invalid_ev",
+        "dataSource": "event/invalid",
+        "eventConfiguration": "{ this is not valid json }"
+    }]
+
+    with open(import_file_invalid_ev, "w") as f:
+        json.dump(invalid_ev_payload, f)
+
+    # Expect failure
+    run(
+        f"az iot ops ns asset custom event import --asset {asset_name} --instance {instance_name} "
+        f"-g {resource_group} --event-group {event_group_name_1} --if {import_file_invalid_ev}",
+        expect_failure=True
+    )
+
+
+def test_namespace_opcua_event_import_export_operations(
+    require_init, tracked_resources: List[str], tracked_files: List[str]
+):
+    """Test OPC UA event-group import and export operations with OPC UA-specific configurations."""
+    import os
+    import json
+
+    # Setup test variables
+    instance_name = require_init["instanceName"]
+    resource_group = require_init["resourceGroup"]
+    device_name = f"dev-{generate_random_string(8, force_lower=True)}"
+    endpoint_name = f"opcua-{generate_random_string(8)}"
+    asset_name = f"opcua-{generate_random_string(8, force_lower=True)}"
+    asset_name_2 = f"opcua-2-{generate_random_string(8, force_lower=True)}"
+    event_group_name_1 = f"eg1-{generate_random_string(6, force_lower=True)}"
+    event_group_name_2 = f"eg2-{generate_random_string(6, force_lower=True)}"
+
+    # Create Device
+    result = run(
+        f"az iot ops ns device create --name {device_name} --instance {instance_name} "
+        f"-g {resource_group}"
+    )
+    tracked_resources.append(result["id"])
+
+    # Create OPC UA device endpoint
+    run(
+        f"az iot ops ns device endpoint inbound add opcua --name {endpoint_name} "
+        f"--instance {instance_name} -g {resource_group} --device {device_name} "
+        f"--endpoint-address 'opc.tcp://192.168.1.200:4840/OPCUA/Server'"
+    )
+
+    # Create OPC UA asset 1
+    asset_1 = run(
+        f"az iot ops ns asset opcua create --name {asset_name} --instance {instance_name} "
+        f"-g {resource_group} --device {device_name} --endpoint {endpoint_name} "
+        f"--description \"OPC UA Device for Event Export/Import Testing\""
+    )
+    tracked_resources.append(asset_1["id"])
+
+    # 1. CREATE EVENT GROUPS WITH OPC UA-SPECIFIC CONFIGURATIONS
+    # OPC UA event groups support publishing interval, queue size, etc.
+    publishing_interval_1 = 500
+    queue_size_1 = 10
+    data_source_1 = "ns=2;i=1001"
+
+    run(
+        f"az iot ops ns asset opcua event-group add --asset {asset_name} --instance {instance_name} "
+        f"-g {resource_group} --name {event_group_name_1} --data-source \"{data_source_1}\" "
+        f"--publish-int {publishing_interval_1} --queue-size {queue_size_1}"
+    )
+
+    publishing_interval_2 = 1000
+    queue_size_2 = 20
+    data_source_2 = "ns=2;i=1002"
+
+    run(
+        f"az iot ops ns asset opcua event-group add --asset {asset_name} --instance {instance_name} "
+        f"-g {resource_group} --name {event_group_name_2} --data-source \"{data_source_2}\" "
+        f"--publish-int {publishing_interval_2} --queue-size {queue_size_2}"
+    )
+
+    # 2. EXPORT EVENT GROUPS
+    output_dir = "/tmp"
+    export_result = run(
+        f"az iot ops ns asset opcua event-group export --asset {asset_name} --instance {instance_name} "
+        f"-g {resource_group} --format json --od {output_dir} --replace"
+    )
+
+    assert "file_path" in export_result
+    export_file_path = export_result["file_path"]
+    tracked_files.append(export_file_path)
+
+    # Verify the exported file exists and contains the event groups
+    assert os.path.exists(export_file_path)
+    with open(export_file_path, "r") as f:
+        exported_data = json.load(f)
+
+    assert len(exported_data) == 2
+    exported_group_names = [eg["name"] for eg in exported_data]
+    assert event_group_name_1 in exported_group_names
+    assert event_group_name_2 in exported_group_names
+
+    # 3. VERIFY OPC UA-SPECIFIC CONFIGURATION IS PRESERVED IN EXPORT
+    for eg in exported_data:
+        if eg["name"] == event_group_name_1:
+            config = json.loads(eg["eventGroupConfiguration"])
+            assert config.get("publishingInterval") == publishing_interval_1
+            assert config.get("queueSize") == queue_size_1
+        elif eg["name"] == event_group_name_2:
+            config = json.loads(eg["eventGroupConfiguration"])
+            assert config.get("publishingInterval") == publishing_interval_2
+            assert config.get("queueSize") == queue_size_2
+
+    # 4. CREATE SECOND OPC UA ASSET FOR CROSS-ASSET IMPORT TEST
+    asset_2 = run(
+        f"az iot ops ns asset opcua create --name {asset_name_2} --instance {instance_name} "
+        f"-g {resource_group} --device {device_name} --endpoint {endpoint_name} "
+        f"--description \"OPC UA Device 2 for Import Testing\""
+    )
+    tracked_resources.append(asset_2["id"])
+
+    # 5. IMPORT EVENT GROUPS TO SECOND ASSET
+    run(
+        f"az iot ops ns asset opcua event-group import --asset {asset_name_2} --instance {instance_name} "
+        f"-g {resource_group} --if {export_file_path}"
+    )
+
+    # Verify event groups are imported to second asset
+    event_groups_asset_2 = run(
+        f"az iot ops ns asset opcua event-group list --asset {asset_name_2} --instance {instance_name} "
+        f"-g {resource_group}"
+    )
+
+    group_names_asset_2 = [eg["name"] for eg in event_groups_asset_2]
+    assert event_group_name_1 in group_names_asset_2
+    assert event_group_name_2 in group_names_asset_2
+
+    # 6. VERIFY OPC UA CONFIGURATION IS PRESERVED AFTER IMPORT
+    shown_eg1 = run(
+        f"az iot ops ns asset opcua event-group show --asset {asset_name_2} --instance {instance_name} "
+        f"-g {resource_group} --name {event_group_name_1}"
+    )
+    config_eg1 = json.loads(shown_eg1["eventGroupConfiguration"])
+    assert config_eg1.get("publishingInterval") == publishing_interval_1
+    assert config_eg1.get("queueSize") == queue_size_1
+
+    shown_eg2 = run(
+        f"az iot ops ns asset opcua event-group show --asset {asset_name_2} --instance {instance_name} "
+        f"-g {resource_group} --name {event_group_name_2}"
+    )
+    config_eg2 = json.loads(shown_eg2["eventGroupConfiguration"])
+    assert config_eg2.get("publishingInterval") == publishing_interval_2
+    assert config_eg2.get("queueSize") == queue_size_2
+
+    # 7. TEST IMPORT WITH NEW EVENT GROUP (ADD NEW)
+    new_event_group_name = f"imported-eg-{generate_random_string(6, force_lower=True)}"
+    import_payload = exported_data.copy()
+    import_payload.append({
+        "name": new_event_group_name,
+        "dataSource": "ns=3;i=2000",
+        "eventGroupConfiguration": json.dumps({
+            "publishingInterval": 750,
+            "queueSize": 15
+        }),
+        "defaultDestinations": []
+    })
+
+    import_file_new = f"/tmp/import_opcua_event_groups_new_{generate_random_string(8)}.json"
+    tracked_files.append(import_file_new)
+    with open(import_file_new, "w") as f:
+        json.dump(import_payload, f)
+
+    run(
+        f"az iot ops ns asset opcua event-group import --asset {asset_name} --instance {instance_name} "
+        f"-g {resource_group} --if {import_file_new}"
+    )
+
+    # Verify new event group was added
+    event_groups_after_import = run(
+        f"az iot ops ns asset opcua event-group list --asset {asset_name} --instance {instance_name} "
+        f"-g {resource_group}"
+    )
+    group_names_after_import = [eg["name"] for eg in event_groups_after_import]
+    assert new_event_group_name in group_names_after_import
+
+    # 8. TEST REMOVE AND RESTORE CYCLE
+    # Re-export to capture current state
+    reexport_result = run(
+        f"az iot ops ns asset opcua event-group export --asset {asset_name} --instance {instance_name} "
+        f"-g {resource_group} --format json --od {output_dir} --replace"
+    )
+    reexport_file_path = reexport_result["file_path"]
+    tracked_files.append(reexport_file_path)
+
+    # Remove the first event group
+    run(
+        f"az iot ops ns asset opcua event-group remove --asset {asset_name} --instance {instance_name} "
+        f"-g {resource_group} --name {event_group_name_1}"
+    )
+
+    # Verify removal
+    event_groups_after_remove = run(
+        f"az iot ops ns asset opcua event-group list --asset {asset_name} --instance {instance_name} "
+        f"-g {resource_group}"
+    )
+    group_names_after_remove = [eg["name"] for eg in event_groups_after_remove]
+    assert event_group_name_1 not in group_names_after_remove
+
+    # Import to restore
+    run(
+        f"az iot ops ns asset opcua event-group import --asset {asset_name} --instance {instance_name} "
+        f"-g {resource_group} --if {reexport_file_path}"
+    )
+
+    # Verify restored
+    event_groups_after_restore = run(
+        f"az iot ops ns asset opcua event-group list --asset {asset_name} --instance {instance_name} "
+        f"-g {resource_group}"
+    )
+    group_names_after_restore = [eg["name"] for eg in event_groups_after_restore]
+    assert event_group_name_1 in group_names_after_restore
+
+    # 9. TEST IMPORT VALIDATION (FAILURE) - Invalid configuration
+    import_file_invalid = f"/tmp/import_opcua_event_groups_invalid_{generate_random_string(8)}.json"
+    tracked_files.append(import_file_invalid)
+
+    invalid_payload = [{
+        "name": "invalid_eg",
+        "dataSource": "ns=2;i=9999",
+        "eventGroupConfiguration": "{ this is not valid json }"
+    }]
+
+    with open(import_file_invalid, "w") as f:
+        json.dump(invalid_payload, f)
+
+    # Expect failure
+    run(
+        f"az iot ops ns asset opcua event-group import --asset {asset_name} --instance {instance_name} "
+        f"-g {resource_group} --if {import_file_invalid}",
+        expect_failure=True
+    )
