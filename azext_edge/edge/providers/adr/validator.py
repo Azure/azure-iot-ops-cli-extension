@@ -581,6 +581,37 @@ class ConnectorMetadataValidator:
                 f"No event schema found for endpoint type '{self.endpoint_type}' - skipping validation"
             )
 
+    def validate_event_group(self, event_group: Dict[str, Any]):
+        """Validate an event group object or its configuration.
+
+        Args:
+            event_group: Can be either:
+                - A full event group object with 'eventGroupConfiguration' as JSON string
+                - A parsed configuration dictionary (for backward compatibility)
+        """
+        # Check if this is a full event group object or just the configuration
+        if "eventGroupConfiguration" in event_group:
+            # Full event group object - extract and parse configuration
+            config_str = event_group.get("eventGroupConfiguration")
+            if not config_str:
+                return
+
+            try:
+                config = json.loads(config_str) if isinstance(config_str, str) else config_str
+            except (json.JSONDecodeError, TypeError) as e:
+                raise ValidationError(f"Invalid eventGroupConfiguration JSON: {e}")
+        else:
+            # Assume it's already a parsed configuration dict (backward compatibility)
+            config = event_group
+
+        schema = self._get_schema("eventGroupConfigurationSchema")
+        if schema is not None:
+            self._validate(config, schema, "Event Group")
+        else:
+            logger.warning(
+                f"No event group schema found for endpoint type '{self.endpoint_type}' - skipping validation"
+            )
+
     def _get_schema(self, schema_key: str) -> Optional[Dict[str, Any]]:
         """
         Extracts the specific schema from the metadata based on the endpoint type and version.

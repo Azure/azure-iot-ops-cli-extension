@@ -27,8 +27,13 @@ from azext_edge.edge.commands_namespaces import (
     add_namespace_opcua_asset_event_group_event,
     add_namespace_sse_asset_event_group_event,
     list_namespace_asset_event_group_events,
-    remove_namespace_asset_event_group_event
+    remove_namespace_asset_event_group_event,
+    export_event_groups,
+    import_event_groups,
+    export_event_group_events,
+    import_event_group_events,
 )
+from azext_edge.edge.providers.adr.common import FileType
 
 from .test_namespace_assets_unit import (
     get_namespace_asset_mgmt_uri, get_namespace_asset_record, add_device_get_call
@@ -1301,3 +1306,507 @@ def test_remove_namespace_asset_event_group_event(
         instance_name=instance_name,
         instance_resource_group=instance_resource_group
     )
+
+
+# ---------------------- Export/Import Event Groups Tests ----------------------
+
+
+@pytest.mark.parametrize("event_groups_present", [True, False])
+@pytest.mark.parametrize("extension", FileType.list())
+@pytest.mark.parametrize("output_dir", [None, generate_random_string()])
+@pytest.mark.parametrize("replace", [False, True])
+def test_export_event_groups(
+    mocked_cmd,
+    mocked_responses: responses,
+    mocked_dump_content_to_file,
+    mocked_get_namespace_for_instance,
+    event_groups_present: bool,
+    extension: str,
+    output_dir: str,
+    replace: bool,
+):
+    """Test exporting event groups from an asset to a file."""
+    asset_name = generate_random_string()
+    instance_name = "testInstance"
+    instance_resource_group = "testInstanceResourceGroup"
+
+    # Get the namespace from the mocked function
+    namespace_resource = mocked_get_namespace_for_instance.return_value
+    namespace_name = namespace_resource["name"]
+    resource_group_name = namespace_resource["resource_group"]
+
+    # Create mock asset record
+    mocked_asset = get_namespace_asset_record(
+        asset_name=asset_name,
+        namespace_name=namespace_name,
+        resource_group_name=resource_group_name,
+    )
+
+    # Add event groups if present
+    if event_groups_present:
+        mocked_asset["properties"]["eventGroups"] = [
+            generate_event_group(num_data_points=randint(1, 3)),
+            generate_event_group(num_data_points=randint(0, 2)),
+            generate_event_group(num_data_points=0),
+        ]
+
+    # Mock GET request to get the asset
+    mocked_responses.add(
+        method=responses.GET,
+        url=get_namespace_asset_mgmt_uri(
+            asset_name=asset_name,
+            namespace_name=namespace_name,
+            resource_group_name=resource_group_name
+        ),
+        json=mocked_asset,
+        status=200,
+        content_type="application/json",
+    )
+
+    # Call the function being tested
+    result = export_event_groups(
+        cmd=mocked_cmd,
+        asset_name=asset_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
+        format=extension,
+        output_dir=output_dir,
+        replace=replace
+    )
+
+    # Verify the result
+    assert result["file_path"] == mocked_dump_content_to_file.return_value
+
+    # Get the expected event groups for export (events should be stripped)
+    expected_event_groups = []
+    for group in mocked_asset["properties"].get("eventGroups", []):
+        group_copy = group.copy()
+        group_copy.pop("events", None)
+        expected_event_groups.append(group_copy)
+
+    # Verify the call to dump_content_to_file
+    call_kwargs = mocked_dump_content_to_file.call_args.kwargs
+    assert call_kwargs["content"] == expected_event_groups
+    assert call_kwargs["file_name"] == f"{asset_name}_event_groups"
+    assert call_kwargs["extension"] == extension
+    assert call_kwargs["fieldnames"] is None
+    assert call_kwargs["output_dir"] == output_dir
+    assert call_kwargs["replace"] == replace
+
+    # Verify that mocked_get_namespace_for_instance was called with correct parameters
+    mocked_get_namespace_for_instance.assert_called_once_with(
+        cmd=mocked_cmd,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group
+    )
+
+
+@pytest.mark.parametrize("replace", [False, True])
+def test_import_event_groups(
+    mocker,
+    mocked_cmd,
+    mocked_responses: responses,
+    mocked_check_cluster_connectivity,
+    mocked_deserialize_file_content,
+    mocked_get_namespace_for_instance,
+    replace: bool,
+):
+    """Test importing event groups into an asset from a file."""
+    # Remove logger warnings
+    mocker.patch("azext_edge.edge.providers.adr.namespace_assets.logger")
+
+    asset_name = generate_random_string()
+    instance_name = "testInstance"
+    instance_resource_group = "testInstanceResourceGroup"
+    dup_group_name = f"dupGroup{generate_random_string(5)}"
+    file_path = generate_random_string()
+
+    # Get the namespace from the mocked function
+    namespace_resource = mocked_get_namespace_for_instance.return_value
+    namespace_name = namespace_resource["name"]
+    resource_group_name = namespace_resource["resource_group"]
+
+    # Create mock asset record
+    mocked_asset = get_namespace_asset_record(
+        asset_name=asset_name,
+        namespace_name=namespace_name,
+        resource_group_name=resource_group_name,
+    )
+
+    # File event groups to import
+    file_event_groups = [
+        {
+            "name": dup_group_name,
+            "dataSource": f"nsu=file;s=FastUInt{randint(1, 1000)}",
+            "eventGroupConfiguration": json.dumps({"publishingInterval": 300, "queueSize": 30}),
+            "defaultDestinations": [{"target": "Mqtt", "configuration": {"topic": "/file/topic1"}}],
+        },
+        {
+            "name": f"newGroup{generate_random_string(5)}",
+            "dataSource": f"nsu=file;s=FastUInt{randint(1, 1000)}",
+            "eventGroupConfiguration": json.dumps({"publishingInterval": 200}),
+            "defaultDestinations": [],
+        }
+    ]
+
+    # Existing event groups in the cloud
+    cloud_event_groups = [
+        {
+            "name": dup_group_name,
+            "dataSource": f"nsu=cloud;s=FastUInt{randint(1, 1000)}",
+            "eventGroupConfiguration": json.dumps({"publishingInterval": 100, "queueSize": 50}),
+            "defaultDestinations": [{"target": "Mqtt", "configuration": {"topic": "/cloud/topic1"}}],
+            "events": [{"name": "existingEvent", "dataSource": "nsu=cloud;s=Event1"}],
+        },
+        {
+            "name": f"cloudGroup{generate_random_string(5)}",
+            "dataSource": f"nsu=cloud;s=FastUInt{randint(1, 1000)}",
+            "eventGroupConfiguration": "{}",
+            "defaultDestinations": [],
+            "events": [],
+        }
+    ]
+
+    mocked_deserialize_file_content.return_value = file_event_groups
+    mocked_asset["properties"]["eventGroups"] = cloud_event_groups
+
+    # Mock GET request to get the asset
+    mocked_responses.add(
+        method=responses.GET,
+        url=get_namespace_asset_mgmt_uri(
+            asset_name=asset_name,
+            namespace_name=namespace_name,
+            resource_group_name=resource_group_name
+        ),
+        json=mocked_asset,
+        status=200,
+        content_type="application/json",
+    )
+
+    # Mock PATCH request
+    result_event_groups = [{"name": generate_random_string()}]
+    mocked_responses.add(
+        method=responses.PATCH,
+        url=get_namespace_asset_mgmt_uri(
+            asset_name=asset_name,
+            namespace_name=namespace_name,
+            resource_group_name=resource_group_name
+        ),
+        json={"properties": {"eventGroups": result_event_groups}},
+        status=200,
+        content_type="application/json",
+    )
+
+    # Mock final GET request for wait
+    updated_asset = deepcopy(mocked_asset)
+    updated_asset["properties"]["eventGroups"] = result_event_groups
+    mocked_responses.add(
+        method=responses.GET,
+        url=get_namespace_asset_mgmt_uri(
+            asset_name=asset_name,
+            namespace_name=namespace_name,
+            resource_group_name=resource_group_name
+        ),
+        json=updated_asset,
+        status=200,
+        content_type="application/json",
+    )
+
+    # Call the function being tested
+    result = import_event_groups(
+        cmd=mocked_cmd,
+        asset_name=asset_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
+        input_file=file_path,
+        replace=replace,
+    )
+
+    # Verify the result
+    assert result == result_event_groups
+
+    # Verify deserialize was called
+    mocked_deserialize_file_content.assert_called_once_with(file_path=file_path)
+
+    # Verify the PATCH request body
+    patch_body = json.loads(mocked_responses.calls[1].request.body)
+    event_groups = patch_body["properties"]["eventGroups"]
+    assert event_groups
+
+    group_map = {g["name"]: g for g in event_groups}
+
+    # The new group from file should always be present
+    assert file_event_groups[1]["name"] in group_map
+    assert dup_group_name in group_map
+
+    # Check the duplicate group
+    if replace:
+        # When replace=True, the file version should overwrite
+        group = file_event_groups[0]
+    else:
+        # When replace=False, the cloud version should be preserved
+        group = cloud_event_groups[0]
+
+    assert group_map[dup_group_name]["dataSource"] == group["dataSource"]
+    assert group_map[dup_group_name]["eventGroupConfiguration"] == group["eventGroupConfiguration"]
+
+    # The cloud-only group should still exist
+    assert cloud_event_groups[1]["name"] in group_map
+
+
+# ---------------------- Export/Import Event Group Events Tests ----------------------
+
+
+@pytest.mark.parametrize("events_present", [True, False])
+@pytest.mark.parametrize("extension", FileType.list())
+@pytest.mark.parametrize("output_dir", [None, generate_random_string()])
+@pytest.mark.parametrize("replace", [False, True])
+def test_export_event_group_events(
+    mocked_cmd,
+    mocked_responses: responses,
+    mocked_dump_content_to_file,
+    mocked_get_namespace_for_instance,
+    events_present: bool,
+    extension: str,
+    output_dir: str,
+    replace: bool,
+):
+    """Test exporting events from an event group to a file."""
+    asset_name = generate_random_string()
+    group_name = generate_random_string()
+    instance_name = "testInstance"
+    instance_resource_group = "testInstanceResourceGroup"
+
+    # Get the namespace from the mocked function
+    namespace_resource = mocked_get_namespace_for_instance.return_value
+    namespace_name = namespace_resource["name"]
+    resource_group_name = namespace_resource["resource_group"]
+
+    # Create mock asset record
+    mocked_asset = get_namespace_asset_record(
+        asset_name=asset_name,
+        namespace_name=namespace_name,
+        resource_group_name=resource_group_name,
+    )
+
+    # Create the event group with or without events
+    event_group = generate_event_group(
+        group_name=group_name,
+        num_data_points=randint(1, 3) if events_present else 0
+    )
+    mocked_asset["properties"]["eventGroups"] = [event_group]
+
+    # Mock GET request to get the asset
+    mocked_responses.add(
+        method=responses.GET,
+        url=get_namespace_asset_mgmt_uri(
+            asset_name=asset_name,
+            namespace_name=namespace_name,
+            resource_group_name=resource_group_name
+        ),
+        json=mocked_asset,
+        status=200,
+        content_type="application/json",
+    )
+
+    # Call the function being tested
+    result = export_event_group_events(
+        cmd=mocked_cmd,
+        asset_name=asset_name,
+        group_name=group_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
+        format=extension,
+        output_dir=output_dir,
+        replace=replace
+    )
+
+    # Verify the result
+    assert result["file_path"] == mocked_dump_content_to_file.return_value
+
+    # Get expected events
+    expected_events = event_group.get("events", [])
+
+    # Check CSV conversion if applicable
+    expected_fieldnames = None
+    if extension == "csv":
+        from azext_edge.edge.providers.adr.assets import _convert_sub_points_to_csv
+        default_config = event_group.get("eventGroupConfiguration", "{}")
+        expected_fieldnames = _convert_sub_points_to_csv(
+            sub_points=expected_events,
+            sub_point_type="events",
+            default_configuration=default_config,
+            portal_friendly=True
+        )
+
+    # Verify the call to dump_content_to_file
+    call_kwargs = mocked_dump_content_to_file.call_args.kwargs
+    assert call_kwargs["content"] == expected_events
+    assert call_kwargs["file_name"] == f"{asset_name}_events_{group_name}"
+    assert call_kwargs["extension"] == extension
+    assert call_kwargs["fieldnames"] == expected_fieldnames
+    assert call_kwargs["output_dir"] == output_dir
+    assert call_kwargs["replace"] == replace
+
+    # Verify that mocked_get_namespace_for_instance was called with correct parameters
+    mocked_get_namespace_for_instance.assert_called_once_with(
+        cmd=mocked_cmd,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group
+    )
+
+
+@pytest.mark.parametrize("replace", [False, True])
+def test_import_event_group_events(
+    mocker,
+    mocked_cmd,
+    mocked_responses: responses,
+    mocked_check_cluster_connectivity,
+    mocked_deserialize_file_content,
+    mocked_get_namespace_for_instance,
+    replace: bool,
+):
+    """Test importing events into an event group from a file."""
+    # Remove logger warnings
+    mocker.patch("azext_edge.edge.providers.adr.namespace_assets.logger")
+
+    asset_name = generate_random_string()
+    group_name = generate_random_string()
+    instance_name = "testInstance"
+    instance_resource_group = "testInstanceResourceGroup"
+    dup_event_name = f"dupEvent{generate_random_string(5)}"
+    file_path = generate_random_string()
+
+    # Get the namespace from the mocked function
+    namespace_resource = mocked_get_namespace_for_instance.return_value
+    namespace_name = namespace_resource["name"]
+    resource_group_name = namespace_resource["resource_group"]
+
+    # Create mock asset record
+    mocked_asset = get_namespace_asset_record(
+        asset_name=asset_name,
+        namespace_name=namespace_name,
+        resource_group_name=resource_group_name,
+    )
+
+    # File events to import
+    file_events = [
+        {
+            "name": dup_event_name,
+            "dataSource": f"nsu=file;s=FastUInt{randint(1, 1000)}",
+            "eventConfiguration": json.dumps({"samplingInterval": 300, "queueSize": 30}),
+        },
+        {
+            "name": f"newEvent{generate_random_string(5)}",
+            "dataSource": f"nsu=file;s=FastUInt{randint(1, 1000)}",
+            "eventConfiguration": json.dumps({"samplingInterval": 200}),
+        }
+    ]
+
+    # Existing events in the cloud
+    cloud_events = [
+        {
+            "name": dup_event_name,
+            "dataSource": f"nsu=cloud;s=FastUInt{randint(1, 1000)}",
+            "eventConfiguration": json.dumps({"samplingInterval": 100, "queueSize": 50}),
+        },
+        {
+            "name": f"cloudEvent{generate_random_string(5)}",
+            "dataSource": f"nsu=cloud;s=FastUInt{randint(1, 1000)}",
+            "eventConfiguration": "{}",
+        }
+    ]
+
+    mocked_deserialize_file_content.return_value = file_events
+
+    # Create the event group with existing events
+    event_group = generate_event_group(group_name=group_name, num_data_points=0)
+    event_group["events"] = cloud_events
+    mocked_asset["properties"]["eventGroups"] = [event_group]
+
+    # Mock GET request to get the asset
+    mocked_responses.add(
+        method=responses.GET,
+        url=get_namespace_asset_mgmt_uri(
+            asset_name=asset_name,
+            namespace_name=namespace_name,
+            resource_group_name=resource_group_name
+        ),
+        json=mocked_asset,
+        status=200,
+        content_type="application/json",
+    )
+
+    # Mock PATCH request
+    result_events = [{"name": generate_random_string()}]
+    updated_event_group = deepcopy(event_group)
+    updated_event_group["events"] = result_events
+    mocked_responses.add(
+        method=responses.PATCH,
+        url=get_namespace_asset_mgmt_uri(
+            asset_name=asset_name,
+            namespace_name=namespace_name,
+            resource_group_name=resource_group_name
+        ),
+        json={"properties": {"eventGroups": [updated_event_group]}},
+        status=200,
+        content_type="application/json",
+    )
+
+    # Mock final GET request for wait
+    updated_asset = deepcopy(mocked_asset)
+    updated_asset["properties"]["eventGroups"] = [updated_event_group]
+    mocked_responses.add(
+        method=responses.GET,
+        url=get_namespace_asset_mgmt_uri(
+            asset_name=asset_name,
+            namespace_name=namespace_name,
+            resource_group_name=resource_group_name
+        ),
+        json=updated_asset,
+        status=200,
+        content_type="application/json",
+    )
+
+    # Call the function being tested
+    result = import_event_group_events(
+        cmd=mocked_cmd,
+        asset_name=asset_name,
+        group_name=group_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
+        input_file=file_path,
+        replace=replace,
+    )
+
+    # Verify the result
+    assert result == result_events
+
+    # Verify deserialize was called
+    mocked_deserialize_file_content.assert_called_once_with(file_path=file_path)
+
+    # Verify the PATCH request body
+    patch_body = json.loads(mocked_responses.calls[1].request.body)
+    event_groups = patch_body["properties"]["eventGroups"]
+    assert len(event_groups) == 1
+
+    events = event_groups[0]["events"]
+    event_map = {e["name"]: e for e in events}
+
+    # The new event from file should always be present
+    assert file_events[1]["name"] in event_map
+    assert dup_event_name in event_map
+
+    # Check the duplicate event
+    if replace:
+        # When replace=True, the file version should overwrite
+        event = file_events[0]
+    else:
+        # When replace=False, the cloud version should be preserved
+        event = cloud_events[0]
+
+    assert event_map[dup_event_name]["dataSource"] == event["dataSource"]
+    assert event_map[dup_event_name]["eventConfiguration"] == event["eventConfiguration"]
+
+    # The cloud-only event should still exist
+    assert cloud_events[1]["name"] in event_map

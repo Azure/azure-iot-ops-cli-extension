@@ -1278,6 +1278,42 @@ def load_iotops_adr_help():
     """
 
     helps[
+        "iot ops ns asset custom event-group export"
+    ] = """
+        type: command
+        short-summary: Export event groups from a custom namespaced asset in an IoT Operations instance.
+
+        examples:
+        - name: Export all event groups to a JSON file
+          text: >
+            az iot ops ns asset custom event-group export --asset mycustomasset --instance myInstance
+            -g myInstanceResourceGroup
+
+        - name: Export all event groups to a YAML file in a specific directory
+          text: >
+            az iot ops ns asset custom event-group export --asset mycustomasset --instance myInstance
+            -g myInstanceResourceGroup --format yaml --output-dir /path/to/export
+    """
+
+    helps[
+        "iot ops ns asset custom event-group import"
+    ] = """
+        type: command
+        short-summary: Import event groups to a custom namespaced asset in an IoT Operations instance.
+
+        examples:
+        - name: Import event groups from a file
+          text: >
+            az iot ops ns asset custom event-group import --asset mycustomasset --instance myInstance
+            -g myInstanceResourceGroup --input-file /path/to/event_groups.json
+
+        - name: Import event groups from a file and replace existing ones
+          text: >
+            az iot ops ns asset custom event-group import --asset mycustomasset --instance myInstance
+            -g myInstanceResourceGroup --input-file /path/to/event_groups.yaml --replace
+    """
+
+    helps[
         "iot ops ns asset custom event"
     ] = """
         type: group
@@ -1327,6 +1363,42 @@ def load_iotops_adr_help():
           text: >
             az iot ops ns asset custom event remove --asset mycustomasset --instance myInstance
             -g myInstanceResourceGroup --event-group alarmGroup --name severity
+    """
+
+    helps[
+        "iot ops ns asset custom event export"
+    ] = """
+        type: command
+        short-summary: Export events from a custom asset event group in a Device Registry namespace.
+
+        examples:
+        - name: Export all events from an event group to a JSON file
+          text: >
+            az iot ops ns asset custom event export --asset mycustomasset --instance myInstance
+            -g myInstanceResourceGroup --event-group alarmGroup
+
+        - name: Export all events from an event group to a CSV file
+          text: >
+            az iot ops ns asset custom event export --asset mycustomasset --instance myInstance
+            -g myInstanceResourceGroup --event-group alarmGroup --format csv
+    """
+
+    helps[
+        "iot ops ns asset custom event import"
+    ] = """
+        type: command
+        short-summary: Import events to a custom asset event group in a Device Registry namespace.
+
+        examples:
+        - name: Import events from a file
+          text: >
+            az iot ops ns asset custom event import --asset mycustomasset --instance myInstance
+            -g myInstanceResourceGroup --event-group alarmGroup --input-file /path/to/events.json
+
+        - name: Import events from a file and replace existing ones
+          text: >
+            az iot ops ns asset custom event import --asset mycustomasset --instance myInstance
+            -g myInstanceResourceGroup --event-group alarmGroup --input-file /path/to/events.csv --replace
     """
 
     helps[
@@ -1963,6 +2035,42 @@ def load_iotops_adr_help():
     """
 
     helps[
+        "iot ops ns asset onvif event-group export"
+    ] = """
+        type: command
+        short-summary: Export event groups from an ONVIF namespaced asset in an IoT Operations instance.
+
+        examples:
+        - name: Export all event groups to a JSON file
+          text: >
+            az iot ops ns asset onvif event-group export --asset myonvifasset --instance myInstance
+            -g myInstanceResourceGroup
+
+        - name: Export all event groups to a YAML file in a specific directory
+          text: >
+            az iot ops ns asset onvif event-group export --asset myonvifasset --instance myInstance
+            -g myInstanceResourceGroup --format yaml --output-dir /path/to/export
+    """
+
+    helps[
+        "iot ops ns asset onvif event-group import"
+    ] = """
+        type: command
+        short-summary: Import event groups to an ONVIF namespaced asset in an IoT Operations instance.
+
+        examples:
+        - name: Import event groups from a file
+          text: >
+            az iot ops ns asset onvif event-group import --asset myonvifasset --instance myInstance
+            -g myInstanceResourceGroup --input-file /path/to/event_groups.json
+
+        - name: Import event groups from a file and replace existing ones
+          text: >
+            az iot ops ns asset onvif event-group import --asset myonvifasset --instance myInstance
+            -g myInstanceResourceGroup --input-file /path/to/event_groups.yaml --replace
+    """
+
+    helps[
         "iot ops ns asset onvif mgmt-group"
     ] = """
         type: group
@@ -2392,6 +2500,85 @@ def load_iotops_adr_help():
             az iot ops ns asset opcua event-group update --asset myopcuaasset --instance myInstance
             -g myInstanceResourceGroup --name systemEvent
             --dest topic="factory/opcua/system/updated" retain=Never qos=Qos1 ttl=3600
+    """
+
+    helps[
+        "iot ops ns asset opcua event-group export"
+    ] = """
+        type: command
+        short-summary: Export event groups from an OPC UA namespaced asset in an IoT Operations instance.
+
+        examples:
+        - name: Export all event groups to a JSON file
+          text: >
+            az iot ops ns asset opcua event-group export --asset myopcuaasset --instance myInstance
+            -g myInstanceResourceGroup
+
+        - name: Export all event groups to a YAML file in a specific directory
+          text: >
+            az iot ops ns asset opcua event-group export --asset myopcuaasset --instance myInstance
+            -g myInstanceResourceGroup --format yaml --output-dir /path/to/export
+    """
+
+    helps[
+        "iot ops ns asset opcua event-group import"
+    ] = """
+        type: command
+        short-summary: Import event groups to an OPC UA namespaced asset in an IoT Operations instance.
+
+        examples:
+        - name: Import event groups from a file
+          text: >
+            az iot ops ns asset opcua event-group import --asset myopcuaasset --instance myInstance
+            -g myInstanceResourceGroup --input-file /path/to/event_groups.json
+
+        - name: Import event groups from a file and replace existing ones
+          text: >
+            az iot ops ns asset opcua event-group import --asset myopcuaasset --instance myInstance
+            -g myInstanceResourceGroup --input-file /path/to/event_groups.yaml --replace
+    """
+
+    helps[
+        "iot ops ns asset opcua event"
+    ] = """
+        type: group
+        short-summary: Manage events for OPC UA asset event groups in Device Registry namespaces.
+    """
+
+    helps[
+        "iot ops ns asset opcua event export"
+    ] = """
+        type: command
+        short-summary: Export events from an OPC UA asset event group in a Device Registry namespace.
+
+        examples:
+        - name: Export all events from an event group to a JSON file
+          text: >
+            az iot ops ns asset opcua event export --asset myopcuaasset --instance myInstance
+            -g myInstanceResourceGroup --event-group alarmGroup
+
+        - name: Export all events from an event group to a CSV file
+          text: >
+            az iot ops ns asset opcua event export --asset myopcuaasset --instance myInstance
+            -g myInstanceResourceGroup --event-group alarmGroup --format csv
+    """
+
+    helps[
+        "iot ops ns asset opcua event import"
+    ] = """
+        type: command
+        short-summary: Import events to an OPC UA asset event group in a Device Registry namespace.
+
+        examples:
+        - name: Import events from a file
+          text: >
+            az iot ops ns asset opcua event import --asset myopcuaasset --instance myInstance
+            -g myInstanceResourceGroup --event-group alarmGroup --input-file /path/to/events.json
+
+        - name: Import events from a file and replace existing ones
+          text: >
+            az iot ops ns asset opcua event import --asset myopcuaasset --instance myInstance
+            -g myInstanceResourceGroup --event-group alarmGroup --input-file /path/to/events.csv --replace
     """
 
     helps[

@@ -924,6 +924,148 @@ class NamespaceAssets(Queryable):
             )
             return _get_sub_property(asset, group_name, property_key="eventGroups")
 
+    def export_event_groups(
+        self,
+        asset_name: str,
+        instance_name: str,
+        instance_resource_group: str,
+        format: str = "json",
+        output_dir: str = ".",
+        replace: bool = False,
+    ):
+        """Export all event groups from an asset to a file."""
+        from ...util import dump_content_to_file
+
+        asset = self.show(
+            asset_name=asset_name,
+            instance_name=instance_name,
+            resource_group=instance_resource_group
+        )
+        event_groups = asset["properties"].get("eventGroups", [])
+
+        # Remove events from each event group for cleaner export
+        event_groups_export = []
+        for group in event_groups:
+            group_copy = group.copy()
+            group_copy.pop("events", None)
+            event_groups_export.append(group_copy)
+
+        file_path = dump_content_to_file(
+            content=event_groups_export,
+            file_name=f"{asset_name}_event_groups",
+            extension=format,
+            fieldnames=None,
+            output_dir=output_dir,
+            replace=replace
+        )
+        return {"file_path": file_path}
+
+    def import_event_groups(
+        self,
+        asset_name: str,
+        instance_name: str,
+        instance_resource_group: str,
+        input_file: str,
+        replace: bool = False,
+        **kwargs
+    ):
+        """Import event groups into an asset from a file."""
+        from ...util import deserialize_file_content
+
+        asset = self.show(
+            asset_name=asset_name,
+            instance_name=instance_name,
+            resource_group=instance_resource_group,
+            check_cluster=True
+        )
+        namespace = parse_resource_id(asset["id"])
+
+        # Deserialize file
+        file_event_groups = list(deserialize_file_content(file_path=input_file))
+
+        # Get existing event groups
+        existing_groups = asset["properties"].get("eventGroups", [])
+        existing_groups_dict = {eg["name"]: eg for eg in existing_groups}
+
+        # Collect new event groups for validation
+        new_groups = []
+        for file_group in file_event_groups:
+            group_name = file_group.get("name")
+            if group_name in existing_groups_dict and not replace:
+                logger.warning(
+                    f"Event group '{group_name}' already exists in asset '{asset_name}' and will be ignored."
+                )
+            else:
+                # Initialize events as empty array if not present
+                if "events" not in file_group:
+                    file_group["events"] = []
+                new_groups.append(file_group)
+                existing_groups_dict[group_name] = file_group
+
+        # Validate all new event groups and their events against connector metadata
+        if new_groups:
+            try:
+                from .validator import ConnectorMetadataValidator
+                from azure.cli.core.azclierror import ValidationError
+
+                validator = ConnectorMetadataValidator.from_asset(self.cmd, asset, instance_name)
+                validation_errors = []
+
+                for group in new_groups:
+                    group_name = group.get("name", "unnamed")
+
+                    # Validate event group itself if it has eventGroupConfiguration
+                    try:
+                        validator.validate_event_group(group)
+                    except Exception as e:
+                        validation_errors.append(f"Event group '{group_name}' configuration: {e}")
+
+                    # Validate all events in the event group
+                    events = group.get("events", [])
+                    if events:
+                        for idx, event in enumerate(events):
+                            try:
+                                validator.validate_event(event)
+                            except Exception as e:
+                                validation_errors.append(
+                                    f"Event group '{group_name}', event '{event.get('name', 'unnamed')}': {e}"
+                                )
+
+                if validation_errors:
+                    error_msg = (
+                        f"{len(validation_errors)} validation error(s) found and cannot be imported. "
+                        f"These errors will cause the backend to reject the request.\n\nValidation errors:\n"
+                        + "\n".join(f"  - {err}" for err in validation_errors)
+                    )
+                    raise ValidationError(error_msg)
+                else:
+                    logger.info(f"All {len(new_groups)} event group(s) validated successfully.")
+            except ValidationError:
+                raise
+            except Exception as e:
+                logger.warning(f"Event group validation skipped due to error: {e}")
+
+        update_payload = {
+            "properties": {
+                "eventGroups": list(existing_groups_dict.values())
+            }
+        }
+
+        with console.status(f"Updating asset {asset_name}..."):
+            poller = self.ops.begin_update(
+                resource_group_name=namespace["resource_group"],
+                namespace_name=namespace["name"],
+                asset_name=asset_name,
+                properties=update_payload
+            )
+            wait_for_terminal_state(poller, **kwargs)
+            asset = self.show(
+                asset_name=asset_name,
+                namespace_name=namespace["name"],
+                resource_group=namespace["resource_group"],
+            )
+            return asset["properties"]["eventGroups"]
+
     # EVENT GROUP EVENTS - allowed for opcua, onvif, and custom assets
     def add_event_group_event(
         self,
@@ -1061,6 +1203,129 @@ class NamespaceAssets(Queryable):
                 resource_group=namespace["resource_group"],
             )
             # note that we return a list of events
+            return _get_sub_property(asset, group_name, property_key="eventGroups")["events"]
+
+    def export_event_group_events(
+        self,
+        asset_name: str,
+        group_name: str,
+        instance_name: str,
+        instance_resource_group: str,
+        format: str = "json",
+        output_dir: str = ".",
+        replace: bool = False,
+    ):
+        """Export events from an event group to a file."""
+        from ...util import dump_content_to_file
+
+        asset = self.show(
+            asset_name=asset_name,
+            instance_name=instance_name,
+            resource_group=instance_resource_group
+        )
+        event_group = _get_sub_property(asset, group_name, property_key="eventGroups")
+        events = event_group.get("events", [])
+
+        fieldnames = None
+        if format == "csv":
+            # Convert to CSV format
+            default_configuration = event_group.get("eventGroupConfiguration", "{}")
+            from .assets import _convert_sub_points_to_csv
+            fieldnames = _convert_sub_points_to_csv(
+                sub_points=events,
+                sub_point_type="events",
+                default_configuration=default_configuration,
+                portal_friendly=True
+            )
+
+        file_path = dump_content_to_file(
+            content=events,
+            file_name=f"{asset_name}_events_{group_name}",
+            extension=format,
+            fieldnames=fieldnames,
+            output_dir=output_dir,
+            replace=replace
+        )
+        return {"file_path": file_path}
+
+    def import_event_group_events(
+        self,
+        asset_name: str,
+        group_name: str,
+        instance_name: str,
+        instance_resource_group: str,
+        input_file: str,
+        replace: bool = False,
+        **kwargs
+    ):
+        """Import events into an event group from a file."""
+        asset = self.show(
+            asset_name=asset_name,
+            instance_name=instance_name,
+            resource_group=instance_resource_group,
+            check_cluster=True
+        )
+        namespace = parse_resource_id(asset["id"])
+
+        event_group = _get_sub_property(asset, group_name, property_key="eventGroups")
+
+        # Process file and merge with existing events
+        from .assets import _process_asset_sub_points_file_path
+        new_events = _process_asset_sub_points_file_path(
+            file_path=input_file,
+            original_items=event_group.get("events", []),
+            point_key="name",
+            replace=replace
+        )
+
+        # Validate all events against connector metadata
+        try:
+            from .validator import ConnectorMetadataValidator
+            from azure.cli.core.azclierror import ValidationError
+
+            validator = ConnectorMetadataValidator.from_asset(self.cmd, asset, instance_name)
+            validation_errors = []
+            for idx, event in enumerate(new_events):
+                try:
+                    validator.validate_event(event)
+                except Exception as e:
+                    validation_errors.append(f"Event '{event.get('name', 'unnamed')}': {e}")
+
+            if validation_errors:
+                error_msg = (
+                    f"{len(validation_errors)} event(s) failed validation and cannot be imported. "
+                    f"These errors will cause the backend to reject the request.\n\nValidation errors:\n"
+                    + "\n".join(f"  - {err}" for err in validation_errors)
+                )
+                raise ValidationError(error_msg)
+            else:
+                logger.info(f"All {len(new_events)} events validated successfully.")
+        except ValidationError:
+            raise
+        except Exception as e:
+            logger.warning(f"Event validation skipped due to error: {e}")
+
+        event_group["events"] = new_events
+
+        update_payload = {
+            "properties": {
+                "eventGroups": asset["properties"]["eventGroups"]
+            }
+        }
+
+        with console.status(f"Updating asset {asset_name}..."):
+            poller = self.ops.begin_update(
+                resource_group_name=namespace["resource_group"],
+                namespace_name=namespace["name"],
+                asset_name=asset_name,
+                properties=update_payload
+            )
+            wait_for_terminal_state(poller, **kwargs)
+            asset = self.show(
+                asset_name=asset_name,
+                namespace_name=namespace["name"],
+                resource_group=namespace["resource_group"],
+            )
             return _get_sub_property(asset, group_name, property_key="eventGroups")["events"]
 
     # STREAMS - allowed for media and custom assets

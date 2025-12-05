@@ -1876,3 +1876,71 @@ def load_adr_arguments(self, _):
             options_list=["--config"],
             help="Custom action configuration as a JSON string or file path. ",
         )
+
+    # Event Group export/import parameters for custom, opcua, onvif asset types
+    for asset_type in ("custom", "opcua", "onvif"):
+        with self.argument_context(f"iot ops ns asset {asset_type} event-group export") as context:
+            context.argument(
+                "format",
+                options_list=["--format"],
+                arg_type=get_enum_type(["json", "yaml"]),
+                help="Output file format. Default is json.",
+            )
+            context.argument(
+                "output_dir",
+                options_list=["--output-dir", "--od"],
+                help="Output directory for the exported file. Default is current directory.",
+            )
+            context.argument(
+                "replace",
+                options_list=["--replace"],
+                arg_type=get_three_state_flag(),
+                help="If the file exists, replace it.",
+            )
+
+        with self.argument_context(f"iot ops ns asset {asset_type} event-group import") as context:
+            context.argument(
+                "input_file",
+                options_list=["--input-file", "--if"],
+                help="Path to the file containing event groups to import.",
+            )
+            context.argument(
+                "replace",
+                options_list=["--replace"],
+                arg_type=get_three_state_flag(),
+                help="If the event group exists, replace it.",
+            )
+
+    # Event export/import parameters for custom, opcua asset types
+    for asset_type in ("custom", "opcua"):
+        with self.argument_context(f"iot ops ns asset {asset_type} event export") as context:
+            context.argument(
+                "format",
+                options_list=["--format"],
+                arg_type=get_enum_type(["json", "csv", "yaml"]),
+                help="Output file format. Default is json.",
+            )
+            context.argument(
+                "output_dir",
+                options_list=["--output-dir", "--od"],
+                help="Output directory for the exported file. Default is current directory.",
+            )
+            context.argument(
+                "replace",
+                options_list=["--replace"],
+                arg_type=get_three_state_flag(),
+                help="If the file exists, replace it.",
+            )
+
+        with self.argument_context(f"iot ops ns asset {asset_type} event import") as context:
+            context.argument(
+                "input_file",
+                options_list=["--input-file", "--if"],
+                help="Path to the file containing events to import.",
+            )
+            context.argument(
+                "replace",
+                options_list=["--replace"],
+                arg_type=get_three_state_flag(),
+                help="If the event exists, replace it.",
+            )

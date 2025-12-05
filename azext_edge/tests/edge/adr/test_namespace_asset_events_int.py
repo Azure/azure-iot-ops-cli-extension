@@ -646,3 +646,181 @@ def test_namespace_sse_asset_event_lifecycle_operations(require_init, tracked_re
 
     remaining_event_group_names = [ev["name"] for ev in remaining_event_groups]
     assert event_group_name not in remaining_event_group_names
+
+
+def test_namespace_asset_event_export_import_operations(
+    require_init, tracked_resources: List[str], tracked_files: List[str]
+):
+    """Test export and import operations for event groups and events."""
+    import os
+    import json
+
+    # Setup test variables
+    instance_name = require_init["instanceName"]
+    resource_group = require_init["resourceGroup"]
+    device_name = f"dev-{generate_random_string(8, force_lower=True)}"
+    endpoint_name = f"custom-{generate_random_string(8)}"
+    asset_name = f"custom-{generate_random_string(8, force_lower=True)}"
+    event_group_name_1 = f"eg1-{generate_random_string(6, force_lower=True)}"
+    event_group_name_2 = f"eg2-{generate_random_string(6, force_lower=True)}"
+    event_name_1 = f"ev1-{generate_random_string(6, force_lower=True)}"
+    event_name_2 = f"ev2-{generate_random_string(6, force_lower=True)}"
+
+    # Create Device
+    result = run(
+        f"az iot ops ns device create --name {device_name} --instance {instance_name} "
+        f"-g {resource_group}"
+    )
+    tracked_resources.append(result["id"])
+
+    # Create device endpoint
+    run(
+        f"az iot ops ns device endpoint inbound add custom --name {endpoint_name} "
+        f"--instance {instance_name} -g {resource_group} --device {device_name} "
+        f"--endpoint-address 'http://192.168.1.100:8000/custom/service' "
+        "--endpoint-type custom"
+    )
+
+    # Create Custom asset
+    asset_custom = run(
+        f"az iot ops ns asset custom create --name {asset_name} --instance {instance_name} "
+        f"-g {resource_group} --device {device_name} --endpoint {endpoint_name} "
+        f"--description \"Custom Device for Export/Import Testing\" --display \"Export Import Test Asset\" "
+        f"--model \"Custom-EI100\" --manufacturer \"CustomDevices\""
+    )
+    tracked_resources.append(asset_custom["id"])
+
+    # 1. CREATE EVENT GROUPS WITH EVENTS
+    custom_config_path, custom_config = create_config_file(tracked_files)
+
+    # Create first event group
+    run(
+        f"az iot ops ns asset custom event-group add --asset {asset_name} --instance {instance_name} "
+        f"-g {resource_group} --name {event_group_name_1} --data-source event.source.1 "
+        f"--config {custom_config_path}"
+    )
+
+    # Create second event group
+    run(
+        f"az iot ops ns asset custom event-group add --asset {asset_name} --instance {instance_name} "
+        f"-g {resource_group} --name {event_group_name_2} --data-source event.source.2 "
+        f"--config {custom_config_path}"
+    )
+
+    # Add events to first event group
+    run(
+        f"az iot ops ns asset custom event add --asset {asset_name} --instance {instance_name} "
+        f"-g {resource_group} --event-group {event_group_name_1} --name {event_name_1} "
+        f"--data-source event.data.1 --config {custom_config_path}"
+    )
+    run(
+        f"az iot ops ns asset custom event add --asset {asset_name} --instance {instance_name} "
+        f"-g {resource_group} --event-group {event_group_name_1} --name {event_name_2} "
+        f"--data-source event.data.2 --config {custom_config_path}"
+    )
+
+    # 2. EXPORT EVENT GROUPS
+    output_dir = "/tmp"
+    export_result = run(
+        f"az iot ops ns asset custom event-group export --asset {asset_name} --instance {instance_name} "
+        f"-g {resource_group} --format json --od {output_dir} --replace"
+    )
+
+    assert "file_path" in export_result
+    export_file_path = export_result["file_path"]
+    tracked_files.append(export_file_path)
+
+    # Verify the exported file exists and contains the event groups
+    assert os.path.exists(export_file_path)
+    with open(export_file_path, "r") as f:
+        exported_data = json.load(f)
+
+    exported_group_names = [eg["name"] for eg in exported_data]
+    assert event_group_name_1 in exported_group_names
+    assert event_group_name_2 in exported_group_names
+
+    # 3. EXPORT EVENTS FROM EVENT GROUP
+    events_export_result = run(
+        f"az iot ops ns asset custom event export --asset {asset_name} --instance {instance_name} "
+        f"-g {resource_group} --event-group {event_group_name_1} --format json --od {output_dir} --replace"
+    )
+
+    assert "file_path" in events_export_result
+    events_export_file_path = events_export_result["file_path"]
+    tracked_files.append(events_export_file_path)
+
+    # Verify the exported events file
+    assert os.path.exists(events_export_file_path)
+    with open(events_export_file_path, "r") as f:
+        exported_events = json.load(f)
+
+    exported_event_names = [ev["name"] for ev in exported_events]
+    assert event_name_1 in exported_event_names
+    assert event_name_2 in exported_event_names
+
+    # 4. IMPORT EVENTS INTO EVENT GROUP
+    # Create a new event in the import file
+    new_event_name = f"imported-{generate_random_string(6, force_lower=True)}"
+    import_events = exported_events.copy()
+    import_events.append({
+        "name": new_event_name,
+        "dataSource": "imported.event.source",
+        "eventConfiguration": "{}"
+    })
+
+    # Write import file
+    import_file_path = f"/tmp/import_events_{generate_random_string(8)}.json"
+    tracked_files.append(import_file_path)
+    with open(import_file_path, "w") as f:
+        json.dump(import_events, f)
+
+    # Import events
+    run(
+        f"az iot ops ns asset custom event import --asset {asset_name} --instance {instance_name} "
+        f"-g {resource_group} --event-group {event_group_name_1} --if {import_file_path}"
+    )
+
+    # Verify the imported events
+    events_list = run(
+        f"az iot ops ns asset custom event list --asset {asset_name} --instance {instance_name} "
+        f"-g {resource_group} --event-group {event_group_name_1}"
+    )
+
+    event_names = [ev["name"] for ev in events_list]
+    assert event_name_1 in event_names
+    assert event_name_2 in event_names
+    assert new_event_name in event_names
+
+    # 5. IMPORT EVENT GROUPS
+    # Create a new event group in the import file
+    new_event_group_name = f"imported-eg-{generate_random_string(6, force_lower=True)}"
+    import_event_groups = exported_data.copy()
+    import_event_groups.append({
+        "name": new_event_group_name,
+        "dataSource": "imported.group.source",
+        "eventGroupConfiguration": "{}",
+        "defaultDestinations": []
+    })
+
+    # Write import file
+    import_groups_file_path = f"/tmp/import_event_groups_{generate_random_string(8)}.json"
+    tracked_files.append(import_groups_file_path)
+    with open(import_groups_file_path, "w") as f:
+        json.dump(import_event_groups, f)
+
+    # Import event groups
+    run(
+        f"az iot ops ns asset custom event-group import --asset {asset_name} --instance {instance_name} "
+        f"-g {resource_group} --if {import_groups_file_path}"
+    )
+
+    # Verify the imported event groups
+    event_groups_list = run(
+        f"az iot ops ns asset custom event-group list --asset {asset_name} --instance {instance_name} "
+        f"-g {resource_group}"
+    )
+
+    group_names = [eg["name"] for eg in event_groups_list]
+    assert event_group_name_1 in group_names
+    assert event_group_name_2 in group_names
+    assert new_event_group_name in group_names

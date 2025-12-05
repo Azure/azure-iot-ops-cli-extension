@@ -348,6 +348,24 @@ def load_iotops_commands(self, _):
             cmd_group.command("list", "list_namespace_asset_event_group_events")
             cmd_group.command("remove", "remove_namespace_asset_event_group_event")
 
+    # event group export/import
+    for asset_type in ["custom", "opcua", "onvif"]:
+        with self.command_group(
+            f"iot ops ns asset {asset_type} event-group",
+            command_type=namespace_resource_ops,
+        ) as cmd_group:
+            cmd_group.command("export", "export_event_groups")
+            cmd_group.command("import", "import_event_groups")
+
+    # event export/import
+    for asset_type in ["custom", "opcua"]:
+        with self.command_group(
+            f"iot ops ns asset {asset_type} event",
+            command_type=namespace_resource_ops,
+        ) as cmd_group:
+            cmd_group.command("export", "export_event_group_events")
+            cmd_group.command("import", "import_event_group_events")
+
     # stream
     for asset_type in ["custom", "media"]:
         with self.command_group(

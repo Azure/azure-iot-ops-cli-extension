@@ -2662,3 +2662,79 @@ def remove_namespace_asset_management_group_action(
         action_name=action_name,
         **kwargs
     )
+
+
+def export_event_groups(
+    cmd,
+    asset_name: str,
+    instance_name: str,
+    instance_resource_group: str,
+    format: str = "json",
+    output_dir: str = ".",
+    replace: Optional[bool] = False,
+):
+    return NamespaceAssets(cmd).export_event_groups(
+        asset_name=asset_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
+        format=format,
+        output_dir=output_dir,
+        replace=replace,
+    )
+
+
+def import_event_groups(
+    cmd,
+    asset_name: str,
+    instance_name: str,
+    instance_resource_group: str,
+    input_file: str,
+    replace: Optional[bool] = False,
+):
+    return NamespaceAssets(cmd).import_event_groups(
+        asset_name=asset_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
+        input_file=input_file,
+        replace=replace,
+    )
+
+
+def export_event_group_events(
+    cmd,
+    asset_name: str,
+    group_name: str,
+    instance_name: str,
+    instance_resource_group: str,
+    format: str = "json",
+    output_dir: str = ".",
+    replace: Optional[bool] = False,
+):
+    return NamespaceAssets(cmd).export_event_group_events(
+        asset_name=asset_name,
+        group_name=group_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
+        format=format,
+        output_dir=output_dir,
+        replace=replace,
+    )
+
+
+def import_event_group_events(
+    cmd,
+    asset_name: str,
+    group_name: str,
+    instance_name: str,
+    instance_resource_group: str,
+    input_file: str,
+    replace: Optional[bool] = False,
+):
+    return NamespaceAssets(cmd).import_event_group_events(
+        asset_name=asset_name,
+        group_name=group_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
+        input_file=input_file,
+        replace=replace,
+    )
