@@ -20,9 +20,7 @@
 			]
 		},
 		// k3d for cluster creation
-		"ghcr.io/rio/features/k3d:1": {},
-		// k9s for cluster management / diagnostics
-		"ghcr.io/rio/features/k9s:1": {}
+		"ghcr.io/rio/features/k3d:1": {}
 	},
 	"secrets": {
 		"SUBSCRIPTION_ID": {
