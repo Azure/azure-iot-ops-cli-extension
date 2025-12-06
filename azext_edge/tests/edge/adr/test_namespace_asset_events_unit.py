@@ -1528,8 +1528,15 @@ def test_import_event_groups(
     # Verify deserialize was called
     mocked_deserialize_file_content.assert_called_once_with(file_path=file_path)
 
-    # Verify the PATCH request body
-    patch_body = json.loads(mocked_responses.calls[1].request.body)
+    # Find the PATCH request (LRO may have multiple GET calls)
+    patch_call = None
+    for call in mocked_responses.calls:
+        if call.request.method == "PATCH" and call.request.body:
+            patch_call = call
+            break
+
+    assert patch_call is not None, "Expected a PATCH request with body"
+    patch_body = json.loads(patch_call.request.body)
     event_groups = patch_body["properties"]["eventGroups"]
     assert event_groups
 
@@ -1785,8 +1792,15 @@ def test_import_event_group_events(
     # Verify deserialize was called
     mocked_deserialize_file_content.assert_called_once_with(file_path=file_path)
 
-    # Verify the PATCH request body
-    patch_body = json.loads(mocked_responses.calls[1].request.body)
+    # Find the PATCH request (LRO may have multiple GET calls)
+    patch_call = None
+    for call in mocked_responses.calls:
+        if call.request.method == "PATCH" and call.request.body:
+            patch_call = call
+            break
+
+    assert patch_call is not None, "Expected a PATCH request with body"
+    patch_body = json.loads(patch_call.request.body)
     event_groups = patch_body["properties"]["eventGroups"]
     assert len(event_groups) == 1
 
