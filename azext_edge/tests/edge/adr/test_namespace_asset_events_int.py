@@ -691,7 +691,7 @@ def test_namespace_asset_event_export_import_operations(
     tracked_resources.append(asset_custom["id"])
 
     # 1. CREATE EVENT GROUPS WITH EVENTS
-    custom_config_path, custom_config = create_config_file(tracked_files)
+    custom_config_path, _ = create_config_file(tracked_files)
 
     # Create first event group
     run(
@@ -732,7 +732,7 @@ def test_namespace_asset_event_export_import_operations(
 
     # Verify the exported file exists and contains the event groups
     assert os.path.exists(export_file_path)
-    with open(export_file_path, "r") as f:
+    with open(export_file_path, "r", encoding="utf-8") as f:
         exported_data = json.load(f)
 
     exported_group_names = [eg["name"] for eg in exported_data]
@@ -751,7 +751,7 @@ def test_namespace_asset_event_export_import_operations(
 
     # Verify the exported events file
     assert os.path.exists(events_export_file_path)
-    with open(events_export_file_path, "r") as f:
+    with open(events_export_file_path, "r", encoding="utf-8") as f:
         exported_events = json.load(f)
 
     exported_event_names = [ev["name"] for ev in exported_events]
@@ -771,7 +771,7 @@ def test_namespace_asset_event_export_import_operations(
     # Write import file
     import_file_path = f"/tmp/import_events_{generate_random_string(8)}.json"
     tracked_files.append(import_file_path)
-    with open(import_file_path, "w") as f:
+    with open(import_file_path, "w", encoding="utf-8") as f:
         json.dump(import_events, f)
 
     # Import events
@@ -805,7 +805,7 @@ def test_namespace_asset_event_export_import_operations(
     # Write import file
     import_groups_file_path = f"/tmp/import_event_groups_{generate_random_string(8)}.json"
     tracked_files.append(import_groups_file_path)
-    with open(import_groups_file_path, "w") as f:
+    with open(import_groups_file_path, "w", encoding="utf-8") as f:
         json.dump(import_event_groups, f)
 
     # Import event groups
@@ -841,7 +841,7 @@ def test_namespace_asset_event_export_import_operations(
     tracked_files.append(reexport_file_path)
 
     # Read the re-exported data to verify eg1 is still there
-    with open(reexport_file_path, "r") as f:
+    with open(reexport_file_path, "r", encoding="utf-8") as f:
         reexported_data = json.load(f)
     reexported_group_names = [eg["name"] for eg in reexported_data]
     assert event_group_name_1 in reexported_group_names, \
@@ -938,7 +938,7 @@ def test_namespace_asset_event_export_import_operations(
         "eventGroupConfiguration": "{ this is not valid json }"
     }]
 
-    with open(import_file_invalid_eg, "w") as f:
+    with open(import_file_invalid_eg, "w", encoding="utf-8") as f:
         json.dump(invalid_eg_payload, f)
 
     # Expect failure
@@ -959,7 +959,7 @@ def test_namespace_asset_event_export_import_operations(
         "eventConfiguration": "{ this is not valid json }"
     }]
 
-    with open(import_file_invalid_ev, "w") as f:
+    with open(import_file_invalid_ev, "w", encoding="utf-8") as f:
         json.dump(invalid_ev_payload, f)
 
     # Expect failure
@@ -1044,7 +1044,7 @@ def test_namespace_opcua_event_import_export_operations(
 
     # Verify the exported file exists and contains the event groups
     assert os.path.exists(export_file_path)
-    with open(export_file_path, "r") as f:
+    with open(export_file_path, "r", encoding="utf-8") as f:
         exported_data = json.load(f)
 
     assert len(exported_data) == 2
@@ -1119,7 +1119,7 @@ def test_namespace_opcua_event_import_export_operations(
 
     import_file_new = f"/tmp/import_opcua_event_groups_new_{generate_random_string(8)}.json"
     tracked_files.append(import_file_new)
-    with open(import_file_new, "w") as f:
+    with open(import_file_new, "w", encoding="utf-8") as f:
         json.dump(import_payload, f)
 
     run(
@@ -1182,7 +1182,7 @@ def test_namespace_opcua_event_import_export_operations(
         "eventGroupConfiguration": "{ this is not valid json }"
     }]
 
-    with open(import_file_invalid, "w") as f:
+    with open(import_file_invalid, "w", encoding="utf-8") as f:
         json.dump(invalid_payload, f)
 
     # Expect failure
@@ -1269,7 +1269,7 @@ def test_namespace_onvif_event_import_export_operations(
 
     # Verify the exported file exists and contains the event groups
     assert os.path.exists(export_file_path)
-    with open(export_file_path, "r") as f:
+    with open(export_file_path, "r", encoding="utf-8") as f:
         exported_data = json.load(f)
 
     assert len(exported_data) == 2
@@ -1333,7 +1333,7 @@ def test_namespace_onvif_event_import_export_operations(
 
     import_file_new = f"/tmp/import_onvif_event_groups_new_{generate_random_string(8)}.json"
     tracked_files.append(import_file_new)
-    with open(import_file_new, "w") as f:
+    with open(import_file_new, "w", encoding="utf-8") as f:
         json.dump(import_payload, f)
 
     run(
@@ -1396,7 +1396,7 @@ def test_namespace_onvif_event_import_export_operations(
         "eventGroupConfiguration": "{ this is not valid json }"
     }]
 
-    with open(import_file_invalid, "w") as f:
+    with open(import_file_invalid, "w", encoding="utf-8") as f:
         json.dump(invalid_payload, f)
 
     # Expect failure
@@ -1515,7 +1515,7 @@ def test_namespace_asset_event_eventgroup_formats_import_export(
     # Verify JSON file exists and is valid
     assert os.path.exists(json_export_file)
     assert json_export_file.endswith(".json")
-    with open(json_export_file, "r") as f:
+    with open(json_export_file, "r", encoding="utf-8") as f:
         json_data = json.load(f)
 
     assert len(json_data) == 2
@@ -1536,7 +1536,7 @@ def test_namespace_asset_event_eventgroup_formats_import_export(
     # Verify JSON events file
     assert os.path.exists(json_events_file)
     assert json_events_file.endswith(".json")
-    with open(json_events_file, "r") as f:
+    with open(json_events_file, "r", encoding="utf-8") as f:
         json_events_data = json.load(f)
 
     assert len(json_events_data) == 2
@@ -1559,7 +1559,7 @@ def test_namespace_asset_event_eventgroup_formats_import_export(
     # Verify YAML file exists and is valid
     assert os.path.exists(yaml_export_file)
     assert yaml_export_file.endswith(".yaml")
-    with open(yaml_export_file, "r") as f:
+    with open(yaml_export_file, "r", encoding="utf-8") as f:
         yaml_data = yaml.safe_load(f)
 
     assert len(yaml_data) == 2
@@ -1580,7 +1580,7 @@ def test_namespace_asset_event_eventgroup_formats_import_export(
     # Verify YAML events file
     assert os.path.exists(yaml_events_file)
     assert yaml_events_file.endswith(".yaml")
-    with open(yaml_events_file, "r") as f:
+    with open(yaml_events_file, "r", encoding="utf-8") as f:
         yaml_events_data = yaml.safe_load(f)
 
     assert len(yaml_events_data) == 2
@@ -1689,7 +1689,7 @@ def test_namespace_asset_event_eventgroup_formats_import_export(
         "eventGroupConfiguration": "{}",
         "defaultDestinations": []
     }]
-    with open(manual_json_file, "w") as f:
+    with open(manual_json_file, "w", encoding="utf-8") as f:
         json.dump(manual_json_data, f)
 
     run(
@@ -1715,7 +1715,7 @@ def test_namespace_asset_event_eventgroup_formats_import_export(
         "dataSource": "manual.event.source",
         "eventConfiguration": "{}"
     }]
-    with open(manual_yaml_file, "w") as f:
+    with open(manual_yaml_file, "w", encoding="utf-8") as f:
         yaml.dump(manual_yaml_data, f)
 
     run(
@@ -1745,7 +1745,7 @@ def test_namespace_asset_event_eventgroup_formats_import_export(
 
     # File should exist and be valid
     assert os.path.exists(replace_export_file)
-    with open(replace_export_file, "r") as f:
+    with open(replace_export_file, "r", encoding="utf-8") as f:
         replace_data = json.load(f)
 
     # Should now have all event groups including the manually added one

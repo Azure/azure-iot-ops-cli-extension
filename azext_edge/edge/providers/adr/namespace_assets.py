@@ -1020,16 +1020,16 @@ class NamespaceAssets(Queryable):
                     except Exception as e:
                         validation_errors.append(f"Event group '{group_name}' configuration: {e}")
 
-                    # Validate all events in the event group
-                    events = group.get("events", [])
-                    if events:
-                        for idx, event in enumerate(events):
-                            try:
-                                validator.validate_event(event)
-                            except Exception as e:
-                                validation_errors.append(
-                                    f"Event group '{group_name}', event '{event.get('name', 'unnamed')}': {e}"
-                                )
+                # Validate all events in the event group
+                events = group.get("events", [])
+                if events:
+                    for event in events:
+                        try:
+                            validator.validate_event(event)
+                        except Exception as e:
+                            validation_errors.append(
+                                f"Event group '{group_name}', event '{event.get('name', 'unnamed')}': {e}"
+                            )
 
                 if validation_errors:
                     error_msg = (
@@ -1285,7 +1285,7 @@ class NamespaceAssets(Queryable):
 
             validator = ConnectorMetadataValidator.from_asset(self.cmd, asset, instance_name)
             validation_errors = []
-            for idx, event in enumerate(new_events):
+            for event in new_events:
                 try:
                     validator.validate_event(event)
                 except Exception as e:
