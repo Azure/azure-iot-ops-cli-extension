@@ -29,7 +29,6 @@ MARKERS = [
     MarkerDefinition("init_scenario_test", "mark tests that will run az iot ops init", True),
     MarkerDefinition("require_wlif_setup", "mark tests that require workload identity trust setup", True),
     MarkerDefinition("long_running", "mark tests that take a long time to run", False),
-    MarkerDefinition("no_global_setup", "mark tests that will not use global setup", False),
 ]
 
 
