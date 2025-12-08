@@ -280,7 +280,7 @@ jobs:
           if [[ "${{ matrix.scenario.parallel }}" == "true" ]]; then
             PYTEST_ARGS="--dist=loadfile -n auto"
           fi
-          tox r -e "${{ matrix.scenario.tox_env }}" --skip-pkg-install -- --durations=0 $PYTEST_ARGS
+          tox r -e "${{ matrix.scenario.tox_env }}" --skip-pkg-install -- $PYTEST_ARGS
           tox r -e report
       - name: "Upload coverage artifacts"
         if: ${{ always() }}

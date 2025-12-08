@@ -13,7 +13,7 @@ from azext_edge.edge.providers.adr.namespace_devices import DeviceEndpointType
 from azext_edge.edge.util.common import parse_kvp_nargs
 
 from ...generators import generate_random_string
-from ...helpers import run
+from ...helpers import run, check_for_known_service_bugs
 
 logger = get_logger(__name__)
 pytestmark = pytest.mark.rpsaas
@@ -382,10 +382,7 @@ def test_namespace_device_lifecycle_operations(require_init, tracked_resources: 
             f"{endpoint_name_sse} {endpoint_name_mqtt} -y"
         )
     except CLIInternalError as e:
-        # TODO - disable once bug is fixed / test is passing
-        if "400216" in str(e) and "Invalid Address is specified" in str(e):
-            pytest.xfail(f"Service-side validation bug: 400216 Invalid Address during endpoint remove: {e}")
-        raise
+        check_for_known_service_bugs(e)
     # Filter out None values (removed endpoints) to get only active endpoints
     active_endpoints = {k: v for k, v in result.items() if v is not None}
     assert len(active_endpoints) == 2
