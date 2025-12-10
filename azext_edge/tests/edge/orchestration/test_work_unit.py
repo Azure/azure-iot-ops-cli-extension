@@ -85,12 +85,14 @@ class ExpectedAPIVersion(Enum):
     AUTHORIZATION = "2022-04-01"
     CUSTOM_LOCATION = "2021-08-31-preview"
     GRAPH = "2022-10-01"
+    RESOURCE_HEALTH = "2025-05-01"
 
 
 class CallKey(Enum):
     CONNECT_RESOURCE_MANAGER = "connectResourceManager"
     GET_CLUSTER = "getCluster"
     GET_RESOURCE_PROVIDERS = "getResourceProviders"
+    GET_RESOURCE_HEALTH = "getResourceHealth"
     DEPLOY_INIT_WHATIF = "deployInitWhatIf"
     DEPLOY_INIT = "deployInit"
     GET_SCHEMA_REGISTRY = "getSchemaRegistry"
@@ -172,6 +174,11 @@ class ServiceGenerator:
                 assert request_kpis.params["api-version"] == ExpectedAPIVersion.CONNECTED_CLUSTER.value
                 self.call_map[CallKey.GET_CLUSTER].append(request_kpis)
                 return (200, STANDARD_HEADERS, json.dumps(self.scenario["cluster"]))
+
+            if "/providers/Microsoft.ResourceHealth/availabilityStatuses/current" in request_kpis.path_url:
+                assert request_kpis.params["api-version"] == ExpectedAPIVersion.RESOURCE_HEALTH.value
+                self.call_map[CallKey.GET_RESOURCE_HEALTH].append(request_kpis)
+                return (200, STANDARD_HEADERS, json.dumps({"properties": {"availabilityState": "Available"}}))
 
     def _handle_init(self, request_kpis: RequestKPIs):
         url_deployment_seg = r"/providers/Microsoft\.Resources/deployments/aziotops\.enablement\.[a-zA-Z0-9\.-]+"
@@ -550,6 +557,7 @@ def test_iot_ops_init(
         CallKey.CONNECT_RESOURCE_MANAGER: 1,
         CallKey.GET_RESOURCE_PROVIDERS: 1,
         CallKey.GET_CLUSTER: 1,
+        CallKey.GET_RESOURCE_HEALTH: 1,
         CallKey.DEPLOY_INIT_WHATIF: 1,
         CallKey.DEPLOY_INIT: 1,
     }
@@ -842,6 +850,7 @@ def test_iot_ops_create(
         CallKey.CONNECT_RESOURCE_MANAGER: 1,
         CallKey.GET_RESOURCE_PROVIDERS: 1,
         CallKey.GET_CLUSTER: 1,
+        CallKey.GET_RESOURCE_HEALTH: 1,
         CallKey.GET_SCHEMA_REGISTRY: 1,
         CallKey.GET_ADR_NAMESPACE: 1,
         CallKey.GET_CLUSTER_EXTENSIONS: 2,
