@@ -17,7 +17,8 @@ RP_NAMESPACE_SET = frozenset(
     [
         "Microsoft.IoTOperations",
         "Microsoft.SecretSyncController",
-        ADR_PROVIDER
+        ADR_PROVIDER,
+        "Microsoft.ResourceHealth",
     ]
 )
 

@@ -46,6 +46,7 @@ if TYPE_CHECKING:
     from ..vendor.clients.keyvault import KeyVaultClient
     from ..vendor.clients.msimgmt import ManagedServiceIdentityClient
     from ..vendor.clients.resourcesmgmt import ResourceManagementClient
+    from ..vendor.clients.resourcehealthmgmt import MicrosoftResourceHealth
     from ..vendor.clients.secretsyncmgmt import MicrosoftSecretSyncController
     from ..vendor.clients.storagemgmt import StorageManagementClient
 
@@ -192,6 +193,23 @@ def get_iotops_mgmt_client(
     kwargs["api_version"] = api_version
 
     return MicrosoftIoTOperationsManagementService(
+        credential=AZURE_CLI_CREDENTIAL,
+        subscription_id=subscription_id,
+        user_agent_policy=UserAgentPolicy(user_agent=USER_AGENT),
+        **kwargs,
+    )
+
+
+def get_health_mgmt_client(
+    subscription_id: str,
+    **kwargs,
+) -> "MicrosoftResourceHealth":
+    from ..vendor.clients.resourcehealthmgmt import MicrosoftResourceHealth
+
+    if "http_logging_policy" not in kwargs:
+        kwargs["http_logging_policy"] = get_default_logging_policy()
+
+    return MicrosoftResourceHealth(
         credential=AZURE_CLI_CREDENTIAL,
         subscription_id=subscription_id,
         user_agent_policy=UserAgentPolicy(user_agent=USER_AGENT),

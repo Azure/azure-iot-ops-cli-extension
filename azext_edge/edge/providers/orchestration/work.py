@@ -28,6 +28,7 @@ from azext_edge.edge.providers.orchestration.base import verify_arc_cluster_conf
 from ...util.az_client import (
     DeviceRegistryMgmtApiVersion,
     get_api_error_str,
+    get_health_mgmt_client,
     get_resource_client,
     parse_resource_id,
     wait_for_terminal_state,
@@ -121,6 +122,7 @@ class WorkManager:
         self.subscription_id: str = get_subscription_id(cli_ctx=cmd.cli_ctx)
         self.resource_client = get_resource_client(subscription_id=self.subscription_id)
         self.permission_manager = PermissionManager(subscription_id=self.subscription_id)
+        self.health_client = get_health_mgmt_client(subscription_id=self.subscription_id)
         self.custom_locations = CustomLocations(self.cmd)
 
     def _bootstrap_ux(self, show_progress: bool = False):
@@ -377,6 +379,10 @@ class WorkManager:
                 )
 
                 # WorkStepKey.ENUMERATE_PRE_FLIGHT
+                # TODO @digimaun
+                self.health_client.availability_statuses.get_by_resource(
+                    self._resource_map.connected_cluster.resource_id
+                )
                 if self._check_cluster:
                     cluster_check_kwargs = self._build_cluster_check_kwargs()
                     # TODO - load_config_context should be moved down to functions that directly call it
