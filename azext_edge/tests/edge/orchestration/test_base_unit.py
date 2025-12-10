@@ -180,6 +180,7 @@ def test_register_providers(mocker, registration_state, input_rp):
         "Microsoft.IoTOperations",
         "Microsoft.DeviceRegistry",
         "Microsoft.SecretSyncController",
+        "Microsoft.ResourceHealth",
     ]
     if input_rp:
         iot_ops_rps = [input_rp]
