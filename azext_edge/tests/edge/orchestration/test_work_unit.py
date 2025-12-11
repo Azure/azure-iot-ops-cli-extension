@@ -178,7 +178,8 @@ class ServiceGenerator:
             if "/providers/Microsoft.ResourceHealth/availabilityStatuses/current" in request_kpis.path_url:
                 assert request_kpis.params["api-version"] == ExpectedAPIVersion.RESOURCE_HEALTH.value
                 self.call_map[CallKey.GET_RESOURCE_HEALTH].append(request_kpis)
-                return (200, STANDARD_HEADERS, json.dumps({"properties": {"availabilityState": "Available"}}))
+                api_control = self.scenario["apiControl"][CallKey.GET_RESOURCE_HEALTH]
+                return (api_control["code"], STANDARD_HEADERS, json.dumps(api_control["body"]))
 
     def _handle_init(self, request_kpis: RequestKPIs):
         url_deployment_seg = r"/providers/Microsoft\.Resources/deployments/aziotops\.enablement\.[a-zA-Z0-9\.-]+"
@@ -448,6 +449,7 @@ def build_target_scenario(
             CallKey.GET_EXISTING_DEPLOYMENTS: {"code": 200, "body": {"data": []}},
             CallKey.GET_SCHEMA_REGISTRY: {"code": 200, "body": {}},
             CallKey.GET_ADR_NAMESPACE: {"code": 200, "body": {}},
+            CallKey.GET_RESOURCE_HEALTH: {"code": 200, "body": {"properties": {"availabilityState": "Available"}}},
         },
     }
     if "cluster_properties" in kwargs:
@@ -514,6 +516,47 @@ def assert_exception(expected_exc_meta: ExceptionMeta, call_func: Callable, call
         ),
         build_target_scenario(
             check_cluster=True,
+        ),
+        build_target_scenario(
+            apiControl={
+                CallKey.GET_RESOURCE_HEALTH: {
+                    "code": 200,
+                    "body": {
+                        "properties": {
+                            "availabilityState": "Unavailable",
+                            "summary": "The cluster is experiencing issues.",
+                            "reasonType": "PlatformInitiated",
+                        }
+                    },
+                }
+            },
+            raises=ExceptionMeta(
+                exc_type=ValidationError,
+                exc_msg=[
+                    "is currently unavailable",
+                    "The cluster is experiencing issues.",
+                    "PlatformInitiated",
+                ],
+            ),
+            omit_http_methods=frozenset([responses.PUT, responses.POST]),
+        ),
+        # Cluster health unknown - should pass
+        build_target_scenario(
+            apiControl={
+                CallKey.GET_RESOURCE_HEALTH: {
+                    "code": 200,
+                    "body": {"properties": {"availabilityState": "Unknown"}},
+                }
+            },
+        ),
+        # Resource Health API failure (403) - should pass (graceful degradation)
+        build_target_scenario(
+            apiControl={
+                CallKey.GET_RESOURCE_HEALTH: {
+                    "code": 403,
+                    "body": {"error": {"code": "AuthorizationFailed", "message": "Access denied."}},
+                }
+            },
         ),
     ],
 )
@@ -782,6 +825,25 @@ def assert_cluster_prechecks(mock_prechecks: Dict[str, Mock], target_scenario: d
         ),
         build_target_scenario(
             skip_sr_ra=True,
+        ),
+        build_target_scenario(
+            apiControl={
+                CallKey.GET_RESOURCE_HEALTH: {
+                    "code": 200,
+                    "body": {
+                        "properties": {
+                            "availabilityState": "Unavailable",
+                            "summary": "The cluster is experiencing issues.",
+                            "reasonType": "PlatformInitiated",
+                        }
+                    },
+                }
+            },
+            raises=ExceptionMeta(
+                exc_type=ValidationError,
+                exc_msg="is currently unavailable",
+            ),
+            omit_http_methods=frozenset([responses.PUT, responses.POST]),
         ),
     ],
 )
