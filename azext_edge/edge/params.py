@@ -1403,6 +1403,12 @@ def load_iotops_arguments(self, _):
                 options_list=["--cluster"],
                 help="Target cluster name for IoT Operations deployment.",
             )
+            context.argument(
+                "no_preflight",
+                options_list=["--no-preflight"],
+                arg_type=get_three_state_flag(),
+                help="Disable pre-flight checks such as resource provider registration and cluster health validation.",
+            )
 
     for cmd_space in ["iot ops create", "iot ops update"]:
         with self.argument_context(cmd_space) as context:

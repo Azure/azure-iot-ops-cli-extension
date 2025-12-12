@@ -1802,9 +1802,6 @@ def load_iotops_help():
                         AgentOperationTimeoutInMinutes=20
                         global.telemetry.enabled=true
 
-                      To skip pre-flight validation checks (such as cluster health), set the environment
-                      variable AIO_CLI_INIT_PREFLIGHT_DISABLED=true.
-
         examples:
         - name: Usage with minimum input. This form will deploy the IoT Operations foundation layer.
           text: >
@@ -1839,9 +1836,6 @@ def load_iotops_help():
 
           To enable edge to cloud resource hydration please use the
           `az iot ops enable-rsync` command post instance creation.
-
-          To skip pre-flight validation checks (such as cluster health), set the environment
-          variable AIO_CLI_INIT_PREFLIGHT_DISABLED=true.
 
         examples:
         - name: Create the target instance with minimum input.
