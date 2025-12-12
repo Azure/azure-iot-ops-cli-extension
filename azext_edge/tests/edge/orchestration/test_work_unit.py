@@ -849,6 +849,9 @@ def assert_cluster_prechecks(mock_prechecks: Dict[str, Mock], target_scenario: d
             ),
             omit_http_methods=frozenset([responses.PUT, responses.POST]),
         ),
+        build_target_scenario(
+            no_preflight=True,
+        ),
     ],
 )
 def test_iot_ops_create(

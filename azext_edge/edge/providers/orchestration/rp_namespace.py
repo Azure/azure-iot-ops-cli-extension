@@ -29,8 +29,9 @@ def register_providers(subscription_id: str, resource_provider: Optional[str] = 
     required_providers = [resource_provider] if resource_provider else RP_NAMESPACE_SET
     for provider in providers_list:
         if "namespace" in provider and provider["namespace"] in required_providers:
-            if provider["registrationState"] == "Registered":
-                logger.debug("RP %s is already registered.", provider["namespace"])
+            registration_state = provider.get("registrationState", "")
+            if registration_state.lower() in ("registered", "registering"):
+                logger.debug("RP %s state: %s. Skipping.", provider["namespace"], registration_state)
                 continue
             logger.debug("Registering RP %s.", provider["namespace"])
             resource_client.providers.register(provider["namespace"])
