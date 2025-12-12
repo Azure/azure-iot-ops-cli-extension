@@ -550,7 +550,7 @@ def assert_exception(expected_exc_meta: ExceptionMeta, call_func: Callable, call
                 }
             },
         ),
-        # Resource Health API failure (403) - should pass (graceful degradation)
+        # Resource Health API failure (403) - should pass
         build_target_scenario(
             apiControl={
                 CallKey.GET_RESOURCE_HEALTH: {
@@ -559,7 +559,6 @@ def assert_exception(expected_exc_meta: ExceptionMeta, call_func: Callable, call
                 }
             },
         ),
-        # Test --no-preflight skips pre-flight checks
         build_target_scenario(
             no_preflight=True,
         ),
