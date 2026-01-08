@@ -8,6 +8,7 @@ from unittest.mock import Mock
 
 import pytest
 from azure.cli.core.azclierror import ValidationError
+from azure.core.exceptions import HttpResponseError
 
 from azext_edge.edge.providers.orchestration.connected_cluster import ConnectedCluster
 
@@ -217,9 +218,9 @@ class TestRegisterProviders:
         from azext_edge.edge.providers.orchestration.rp_namespace import register_providers
 
         self._setup_client(mocked_resource_client, self._build_providers(rp_constants["all"], "NotRegistered"))
-        mocked_resource_client().providers.register.side_effect = Exception("Permission denied")
+        mocked_resource_client().providers.register.side_effect = HttpResponseError("Permission denied")
 
-        with pytest.raises(Exception, match="Permission denied"):
+        with pytest.raises(HttpResponseError, match="Permission denied"):
             register_providers(ZEROED_SUB)
 
     def test_optional_rp_failure_returns_failed_set(self, mocked_resource_client, rp_constants):
@@ -229,7 +230,7 @@ class TestRegisterProviders:
 
         def fail_optional_only(namespace):
             if namespace in rp_constants["optional"]:
-                raise Exception("Permission denied")
+                raise HttpResponseError("Permission denied")
 
         mocked_resource_client().providers.register.side_effect = fail_optional_only
 
@@ -259,7 +260,7 @@ class TestRegisterProviders:
 
         def fail_optional_only(namespace):
             if namespace in rp_constants["optional"]:
-                raise Exception("Permission denied")
+                raise HttpResponseError("Permission denied")
 
         mocked_resource_client().providers.register.side_effect = fail_optional_only
 
@@ -296,9 +297,9 @@ class TestRegisterProviders:
 
         target_rp = "Microsoft.DeviceRegistry"
         self._setup_client(mocked_resource_client, {target_rp: "NotRegistered"})
-        mocked_resource_client().providers.register.side_effect = Exception("Permission denied")
+        mocked_resource_client().providers.register.side_effect = HttpResponseError("Permission denied")
 
-        with pytest.raises(Exception, match="Permission denied"):
+        with pytest.raises(HttpResponseError, match="Permission denied"):
             register_providers(ZEROED_SUB, resource_provider=target_rp)
 
     def test_single_rp_missing_attempts_registration(self, mocked_resource_client):

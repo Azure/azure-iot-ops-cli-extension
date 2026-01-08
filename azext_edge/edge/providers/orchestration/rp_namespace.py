@@ -4,11 +4,15 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from typing import Optional, Set
+from typing import TYPE_CHECKING, Optional, Set
 
 from knack.log import get_logger
 
 from ...util.az_client import get_resource_client
+
+if TYPE_CHECKING:
+    from ...util.az_client import ResourceManagementClient
+
 
 logger = get_logger(__name__)
 
@@ -61,7 +65,7 @@ def register_providers(subscription_id: str, resource_provider: Optional[str] = 
     return failed_optional
 
 
-def _register_rp(resource_client, providers: dict, namespace: str, optional: bool) -> bool:
+def _register_rp(resource_client: "ResourceManagementClient", providers: dict, namespace: str, optional: bool) -> bool:
     """
     Register a single RP if needed.
 
