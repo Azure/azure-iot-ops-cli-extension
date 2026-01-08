@@ -36,6 +36,28 @@ RP_NAMESPACE_OPTIONAL_SET = frozenset(
 )
 
 
+def _needs_registration(state: str) -> bool:
+    return state.lower() not in ("registered", "registering")
+
+
+def _try_register(resource_client: "ResourceManagementClient", namespace: str, optional: bool) -> bool:
+    """
+    Attempt to register a single RP.
+
+    Returns:
+        True if successful, False if optional and failed.
+    """
+    try:
+        logger.debug("Registering RP %s.", namespace)
+        resource_client.providers.register(namespace)
+        return True
+    except Exception as e:
+        if optional:
+            logger.debug("Optional RP %s registration failed: %s. Continuing.", namespace, e)
+            return False
+        raise
+
+
 def register_providers(subscription_id: str, resource_provider: Optional[str] = None) -> Set[str]:
     """
     Register resource providers for IoT Operations.
@@ -51,39 +73,18 @@ def register_providers(subscription_id: str, resource_provider: Optional[str] = 
     providers = {p["namespace"]: p.get("registrationState", "") for p in resource_client.providers.list()}
 
     if resource_provider:
-        _register_rp(resource_client, providers, resource_provider, optional=False)
+        if _needs_registration(providers.get(resource_provider, "")):
+            _try_register(resource_client, resource_provider, optional=False)
         return set()
 
     for rp in RP_NAMESPACE_SET:
-        _register_rp(resource_client, providers, rp, optional=False)
+        if _needs_registration(providers.get(rp, "")):
+            _try_register(resource_client, rp, optional=False)
 
     failed_optional: Set[str] = set()
     for rp in RP_NAMESPACE_OPTIONAL_SET:
-        if not _register_rp(resource_client, providers, rp, optional=True):
-            failed_optional.add(rp)
+        if _needs_registration(providers.get(rp, "")):
+            if not _try_register(resource_client, rp, optional=True):
+                failed_optional.add(rp)
 
     return failed_optional
-
-
-def _register_rp(resource_client: "ResourceManagementClient", providers: dict, namespace: str, optional: bool) -> bool:
-    """
-    Register a single RP if needed.
-
-    Returns:
-        True if successful or already registered, False if optional and failed.
-    """
-    state = providers.get(namespace, "").lower()
-
-    if state in ("registered", "registering"):
-        logger.debug("RP %s state: %s. Skipping.", namespace, state)
-        return True
-
-    try:
-        logger.debug("Registering RP %s.", namespace)
-        resource_client.providers.register(namespace)
-        return True
-    except Exception as e:
-        if optional:
-            logger.debug("Optional RP %s registration failed: %s. Continuing.", namespace, e)
-            return False
-        raise

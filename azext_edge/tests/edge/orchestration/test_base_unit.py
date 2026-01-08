@@ -354,3 +354,23 @@ class TestRegisterProviders:
         registered_rps = self._get_registered_rps(mocked_resource_client)
         assert registered_rps == {"Microsoft.SecretSyncController", "Microsoft.ResourceHealth"}
         assert result == set()
+
+
+class TestNeedsRegistration:
+    @pytest.mark.parametrize("state,expected", [
+        ("Registered", False),
+        ("registered", False),
+        ("REGISTERED", False),
+        ("Registering", False),
+        ("registering", False),
+        ("REGISTERING", False),
+        ("NotRegistered", True),
+        ("Unregistered", True),
+        ("", True),
+        ("Failed", True),
+        ("Unknown", True),
+    ])
+    def test_needs_registration_states(self, state, expected):
+        from azext_edge.edge.providers.orchestration.rp_namespace import _needs_registration
+
+        assert _needs_registration(state) == expected
