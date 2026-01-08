@@ -46,6 +46,7 @@ from .common import (
 from .permissions import ROLE_DEF_FORMAT_STR, PermissionManager, PrincipalType
 from .resource_map import IoTOperationsResourceMap
 from .resources.custom_locations import CustomLocations
+from .rp_namespace import HEALTH_PROVIDER, register_providers
 from .targets import InitTargets, InstancePhase
 
 logger = get_logger(__name__)
@@ -357,7 +358,6 @@ class WorkManager:
 
     def _do_work(self):
         from .host import verify_cli_client_connections
-        from .rp_namespace import register_providers
 
         try:
             # Ensure connection to ARM if needed. Show remediation error message otherwise.
@@ -378,7 +378,7 @@ class WorkManager:
 
                 # WorkStepKey.ENUMERATE_PRE_FLIGHT
                 # Skip health check if ResourceHealth RP registration failed
-                if "Microsoft.ResourceHealth" not in failed_optional_rps:
+                if HEALTH_PROVIDER not in failed_optional_rps:
                     self._eval_cluster_health()
                 if self._check_cluster:
                     cluster_check_kwargs = self._build_cluster_check_kwargs()

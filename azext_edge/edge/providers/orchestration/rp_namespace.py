@@ -18,6 +18,7 @@ logger = get_logger(__name__)
 
 
 ADR_PROVIDER = "Microsoft.DeviceRegistry"
+HEALTH_PROVIDER = "Microsoft.ResourceHealth"
 
 # Required RPs - registration failure will block deployment
 RP_NAMESPACE_SET = frozenset(
@@ -31,7 +32,7 @@ RP_NAMESPACE_SET = frozenset(
 # Optional RPs - registration failure is logged but won't block deployment
 RP_NAMESPACE_OPTIONAL_SET = frozenset(
     [
-        "Microsoft.ResourceHealth",
+        HEALTH_PROVIDER,
     ]
 )
 
