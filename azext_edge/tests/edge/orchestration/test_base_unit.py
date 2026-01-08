@@ -336,27 +336,20 @@ class TestRegisterProviders:
 
         mocked_resource_client.assert_any_call(subscription_id=test_sub)
 
-    def test_mixed_registration_states(self, mocked_resource_client, rp_constants):
+    def test_mixed_registration_states(self, mocked_resource_client):
         """Only RPs not in Registered/Registering state trigger registration."""
         from azext_edge.edge.providers.orchestration.rp_namespace import register_providers
 
-        providers = {}
-        required_list = list(rp_constants["required"])
-        if len(required_list) >= 2:
-            providers[required_list[0]] = "Registered"
-            providers[required_list[1]] = "NotRegistered"
-            for rp in required_list[2:]:
-                providers[rp] = "Registering"
-        for rp in rp_constants["optional"]:
-            providers[rp] = "NotRegistered"
+        providers = {
+            "Microsoft.IoTOperations": "Registered",
+            "Microsoft.SecretSyncController": "NotRegistered",
+            "Microsoft.DeviceRegistry": "Registering",
+            "Microsoft.ResourceHealth": "NotRegistered",
+        }
 
         self._setup_client(mocked_resource_client, providers)
-
         result = register_providers(ZEROED_SUB)
 
         registered_rps = self._get_registered_rps(mocked_resource_client)
-        expected_to_register = {
-            rp for rp, state in providers.items() if state.lower() not in ("registered", "registering")
-        }
-        assert registered_rps == expected_to_register
+        assert registered_rps == {"Microsoft.SecretSyncController", "Microsoft.ResourceHealth"}
         assert result == set()
