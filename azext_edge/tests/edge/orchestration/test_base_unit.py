@@ -159,48 +159,204 @@ def test_verify_custom_location_namespace(
     )
 
 
-@pytest.mark.parametrize(
-    "registration_state, should_register",
-    [
-        ("Registered", False),
-        ("Registering", False),
-        ("NotRegistered", True),
-        ("Unregistered", True),  # Edge case - any other state triggers registration
-    ],
-)
-@pytest.mark.parametrize("input_rp", [None, "Microsoft.DeviceRegistry"])
-def test_register_providers(mocker, registration_state, should_register, input_rp):
-    mocked_get_resource_client: Mock = mocker.patch(
-        "azext_edge.edge.providers.orchestration.rp_namespace.get_resource_client"
-    )
-    from azext_edge.edge.providers.orchestration.rp_namespace import (
-        RP_NAMESPACE_SET,
-        register_providers,
-    )
+class TestRegisterProviders:
+    @pytest.fixture
+    def mocked_resource_client(self, mocker) -> Mock:
+        return mocker.patch("azext_edge.edge.providers.orchestration.rp_namespace.get_resource_client")
 
-    iot_ops_rps = [
-        "Microsoft.IoTOperations",
-        "Microsoft.DeviceRegistry",
-        "Microsoft.SecretSyncController",
-        "Microsoft.ResourceHealth",
-    ]
-    if input_rp:
-        iot_ops_rps = [input_rp]
+    @pytest.fixture
+    def rp_constants(self):
+        from azext_edge.edge.providers.orchestration.rp_namespace import (
+            RP_NAMESPACE_SET,
+            RP_NAMESPACE_OPTIONAL_SET,
+        )
 
-    mocked_get_resource_client().providers.list.return_value = [
-        {"namespace": namespace, "registrationState": registration_state} for namespace in iot_ops_rps
-    ]
+        return {
+            "required": RP_NAMESPACE_SET,
+            "optional": RP_NAMESPACE_OPTIONAL_SET,
+            "all": RP_NAMESPACE_SET | RP_NAMESPACE_OPTIONAL_SET,
+        }
 
-    for rp in iot_ops_rps:
-        assert rp in RP_NAMESPACE_SET
-    assert len(iot_ops_rps) == (1 if input_rp else len(RP_NAMESPACE_SET))
+    def _build_providers(self, namespaces, state: str) -> dict:
+        return {ns: state for ns in namespaces}
 
-    register_providers(ZEROED_SUB)
+    def _setup_client(self, mocked_resource_client, providers: dict):
+        mocked_resource_client().providers.list.return_value = [
+            {"namespace": ns, "registrationState": state} for ns, state in providers.items()
+        ]
 
-    mocked_get_resource_client().providers.list.assert_called_once()
-    if should_register:
-        assert mocked_get_resource_client().providers.register.call_count == len(iot_ops_rps)
-        for rp in iot_ops_rps:
-            mocked_get_resource_client().providers.register.assert_any_call(rp)
-    else:
-        mocked_get_resource_client().providers.register.assert_not_called()
+    def _get_registered_rps(self, mocked_resource_client) -> set:
+        return {call.args[0] for call in mocked_resource_client().providers.register.call_args_list}
+
+    @pytest.mark.parametrize("state", ["Registered", "registered", "Registering", "registering"])
+    def test_skips_already_registered(self, mocked_resource_client, rp_constants, state):
+        from azext_edge.edge.providers.orchestration.rp_namespace import register_providers
+
+        self._setup_client(mocked_resource_client, self._build_providers(rp_constants["all"], state))
+
+        result = register_providers(ZEROED_SUB)
+
+        mocked_resource_client().providers.list.assert_called_once()
+        mocked_resource_client().providers.register.assert_not_called()
+        assert result == set()
+
+    @pytest.mark.parametrize("state", ["NotRegistered", "Unregistered", ""])
+    def test_registers_unregistered_rps(self, mocked_resource_client, rp_constants, state):
+        from azext_edge.edge.providers.orchestration.rp_namespace import register_providers
+
+        self._setup_client(mocked_resource_client, self._build_providers(rp_constants["all"], state))
+
+        result = register_providers(ZEROED_SUB)
+
+        assert mocked_resource_client().providers.register.call_count == len(rp_constants["all"])
+        registered_rps = self._get_registered_rps(mocked_resource_client)
+        assert registered_rps == rp_constants["all"]
+        assert result == set()
+
+    def test_required_rp_failure_raises(self, mocked_resource_client, rp_constants):
+        from azext_edge.edge.providers.orchestration.rp_namespace import register_providers
+
+        self._setup_client(mocked_resource_client, self._build_providers(rp_constants["all"], "NotRegistered"))
+        mocked_resource_client().providers.register.side_effect = Exception("Permission denied")
+
+        with pytest.raises(Exception, match="Permission denied"):
+            register_providers(ZEROED_SUB)
+
+    def test_optional_rp_failure_returns_failed_set(self, mocked_resource_client, rp_constants):
+        from azext_edge.edge.providers.orchestration.rp_namespace import register_providers
+
+        self._setup_client(mocked_resource_client, self._build_providers(rp_constants["all"], "NotRegistered"))
+
+        def fail_optional_only(namespace):
+            if namespace in rp_constants["optional"]:
+                raise Exception("Permission denied")
+
+        mocked_resource_client().providers.register.side_effect = fail_optional_only
+
+        result = register_providers(ZEROED_SUB)
+
+        registered_rps = self._get_registered_rps(mocked_resource_client)
+        assert registered_rps == rp_constants["all"]
+        assert result == rp_constants["optional"]
+        assert result.isdisjoint(rp_constants["required"])
+
+    def test_missing_rps_attempt_registration(self, mocked_resource_client, rp_constants):
+        """RPs not in the providers list get empty state, triggering registration."""
+        from azext_edge.edge.providers.orchestration.rp_namespace import register_providers
+
+        self._setup_client(mocked_resource_client, {})
+
+        result = register_providers(ZEROED_SUB)
+
+        registered_rps = self._get_registered_rps(mocked_resource_client)
+        assert registered_rps == rp_constants["all"]
+        assert result == set()
+
+    def test_missing_optional_rp_failure_returns_failed(self, mocked_resource_client, rp_constants):
+        from azext_edge.edge.providers.orchestration.rp_namespace import register_providers
+
+        self._setup_client(mocked_resource_client, self._build_providers(rp_constants["required"], "Registered"))
+
+        def fail_optional_only(namespace):
+            if namespace in rp_constants["optional"]:
+                raise Exception("Permission denied")
+
+        mocked_resource_client().providers.register.side_effect = fail_optional_only
+
+        result = register_providers(ZEROED_SUB)
+
+        registered_rps = self._get_registered_rps(mocked_resource_client)
+        assert registered_rps == rp_constants["optional"]
+        assert result == rp_constants["optional"]
+
+    def test_single_rp_only_registers_that_rp(self, mocked_resource_client):
+        from azext_edge.edge.providers.orchestration.rp_namespace import register_providers
+
+        target_rp = "Microsoft.DeviceRegistry"
+        self._setup_client(mocked_resource_client, {target_rp: "NotRegistered"})
+
+        result = register_providers(ZEROED_SUB, resource_provider=target_rp)
+
+        mocked_resource_client().providers.register.assert_called_once_with(target_rp)
+        assert result == set()
+
+    def test_single_rp_skips_if_registered(self, mocked_resource_client):
+        from azext_edge.edge.providers.orchestration.rp_namespace import register_providers
+
+        target_rp = "Microsoft.DeviceRegistry"
+        self._setup_client(mocked_resource_client, {target_rp: "Registered"})
+
+        result = register_providers(ZEROED_SUB, resource_provider=target_rp)
+
+        mocked_resource_client().providers.register.assert_not_called()
+        assert result == set()
+
+    def test_single_rp_failure_raises(self, mocked_resource_client):
+        from azext_edge.edge.providers.orchestration.rp_namespace import register_providers
+
+        target_rp = "Microsoft.DeviceRegistry"
+        self._setup_client(mocked_resource_client, {target_rp: "NotRegistered"})
+        mocked_resource_client().providers.register.side_effect = Exception("Permission denied")
+
+        with pytest.raises(Exception, match="Permission denied"):
+            register_providers(ZEROED_SUB, resource_provider=target_rp)
+
+    def test_single_rp_missing_attempts_registration(self, mocked_resource_client):
+        from azext_edge.edge.providers.orchestration.rp_namespace import register_providers
+
+        target_rp = "Microsoft.DeviceRegistry"
+        self._setup_client(mocked_resource_client, {})
+
+        result = register_providers(ZEROED_SUB, resource_provider=target_rp)
+
+        mocked_resource_client().providers.register.assert_called_once_with(target_rp)
+        assert result == set()
+
+    def test_required_rps_registered_before_optional(self, mocked_resource_client, rp_constants):
+        """Required RPs are processed first to fail fast if they can't be registered."""
+        from azext_edge.edge.providers.orchestration.rp_namespace import register_providers
+
+        self._setup_client(mocked_resource_client, self._build_providers(rp_constants["all"], "NotRegistered"))
+        call_order = []
+        mocked_resource_client().providers.register.side_effect = lambda ns: call_order.append(ns)
+
+        register_providers(ZEROED_SUB)
+
+        required_indices = [call_order.index(rp) for rp in rp_constants["required"]]
+        optional_indices = [call_order.index(rp) for rp in rp_constants["optional"]]
+        assert max(required_indices) < min(optional_indices)
+
+    def test_subscription_id_passed_to_client(self, mocked_resource_client, rp_constants):
+        from azext_edge.edge.providers.orchestration.rp_namespace import register_providers
+
+        self._setup_client(mocked_resource_client, self._build_providers(rp_constants["all"], "Registered"))
+        test_sub = "test-subscription-id-12345"
+
+        register_providers(test_sub)
+
+        mocked_resource_client.assert_any_call(subscription_id=test_sub)
+
+    def test_mixed_registration_states(self, mocked_resource_client, rp_constants):
+        """Only RPs not in Registered/Registering state trigger registration."""
+        from azext_edge.edge.providers.orchestration.rp_namespace import register_providers
+
+        providers = {}
+        required_list = list(rp_constants["required"])
+        if len(required_list) >= 2:
+            providers[required_list[0]] = "Registered"
+            providers[required_list[1]] = "NotRegistered"
+            for rp in required_list[2:]:
+                providers[rp] = "Registering"
+        for rp in rp_constants["optional"]:
+            providers[rp] = "NotRegistered"
+
+        self._setup_client(mocked_resource_client, providers)
+
+        result = register_providers(ZEROED_SUB)
+
+        registered_rps = self._get_registered_rps(mocked_resource_client)
+        expected_to_register = {
+            rp for rp, state in providers.items() if state.lower() not in ("registered", "registering")
+        }
+        assert registered_rps == expected_to_register
+        assert result == set()

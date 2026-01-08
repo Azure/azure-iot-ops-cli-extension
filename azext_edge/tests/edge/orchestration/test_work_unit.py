@@ -33,12 +33,12 @@ from azure.cli.core.azclierror import (
 )
 
 from azext_edge.edge.common import (
+    DEFAULT_ARTIFACT_REGISTRY,
     DEFAULT_BROKER,
     DEFAULT_BROKER_AUTHN,
     DEFAULT_BROKER_LISTENER,
     DEFAULT_DATAFLOW_ENDPOINT,
     DEFAULT_DATAFLOW_PROFILE,
-    DEFAULT_ARTIFACT_REGISTRY,
 )
 from azext_edge.edge.providers.base import DEFAULT_NAMESPACE
 from azext_edge.edge.providers.orchestration.common import (
@@ -50,7 +50,10 @@ from azext_edge.edge.providers.orchestration.common import (
     OPS_EXTENSION_DEPS,
 )
 from azext_edge.edge.providers.orchestration.permissions import ROLE_DEF_FORMAT_STR
-from azext_edge.edge.providers.orchestration.rp_namespace import RP_NAMESPACE_SET
+from azext_edge.edge.providers.orchestration.rp_namespace import (
+    RP_NAMESPACE_OPTIONAL_SET,
+    RP_NAMESPACE_SET,
+)
 from azext_edge.edge.providers.orchestration.targets import (
     InstancePhase,
     get_default_cl_name,
@@ -414,7 +417,10 @@ def build_target_scenario(
         },
         "customLocation": {"name": None},
         "providerNamespace": {
-            "value": [{"namespace": namespace, "registrationState": "Registered"} for namespace in RP_NAMESPACE_SET]
+            "value": [
+                {"namespace": namespace, "registrationState": "Registered"}
+                for namespace in RP_NAMESPACE_SET.union(RP_NAMESPACE_OPTIONAL_SET)
+            ]
         },
         "trust": {"userTrust": None, "settings": None},
         "enableFaultTolerance": None,
