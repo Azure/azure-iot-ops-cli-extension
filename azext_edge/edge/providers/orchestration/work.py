@@ -46,6 +46,7 @@ from .common import (
 from .permissions import ROLE_DEF_FORMAT_STR, PermissionManager, PrincipalType
 from .resource_map import IoTOperationsResourceMap
 from .resources.custom_locations import CustomLocations
+from .rp_namespace import HEALTH_PROVIDER, register_providers
 from .targets import InitTargets, InstancePhase
 
 logger = get_logger(__name__)
@@ -357,7 +358,6 @@ class WorkManager:
 
     def _do_work(self):
         from .host import verify_cli_client_connections
-        from .rp_namespace import register_providers
 
         try:
             # Ensure connection to ARM if needed. Show remediation error message otherwise.
@@ -369,7 +369,7 @@ class WorkManager:
             if self._pre_flight:
                 # WorkStepKey.REG_RP
                 self._render_display(category=WorkCategoryKey.PRE_FLIGHT, active_step=WorkStepKey.REG_RP)
-                register_providers(self.subscription_id)
+                failed_optional_rps = register_providers(self.subscription_id)
                 self._complete_step(
                     category=WorkCategoryKey.PRE_FLIGHT,
                     completed_step=WorkStepKey.REG_RP,
@@ -377,6 +377,9 @@ class WorkManager:
                 )
 
                 # WorkStepKey.ENUMERATE_PRE_FLIGHT
+                # Skip health check if ResourceHealth RP registration failed
+                if HEALTH_PROVIDER not in failed_optional_rps:
+                    self._eval_cluster_health()
                 if self._check_cluster:
                     cluster_check_kwargs = self._build_cluster_check_kwargs()
                     # TODO - load_config_context should be moved down to functions that directly call it
@@ -688,3 +691,28 @@ class WorkManager:
                 f"'az iot ops delete --cluster {self._targets.cluster_name} -g {self._targets.resource_group_name}'\n"
                 "to uninstall the existing deployment prior to running ops create."
             )
+
+    def _eval_cluster_health(self):
+        connected_cluster = self._resource_map.connected_cluster
+        if connected_cluster.available:
+            return
+
+        health_state = connected_cluster.health_state
+        if not health_state:
+            return
+
+        properties: dict = health_state.get("properties", {})
+        summary = properties.get("summary", "No additional details available.")
+        reason_type = properties.get("reasonType", "")
+
+        error_msg = (
+            f"The connected cluster '{self._targets.cluster_name}' is currently unavailable.\n\nSummary: {summary}"
+        )
+        if reason_type:
+            error_msg += f"\nReason: {reason_type}"
+
+        error_msg += (
+            "\n\nPlease resolve the cluster health issues before deploying Azure IoT Operations.\n"
+            "For more information, check the Azure portal Resource Health blade for this cluster."
+        )
+        raise ValidationError(error_msg)

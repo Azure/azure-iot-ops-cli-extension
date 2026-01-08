@@ -6,14 +6,50 @@
 
 import os
 import sys
+from typing import NamedTuple
 
 import pytest
 import responses
 
 
+class MarkerDefinition(NamedTuple):
+    """Metadata for a pytest marker"""
+
+    name: str
+    description: str
+    edge_exclude: bool  # If True, prevents auto-marking test as 'edge'
+
+
+# Marker definitions with metadata
+MARKERS = [
+    MarkerDefinition("edge", "mark tests that run against edge / cluster (auto-applied to unmarked tests)", True),
+    MarkerDefinition("e2e", "mark end-to-end containerized tests (support bundles, checks)", False),
+    MarkerDefinition("rpsaas", "mark tests that are cloud-side", True),
+    MarkerDefinition("upgrade", "mark tests that will run az iot ops upgrade", True),
+    MarkerDefinition("init_scenario_test", "mark tests that will run az iot ops init", True),
+    MarkerDefinition("require_wlif_setup", "mark tests that require workload identity trust setup", True),
+    MarkerDefinition("long_running", "mark tests that take a long time to run", False),
+]
+
+
 def pytest_configure(config):
-    config.addinivalue_line("markers", "init_scenario_test: mark tests that will run az iot ops init.")
-    config.addinivalue_line("markers", "no_global_setup: mark tests that will not use global setup.")
+    # Register custom markers
+    for marker in MARKERS:
+        config.addinivalue_line("markers", f"{marker.name}: {marker.description}")
+
+
+def pytest_collection_modifyitems(items):
+    """Auto-mark tests without specific marks as 'edge' tests"""
+    # Get marks to be excluded from edge (default) mark
+    exclude_marks = {m.name for m in MARKERS if m.edge_exclude}
+
+    for item in items:
+        # Get all marks on the test
+        existing_marks = {mark.name for mark in item.iter_markers()}
+
+        # Auto-mark as 'edge' if no exclude marks exist
+        if not existing_marks.intersection(exclude_marks):
+            item.add_marker(pytest.mark.edge)
 
 
 # Sets current working directory to the directory of the executing file

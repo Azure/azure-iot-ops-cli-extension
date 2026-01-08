@@ -27,60 +27,41 @@ There are, however, some prerequisites and caveats that users should be made awa
 
   Our tests use `az-iot-ops-test-cluster` prefixes for cluster resources and `opskv` for keyvaults.
 
-- #### Understanding the matrix
-  This section is to resolve any confusion caused by the matrix and it's format. The goal for the matrix is to have either one job or four jobs run during `Run Cluster Tests`.
+- #### Understanding the test scenario matrix
 
-  If you provide `runtime-init-args`, only one job (custom-input) will run, which will include an init test with your specified runtime init arguments. This allows you to test new init arguments. We do not run the other jobs since the runtime-init-args can conflict with their preset values.
+  The integration test workflow uses a scenario-based matrix system defined in [`.github/test-scenarios.yml`](../.github/test-scenarios.yml). Each scenario represents a specific test configuration with its own tox environment, initialization arguments, and runtime settings.
 
-  If you do *not* provide `runtime-init-args`, four jobs will run with pre-set init arguments (default, insecure-listener, no-syncrules, ca-certs). We do not run the other job since it will just be `az iot ops init` with no additional parameters.
+  Note: Any test without an exclusive mark will be marked as `edge`.
 
-  To achieve this, exclude is needed for the matrix. We have 5 options for features (what test to run) and 2 options for runtime-args (true or false based on if `runtime-init-args` populated). This results in 10 possibilities, but is narrowed down to 5 since runtime-args is evaluated before the matrix is even created. We further narrow down the number of jobs to be run by eliminating nonsense combinations [(custom-input, false); (default, true); (insecure-listener, true); (no-syncrules, true); (ca-certs, true)]. Eliminated combinations that are not present in our possible combinations are ignored.
+  ##### **Available Scenarios**
 
-  ##### **Input runtime-init-args is provided**
+  - **edge**: Default edge/cluster tests (non-cloud)
+  - **insecure-listener**: Tests with insecure listener deployment
+  - **rpsaas**: Cloud-side (RPSaaS) tests
+  - **upgrade**: Azure IoT Operations upgrade tests (runs serially)
+  - **redeploy**: Tests cluster redeployment functionality
+  - **trustbundle**: Workload identity federation tests
 
-  If runtime-init-args is provided (ex: `--simulate-plc`), runtime-args will be set to `true`, resulting in the following possible combinations:
+  ##### **Scenario Configuration**
 
-  - (custom-input, true)
+  Each scenario in `test-scenarios.yml` can specify:
+  - `tox_env`: The tox environment to run (e.g., `python-rpsaas-int`)
+  - `init_args`: Additional `az iot ops init` arguments
+  - `create_args`: Additional `az iot ops create` arguments
+  - `needs_trust`: Whether trust bundle setup is required
+  - `test_redeploy`: Whether to test redeployment
+  - `parallel`: Whether tests run in parallel (default: true)
+  - `env`: Custom environment variables for the scenario
 
-  - (default, true)
+  ##### **Selecting Scenarios**
 
-  - (insecure-listener, true)
+  Use the `test-scenarios` input to run specific scenarios (comma-separated):
+  ```yaml
+  with:
+    test-scenarios: "rpsaas,upgrade"
+  ```
 
-  - (no-syncrules, true)
-
-  - (ca-certs, true)
-
-  We eliminate nonsense combinations.  This leaves us with only:
-
-  - (custom-input, true)
-
-  And thus, one job will be run.
-
-  ##### **Input runtime-init-args is not provided**
-
-  If runtime-init-args is *not* provided (it is left blank), runtime-args will be set to `false`, resulting in the following possible combinations:
-
-  - (custom-input, false)
-
-  - (default, false)
-
-  - (insecure-listener, false)
-
-  - (no-syncrules, false)
-
-  - (ca-certs, false)
-
-  We eliminate nonsense combinations. This leaves us with:
-
-  - (default, false)
-
-  - (insecure-listener, false)
-
-  - (no-syncrules, false)
-
-  - (ca-certs, false)
-
-  And thus, four jobs will be run.
+  If not specified, all scenarios will run.
 
 ### Inputs
 
@@ -102,9 +83,12 @@ There are, however, some prerequisites and caveats that users should be made awa
 | Input | Description |
 |---|---|
 **resource-group** | *The resource group to run tests in*
+**test-scenarios** | *Comma-separated list of scenarios to run (e.g., "rpsaas,upgrade"). If empty, all scenarios run.*
 **custom-locations-oid** | *Custom Locations Object ID - used to enable cluster-connect feature.*
-**runtime-init-args** | *Additional init arguments (beyond cluster name, resource group, key vault, and service principal arguments)*
+**runtime-init-args** | *Additional init arguments (beyond cluster name, resource group, schema registry)*
+**runtime-create-args** | *Additional create arguments (beyond cluster name, resource group, instance name)*
 **init-continue-on-error** | *Continue on error for init integration tests.*
+**keep-on-failure** | *Number of minutes to keep the cluster(s) active on failure (max 240 min).*
 
 ### Example workflow
 
@@ -117,6 +101,10 @@ on:
       resource-group:
         type: string
         default: my-aio-resource-group
+      test-scenarios:
+        type: string
+        description: "Comma-separated scenarios (e.g., 'rpsaas,upgrade')"
+        default: ""
 
 permissions:
     id-token: write
@@ -127,14 +115,12 @@ jobs:
         uses: azure/azure-iot-ops-cli-extension/.github/workflows/int_test.yml@dev
         with:
             resource-group: ${{ inputs.resource-group }}
+            test-scenarios: ${{ inputs.test-scenarios }}
             custom-locations-oid: "custom-locations-object-id"
         secrets:
             AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
             AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
             AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-            AIO_SP_APP_ID: ${{ secrets.AZURE_CLIENT_ID }}
-            AIO_SP_OBJECT_ID: ${{ secrets.AZURE_OBJECT_ID }}
-            AIO_SP_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
 
 ```
 

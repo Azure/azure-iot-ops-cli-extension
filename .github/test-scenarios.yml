@@ -1,0 +1,45 @@
+# Integration test scenario definitions for building test matrix
+
+# Scenario configuration format:
+# - name: Required string identifier for the scenario
+# - description: Optional string description (defaults to name if not provided)
+# - tox_env: Optional string specifying the tox environment to run
+# - needs_trust: Optional boolean for workload identity trust setup (default: false)
+# - init_args: Optional string with extra arguments for 'ops init' command
+# - create_args: Optional string with extra arguments for 'ops create' command
+# - test_redeploy: Optional boolean to test redeployment in the scenario (default: false)
+# - env: Optional list of environment variable dictionaries with key-value pairs
+# - parallel: Optional boolean controlling parallel execution in pytest-xdist (default: true)
+
+scenarios:
+  - name: edge
+    description: "Edge tests"
+    tox_env: python-edge-int
+
+  - name: insecure-listener
+    description: "Insecure listener deploy, long running tests"
+    tox_env: python-long-int
+    create_args: "--add-insecure-listener --persist-max-size 10Gi"
+    env:
+      - AIO_CLI_INIT_PREFLIGHT_DISABLED: "true"
+
+  - name: rpsaas
+    description: "Cloud tests"
+    tox_env: python-rpsaas-int
+
+  - name: upgrade
+    description: "Upgrade tests"
+    tox_env: python-upgrade-int
+    parallel: false
+
+  - name: redeploy
+    description: "Redeployment tests"
+    test_redeploy: true
+
+  - name: trustbundle
+    description: "Workload identity tests"
+    tox_env: python-wlif-int
+    needs_trust: true
+    init_args: "--user-trust"
+    create_args: "--trust-settings configMapName=example-bundle configMapKey=trust-bundle.pem issuerKind=Issuer issuerName=selfsigned-issuer"
+    parallel: false

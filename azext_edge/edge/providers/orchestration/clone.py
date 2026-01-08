@@ -145,6 +145,7 @@ TEMPLATE_EXPRESSION_MAP = {
     TemplateParams.LOCATION: f"[parameters('{TemplateParams.LOCATION.value}')]",
     TemplateParams.APPLY_ROLE_ASSIGNMENTS: f"[parameters('{TemplateParams.APPLY_ROLE_ASSIGNMENTS.value}')]",
     TemplateParams.ADR_NAMESPACE_ID: f"[parameters('{TemplateParams.ADR_NAMESPACE_ID.value}')]",
+    TemplateParams.ADR_NAMESPACE_LOCATION: f"[parameters('{TemplateParams.ADR_NAMESPACE_LOCATION.value}')]",
 }
 
 
@@ -177,6 +178,28 @@ def get_resource_id_by_parts(rtype: str, *args) -> str:
     if "concat(" in name_parts:
         name_parts = _rem_first_last(name_parts, "'")
     return f"[resourceId('{rtype}'{name_parts})]"
+
+
+def get_cross_rg_resource_id(
+    resource_type: str,
+    resource_name: str,
+    resource_group_expr: str,
+    subscription_expr: str = "subscription().subscriptionId",
+) -> str:
+    return (
+        f"[extensionResourceId(format('/subscriptions/{{0}}/resourceGroups/{{1}}', "
+        f"{subscription_expr}, {resource_group_expr}), "
+        f"'{resource_type}', {resource_name})]"
+    )
+
+
+def get_cross_rg_deployment_id(deployment_name: str, resource_group_expr: str, subscription_expr: str) -> str:
+    return get_cross_rg_resource_id(
+        resource_type="Microsoft.Resources/deployments",
+        resource_name=deployment_name,
+        resource_group_expr=resource_group_expr,
+        subscription_expr=subscription_expr,
+    )
 
 
 def get_resource_id_by_param(rtype: str, param: TemplateParams) -> str:
@@ -334,11 +357,19 @@ class ResourceContainer:
 
     def _apply_cl_ref(self):
         if "extendedLocation" in self.resource_state:
-            self.resource_state["extendedLocation"]["name"] = TEMPLATE_EXPRESSION_MAP["customLocationId"]
+            cross_rg_cl_ref = self.config.get("cross_rg_cl_ref")
+            if cross_rg_cl_ref:
+                self.resource_state["extendedLocation"]["name"] = cross_rg_cl_ref
+            else:
+                self.resource_state["extendedLocation"]["name"] = TEMPLATE_EXPRESSION_MAP["customLocationId"]
 
     def _apply_location_ref(self):
         if "location" in self.resource_state:
-            self.resource_state["location"] = TEMPLATE_EXPRESSION_MAP[TemplateParams.LOCATION]
+            adr_ns_location_ref = self.config.get("adr_ns_location_ref")
+            if adr_ns_location_ref:
+                self.resource_state["location"] = adr_ns_location_ref
+            else:
+                self.resource_state["location"] = TEMPLATE_EXPRESSION_MAP[TemplateParams.LOCATION]
 
     def _apply_nested_name(self):
         def _extract_suffix(path: str) -> str:
@@ -883,6 +914,16 @@ class CloneManager:
                     },
                 )
             )
+            ns_resources = self.get_resources_of_type("microsoft.deviceregistry/namespaces/devices")
+            if not ns_resources:
+                ns_resources = self.get_resources_of_type("microsoft.deviceregistry/namespaces/assets")
+            ns_location = ns_resources[0]["location"] if ns_resources else self.instance_record["location"]
+            self.parameter_map.update(
+                build_parameter(
+                    name=TemplateParams.ADR_NAMESPACE_LOCATION.value,
+                    default=ns_location,
+                )
+            )
 
     def _build_metadata(self):
         self.metadata_map["opsCliVersion"] = CLI_VERSION
@@ -1027,7 +1068,9 @@ class CloneManager:
             adr_namespace_ref = instance_copy["properties"].get("adrNamespaceRef", {})
             if adr_namespace_ref:
                 adr_namespace_ref["resourceId"] = (
-                    "[resourceId('Microsoft.DeviceRegistry/namespaces', "
+                    f"[resourceId(parameters('{TemplateParams.ADR_NAMESPACE_ID.value}').subscription, "
+                    f"parameters('{TemplateParams.ADR_NAMESPACE_ID.value}').resourceGroup, "
+                    f"'Microsoft.DeviceRegistry/namespaces', "
                     f"parameters('{TemplateParams.ADR_NAMESPACE_ID.value}').name)]"
                 )
             spc_ref = instance_copy["properties"].get("defaultSecretProviderClassRef", {})
@@ -1267,13 +1310,22 @@ class CloneManager:
             )
 
     def _analyze_assets_v2(self):
+        cross_rg_cl_ref = get_cross_rg_resource_id(
+            resource_type="Microsoft.ExtendedLocation/customLocations",
+            resource_name="parameters('customLocationName')",
+            resource_group_expr="parameters('clusterResourceGroup')",
+        )
         nested_params = {
             **build_parameter(name=TemplateParams.CUSTOM_LOCATION_NAME.value),
-            **build_parameter(name=TemplateParams.LOCATION.value),
+            **build_parameter(name=TemplateParams.ADR_NAMESPACE_LOCATION.value),
             **build_parameter(
                 name=TemplateParams.ADR_NAMESPACE_ID.value,
                 type="object",
                 value=TEMPLATE_EXPRESSION_MAP[TemplateParams.ADR_NAMESPACE_ID],
+            ),
+            **build_parameter(
+                name="clusterResourceGroup",
+                value="[resourceGroup().name]",
             ),
         }
         instance_resource_id_expr = get_resource_id_by_param(
@@ -1293,19 +1345,33 @@ class CloneManager:
                 ),
             ],
             parameters=nested_params,
+            resource_group="[parameters('adrNamespaceId').resourceGroup]",
+            subscription="[parameters('adrNamespaceId').subscription]",
+            config={
+                "cross_rg_cl_ref": cross_rg_cl_ref,
+                "adr_ns_location_ref": TEMPLATE_EXPRESSION_MAP[TemplateParams.ADR_NAMESPACE_LOCATION],
+            },
         )
 
         ns_assets = self.get_resources_of_type(resource_type="microsoft.deviceregistry/namespaces/assets")
         if ns_assets and ns_devices:
+            ns_device_deployment_depends = get_cross_rg_deployment_id(
+                deployment_name=self.active_deployment[StateResourceKey.NS_DEVICE][-1],
+                resource_group_expr="parameters('adrNamespaceId').resourceGroup",
+                subscription_expr="parameters('adrNamespaceId').subscription",
+            )
             self._add_deployment(
                 key=StateResourceKey.NS_ASSET,
                 api_version=self.api_config.registry_mgmt_api,
                 data_iter=ns_assets,
-                depends_on=get_resource_id_by_parts(
-                    "Microsoft.Resources/deployments",
-                    self.active_deployment[StateResourceKey.NS_DEVICE][-1],
-                ),
+                depends_on=ns_device_deployment_depends,
                 parameters=nested_params,
+                resource_group="[parameters('adrNamespaceId').resourceGroup]",
+                subscription="[parameters('adrNamespaceId').subscription]",
+                config={
+                    "cross_rg_cl_ref": cross_rg_cl_ref,
+                    "adr_ns_location_ref": TEMPLATE_EXPRESSION_MAP[TemplateParams.ADR_NAMESPACE_LOCATION],
+                },
             )
 
     def _analyze_secretsync(self):
@@ -1380,6 +1446,7 @@ class CloneManager:
         resource_group: Optional[str] = None,
         subscription: Optional[str] = None,
         condition: Optional[str] = None,
+        config: Optional[Dict[str, Any]] = None,
     ):
         data_iter = list(data_iter)
         if data_iter:
@@ -1402,6 +1469,7 @@ class CloneManager:
                     key=key,
                     api_version=api_version,
                     data_iter=chunk,
+                    config=config,
                 )
                 # Root deployments have root resources, which may be deployments, which in turn deploy resources
                 self.rcontainer_map[symbolic_name] = deployment_container

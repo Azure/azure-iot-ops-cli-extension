@@ -183,11 +183,17 @@ def test_get_namespace_for_instance(
     subscription: str,
     namespace_name: str
 ):
+    """Test that get_namespace_for_instance correctly parses namespace from instance.
+
+    This test validates cross-RG namespace support by using different resource groups
+    for the instance and namespace, ensuring the function correctly extracts both
+    the namespace name and its resource group from the adrNamespaceRef.resourceId.
+    """
     from azext_edge.edge.providers.adr.helpers import get_namespace_for_instance
 
     instance_name = generate_random_string()
     instance_resource_group = generate_random_string()
-    namespace_resource_group = generate_random_string()
+    namespace_resource_group = generate_random_string()  # Different RG for cross-RG testing
 
     # Create mock instance resource
     instance_resource = {

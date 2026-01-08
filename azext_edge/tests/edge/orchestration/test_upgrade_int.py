@@ -48,7 +48,7 @@ def upgrade_int_setup(settings):
     }
 
 
-@pytest.mark.rpsaas
+@pytest.mark.upgrade
 def test_upgrade(upgrade_int_setup):
     additional_args = upgrade_int_setup["additionalUpgradeArgs"] or ""
     resource_group = upgrade_int_setup["resourceGroup"]

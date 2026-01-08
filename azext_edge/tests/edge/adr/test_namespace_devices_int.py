@@ -374,12 +374,18 @@ def test_namespace_device_lifecycle_operations(require_init, tracked_resources: 
     assert endpoint_name_custom not in result
 
     # Remove endpoints (REST cert-auth, SSE username-auth, MQTT anonymous)
-    result = run(
-        f"az iot ops ns device endpoint inbound remove --device {device_name_2} "
-        f"--instance {instance_name} -g {resource_group} "
-        f"--endpoint {endpoint_name_onvif} {endpoint_name_media} {endpoint_name_rest} "
-        f"{endpoint_name_sse} {endpoint_name_mqtt} -y"
-    )
+    try:
+        result = run(
+            f"az iot ops ns device endpoint inbound remove --device {device_name_2} "
+            f"--instance {instance_name} -g {resource_group} "
+            f"--endpoint {endpoint_name_onvif} {endpoint_name_media} {endpoint_name_rest} "
+            f"{endpoint_name_sse} {endpoint_name_mqtt} -y"
+        )
+    except CLIInternalError as e:
+        # TODO - disable once bug is fixed / test is passing
+        if "400216" in str(e) and "Invalid Address is specified" in str(e):
+            pytest.xfail(f"Service-side validation bug: 400216 Invalid Address during endpoint remove: {e}")
+        raise
     # Filter out None values (removed endpoints) to get only active endpoints
     active_endpoints = {k: v for k, v in result.items() if v is not None}
     assert len(active_endpoints) == 2

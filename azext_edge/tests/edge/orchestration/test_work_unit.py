@@ -33,12 +33,12 @@ from azure.cli.core.azclierror import (
 )
 
 from azext_edge.edge.common import (
+    DEFAULT_ARTIFACT_REGISTRY,
     DEFAULT_BROKER,
     DEFAULT_BROKER_AUTHN,
     DEFAULT_BROKER_LISTENER,
     DEFAULT_DATAFLOW_ENDPOINT,
     DEFAULT_DATAFLOW_PROFILE,
-    DEFAULT_ARTIFACT_REGISTRY,
 )
 from azext_edge.edge.providers.base import DEFAULT_NAMESPACE
 from azext_edge.edge.providers.orchestration.common import (
@@ -50,7 +50,10 @@ from azext_edge.edge.providers.orchestration.common import (
     OPS_EXTENSION_DEPS,
 )
 from azext_edge.edge.providers.orchestration.permissions import ROLE_DEF_FORMAT_STR
-from azext_edge.edge.providers.orchestration.rp_namespace import RP_NAMESPACE_SET
+from azext_edge.edge.providers.orchestration.rp_namespace import (
+    RP_NAMESPACE_OPTIONAL_SET,
+    RP_NAMESPACE_SET,
+)
 from azext_edge.edge.providers.orchestration.targets import (
     InstancePhase,
     get_default_cl_name,
@@ -85,12 +88,14 @@ class ExpectedAPIVersion(Enum):
     AUTHORIZATION = "2022-04-01"
     CUSTOM_LOCATION = "2021-08-31-preview"
     GRAPH = "2022-10-01"
+    RESOURCE_HEALTH = "2025-05-01"
 
 
 class CallKey(Enum):
     CONNECT_RESOURCE_MANAGER = "connectResourceManager"
     GET_CLUSTER = "getCluster"
     GET_RESOURCE_PROVIDERS = "getResourceProviders"
+    GET_RESOURCE_HEALTH = "getResourceHealth"
     DEPLOY_INIT_WHATIF = "deployInitWhatIf"
     DEPLOY_INIT = "deployInit"
     GET_SCHEMA_REGISTRY = "getSchemaRegistry"
@@ -172,6 +177,12 @@ class ServiceGenerator:
                 assert request_kpis.params["api-version"] == ExpectedAPIVersion.CONNECTED_CLUSTER.value
                 self.call_map[CallKey.GET_CLUSTER].append(request_kpis)
                 return (200, STANDARD_HEADERS, json.dumps(self.scenario["cluster"]))
+
+            if "/providers/Microsoft.ResourceHealth/availabilityStatuses/current" in request_kpis.path_url:
+                assert request_kpis.params["api-version"] == ExpectedAPIVersion.RESOURCE_HEALTH.value
+                self.call_map[CallKey.GET_RESOURCE_HEALTH].append(request_kpis)
+                api_control = self.scenario["apiControl"][CallKey.GET_RESOURCE_HEALTH]
+                return (api_control["code"], STANDARD_HEADERS, json.dumps(api_control["body"]))
 
     def _handle_init(self, request_kpis: RequestKPIs):
         url_deployment_seg = r"/providers/Microsoft\.Resources/deployments/aziotops\.enablement\.[a-zA-Z0-9\.-]+"
@@ -406,12 +417,15 @@ def build_target_scenario(
         },
         "customLocation": {"name": None},
         "providerNamespace": {
-            "value": [{"namespace": namespace, "registrationState": "Registered"} for namespace in RP_NAMESPACE_SET]
+            "value": [
+                {"namespace": namespace, "registrationState": "Registered"}
+                for namespace in RP_NAMESPACE_SET.union(RP_NAMESPACE_OPTIONAL_SET)
+            ]
         },
         "trust": {"userTrust": None, "settings": None},
         "enableFaultTolerance": None,
         "check_cluster": None,
-        "ensureLatest": None,
+        "ensure_latest": None,
         "schemaRegistry": {
             "id": generate_resource_id(
                 resource_group_name=resource_group_name,
@@ -431,7 +445,8 @@ def build_target_scenario(
         },
         "dataflow": {"profileInstances": None},
         "broker": {},
-        "noProgress": True,
+        "no_progress": True,
+        "no_preflight": None,
         "raises": raises,
         "omitHttpMethods": omit_http_methods,
         "apiControl": {
@@ -441,6 +456,7 @@ def build_target_scenario(
             CallKey.GET_EXISTING_DEPLOYMENTS: {"code": 200, "body": {"data": []}},
             CallKey.GET_SCHEMA_REGISTRY: {"code": 200, "body": {}},
             CallKey.GET_ADR_NAMESPACE: {"code": 200, "body": {}},
+            CallKey.GET_RESOURCE_HEALTH: {"code": 200, "body": {"properties": {"availabilityState": "Available"}}},
         },
     }
     if "cluster_properties" in kwargs:
@@ -508,6 +524,50 @@ def assert_exception(expected_exc_meta: ExceptionMeta, call_func: Callable, call
         build_target_scenario(
             check_cluster=True,
         ),
+        build_target_scenario(
+            apiControl={
+                CallKey.GET_RESOURCE_HEALTH: {
+                    "code": 200,
+                    "body": {
+                        "properties": {
+                            "availabilityState": "Unavailable",
+                            "summary": "The cluster is experiencing issues.",
+                            "reasonType": "PlatformInitiated",
+                        }
+                    },
+                }
+            },
+            raises=ExceptionMeta(
+                exc_type=ValidationError,
+                exc_msg=[
+                    "is currently unavailable",
+                    "The cluster is experiencing issues.",
+                    "PlatformInitiated",
+                ],
+            ),
+            omit_http_methods=frozenset([responses.PUT, responses.POST]),
+        ),
+        # Cluster health unknown - should pass
+        build_target_scenario(
+            apiControl={
+                CallKey.GET_RESOURCE_HEALTH: {
+                    "code": 200,
+                    "body": {"properties": {"availabilityState": "Unknown"}},
+                }
+            },
+        ),
+        # Resource Health API failure (403) - should pass
+        build_target_scenario(
+            apiControl={
+                CallKey.GET_RESOURCE_HEALTH: {
+                    "code": 403,
+                    "body": {"error": {"code": "AuthorizationFailed", "message": "Access denied."}},
+                }
+            },
+        ),
+        build_target_scenario(
+            no_preflight=True,
+        ),
     ],
 )
 def test_iot_ops_init(
@@ -531,13 +591,12 @@ def test_iot_ops_init(
     if target_scenario["trust"]["userTrust"]:
         init_call_kwargs["user_trust"] = target_scenario["trust"]["userTrust"]
 
-    if target_scenario["noProgress"]:
-        init_call_kwargs["no_progress"] = target_scenario["noProgress"]
-    if target_scenario["ensureLatest"]:
-        init_call_kwargs["ensure_latest"] = target_scenario["ensureLatest"]
+    optional_flags = ["no_progress", "ensure_latest", "check_cluster", "no_preflight"]
+    for key in optional_flags:
+        if target_scenario.get(key):
+            init_call_kwargs[key] = target_scenario[key]
 
-    if target_scenario["check_cluster"]:
-        init_call_kwargs["check_cluster"] = target_scenario["check_cluster"]
+    preflight_calls = int(not bool(target_scenario.get("no_preflight")))
 
     exc_meta: Optional[ExceptionMeta] = target_scenario.get("raises")
     if exc_meta:
@@ -548,8 +607,9 @@ def test_iot_ops_init(
     init_result = init(**init_call_kwargs)  # pylint: disable=assignment-from-no-return
     expected_call_count_map = {
         CallKey.CONNECT_RESOURCE_MANAGER: 1,
-        CallKey.GET_RESOURCE_PROVIDERS: 1,
+        CallKey.GET_RESOURCE_PROVIDERS: preflight_calls,
         CallKey.GET_CLUSTER: 1,
+        CallKey.GET_RESOURCE_HEALTH: preflight_calls,
         CallKey.DEPLOY_INIT_WHATIF: 1,
         CallKey.DEPLOY_INIT: 1,
     }
@@ -558,7 +618,7 @@ def test_iot_ops_init(
     assert_cluster_prechecks(mock_prechecks, target_scenario)
 
     # TODO - @digimaun
-    if target_scenario["noProgress"]:
+    if target_scenario["no_progress"]:
         assert init_result is None
 
 
@@ -735,11 +795,6 @@ def assert_cluster_prechecks(mock_prechecks: Dict[str, Mock], target_scenario: d
                     resource_path="/namespaces/mynamespace",
                 ),
             },
-            raises=ExceptionMeta(
-                exc_type=InvalidArgumentValueError,
-                exc_msg=re.compile(r"--ns-resource-id value must match the resource group '(.+)'."),
-            ),
-            omit_http_methods=frozenset([responses.PUT, responses.POST, responses.GET, responses.HEAD]),
         ),
         build_target_scenario(
             apiControl={
@@ -779,6 +834,28 @@ def assert_cluster_prechecks(mock_prechecks: Dict[str, Mock], target_scenario: d
         ),
         build_target_scenario(
             skip_sr_ra=True,
+        ),
+        build_target_scenario(
+            apiControl={
+                CallKey.GET_RESOURCE_HEALTH: {
+                    "code": 200,
+                    "body": {
+                        "properties": {
+                            "availabilityState": "Unavailable",
+                            "summary": "The cluster is experiencing issues.",
+                            "reasonType": "PlatformInitiated",
+                        }
+                    },
+                }
+            },
+            raises=ExceptionMeta(
+                exc_type=ValidationError,
+                exc_msg="is currently unavailable",
+            ),
+            omit_http_methods=frozenset([responses.PUT, responses.POST]),
+        ),
+        build_target_scenario(
+            no_preflight=True,
         ),
     ],
 )
@@ -824,8 +901,11 @@ def test_iot_ops_create(
     if instance_features:
         create_call_kwargs["instance_features"] = instance_features
 
-    if target_scenario["noProgress"]:
-        create_call_kwargs["no_progress"] = target_scenario["noProgress"]
+    for key in ["no_progress", "no_preflight"]:
+        if target_scenario.get(key):
+            create_call_kwargs[key] = target_scenario[key]
+
+    preflight_calls = int(not bool(target_scenario.get("no_preflight")))
 
     # TODO: Simplify existing arg plumbing to this style for simplification
     for key in ["persist_max_size", "persist_pvc_sc", "persist_mode"]:
@@ -833,6 +913,7 @@ def test_iot_ops_create(
             create_call_kwargs[key] = target_scenario[key]
 
     skip_sr_ra = target_scenario.get("skip_sr_ra")
+    sr_ra_calls = int(not bool(skip_sr_ra))
     create_call_kwargs["skip_sr_ra"] = skip_sr_ra
 
     exc_meta: Optional[ExceptionMeta] = target_scenario.get("raises")
@@ -845,14 +926,15 @@ def test_iot_ops_create(
 
     expected_call_count_map = {
         CallKey.CONNECT_RESOURCE_MANAGER: 1,
-        CallKey.GET_RESOURCE_PROVIDERS: 1,
+        CallKey.GET_RESOURCE_PROVIDERS: preflight_calls,
         CallKey.GET_CLUSTER: 1,
+        CallKey.GET_RESOURCE_HEALTH: preflight_calls,
         CallKey.GET_SCHEMA_REGISTRY: 1,
         CallKey.GET_ADR_NAMESPACE: 1,
         CallKey.GET_CLUSTER_EXTENSIONS: 2,
         CallKey.GET_EXISTING_DEPLOYMENTS: 1,
-        CallKey.GET_SCHEMA_REGISTRY_RA: 0 if skip_sr_ra else 1,
-        CallKey.PUT_SCHEMA_REGISTRY_RA: 0 if skip_sr_ra else 1,
+        CallKey.GET_SCHEMA_REGISTRY_RA: sr_ra_calls,
+        CallKey.PUT_SCHEMA_REGISTRY_RA: sr_ra_calls,
         CallKey.CREATE_CUSTOM_LOCATION: 2,
         CallKey.DEPLOY_CREATE_EXT: 1,
         CallKey.DEPLOY_CREATE_INSTANCE: 1,
@@ -863,7 +945,7 @@ def test_iot_ops_create(
     assert_logger(mocked_logger, target_scenario)
 
     # TODO - @digimaun
-    if target_scenario["noProgress"]:
+    if target_scenario["no_progress"]:
         assert create_result is None
 
 

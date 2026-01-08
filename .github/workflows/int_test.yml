@@ -1,4 +1,5 @@
 name: Integration tests
+run-name: "Integration tests [${{ inputs.test-scenarios != '' && inputs.test-scenarios || 'all' }}]"
 on:
   schedule:
     - cron: "0 9 * * *" # Run daily at 1:00 AM Pacific Time (9:00 AM UTC)
@@ -9,6 +10,11 @@ on:
         type: string
         required: true
         default: ops-cli-int-test-rg
+      test-scenarios:
+        description: "Run specific scenarios (comma-separated list)"
+        type: string
+        required: false
+        default: ""
       runtime-init-args:
         description: Additional INIT arguments (beyond cluster name, resource group, schema registry).
         type: string
@@ -35,7 +41,6 @@ on:
         required: false
         default: 0
     secrets:
-      # required for az login
       AZURE_CLIENT_ID:
         required: true
       AZURE_TENANT_ID:
@@ -49,6 +54,11 @@ on:
         type: string
         required: true
         default: ops-cli-int-test-rg
+      test-scenarios:
+        description: "Run specific scenarios (comma-separated list)"
+        type: string
+        required: false
+        default: ""
       custom-locations-oid:
         description: Object ID of Custom Locations RP
         type: string
@@ -85,8 +95,9 @@ env:
   K3S_VERSION: "v1.29.15+k3s1"
   CUSTOM_LOCATIONS_OID: "${{ inputs.custom-locations-oid || '51dfe1e8-70c6-4de5-a08e-e18aff23d815' }}"
   KEEP_ALIVE: ${{ inputs.keep-on-failure || 0 }}
-  RUNTIME_CREATE_ARGS: "${{ inputs.runtime-create-args  }}"
+  RUNTIME_CREATE_ARGS: "${{ inputs.runtime-create-args }}"
   RUNTIME_INIT_ARGS: "${{ inputs.runtime-init-args }}"
+  TEST_SCENARIOS: "${{ inputs.test-scenarios || '' }}"
 
 jobs:
   setup:
@@ -95,8 +106,8 @@ jobs:
     # Run on dispatch, or ensure scheduled runs only on dev branch
     if: github.event_name != 'schedule' || (github.repository == 'azure/azure-iot-ops-cli-extension' && github.ref == 'refs/heads/dev')
     outputs:
-      create_args: ${{ steps.custom_input.outputs.CREATE_ARG }}
-      init_args: ${{ steps.custom_input.outputs.INIT_ARG }}
+      runtime_create_args: ${{ steps.runtime_args.outputs.CREATE_ARGS }}
+      runtime_init_args: ${{ steps.runtime_args.outputs.INIT_ARGS }}
     steps:
       - name: "Check Keep On Failure arg"
         run: |
@@ -104,13 +115,35 @@ jobs:
             echo "The keep alive input is not a valid number"
             exit 1
           fi
-      - name: "Output custom inputs for future job"
-        id: custom_input
+      - name: "Output runtime args for int-test job"
+        id: runtime_args
         run: |
-          echo "CREATE_ARG=${{ env.RUNTIME_CREATE_ARGS }}" >> $GITHUB_OUTPUT
-          echo "INIT_ARG=${{ env.RUNTIME_INIT_ARGS }}" >> $GITHUB_OUTPUT
+          echo "CREATE_ARGS=${{ env.RUNTIME_CREATE_ARGS }}" >> $GITHUB_OUTPUT
+          echo "INIT_ARGS=${{ env.RUNTIME_INIT_ARGS }}" >> $GITHUB_OUTPUT
+
+  build-matrix:
+    name: "Build Test Matrix"
+    needs: setup
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+    steps:
+      - name: "Checkout for config"
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            .github
+
+      - name: "Build matrix from scenarios"
+        id: matrix
+        uses: ./.github/actions/build-int-test-matrix
+        with:
+          test-scenarios: ${{ env.TEST_SCENARIOS }}
+
   unit-test:
     name: "Run linter and unit tests"
+    # Ensure matrix build succeeded before running any tests
+    needs: build-matrix
     runs-on: ubuntu-24.04
     steps:
       - name: "Checkout Source"
@@ -133,56 +166,29 @@ jobs:
           path: ./.coverage
           include-hidden-files: true
   int-test:
-    needs: setup
+    needs: [setup, build-matrix]
+    if: ${{ success() && needs.build-matrix.outputs.matrix != '[]' }}
     env:
-      CLUSTER_NAME: "opt${{ github.run_number }}${{ matrix.feature }}"
-      INSTANCE_NAME: "inst${{ github.run_number }}${{ matrix.feature }}"
+      CLUSTER_NAME: "opt${{ github.run_number }}${{ matrix.scenario.name }}"
+      INSTANCE_NAME: "inst${{ github.run_number }}${{ matrix.scenario.name }}"
       KEYVAULT_NAME: "kv${{ github.run_number }}"
-      INIT_ARG: ${{ needs.setup.outputs.init_args }}
-      CREATE_ARG: ${{ needs.setup.outputs.create_args }}
+      INIT_ARG: ""
+      CREATE_ARG: ""
     strategy:
       fail-fast: false
       matrix:
-        feature:
-          [
-            custom-input,
-            default,
-            insecure-listener,
-            syncrules,
-            redeploy,
-            trustbundle,
-          ]
-        runtime-args:
-          - ${{ needs.setup.outputs.init_args != '' || needs.setup.outputs.create_args != '' }}
-        exclude:
-          - feature: custom-input
-            runtime-args: false
-          - feature: default
-            runtime-args: true
-          - feature: insecure-listener
-            runtime-args: true
-          - feature: syncrules
-            runtime-args: true
-          - feature: redeploy
-            runtime-args: true
-          - feature: trustbundle
-            runtime-args: true
-    name: "Run cluster integration tests"
+        scenario: ${{ fromJson(needs.build-matrix.outputs.matrix) }}
+    name: "${{ matrix.scenario.description }}"
     runs-on: ubuntu-24.04
     steps:
-      - name: "Determine Init Args"
-        id: "init"
+      - name: "Export init args and environment variables"
         run: |
-          echo "NO_PREFLIGHT=false" >> $GITHUB_OUTPUT
-          if [[ ${{ matrix.feature }} == "insecure-listener" ]]; then
-            echo "CREATE_ARG=--add-insecure-listener --persist-max-size 10Gi" >> $GITHUB_OUTPUT
-            echo "NO_PREFLIGHT=true" >> $GITHUB_OUTPUT
-          elif [[ ${{ matrix.feature }} == "custom-input" ]]; then
-            echo "CREATE_ARG=${{ env.RUNTIME_CREATE_ARGS }}" >> $GITHUB_OUTPUT
-            echo "INIT_ARG=${{ env.RUNTIME_INIT_ARGS }}" >> $GITHUB_OUTPUT
-          elif [[ ${{ matrix.feature }} == "trustbundle" ]]; then
-            echo "CREATE_ARG=--trust-settings configMapName=example-bundle configMapKey=trust-bundle.pem issuerKind=Issuer issuerName=selfsigned-issuer" >> $GITHUB_OUTPUT
-            echo "INIT_ARG=--user-trust" >> $GITHUB_OUTPUT
+          echo "INIT_ARG=${{ matrix.scenario.init_args }} ${{ env.RUNTIME_INIT_ARGS }}" >> $GITHUB_ENV
+          echo "CREATE_ARG=${{ matrix.scenario.create_args }} ${{ env.RUNTIME_CREATE_ARGS }}" >> $GITHUB_ENV
+
+          env_json='${{ toJson(matrix.scenario.env) }}'
+          if [[ "$env_json" != "null" && "$env_json" != "[]" ]]; then
+            echo "$env_json" | jq -r '.[] | "\(.name)=\(.value)"' >> $GITHUB_ENV
           fi
       - name: "Output variables for future steps"
         id: "env_out"
@@ -205,99 +211,15 @@ jobs:
       - name: "Create k3s cluster"
         uses: ./.github/actions/create-k3s-cluster
       - name: "Apply custom cluster issuer"
-        if: ${{ matrix.feature == 'trustbundle' || contains(env.RUNTIME_INIT_ARGS, '--user-trust') }}
-        run: |
-          set -x
-          helm repo add jetstack https://charts.jetstack.io --force-update
-
-          helm install \
-            cert-manager jetstack/cert-manager \
-            --namespace cert-manager \
-            --create-namespace \
-            --version v1.13.6 \
-            --set installCRDs=true \
-            --set startupapicheck.timeout=5m
-
-          kubectl create namespace azure-iot-operations
-
-          helm upgrade trust-manager jetstack/trust-manager \
-            --install \
-            --namespace cert-manager \
-            --set app.trust.namespace=cert-manager \
-            --wait
-
-          kubectl apply -f - <<EOF
-          apiVersion: cert-manager.io/v1
-          kind: Issuer
-          metadata:
-            name: selfsigned-issuer
-            namespace: cert-manager
-          spec:
-            selfSigned: {}
-          ---
-          apiVersion: cert-manager.io/v1
-          kind: Certificate
-          metadata:
-            name: trust-manager-example-ca
-            namespace: cert-manager
-          spec:
-            isCA: true
-            commonName: trust-manager-example-ca
-            secretName: trust-manager-example-ca-secret
-            privateKey:
-              algorithm: ECDSA
-              size: 256
-            issuerRef:
-              name: selfsigned-issuer
-              kind: Issuer
-              group: cert-manager.io
-          EOF
-
-          kubectl apply -f - <<EOF
-          apiVersion: trust.cert-manager.io/v1alpha1
-          kind: Bundle
-          metadata:
-            name: example-bundle
-            namespace: cert-manager
-          spec:
-            sources:
-            - useDefaultCAs: true
-            - secret:
-                name: "trust-manager-example-ca-secret"
-                key: "tls.crt"
-            target:
-              configMap:
-                key: "trust-bundle.pem"
-              namespaceSelector:
-                matchLabels:
-                  kubernetes.io/metadata.name: azure-iot-operations
-          EOF
-
-          kubectl apply -f - <<EOF
-          apiVersion: cert-manager.io/v1
-          kind: Issuer
-          metadata:
-            name: selfsigned-issuer
-            namespace: azure-iot-operations
-          spec:
-            selfSigned: {}
-          EOF
+        if: ${{ matrix.scenario.needs_trust || contains(env.INIT_ARG, '--user-trust') }}
+        uses: ./.github/actions/setup-trust-bundle
       - name: "Tox test environment setup for init"
         run: |
           python -m pip install tox
           tox r -vv -e python-init-int --notest
-      - name: "Tox test environment setup for edge integration tests"
-        if: ${{ matrix.feature == 'default' }}
-        run: |
-          tox r -vv -e "python-edge-int" --notest
-      - name: "Tox test environment setup for cloud integration tests"
-        if: ${{ matrix.feature == 'syncrules' }}
-        run: |
-          tox r -vv -e "python-rpsaas-int" --notest
-      - name: "Tox test environment setup for Workload Identity integration tests"
-        if: ${{ matrix.feature == 'trustbundle' }}
-        run: |
-          tox r -vv -e "python-wlif-int" --notest
+          if [[ -n "${{ matrix.scenario.tox_env }}" ]]; then
+            tox r -vv -e "${{ matrix.scenario.tox_env }}" --notest
+          fi
       - name: "Az CLI login"
         uses: azure/login@v2
         with:
@@ -310,30 +232,19 @@ jobs:
           cluster-name: ${{ env.CLUSTER_NAME }}
           resource-group: ${{ env.RESOURCE_GROUP }}
           custom-locations-oid: ${{ env.CUSTOM_LOCATIONS_OID }}
-          enable-workload-identity: ${{ matrix.feature == 'trustbundle' }}
+          enable-workload-identity: ${{ matrix.scenario.needs_trust && 'true' || 'false' }}
       - name: "Az CLI login"
         uses: azure/login@v2
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-      - name: "Create Storage, Schema Registry, and Namespace for init tests"
+      - name: "Setup Cluster Resources"
         id: "init_reqs"
-        run: |
-          # Remove -'s and limit name length to 20 chars for storage accounts
-          storage_account_name=$(echo "initstore${{ env.CLUSTER_NAME }}" | tr -d '-' | cut -c 1-20)
-          storage_id=$(az storage account create -g ${{ env.RESOURCE_GROUP }} -n $storage_account_name --enable-hierarchical-namespace --public-network-access Disabled --allow-shared-key-access false --allow-blob-public-access false --default-action Deny -o tsv --query id)
-          echo "STORAGE_ID=$storage_id" >> $GITHUB_OUTPUT
-
-          # limit both names - 30 for registry, 20 for namespace
-          schema_registry_name=$(echo "init-registry${{ env.CLUSTER_NAME }}" | cut -c 1-30)
-          schema_namespace=$(echo "init-ns-${{ env.CLUSTER_NAME }}" | cut -c 1-20)
-          registry_id=$(az iot ops schema registry create -g ${{ env.RESOURCE_GROUP }} -n $schema_registry_name --rn $schema_namespace --sa-resource-id $storage_id -o tsv --query id)
-          echo "SCHEMA_REGISTRY_ID=$registry_id" >> $GITHUB_OUTPUT
-
-          adr_namespace_name=$(echo "init-adr-ns-${{ env.CLUSTER_NAME }}" | cut -c 1-30)
-          adr_namespace_id=$(az iot ops ns create -g ${{ env.RESOURCE_GROUP }} -n $adr_namespace_name --query "id" -o tsv)
-          echo "ADR_NAMESPACE_ID=$adr_namespace_id" >> $GITHUB_OUTPUT
+        uses: ./.github/actions/setup-cluster-resources
+        with:
+          suffix: ${{ env.CLUSTER_NAME }}
+          resource-group: ${{ env.RESOURCE_GROUP }}
       - name: "OIDC Token exchange service"
         run: |
           while true; do
@@ -346,58 +257,36 @@ jobs:
           done &
       - name: "Tox INIT Integration Tests"
         env:
-          AIO_CLI_INIT_PREFLIGHT_DISABLED: ${{ steps.init.outputs.NO_PREFLIGHT }}
           azext_edge_init_continue_on_error: ${{ inputs.init-continue-on-error || '' }}
           azext_edge_rg: ${{ steps.env_out.outputs.RESOURCE_GROUP }}
           azext_edge_cluster: ${{ steps.env_out.outputs.CLUSTER_NAME }}
           azext_edge_instance: ${{ steps.env_out.outputs.INSTANCE_NAME }}
-          azext_edge_init_args: ${{ steps.init.outputs.INIT_ARG }}
-          azext_edge_create_args: ${{ steps.init.outputs.CREATE_ARG }}
+          azext_edge_init_args: ${{ matrix.scenario.init_args }} ${{ needs.setup.outputs.runtime_init_args }}
+          azext_edge_create_args: ${{ matrix.scenario.create_args }} ${{ needs.setup.outputs.runtime_create_args }}
           azext_edge_schema_registry_id: ${{ steps.init_reqs.outputs.SCHEMA_REGISTRY_ID }}
           azext_edge_adr_namespace_id: ${{ steps.init_reqs.outputs.ADR_NAMESPACE_ID }}
         run: |
-          tox r -e python-init-int --skip-pkg-install -- --durations=0
+          tox r -e python-init-int --skip-pkg-install
           tox r -e report
-      - name: "Tox Edge Integration Tests"
-        if: ${{ matrix.feature == 'default' }}
-        env:
-          azext_edge_rg: ${{ steps.env_out.outputs.RESOURCE_GROUP }}
-          azext_edge_cluster: ${{ steps.env_out.outputs.CLUSTER_NAME }}
-          azext_edge_instance: ${{ steps.env_out.outputs.INSTANCE_NAME }}
-        run: |
-          tox r -e "python-edge-int" --skip-pkg-install -- --durations=0 --dist=loadfile -n auto
-          tox r -e report
-      - name: "Az CLI login"
-        if: ${{ matrix.feature == 'syncrules' }}
-        uses: azure/login@v2
-        with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-      - name: "Tox Cloud Integration Tests"
-        if: ${{ matrix.feature == 'syncrules' }}
+      - name: "${{ matrix.scenario.description }}"
+        if: ${{ matrix.scenario.tox_env != '' }}
         env:
           azext_edge_rg: ${{ steps.env_out.outputs.RESOURCE_GROUP }}
           azext_edge_cluster: ${{ steps.env_out.outputs.CLUSTER_NAME }}
           azext_edge_instance: ${{ steps.env_out.outputs.INSTANCE_NAME }}
           azext_edge_sp_object_id: ${{ secrets.AZURE_CLIENT_ID }}
         run: |
-          tox r -e "python-rpsaas-int" --skip-pkg-install -- --durations=0 --dist=loadfile -n auto
-          tox r -e report
-      - name: "Tox Workload Identity Integration Tests"
-        if: ${{ matrix.feature == 'trustbundle' }}
-        env:
-          azext_edge_rg: ${{ steps.env_out.outputs.RESOURCE_GROUP }}
-          azext_edge_instance: ${{ steps.env_out.outputs.INSTANCE_NAME }}
-          azext_edge_sp_object_id: ${{ secrets.AZURE_CLIENT_ID }}
-        run: |
-          tox r -e "python-wlif-int" --skip-pkg-install -- --durations=0
+          PYTEST_ARGS=""
+          if [[ "${{ matrix.scenario.parallel }}" == "true" ]]; then
+            PYTEST_ARGS="--dist=loadfile -n auto"
+          fi
+          tox r -e "${{ matrix.scenario.tox_env }}" --skip-pkg-install -- $PYTEST_ARGS
           tox r -e report
       - name: "Upload coverage artifacts"
-        if: always()
+        if: ${{ always() }}
         uses: actions/upload-artifact@v4
         with:
-          name: coverage-${{ matrix.feature }}
+          name: coverage-${{ matrix.scenario.name }}
           path: ./.coverage
           include-hidden-files: true
       - name: "Run smoke tests"
@@ -439,21 +328,22 @@ jobs:
             sleep 60s
           done
       - name: "Delete Cluster for redeployment"
-        if: ${{ matrix.feature == 'redeploy' }}
+        if: ${{ matrix.scenario.test_redeploy }}
+        timeout-minutes: 30
         run: |
           az iot ops delete -n ${{ env.INSTANCE_NAME }} -g ${{ env.RESOURCE_GROUP }} -y
       - name: "Redeploy cluster via tox"
-        if: ${{ matrix.feature == 'redeploy' }}
+        if: ${{ matrix.scenario.test_redeploy }}
         env:
           azext_edge_rg: ${{ steps.env_out.outputs.RESOURCE_GROUP }}
           azext_edge_cluster: ${{ steps.env_out.outputs.CLUSTER_NAME }}
           azext_edge_instance: ${{ steps.env_out.outputs.INSTANCE_NAME }}
-          azext_edge_init_args: ${{ steps.init.outputs.INIT_ARG }}
-          azext_edge_create_args: ${{ steps.init.outputs.CREATE_ARG }}
+          azext_edge_init_args: ${{ matrix.scenario.init_args }} ${{ needs.setup.outputs.runtime_init_args }}
+          azext_edge_create_args: ${{ matrix.scenario.create_args }} ${{ needs.setup.outputs.runtime_create_args }}
           azext_edge_schema_registry_id: ${{ steps.init_reqs.outputs.SCHEMA_REGISTRY_ID }}
           azext_edge_adr_namespace_id: ${{ steps.init_reqs.outputs.ADR_NAMESPACE_ID }}
         run: |
-          tox r -e python-init-int --skip-pkg-install -- --durations=0
+          tox r -e python-init-int --skip-pkg-install
       - name: "Delete AIO resources"
         if: ${{ always() }}
         run: |

@@ -1798,6 +1798,10 @@ def load_iotops_help():
                         rotationPollIntervalInSeconds=120
                         validatingAdmissionPolicies.applyPolicies=false
 
+                      The default config settings for cert-manager are:
+                        AgentOperationTimeoutInMinutes=20
+                        global.telemetry.enabled=true
+
         examples:
         - name: Usage with minimum input. This form will deploy the IoT Operations foundation layer.
           text: >
@@ -1831,7 +1835,7 @@ def load_iotops_help():
           queues.
 
           To enable edge to cloud resource hydration please use the
-          `az iot ops rsync enable` command post instance creation.
+          `az iot ops enable-rsync` command post instance creation.
 
         examples:
         - name: Create the target instance with minimum input.

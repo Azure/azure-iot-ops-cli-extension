@@ -12,7 +12,7 @@ from ...helpers import run
 from .namespace_helpers import create_config_file, assert_point_properties, assert_dataset_properties
 
 
-pytestmark = pytest.mark.long_running
+pytestmark = [pytest.mark.rpsaas, pytest.mark.long_running]
 
 
 def test_namespace_custom_asset_dataset_lifecycle_operations(

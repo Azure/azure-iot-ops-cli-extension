@@ -102,6 +102,7 @@ def init(
     context_name: Optional[str] = None,
     check_cluster: Optional[bool] = None,
     no_progress: Optional[bool] = None,
+    no_preflight: Optional[bool] = None,
     ensure_latest: Optional[bool] = None,
     user_trust: Optional[bool] = None,
     ssc_config: Optional[List[str]] = None,
@@ -117,7 +118,7 @@ def init(
     work_manager = WorkManager(cmd)
     result_payload = work_manager.execute_ops_init(
         show_progress=not no_progress,
-        pre_flight=not feature_config.is_enabled(FeatureFlag.PREFLIGHT_DISABLED),
+        pre_flight=not (no_preflight or feature_config.is_enabled(FeatureFlag.PREFLIGHT_DISABLED)),
         cluster_name=cluster_name,
         context_name=context_name,
         resource_group_name=resource_group_name,
@@ -171,6 +172,7 @@ def create_instance(
     tags: Optional[dict] = None,
     skip_sr_ra: Optional[bool] = None,
     no_progress: Optional[bool] = None,
+    no_preflight: Optional[bool] = None,
     **kwargs,
 ) -> Union[Dict[str, Any], None]:
     from .providers.orchestration.work import WorkManager
@@ -184,7 +186,7 @@ def create_instance(
     work_manager = WorkManager(cmd)
     result_payload = work_manager.execute_ops_init(
         show_progress=not no_progress,
-        pre_flight=not feature_config.is_enabled(FeatureFlag.PREFLIGHT_DISABLED),
+        pre_flight=not (no_preflight or feature_config.is_enabled(FeatureFlag.PREFLIGHT_DISABLED)),
         apply_foundation=False,
         cluster_name=cluster_name,
         resource_group_name=resource_group_name,
