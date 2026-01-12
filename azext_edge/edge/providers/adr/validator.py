@@ -46,7 +46,7 @@ class ConnectorMetadataValidator:
         self.metadata = self._get_metadata()
 
     @classmethod
-    def from_asset(cls, cmd, asset: Dict[str, Any], instance_name: str):
+    def from_asset(cls, cmd, asset: Dict[str, Any], instance_name: str, instance_resource_group: str):
         """
         Factory method to create validator from an asset by looking up its device and endpoint.
 
@@ -54,11 +54,12 @@ class ConnectorMetadataValidator:
             cmd: The Azure CLI command context
             asset: The asset resource dictionary
             instance_name: The IoT Operations instance name
+            instance_resource_group: Resource group containing the IoT Operations instance
 
         Returns:
             ConnectorMetadataValidator instance
         """
-        # Extract resource group and instance from asset's extended location or ID
+        # Extract resource group and instance from the asset ID
         from ...util.id_tools import parse_resource_id
 
         asset_id_str = asset.get("id", "")
@@ -69,7 +70,7 @@ class ConnectorMetadataValidator:
         if not asset_id:
             raise ValidationError(f"Invalid asset ID: {asset_id_str}")
 
-        resource_group_name = asset_id.get("resource_group")
+        asset_resource_group = asset_id.get("resource_group")
 
         # Parse namespace from asset ID path
         # Asset ID format:
@@ -79,10 +80,14 @@ class ConnectorMetadataValidator:
         # - type: "namespaces", name: "{namespace}"
         # - child_type_1: "assets", child_name_1: "{asset}"
         namespace_name = None
+        namespace_value = (asset_id.get("namespace") or "").lower()
+        type_value = (asset_id.get("type") or "").lower()
+        child_type_value = (asset_id.get("child_type_1") or "").lower()
+
         if (
-            asset_id.get("namespace") == "Microsoft.DeviceRegistry"
-            and asset_id.get("type") == "namespaces"
-            and asset_id.get("child_type_1") == "assets"
+            namespace_value == "microsoft.deviceregistry"
+            and type_value == "namespaces"
+            and child_type_value == "assets"
         ):
             # namespace_name is in the "name" field (the namespaces resource name)
             namespace_name = asset_id.get("name")
@@ -111,7 +116,7 @@ class ConnectorMetadataValidator:
         )
 
         device = registry_client.namespace_devices.get(
-            resource_group_name=resource_group_name,
+            resource_group_name=asset_resource_group,
             namespace_name=namespace_name,
             device_name=device_name,
         )
@@ -131,7 +136,7 @@ class ConnectorMetadataValidator:
 
         return cls(
             cmd=cmd,
-            resource_group_name=resource_group_name,
+            resource_group_name=instance_resource_group,
             instance_name=instance_name,
             endpoint_type=endpoint_type,
             endpoint_version=endpoint_version,
@@ -141,27 +146,22 @@ class ConnectorMetadataValidator:
         """
         Loads OPC UA connector metadata from local bundled JSON file.
 
-        Returns:
-            Dict containing the connector metadata JSON, or empty dict if load fails
+        Raises ValidationError if the file cannot be found or parsed, so callers
+        don't silently skip validation when the bundled schema is expected.
         """
+        import os
+
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        schema_file = os.path.join(current_dir, "schemas", "opcua_connector_metadata.json")
+
+        if not os.path.exists(schema_file):
+            raise ValidationError(f"OPC UA metadata file not found: {schema_file}")
+
         try:
-            import os
-            # Get the directory where this validator.py file is located
-            current_dir = os.path.dirname(os.path.abspath(__file__))
-            schema_file = os.path.join(current_dir, "schemas", "opcua_connector_metadata.json")
-
-            if not os.path.exists(schema_file):
-                logger.warning(f"OPC UA metadata file not found: {schema_file}")
-                return {}
-
             with open(schema_file, 'r', encoding='utf-8') as f:
-                metadata = json.load(f)
-
-            return metadata
-
+                return json.load(f)
         except Exception as e:
-            logger.warning(f"Failed to load local OPC UA metadata: {e}")
-            return {}
+            raise ValidationError(f"Failed to load local OPC UA metadata: {e}")
 
     def _get_metadata(self) -> Dict[str, Any]:
         """
@@ -181,13 +181,14 @@ class ConnectorMetadataValidator:
         if cache_key in self._METADATA_CACHE:
             return self._METADATA_CACHE[cache_key]
 
-        # Use local bundled schema for OPC UA
-        if self.endpoint_type.lower() in ["microsoft.opcua", "microsoft.deviceregistry.opcua", "opcua"]:
+        # Use local bundled schema for OPC UA v1 (type Microsoft.OpcUa, no version)
+        et_lower = (self.endpoint_type or "").lower()
+        version_empty = (self.endpoint_version is None) or (str(self.endpoint_version).strip() == "")
+
+        if et_lower == "microsoft.opcua" and version_empty:
             metadata = self._load_local_opcua_metadata()
-            if metadata:
-                self._METADATA_CACHE[cache_key] = metadata
-                return metadata
-            # Fall through to OCI fetch as fallback
+            self._METADATA_CACHE[cache_key] = metadata
+            return metadata
 
         try:
             # Step 1: Get IoT Operations management client
@@ -219,9 +220,10 @@ class ConnectorMetadataValidator:
                     if not et or et.lower() != self.endpoint_type.lower():
                         continue
 
-                    # Match version (if both specified, they must match; if either is None, match)
-                    if self.endpoint_version and ev and self.endpoint_version != ev:
-                        continue
+                    # If device specifies a version, template must have the same version
+                    if self.endpoint_version:
+                        if not ev or str(ev) != str(self.endpoint_version):
+                            continue
 
                     logger.info(
                         f"Matched connector template '{template_name}' for endpoint type "
@@ -234,21 +236,18 @@ class ConnectorMetadataValidator:
                     break
 
             if not matched_template:
-                logger.warning(
+                raise ValidationError(
                     f"No connector template found for endpoint type '{self.endpoint_type}' "
-                    f"version '{self.endpoint_version}'. Validation will be skipped."
+                    f"version '{self.endpoint_version}'."
                 )
-                return {}
 
             # Step 4: Extract connectorMetadataRef
             connector_metadata_ref = matched_template.get("properties", {}).get("connectorMetadataRef")
 
             if not connector_metadata_ref:
-                logger.warning(
-                    f"Connector template '{matched_template.get('name')}' does not have connectorMetadataRef. "
-                    "Validation will be skipped."
+                raise ValidationError(
+                    f"Connector template '{matched_template.get('name')}' is missing connectorMetadataRef."
                 )
-                return {}
 
             logger.info(f"Fetching connector metadata from OCI: {connector_metadata_ref}")
 
@@ -590,37 +589,40 @@ class ConnectorMetadataValidator:
         for endpoint in inbound_endpoints:
             endpoint_type = endpoint.get("endpointType")
 
-            if endpoint_type and endpoint_type.lower() == self.endpoint_type.lower():
-                logger.debug(f"Matched endpoint type '{self.endpoint_type}', extracting schema for '{schema_key}'")
-                # Version check if needed, for now assume type is unique or we take the first match
-                # if self.endpoint_version and endpoint.get("version") != self.endpoint_version:
-                #     continue
+            if not endpoint_type or endpoint_type.lower() != self.endpoint_type.lower():
+                continue
 
-                # Navigate the structure based on the key
-                schema = None
-                if schema_key == "datasetConfigurationSchema":
-                    schema = endpoint.get("datasets", {}).get("datasetConfigurationSchema")
-                elif schema_key == "dataPointConfigurationSchema":
-                    schema = endpoint.get("datasets", {}).get("dataPoints", {}).get("dataPointConfigurationSchema")
-                elif schema_key == "eventConfigurationSchema":
-                    schema = endpoint.get("eventGroups", {}).get("events", {}).get("eventConfigurationSchema")
-                elif schema_key == "eventGroupConfigurationSchema":
-                    schema = endpoint.get("eventGroups", {}).get("eventGroupConfigurationSchema")
-                elif schema_key == "additionalConfigurationSchema":
-                    schema = endpoint.get("additionalConfigurationSchema")
-                elif schema_key == "actionConfigurationSchema":
-                    schema = (
-                        endpoint.get("managementGroups", {})
-                        .get("managementGroupActions", {})
-                        .get("actionConfigurationSchema")
-                    )
-                elif schema_key == "managementGroupConfigurationSchema":
-                    schema = endpoint.get("managementGroups", {}).get("managementGroupConfigurationSchema")
+            endpoint_version = endpoint.get("version")
+            if self.endpoint_version and str(endpoint_version) != str(self.endpoint_version):
+                continue
 
-                if schema is not None:
-                    return schema
-                else:
-                    return None
+            logger.debug(f"Matched endpoint type '{self.endpoint_type}', extracting schema for '{schema_key}'")
+
+            # Navigate the structure based on the key
+            schema = None
+            if schema_key == "datasetConfigurationSchema":
+                schema = endpoint.get("datasets", {}).get("datasetConfigurationSchema")
+            elif schema_key == "dataPointConfigurationSchema":
+                schema = endpoint.get("datasets", {}).get("dataPoints", {}).get("dataPointConfigurationSchema")
+            elif schema_key == "eventConfigurationSchema":
+                schema = endpoint.get("eventGroups", {}).get("events", {}).get("eventConfigurationSchema")
+            elif schema_key == "eventGroupConfigurationSchema":
+                schema = endpoint.get("eventGroups", {}).get("eventGroupConfigurationSchema")
+            elif schema_key == "additionalConfigurationSchema":
+                schema = endpoint.get("additionalConfigurationSchema")
+            elif schema_key == "actionConfigurationSchema":
+                schema = (
+                    endpoint.get("managementGroups", {})
+                    .get("managementGroupActions", {})
+                    .get("actionConfigurationSchema")
+                )
+            elif schema_key == "managementGroupConfigurationSchema":
+                schema = endpoint.get("managementGroups", {}).get("managementGroupConfigurationSchema")
+
+            if schema is not None:
+                return schema
+            else:
+                return None
 
         return None
 

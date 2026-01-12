@@ -433,7 +433,9 @@ class NamespaceAssets(Queryable):
             from .validator import ConnectorMetadataValidator
             from azure.cli.core.azclierror import ValidationError
 
-            validator = ConnectorMetadataValidator.from_asset(self.cmd, asset, instance_name)
+            validator = ConnectorMetadataValidator.from_asset(
+                self.cmd, asset, instance_name, instance_resource_group
+            )
             validator.validate_dataset(new_dataset)
             logger.info(f"Dataset '{dataset_name}' configuration validated successfully.")
         except ValidationError:
@@ -531,7 +533,9 @@ class NamespaceAssets(Queryable):
             from .validator import ConnectorMetadataValidator
             from azure.cli.core.azclierror import ValidationError
 
-            validator = ConnectorMetadataValidator.from_asset(self.cmd, asset, instance_name)
+            validator = ConnectorMetadataValidator.from_asset(
+                self.cmd, asset, instance_name, instance_resource_group
+            )
             validator.validate_dataset(dataset)
             logger.info(f"Updated dataset '{dataset_name}' configuration validated successfully.")
         except ValidationError:
@@ -648,7 +652,9 @@ class NamespaceAssets(Queryable):
             from .validator import ConnectorMetadataValidator
             from azure.cli.core.azclierror import ValidationError
 
-            validator = ConnectorMetadataValidator.from_asset(self.cmd, asset, instance_name)
+            validator = ConnectorMetadataValidator.from_asset(
+                self.cmd, asset, instance_name, instance_resource_group
+            )
             validator.validate_datapoint(datapoint)
             logger.info(f"Datapoint '{datapoint_name}' configuration validated successfully.")
         except ValidationError:

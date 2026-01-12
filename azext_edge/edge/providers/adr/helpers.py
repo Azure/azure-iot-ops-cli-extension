@@ -384,5 +384,5 @@ def ensure_schema_structure(schema: dict, input_data: dict, name: Optional[str] 
                 final_messages.append(f"Invalid configuration: {msg}")
 
         error_msg = "\n".join(final_messages)
-        prefix = f"The following {name} connector arguments are invalid:\n" if name else "Invalid input data:\n"
+        prefix = f"The following {name} values are invalid:\n" if name else "Invalid input data:\n"
         raise InvalidArgumentValueError(f"{prefix}{error_msg}")
