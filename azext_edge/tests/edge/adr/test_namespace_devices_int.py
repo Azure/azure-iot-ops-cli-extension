@@ -386,23 +386,17 @@ def test_namespace_device_lifecycle_operations(require_init, tracked_resources: 
         if "400216" in str(e) and "Invalid Address is specified" in str(e):
             pytest.xfail(f"Service-side validation bug: 400216 Invalid Address during endpoint remove: {e}")
         raise
-    # Filter out None values (removed endpoints) to get only active endpoints
-    active_endpoints = {k: v for k, v in result.items() if v is not None}
-    assert len(active_endpoints) == 2
-    # Removed endpoints should be present as keys but with None values
-    assert endpoint_name_onvif in result
-    assert result[endpoint_name_onvif] is None
-    assert endpoint_name_media in result
-    assert result[endpoint_name_media] is None
-    assert endpoint_name_rest in result
-    assert result[endpoint_name_rest] is None
-    assert endpoint_name_sse in result
-    assert result[endpoint_name_sse] is None
-    assert endpoint_name_mqtt in result
-    assert result[endpoint_name_mqtt] is None
+    # Verify only the expected endpoints remain
+    assert len(result) == 2
+    # Removed endpoints should not be present in the result
+    assert endpoint_name_onvif not in result
+    assert endpoint_name_media not in result
+    assert endpoint_name_rest not in result
+    assert endpoint_name_sse not in result
+    assert endpoint_name_mqtt not in result
     # Remaining endpoints should be present with their configurations
-    assert endpoint_name_opcua in active_endpoints
-    assert endpoint_name_custom in active_endpoints
+    assert endpoint_name_opcua in result
+    assert endpoint_name_custom in result
 
     # Test device query functionality
     # Query for specific device by name
