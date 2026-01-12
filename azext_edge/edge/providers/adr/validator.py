@@ -632,11 +632,8 @@ class ConnectorMetadataValidator:
             config = dataset
 
         schema = self._get_schema("datasetConfigurationSchema")
-        if schema is not None:
-            self._validate(config, schema, "Dataset")
-            self._validate_destination(config, "datasets")
-        else:
-            logger.warning(f"No dataset schema found for endpoint type '{self.endpoint_type}' - skipping validation")
+        self._validate(config, schema, "Dataset")
+        self._validate_destination(config, "datasets")
 
     def validate_datapoint(self, datapoint: Dict[str, Any]):
         """Validate a datapoint object or its configuration.
@@ -667,11 +664,8 @@ class ConnectorMetadataValidator:
             config = {}
 
         schema = self._get_schema("dataPointConfigurationSchema")
-        if schema is not None:
-            self._validate(config, schema, "Datapoint")
-            self._validate_destination(config, "datapoints")
-        else:
-            logger.warning(f"No datapoint schema found for endpoint type '{self.endpoint_type}' - skipping validation")
+        self._validate(config, schema, "Datapoint")
+        self._validate_destination(config, "datapoints")
 
     def validate_event(self, event: Dict[str, Any]):
         """Validate an event object or its configuration.
@@ -706,45 +700,45 @@ class ConnectorMetadataValidator:
             config = event
 
         schema = self._get_schema("eventConfigurationSchema")
-        if schema is not None:
-            logger.debug("Found event schema, performing validation")
-            self._validate(config, schema, "Event")
-            self._validate_destination(config, "events")
-        else:
-            logger.warning(
-                f"No event schema found for endpoint type '{self.endpoint_type}' - skipping validation"
-            )
+        logger.debug("Found event schema, performing validation")
+        self._validate(config, schema, "Event")
+        self._validate_destination(config, "events")
 
-    def _get_schema(self, schema_key: str) -> Optional[Dict[str, Any]]:
+    def _get_schema(self, schema_key: str) -> Dict[str, Any]:
         """
         Extracts the specific schema from the metadata based on the endpoint type and version.
         """
         endpoint = self._get_endpoint_metadata()
-        if not endpoint:
-            return None
 
+        schema = None
         if schema_key == "datasetConfigurationSchema":
-            return endpoint.get("datasets", {}).get("datasetConfigurationSchema")
-        if schema_key == "dataPointConfigurationSchema":
-            return endpoint.get("datasets", {}).get("dataPoints", {}).get("dataPointConfigurationSchema")
-        if schema_key == "eventConfigurationSchema":
-            return endpoint.get("eventGroups", {}).get("events", {}).get("eventConfigurationSchema")
-        if schema_key == "eventGroupConfigurationSchema":
-            return endpoint.get("eventGroups", {}).get("eventGroupConfigurationSchema")
-        if schema_key == "additionalConfigurationSchema":
-            return endpoint.get("additionalConfigurationSchema")
-        if schema_key == "actionConfigurationSchema":
-            return (
+            schema = endpoint.get("datasets", {}).get("datasetConfigurationSchema")
+        elif schema_key == "dataPointConfigurationSchema":
+            schema = endpoint.get("datasets", {}).get("dataPoints", {}).get("dataPointConfigurationSchema")
+        elif schema_key == "eventConfigurationSchema":
+            schema = endpoint.get("eventGroups", {}).get("events", {}).get("eventConfigurationSchema")
+        elif schema_key == "eventGroupConfigurationSchema":
+            schema = endpoint.get("eventGroups", {}).get("eventGroupConfigurationSchema")
+        elif schema_key == "additionalConfigurationSchema":
+            schema = endpoint.get("additionalConfigurationSchema")
+        elif schema_key == "actionConfigurationSchema":
+            schema = (
                 endpoint.get("managementGroups", {})
                 .get("managementGroupActions", {})
                 .get("actionConfigurationSchema")
             )
-        if schema_key == "managementGroupConfigurationSchema":
-            return endpoint.get("managementGroups", {}).get("managementGroupConfigurationSchema")
+        elif schema_key == "managementGroupConfigurationSchema":
+            schema = endpoint.get("managementGroups", {}).get("managementGroupConfigurationSchema")
 
-        return None
+        if schema is None:
+            raise ValidationError(
+                f"Connector metadata is missing '{schema_key}' for endpoint type '{self.endpoint_type}' "
+                f"version '{self.endpoint_version}'."
+            )
 
-    def _get_endpoint_metadata(self) -> Optional[Dict[str, Any]]:
+        return schema
+
+    def _get_endpoint_metadata(self) -> Dict[str, Any]:
         """Find the inbound endpoint matching type/version, scanning all endpoints."""
         if self._matched_endpoint:
             return self._matched_endpoint
@@ -767,7 +761,14 @@ class ConnectorMetadataValidator:
             self._matched_endpoint = endpoint
             return endpoint
 
-        return None
+        available = [
+            f"type={ep.get('endpointType')}, version={ep.get('version')}" for ep in inbound_endpoints
+        ]
+        raise ValidationError(
+            "Connector metadata unavailable for requested endpoint: "
+            f"type='{self.endpoint_type}', version='{self.endpoint_version}'. "
+            f"Available inbound endpoints: {available or 'none found'}"
+        )
 
     def _validate_destination(self, config: Dict[str, Any], resource_kind: str):
         """Validate destination presence/defaults and enforce supportedDestinations when provided."""

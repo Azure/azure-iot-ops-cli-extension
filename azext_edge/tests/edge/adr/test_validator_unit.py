@@ -404,8 +404,8 @@ class TestConnectorMetadataValidator(unittest.TestCase):
             endpoint_version="1.0",
         )
 
-        schema = validator._get_schema("datasetConfigurationSchema")
-        self.assertIsNone(schema)
+        with self.assertRaises(ValidationError):
+            validator._get_schema("datasetConfigurationSchema")
 
     # ========== Tests for Real-World Scenarios (Full Objects with JSON Strings) ==========
 
