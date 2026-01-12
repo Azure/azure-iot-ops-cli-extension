@@ -4,12 +4,15 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
+import hashlib
 import json
+import os
 import requests
+from jsonschema import validate
 from typing import Any, Dict, Optional
 from knack.log import get_logger
 from azure.cli.core.azclierror import ValidationError
-from ...util.az_client import get_iotops_mgmt_client
+from ...util.az_client import AZURE_CLI_CREDENTIAL, get_iotops_mgmt_client
 
 logger = get_logger(__name__)
 
@@ -21,6 +24,25 @@ class ConnectorMetadataValidator:
     """
 
     _METADATA_CACHE = {}
+    _CONNECTOR_SCHEMA_CACHE = None
+    CONNECTOR_TEMPLATE_MANIFEST_TYPE = "connectortemplate"
+    _RESOURCE_TYPE_CONFIG_MEDIA_TYPES = {
+        CONNECTOR_TEMPLATE_MANIFEST_TYPE: "application/vnd.microsoft.akri-connector.v1+json",
+    }
+
+    def _make_metadata_cache_key(self) -> str:
+        """Scope cached metadata to a tenant+instance+endpoint tuple to avoid cross-instance reuse."""
+        subscription_id = (self.cmd.cli_ctx.data or {}).get("subscription_id", "unknown-subscription")
+        endpoint_version = self.endpoint_version or "none"
+        return ":".join(
+            [
+                str(subscription_id),
+                str(self.resource_group_name or "unknown-rg"),
+                str(self.instance_name or "unknown-instance"),
+                str(self.endpoint_type or "unknown-endpoint"),
+                str(endpoint_version),
+            ]
+        )
 
     def __init__(
         self,
@@ -44,6 +66,7 @@ class ConnectorMetadataValidator:
         self.endpoint_type = endpoint_type
         self.endpoint_version = endpoint_version
         self.metadata = self._get_metadata()
+        self._matched_endpoint = None
 
     @classmethod
     def from_asset(cls, cmd, asset: Dict[str, Any], instance_name: str, instance_resource_group: str):
@@ -177,7 +200,7 @@ class ConnectorMetadataValidator:
             Dict containing the connector metadata JSON
         """
         # Check cache first
-        cache_key = f"{self.endpoint_type}:{self.endpoint_version or 'none'}"
+        cache_key = self._make_metadata_cache_key()
         if cache_key in self._METADATA_CACHE:
             return self._METADATA_CACHE[cache_key]
 
@@ -260,11 +283,10 @@ class ConnectorMetadataValidator:
             return metadata
 
         except Exception as e:
-            logger.warning(f"Failed to fetch connector metadata: {e}. Validation will be skipped.")
-            return {}
+            logger.error(f"Failed to fetch connector metadata: {e}")
+            raise
 
-    @staticmethod
-    def fetch_oci_artifact(image_ref: str) -> Dict[str, Any]:  # noqa: C901
+    def fetch_oci_artifact(self, image_ref: str) -> Dict[str, Any]:  # noqa: C901
         """
         Fetches a JSON artifact from an OCI registry without requiring the 'oras' CLI.
 
@@ -287,9 +309,6 @@ class ConnectorMetadataValidator:
             repository = remainder
             tag = "latest"
 
-        # Handle mcr.microsoft.com specific logic if needed, or generic OCI
-        # MCR redirects to data endpoints, so standard requests usually work if we follow redirects.
-
         base_url = f"https://{registry}/v2/{repository}"
         headers = {
             "Accept": "application/vnd.oci.image.manifest.v1+json, application/vnd.docker.distribution.manifest.v2+json"
@@ -298,11 +317,14 @@ class ConnectorMetadataValidator:
         # 2. Get Manifest
         manifest_url = f"{base_url}/manifests/{tag}"
 
-        # Note: For private registries, we'd need authentication (Bearer token).
-        # MCR public images usually allow anonymous pull but might require a token handshake.
-        # For simplicity in this draft, we'll assume public access or implement a basic token flow.
+        # Prefer ACR token flow for ACR, fall back to registry challenge/anonymous for others.
+        token = None
+        if self._is_acr_registry(registry):
+            token = self._get_acr_access_token(registry=registry, repository=repository)
 
-        token = ConnectorMetadataValidator._get_auth_token(registry, repository)
+        if not token:
+            token = ConnectorMetadataValidator._get_auth_token(registry, repository)
+
         if token:
             headers["Authorization"] = f"Bearer {token}"
 
@@ -312,42 +334,32 @@ class ConnectorMetadataValidator:
 
         manifest = response.json()
 
-        # 3. Find the connector-metadata.json layer
-        # The connector metadata is stored as a file named "connector-metadata.json" in the OCI artifact
-        target_digest = None
+        expected_config_media_type = self._get_expected_config_media_type(self.CONNECTOR_TEMPLATE_MANIFEST_TYPE)
+        manifest_config = manifest.get("config") or {}
+        actual_config_media_type = manifest_config.get("mediaType")
 
+        if expected_config_media_type:
+            if not actual_config_media_type:
+                raise ValidationError(
+                    f"Missing artifact config media type; expected '{expected_config_media_type}'."
+                )
+            if actual_config_media_type != expected_config_media_type:
+                raise ValidationError(
+                    f"Artifact config media type '{actual_config_media_type}' does not match expected "
+                    f"'{expected_config_media_type}'."
+                )
+        elif not actual_config_media_type:
+            raise ValidationError("Missing artifact config media type.")
+
+        # 3. Use the first layer (DOE behavior)
         layers = manifest.get("layers", [])
+        if not layers:
+            raise ValidationError(f"Manifest for {image_ref} has no layers.")
 
-        # Strategy 1: Look for layer with title annotation containing "connector-metadata.json"
-        for layer in layers:
-            annotations = layer.get("annotations", {})
-            title = annotations.get("org.opencontainers.image.title", "")
-
-            # Match if title ends with connector-metadata.json
-            # (handles paths like "azure_iot_operations_rest_connector/connector-metadata.json")
-            if title.endswith("connector-metadata.json"):
-                target_digest = layer["digest"]
-                logger.info(f"Found connector-metadata.json layer: {target_digest}")
-                break
-
-        # Strategy 2: If not found by title, look for application/json media type
-        if not target_digest:
-            for layer in layers:
-                media_type = layer.get("mediaType", "")
-                if "json" in media_type.lower():
-                    target_digest = layer["digest"]
-                    logger.info(f"Found JSON layer by media type: {target_digest}")
-                    break
-
-        # Strategy 3: Try the first layer as fallback
-        if not target_digest and len(layers) > 0:
-            target_digest = layers[0]["digest"]
-            logger.warning(f"Using first layer as fallback: {target_digest}")
-
+        target_digest = layers[0].get("digest")
         if not target_digest:
             raise ValidationError(
-                f"Could not find connector-metadata.json layer in {image_ref}. "
-                f"Manifest has {len(layers)} layers but none match expected structure."
+                f"First layer in manifest for {image_ref} is missing digest. Layer: {layers[0]}"
             )
 
         # 4. Fetch the Blob
@@ -357,10 +369,25 @@ class ConnectorMetadataValidator:
         if blob_response.status_code != 200:
             raise ValidationError(f"Failed to fetch blob {target_digest}: {blob_response.status_code}")
 
+        # Verify blob digest matches manifest entry to prevent tampering/stale blobs
+        if ":" not in target_digest:
+            raise ValidationError(f"Invalid layer digest format: {target_digest}")
+
+        algo, expected_hex = target_digest.split(":", 1)
+        if algo.lower() != "sha256":
+            raise ValidationError(f"Unsupported digest algorithm '{algo}' for layer {target_digest}")
+
+        computed_hex = hashlib.sha256(blob_response.content).hexdigest()
+        if computed_hex != expected_hex:
+            raise ValidationError(
+                f"Blob digest mismatch: expected {target_digest}, got sha256:{computed_hex}"
+            )
+
         # Check if the blob is a tar file (common for OCI artifacts)
         content_type = blob_response.headers.get("Content-Type", "")
 
         # If it's a tar file, extract the connector-metadata.json from it
+        # Accept tar/gzip content; fall back to JSON parse otherwise
         if "tar" in content_type or blob_response.content[:2] == b"\x1f\x8b":  # Check for gzip magic number too
             import tarfile
             import io
@@ -410,19 +437,36 @@ class ConnectorMetadataValidator:
                 logger.error(f"Blob is not valid JSON: {e}")
                 raise ValidationError(f"Artifact at {image_ref} is not valid JSON.")
 
-        # Validate the metadata structure
-        if "inboundEndpoints" in metadata:
-            endpoint_count = len(metadata.get('inboundEndpoints', []))
-            logger.info(
-                f"Found valid connector metadata with {endpoint_count} inbound endpoints"
-            )
-            return metadata
-        else:
-            logger.warning(f"Metadata does not contain 'inboundEndpoints', keys found: {list(metadata.keys())}")
+        # Validate the metadata structure against the official schema
+        try:
+            schema = self._get_connector_metadata_schema()
+            validate(instance=metadata, schema=schema)
+        except Exception as e:
+            raise ValidationError(f"Connector metadata does not match schema: {e}")
+
+        # Basic sanity check for inboundEndpoints
+        if "inboundEndpoints" not in metadata:
             raise ValidationError(
                 f"Artifact at {image_ref} does not contain expected connector metadata structure. "
                 f"Found keys: {list(metadata.keys())}"
             )
+
+        endpoint_count = len(metadata.get('inboundEndpoints', []))
+        logger.info(
+            f"Found valid connector metadata with {endpoint_count} inbound endpoints"
+        )
+        return metadata
+
+    @classmethod
+    def _get_expected_config_media_type(cls, manifest_type: str) -> Optional[str]:
+        """Return the canonical config media type for a given manifest type (supports override for testing)."""
+
+        if manifest_type == cls.CONNECTOR_TEMPLATE_MANIFEST_TYPE:
+            override = os.environ.get("AZ_IOTOPS_CONNECTOR_TEMPLATE_CONFIG_MEDIA_TYPE")
+            if override:
+                return override
+
+        return cls._RESOURCE_TYPE_CONFIG_MEDIA_TYPES.get(manifest_type)
 
     @staticmethod
     def _get_auth_token(registry: str, repository: str) -> Optional[str]:
@@ -474,6 +518,96 @@ class ConnectorMetadataValidator:
             logger.warning(f"Failed to obtain auth token: {e}")
         return None
 
+    @staticmethod
+    def _is_acr_registry(registry: str) -> bool:
+        return registry.endswith(".azurecr.io")
+
+    def _get_acr_access_token(self, registry: str, repository: str) -> Optional[str]:
+        """
+        Acquire an ACR data-plane access token using the current Azure CLI credential.
+
+        Flow mirrors ACR OAuth:
+        1) ARM access token via AzureCliCredential
+        2) Exchange ARM token for ACR refresh token (oauth2/exchange)
+        3) Exchange refresh token for registry access token scoped to repository:pull
+        """
+
+        try:
+            arm_token = AZURE_CLI_CREDENTIAL.get_token("https://management.azure.com/.default").token
+        except Exception as ex:  # pragma: no cover - credential failures
+            logger.warning(f"Failed to obtain ARM token for ACR: {ex}")
+            return None
+
+        tenant_id = (self.cmd.cli_ctx.data or {}).get("tenant_id")
+        if not tenant_id:
+            logger.warning("Tenant ID not found in CLI context; cannot acquire ACR token.")
+            return None
+
+        exchange_url = f"https://{registry}/oauth2/exchange"
+        exchange_payload = {
+            "grant_type": "access_token",
+            "service": registry,
+            "tenant": tenant_id,
+            "access_token": arm_token,
+        }
+
+        try:
+            exchange_resp = requests.post(exchange_url, data=exchange_payload, timeout=30)
+        except Exception as ex:  # pragma: no cover - network errors
+            logger.warning(f"ACR exchange request failed: {ex}")
+            return None
+
+        if exchange_resp.status_code != 200:
+            logger.warning(
+                f"ACR exchange failed ({exchange_resp.status_code}): {exchange_resp.text[:200]}"
+            )
+            return None
+
+        refresh_token = exchange_resp.json().get("refresh_token")
+        if not refresh_token:
+            logger.warning("ACR exchange response missing refresh_token")
+            return None
+
+        token_url = f"https://{registry}/oauth2/token"
+        token_payload = {
+            "grant_type": "refresh_token",
+            "service": registry,
+            "scope": f"repository:{repository}:pull",
+            "refresh_token": refresh_token,
+        }
+
+        try:
+            token_resp = requests.post(token_url, data=token_payload, timeout=30)
+        except Exception as ex:  # pragma: no cover - network errors
+            logger.warning(f"ACR token request failed: {ex}")
+            return None
+
+        if token_resp.status_code != 200:
+            logger.warning(f"ACR token fetch failed ({token_resp.status_code}): {token_resp.text[:200]}")
+            return None
+
+        return token_resp.json().get("access_token")
+
+    @classmethod
+    def _get_connector_metadata_schema(cls) -> Dict[str, Any]:
+        """Load and cache the official connector metadata JSON schema."""
+        if cls._CONNECTOR_SCHEMA_CACHE is not None:
+            return cls._CONNECTOR_SCHEMA_CACHE
+
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        schema_path = os.path.join(current_dir, "schemas", "connector_metadata_schema.json")
+
+        if not os.path.exists(schema_path):
+            raise ValidationError(f"Connector metadata schema file not found: {schema_path}")
+
+        try:
+            with open(schema_path, "r", encoding="utf-8") as f:
+                cls._CONNECTOR_SCHEMA_CACHE = json.load(f)
+        except Exception as e:
+            raise ValidationError(f"Failed to load connector metadata schema: {e}")
+
+        return cls._CONNECTOR_SCHEMA_CACHE
+
     def validate_dataset(self, dataset: Dict[str, Any]):
         """Validate a dataset object or its configuration.
 
@@ -500,6 +634,7 @@ class ConnectorMetadataValidator:
         schema = self._get_schema("datasetConfigurationSchema")
         if schema is not None:
             self._validate(config, schema, "Dataset")
+            self._validate_destination(config, "datasets")
         else:
             logger.warning(f"No dataset schema found for endpoint type '{self.endpoint_type}' - skipping validation")
 
@@ -518,24 +653,23 @@ class ConnectorMetadataValidator:
             # Full datapoint object - extract and parse configuration
             config_str = datapoint.get("dataPointConfiguration")
             if not config_str:
-                return
-
-            try:
-                config = json.loads(config_str) if isinstance(config_str, str) else config_str
-            except (json.JSONDecodeError, TypeError) as e:
-                raise ValidationError(
-                    f"Invalid dataPointConfiguration JSON for datapoint '{datapoint_name}': {e}"
-                )
-        elif "name" in datapoint or "dataSource" in datapoint:
-            # Has datapoint fields but no configuration - skip validation
-            return
+                config = {}
+            else:
+                try:
+                    config = json.loads(config_str) if isinstance(config_str, str) else config_str
+                except (json.JSONDecodeError, TypeError) as e:
+                    raise ValidationError(
+                        f"Invalid dataPointConfiguration JSON for datapoint '{datapoint_name}': {e}"
+                    )
         else:
-            # Assume it's already a parsed configuration dict (backward compatibility)
-            config = datapoint
+            # If no configuration is provided, validate against an empty config; schema-required fields
+            # will fail if the schema demands them (aligns with DOE UI behavior).
+            config = {}
 
         schema = self._get_schema("dataPointConfigurationSchema")
         if schema is not None:
             self._validate(config, schema, "Datapoint")
+            self._validate_destination(config, "datapoints")
         else:
             logger.warning(f"No datapoint schema found for endpoint type '{self.endpoint_type}' - skipping validation")
 
@@ -575,6 +709,7 @@ class ConnectorMetadataValidator:
         if schema is not None:
             logger.debug("Found event schema, performing validation")
             self._validate(config, schema, "Event")
+            self._validate_destination(config, "events")
         else:
             logger.warning(
                 f"No event schema found for endpoint type '{self.endpoint_type}' - skipping validation"
@@ -584,55 +719,112 @@ class ConnectorMetadataValidator:
         """
         Extracts the specific schema from the metadata based on the endpoint type and version.
         """
+        endpoint = self._get_endpoint_metadata()
+        if not endpoint:
+            return None
+
+        if schema_key == "datasetConfigurationSchema":
+            return endpoint.get("datasets", {}).get("datasetConfigurationSchema")
+        if schema_key == "dataPointConfigurationSchema":
+            return endpoint.get("datasets", {}).get("dataPoints", {}).get("dataPointConfigurationSchema")
+        if schema_key == "eventConfigurationSchema":
+            return endpoint.get("eventGroups", {}).get("events", {}).get("eventConfigurationSchema")
+        if schema_key == "eventGroupConfigurationSchema":
+            return endpoint.get("eventGroups", {}).get("eventGroupConfigurationSchema")
+        if schema_key == "additionalConfigurationSchema":
+            return endpoint.get("additionalConfigurationSchema")
+        if schema_key == "actionConfigurationSchema":
+            return (
+                endpoint.get("managementGroups", {})
+                .get("managementGroupActions", {})
+                .get("actionConfigurationSchema")
+            )
+        if schema_key == "managementGroupConfigurationSchema":
+            return endpoint.get("managementGroups", {}).get("managementGroupConfigurationSchema")
+
+        return None
+
+    def _get_endpoint_metadata(self) -> Optional[Dict[str, Any]]:
+        """Find the inbound endpoint matching type/version, scanning all endpoints."""
+        if self._matched_endpoint:
+            return self._matched_endpoint
+
         inbound_endpoints = self.metadata.get("inboundEndpoints", [])
 
         for endpoint in inbound_endpoints:
             endpoint_type = endpoint.get("endpointType")
-
             if not endpoint_type or endpoint_type.lower() != self.endpoint_type.lower():
                 continue
 
             endpoint_version = endpoint.get("version")
-            if self.endpoint_version and str(endpoint_version) != str(self.endpoint_version):
-                continue
 
-            logger.debug(f"Matched endpoint type '{self.endpoint_type}', extracting schema for '{schema_key}'")
+            # Relaxed matching: if metadata omits version, accept the match even when caller
+            # provided one. Only reject when both sides specify a version and they differ.
+            if endpoint_version is not None and self.endpoint_version is not None:
+                if str(endpoint_version) != str(self.endpoint_version):
+                    continue
 
-            # Navigate the structure based on the key
-            schema = None
-            if schema_key == "datasetConfigurationSchema":
-                schema = endpoint.get("datasets", {}).get("datasetConfigurationSchema")
-            elif schema_key == "dataPointConfigurationSchema":
-                schema = endpoint.get("datasets", {}).get("dataPoints", {}).get("dataPointConfigurationSchema")
-            elif schema_key == "eventConfigurationSchema":
-                schema = endpoint.get("eventGroups", {}).get("events", {}).get("eventConfigurationSchema")
-            elif schema_key == "eventGroupConfigurationSchema":
-                schema = endpoint.get("eventGroups", {}).get("eventGroupConfigurationSchema")
-            elif schema_key == "additionalConfigurationSchema":
-                schema = endpoint.get("additionalConfigurationSchema")
-            elif schema_key == "actionConfigurationSchema":
-                schema = (
-                    endpoint.get("managementGroups", {})
-                    .get("managementGroupActions", {})
-                    .get("actionConfigurationSchema")
-                )
-            elif schema_key == "managementGroupConfigurationSchema":
-                schema = endpoint.get("managementGroups", {}).get("managementGroupConfigurationSchema")
-
-            if schema is not None:
-                return schema
-            else:
-                return None
+            self._matched_endpoint = endpoint
+            return endpoint
 
         return None
 
+    def _validate_destination(self, config: Dict[str, Any], resource_kind: str):
+        """Validate destination presence/defaults and enforce supportedDestinations when provided."""
+        endpoint = self._get_endpoint_metadata()
+        if not endpoint:
+            return
+
+        if resource_kind == "datasets":
+            dest_meta = endpoint.get("datasets", {}).get("destinations", {})
+        elif resource_kind == "datapoints":
+            dest_meta = endpoint.get("datasets", {}).get("dataPoints", {}).get("destinations", {})
+        elif resource_kind == "events":
+            dest_meta = endpoint.get("eventGroups", {}).get("events", {}).get("destinations", {})
+        else:
+            dest_meta = {}
+
+        if not isinstance(dest_meta, dict):
+            return
+
+        supported = dest_meta.get("supportedDestinations")
+        default_dest = dest_meta.get("defaultDestination")
+
+        if supported is not None and not isinstance(supported, list):
+            raise ValidationError("supportedDestinations must be an array if specified in connector metadata.")
+        if supported and default_dest is not None and default_dest not in supported:
+            raise ValidationError(
+                f"defaultDestination '{default_dest}' is not listed in supportedDestinations: {supported}"
+            )
+
+        destination_value = config.get("destination")
+
+        if destination_value is None:
+            if default_dest is not None:
+                config["destination"] = default_dest
+                return
+            if supported:
+                # Auto-assign a reasonable default when metadata lists supported destinations but omits a default.
+                # Prefer a single supported value; otherwise fall back to a common option if present.
+                if len(supported) == 1:
+                    config["destination"] = supported[0]
+                    return
+                if "Mqtt" in supported:
+                    config["destination"] = "Mqtt"
+                    return
+                # As a final fallback, pick the first supported destination to avoid failing validation.
+                config["destination"] = supported[0]
+                return
+            return
+
+        if supported and destination_value not in supported:
+            raise ValidationError(
+                f"Destination '{destination_value}' is not supported. Supported: {supported}"
+            )
+
     def _validate(self, instance: Dict[str, Any], schema: Dict[str, Any], resource_name: str):
         try:
-            from jsonschema import validate
-
             validate(instance=instance, schema=schema)
             logger.debug(f"{resource_name} configuration is VALID")
-        except ImportError as e:
-            logger.warning(f"jsonschema library not found: {e}. Skipping validation.")
         except Exception as e:
             raise ValidationError(f"{resource_name} configuration is invalid: {str(e)}")

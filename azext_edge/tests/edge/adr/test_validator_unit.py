@@ -5,6 +5,7 @@
 # ----------------------------------------------------------------------------------------------
 
 import json
+import copy
 import unittest
 from unittest.mock import patch, Mock
 from azext_edge.edge.providers.adr.validator import ConnectorMetadataValidator
@@ -322,6 +323,59 @@ class TestConnectorMetadataValidator(unittest.TestCase):
         with self.assertRaises(ValidationError):
             validator.validate_event(invalid_config)
 
+    def test_validate_event_autofill_destination_single_supported(self):
+        self.mock_get_metadata.return_value = ONVIF_METADATA
+        mock_cmd = Mock()
+        validator = ConnectorMetadataValidator(
+            cmd=mock_cmd,
+            resource_group_name="test-rg",
+            instance_name="test-instance",
+            endpoint_type="Microsoft.Onvif",
+            endpoint_version="1.0",
+        )
+
+        config = {"filter": "Topic = 'motion'"}
+
+        # Expect destination to be auto-filled to the sole supported option (Mqtt).
+        validator.validate_event(config)
+        self.assertEqual(config.get("destination"), "Mqtt")
+
+    def test_validate_event_destination_not_supported(self):
+        self.mock_get_metadata.return_value = ONVIF_METADATA
+        mock_cmd = Mock()
+        validator = ConnectorMetadataValidator(
+            cmd=mock_cmd,
+            resource_group_name="test-rg",
+            instance_name="test-instance",
+            endpoint_type="Microsoft.Onvif",
+            endpoint_version="1.0",
+        )
+
+        with self.assertRaises(ValidationError):
+            validator.validate_event({"filter": "Topic = 'motion'", "destination": "Storage"})
+
+    def test_validate_event_autofill_destination_prefers_mqtt_when_multiple(self):
+        metadata = copy.deepcopy(ONVIF_METADATA)
+        metadata["inboundEndpoints"][0]["eventGroups"]["events"]["destinations"]["supportedDestinations"] = [
+            "Storage",
+            "Mqtt",
+        ]
+        self.mock_get_metadata.return_value = metadata
+        mock_cmd = Mock()
+        validator = ConnectorMetadataValidator(
+            cmd=mock_cmd,
+            resource_group_name="test-rg",
+            instance_name="test-instance",
+            endpoint_type="Microsoft.Onvif",
+            endpoint_version="1.0",
+        )
+
+        config = {"filter": "Topic = 'motion'"}
+
+        # When multiple supported destinations exist, prefer Mqtt if available.
+        validator.validate_event(config)
+        self.assertEqual(config.get("destination"), "Mqtt")
+
     def test_get_schema_traversal(self):
         self.mock_get_metadata.return_value = ONVIF_METADATA
         mock_cmd = Mock()
@@ -461,8 +515,8 @@ class TestConnectorMetadataValidator(unittest.TestCase):
             "dataPointConfiguration": "",  # Empty string
         }
 
-        # Should not raise - empty config is skipped
-        validator.validate_datapoint(datapoint)
+        with self.assertRaises(ValidationError):
+            validator.validate_datapoint(datapoint)
 
     def test_validate_datapoint_missing_configuration(self):
         """Test that missing dataPointConfiguration is handled gracefully."""
@@ -482,8 +536,8 @@ class TestConnectorMetadataValidator(unittest.TestCase):
             # No dataPointConfiguration field
         }
 
-        # Should not raise - missing config is skipped
-        validator.validate_datapoint(datapoint)
+        with self.assertRaises(ValidationError):
+            validator.validate_datapoint(datapoint)
 
     def test_validate_datapoint_with_already_parsed_dict(self):
         """Test that already parsed configuration dict still works (backward compatibility)."""
