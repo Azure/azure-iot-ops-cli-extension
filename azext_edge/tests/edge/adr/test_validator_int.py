@@ -15,6 +15,8 @@ These tests employ a "Hybrid" approach:
    currently published in production, ensuring resilience against schema changes or artifact structure updates.
 """
 
+import hashlib
+import logging
 import pytest
 from unittest.mock import patch, Mock
 from azext_edge.edge.providers.adr.validator import ConnectorMetadataValidator
@@ -120,7 +122,7 @@ class TestConnectorMetadataValidatorIntegration:
             resource_group_name="rg",
             instance_name="instance",
             endpoint_type="Microsoft.opcua",  # Mixed/Lower case
-            endpoint_version="1.0",
+            endpoint_version=None,  # Empty version is required to trigger local OPC UA schema
         )
 
         # Should have loaded metadata
@@ -279,7 +281,11 @@ class TestConnectorMetadataValidatorIntegration:
         manifest_response = Mock()
         manifest_response.status_code = 200
         manifest_response.json.return_value = {
-            "config": {"mediaType": "application/vnd.oci.image.config.v1+json", "digest": "sha256:config123"},
+            "config": {
+                # DOE requires connector template manifests to use the connector media type
+                "mediaType": "application/vnd.microsoft.akri-connector.v1+json",
+                "digest": "sha256:config123",
+            },
             "layers": [{"mediaType": "application/vnd.microsoft.akri-connector.v1+json", "digest": "sha256:abc123"}],
         }
 
@@ -288,7 +294,18 @@ class TestConnectorMetadataValidatorIntegration:
             "$schema": "https://example.com/schema.json",
             "name": "Test Connector",
             "version": "1.0.0",
-            "inboundEndpoints": [],
+            "supportedArchitectures": ["linux/amd64"],
+            "imageConfigurationSettings": {"imageName": "test", "tag": "1.0.0"},
+            "inboundEndpoints": [
+                {
+                    "endpointType": "Microsoft.Test",
+                    "fields": {"address": {"input": "required"}},
+                    "datasets": {
+                        "limits": {"minimum": 0},
+                        "fields": {"dataSource": {"input": "optional"}, "typeRef": {"input": "optional"}},
+                    },
+                }
+            ],
         }
 
         # Create a tar file with the metadata JSON
@@ -303,10 +320,16 @@ class TestConnectorMetadataValidatorIntegration:
             tarinfo.size = len(json_bytes)
             tar.addfile(tarinfo, io.BytesIO(json_bytes))
 
+        # Compute the real digest of the blob so the manifest matches the content we serve
+        real_blob_digest = hashlib.sha256(tar_buffer.getvalue()).hexdigest()
+
         blob_response = Mock()
         blob_response.status_code = 200
         blob_response.headers = {"Content-Type": "application/vnd.oci.image.layer.v1.tar"}
         blob_response.content = tar_buffer.getvalue()
+
+        # Update manifest to advertise the actual blob digest
+        manifest_response.json.return_value["layers"][0]["digest"] = f"sha256:{real_blob_digest}"
 
         mock_get.side_effect = [manifest_response, blob_response]
 
@@ -316,6 +339,38 @@ class TestConnectorMetadataValidatorIntegration:
 
         assert result == sample_metadata
         assert mock_get.call_count == 2
+
+    @patch("azext_edge.edge.providers.adr.validator.ConnectorMetadataValidator._get_auth_token")
+    @patch("azext_edge.edge.providers.adr.validator.requests.get")
+    def test_fetch_oci_artifact_rejects_standard_oci_config_media_type(self, mock_get, mock_get_auth_token):
+        """Verify manifests using the generic OCI config media type are rejected (DOE parity)."""
+        mock_get_auth_token.return_value = None
+
+        manifest_response = Mock()
+        manifest_response.status_code = 200
+        manifest_response.json.return_value = {
+            "config": {
+                "mediaType": "application/vnd.oci.image.config.v1+json",  # Not allowed for connector templates
+                "digest": "sha256:config123",
+            },
+            "layers": [
+                {"mediaType": "application/vnd.microsoft.akri-connector.v1+json", "digest": "sha256:abc123"}
+            ],
+        }
+
+        blob_response = Mock()
+        blob_response.status_code = 200
+        blob_response.headers = {"Content-Type": "application/vnd.oci.image.layer.v1.tar"}
+        blob_response.content = b"dummy"
+
+        mock_get.side_effect = [manifest_response, blob_response]
+
+        with pytest.raises(ValidationError) as exc_info:
+            ConnectorMetadataValidator.fetch_oci_artifact(
+                "mcr.microsoft.com/azureiotoperations/akri-connectors/rest-metadata:1.0.5"
+            )
+
+        assert "config media type" in str(exc_info.value)
 
     def test_fetch_oci_artifact_invalid_reference(self):
         """Test OCI artifact fetching with invalid reference."""
@@ -385,31 +440,30 @@ class TestConnectorMetadataValidatorIntegration:
     # ========== Error Handling Tests ==========
 
     @patch("azext_edge.edge.providers.adr.validator.get_iotops_mgmt_client")
-    def test_no_matching_connector_template(self, mock_get_client):
+    def test_no_matching_connector_template(self, mock_get_client, caplog):
         """Test graceful handling when no connector template matches."""
+        # Silence expected error log from the validator while asserting it raises.
         cmd = self._create_mock_cmd()
         mock_client = Mock()
         mock_get_client.return_value = mock_client
         mock_client.akri_connector_template = Mock()
         mock_client.akri_connector_template.list_by_instance_resource = Mock(return_value=[])  # No templates
 
-        validator = ConnectorMetadataValidator(
-            cmd=cmd,
-            resource_group_name="test-rg",
-            instance_name="test-instance",
-            endpoint_type="Microsoft.Unknown",
-            endpoint_version="1.0",
-        )
+        caplog.set_level(logging.CRITICAL, logger="cli.azext_edge.edge.providers.adr.validator")
 
-        # Should return empty metadata
-        assert validator.metadata == {}
-
-        # Validation should be skipped
-        validator.validate_dataset({"any": "data"})  # Should not raise
+        with pytest.raises(ValidationError):
+            ConnectorMetadataValidator(
+                cmd=cmd,
+                resource_group_name="test-rg",
+                instance_name="test-instance",
+                endpoint_type="Microsoft.Unknown",
+                endpoint_version="1.0",
+            )
 
     @patch("azext_edge.edge.providers.adr.validator.get_iotops_mgmt_client")
-    def test_connector_template_missing_metadata_ref(self, mock_get_client):
+    def test_connector_template_missing_metadata_ref(self, mock_get_client, caplog):
         """Test handling when connector template has no connectorMetadataRef."""
+        # Silence expected error log from the validator while asserting it raises.
         cmd = self._create_mock_cmd()
         mock_client = Mock()
         mock_get_client.return_value = mock_client
@@ -425,15 +479,16 @@ class TestConnectorMetadataValidatorIntegration:
         }
         mock_client.akri_connector_template.list_by_instance_resource = Mock(return_value=[template])
 
-        validator = ConnectorMetadataValidator(
-            cmd=cmd,
-            resource_group_name="test-rg",
-            instance_name="test-instance",
-            endpoint_type="Microsoft.Http",
-            endpoint_version="1.0",
-        )
+        caplog.set_level(logging.CRITICAL, logger="cli.azext_edge.edge.providers.adr.validator")
 
-        assert validator.metadata == {}
+        with pytest.raises(ValidationError):
+            ConnectorMetadataValidator(
+                cmd=cmd,
+                resource_group_name="test-rg",
+                instance_name="test-instance",
+                endpoint_type="Microsoft.Http",
+                endpoint_version="1.0",
+            )
 
     @patch("azext_edge.edge.providers.adr.validator.get_iotops_mgmt_client")
     def test_validator_no_jsonschema_library(self, mock_get_client):
