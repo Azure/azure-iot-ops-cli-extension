@@ -275,7 +275,7 @@ class ConnectorMetadataValidator:
             logger.info(f"Fetching connector metadata from OCI: {connector_metadata_ref}")
 
             # Step 5: Fetch OCI artifact
-            metadata = self.fetch_oci_artifact(connector_metadata_ref)
+            metadata = self.fetch_oci_artifact(connector_metadata_ref, cmd=self.cmd)
 
             # Step 6: Cache the result
             self._METADATA_CACHE[cache_key] = metadata
@@ -286,12 +286,14 @@ class ConnectorMetadataValidator:
             logger.error(f"Failed to fetch connector metadata: {e}")
             raise
 
-    def fetch_oci_artifact(self, image_ref: str) -> Dict[str, Any]:  # noqa: C901
+    @classmethod
+    def fetch_oci_artifact(cls, image_ref: str, cmd=None) -> Dict[str, Any]:  # noqa: C901
         """
         Fetches a JSON artifact from an OCI registry without requiring the 'oras' CLI.
 
         Args:
             image_ref: The OCI image reference (e.g., mcr.microsoft.com/repo:tag)
+            cmd: Optional Azure CLI command context used for ACR auth when needed.
 
         Returns:
             The parsed JSON content of the artifact.
@@ -319,11 +321,11 @@ class ConnectorMetadataValidator:
 
         # Prefer ACR token flow for ACR, fall back to registry challenge/anonymous for others.
         token = None
-        if self._is_acr_registry(registry):
-            token = self._get_acr_access_token(registry=registry, repository=repository)
+        if cls._is_acr_registry(registry):
+            token = cls._get_acr_access_token(cmd=cmd, registry=registry, repository=repository)
 
         if not token:
-            token = ConnectorMetadataValidator._get_auth_token(registry, repository)
+            token = cls._get_auth_token(registry, repository)
 
         if token:
             headers["Authorization"] = f"Bearer {token}"
@@ -334,7 +336,7 @@ class ConnectorMetadataValidator:
 
         manifest = response.json()
 
-        expected_config_media_type = self._get_expected_config_media_type(self.CONNECTOR_TEMPLATE_MANIFEST_TYPE)
+        expected_config_media_type = cls._get_expected_config_media_type(cls.CONNECTOR_TEMPLATE_MANIFEST_TYPE)
         manifest_config = manifest.get("config") or {}
         actual_config_media_type = manifest_config.get("mediaType")
 
@@ -439,7 +441,7 @@ class ConnectorMetadataValidator:
 
         # Validate the metadata structure against the official schema
         try:
-            schema = self._get_connector_metadata_schema()
+            schema = cls._get_connector_metadata_schema()
             validate(instance=metadata, schema=schema)
         except Exception as e:
             raise ValidationError(f"Connector metadata does not match schema: {e}")
@@ -522,7 +524,8 @@ class ConnectorMetadataValidator:
     def _is_acr_registry(registry: str) -> bool:
         return registry.endswith(".azurecr.io")
 
-    def _get_acr_access_token(self, registry: str, repository: str) -> Optional[str]:
+    @staticmethod
+    def _get_acr_access_token(cmd, registry: str, repository: str) -> Optional[str]:
         """
         Acquire an ACR data-plane access token using the current Azure CLI credential.
 
@@ -532,13 +535,17 @@ class ConnectorMetadataValidator:
         3) Exchange refresh token for registry access token scoped to repository:pull
         """
 
+        if cmd is None:
+            logger.warning("ACR access token requested without command context; skipping ACR auth.")
+            return None
+
         try:
             arm_token = AZURE_CLI_CREDENTIAL.get_token("https://management.azure.com/.default").token
         except Exception as ex:  # pragma: no cover - credential failures
             logger.warning(f"Failed to obtain ARM token for ACR: {ex}")
             return None
 
-        tenant_id = (self.cmd.cli_ctx.data or {}).get("tenant_id")
+        tenant_id = (cmd.cli_ctx.data or {}).get("tenant_id")
         if not tenant_id:
             logger.warning("Tenant ID not found in CLI context; cannot acquire ACR token.")
             return None
