@@ -180,6 +180,12 @@ class ServiceGenerator:
 
             if "/providers/Microsoft.ResourceHealth/availabilityStatuses/current" in request_kpis.path_url:
                 assert request_kpis.params["api-version"] == ExpectedAPIVersion.RESOURCE_HEALTH.value
+                assert (
+                    request_kpis.params.get("$expand") == "recommendedactions"
+                ), "Expected $expand=recommendedactions query parameter for health API call"
+                assert request_kpis.headers.get(
+                    "x-ms-correlation-request-id"
+                ), "Missing x-ms-correlation-request-id header for health API call"
                 self.call_map[CallKey.GET_RESOURCE_HEALTH].append(request_kpis)
                 api_control = self.scenario["apiControl"][CallKey.GET_RESOURCE_HEALTH]
                 return (api_control["code"], STANDARD_HEADERS, json.dumps(api_control["body"]))
@@ -482,7 +488,12 @@ def assert_call_map(expected_call_count_map: dict, call_map: dict):
         assert len(call_map[key]) == expected_count, f"{key} has unexpected call(s)."
 
 
-def assert_exception(expected_exc_meta: ExceptionMeta, call_func: Callable, call_kwargs: dict):
+def assert_exception(
+    expected_exc_meta: ExceptionMeta,
+    call_func: Callable,
+    call_kwargs: dict,
+    exclude_from_exc_msg: Optional[List[str]] = None,
+):
     expected_exc_meta: ExceptionMeta
     with pytest.raises(expected_exc_meta.exc_type) as e:
         call_func(**call_kwargs)
@@ -490,12 +501,16 @@ def assert_exception(expected_exc_meta: ExceptionMeta, call_func: Callable, call
     if expected_exc_meta.exc_msg:
         if isinstance(expected_exc_meta.exc_msg, list):
             for msg_seg in expected_exc_meta.exc_msg:
-                assert msg_seg in exc_msg
-            return
-        if isinstance(expected_exc_meta.exc_msg, re.Pattern):
+                assert msg_seg in exc_msg, f"Expected '{msg_seg}' in error message: {exc_msg}"
+        elif isinstance(expected_exc_meta.exc_msg, re.Pattern):
             assert expected_exc_meta.exc_msg.match(exc_msg)
-            return
-        assert expected_exc_meta.exc_msg in exc_msg
+        else:
+            assert expected_exc_meta.exc_msg in exc_msg
+
+    # Verify certain strings are NOT in the error message
+    if exclude_from_exc_msg:
+        for excluded_msg in exclude_from_exc_msg:
+            assert excluded_msg not in exc_msg, f"'{excluded_msg}' should NOT be in error message: {exc_msg}"
 
 
 @pytest.mark.parametrize(
@@ -524,6 +539,7 @@ def assert_exception(expected_exc_meta: ExceptionMeta, call_func: Callable, call
         build_target_scenario(
             check_cluster=True,
         ),
+        # Basic unavailable scenario
         build_target_scenario(
             apiControl={
                 CallKey.GET_RESOURCE_HEALTH: {
@@ -547,7 +563,81 @@ def assert_exception(expected_exc_meta: ExceptionMeta, call_func: Callable, call
             ),
             omit_http_methods=frozenset([responses.PUT, responses.POST]),
         ),
-        # Cluster health unknown - should pass
+        # Unavailable with full details: title, resolutionETA (platform context), and recommendedActions
+        build_target_scenario(
+            apiControl={
+                CallKey.GET_RESOURCE_HEALTH: {
+                    "code": 200,
+                    "body": {
+                        "properties": {
+                            "availabilityState": "Unavailable",
+                            "title": "Degraded",
+                            "summary": "The cluster is experiencing critical issues.",
+                            "reasonType": "PlatformInitiated",
+                            "context": "Platform",
+                            "resolutionETA": "2026-01-14T00:57:02Z",
+                            "recommendedActions": [
+                                {
+                                    "action": "Check the <action>cluster connectivity</action> status.",
+                                    "actionUrl": "https://docs.microsoft.com/connectivity",
+                                },
+                                {
+                                    "action": "Review <action>node health</action> in the portal.",
+                                    "actionUrl": "https://docs.microsoft.com/node-health",
+                                },
+                            ],
+                        }
+                    },
+                }
+            },
+            raises=ExceptionMeta(
+                exc_type=ValidationError,
+                exc_msg=[
+                    "is currently unavailable",
+                    "Status: Degraded",
+                    "Summary: The cluster is experiencing critical issues.",
+                    "Reason: PlatformInitiated",
+                    "Expected Resolution: 2026-01-14T00:57:02Z",
+                    "Recommended Actions:",
+                    # XML tags should be stripped
+                    "Check the cluster connectivity status.",
+                    "https://docs.microsoft.com/connectivity",
+                    "Review node health in the portal.",
+                    "https://docs.microsoft.com/node-health",
+                ],
+            ),
+            omit_http_methods=frozenset([responses.PUT, responses.POST]),
+        ),
+        # Unavailable with non-platform context - resolutionETA should NOT appear in error
+        build_target_scenario(
+            apiControl={
+                CallKey.GET_RESOURCE_HEALTH: {
+                    "code": 200,
+                    "body": {
+                        "properties": {
+                            "availabilityState": "Unavailable",
+                            "title": "User Action Required",
+                            "summary": "User-initiated maintenance in progress.",
+                            "reasonType": "UserInitiated",
+                            "context": "Not Applicable",
+                            "resolutionETA": "2026-01-14T00:57:02Z",
+                        }
+                    },
+                }
+            },
+            raises=ExceptionMeta(
+                exc_type=ValidationError,
+                exc_msg=[
+                    "is currently unavailable",
+                    "Status: User Action Required",
+                    "Summary: User-initiated maintenance in progress.",
+                    "Reason: UserInitiated",
+                ],
+            ),
+            exclude_from_exc_msg=["Expected Resolution:"],
+            omit_http_methods=frozenset([responses.PUT, responses.POST]),
+        ),
+        # Cluster health unknown - should pass through
         build_target_scenario(
             apiControl={
                 CallKey.GET_RESOURCE_HEALTH: {
@@ -556,7 +646,16 @@ def assert_exception(expected_exc_meta: ExceptionMeta, call_func: Callable, call
                 }
             },
         ),
-        # Resource Health API failure (403) - should pass
+        # Cluster health Available - should pass through
+        build_target_scenario(
+            apiControl={
+                CallKey.GET_RESOURCE_HEALTH: {
+                    "code": 200,
+                    "body": {"properties": {"availabilityState": "Available"}},
+                }
+            },
+        ),
+        # Resource Health API failure (403) - should pass through gracefully
         build_target_scenario(
             apiControl={
                 CallKey.GET_RESOURCE_HEALTH: {
@@ -601,7 +700,13 @@ def test_iot_ops_init(
     exc_meta: Optional[ExceptionMeta] = target_scenario.get("raises")
     if exc_meta:
         exc_meta: ExceptionMeta
-        assert_exception(expected_exc_meta=exc_meta, call_func=init, call_kwargs=init_call_kwargs)
+        exclude_from_exc_msg = target_scenario.get("exclude_from_exc_msg")
+        assert_exception(
+            expected_exc_meta=exc_meta,
+            call_func=init,
+            call_kwargs=init_call_kwargs,
+            exclude_from_exc_msg=exclude_from_exc_msg,
+        )
         return
 
     init_result = init(**init_call_kwargs)  # pylint: disable=assignment-from-no-return
@@ -835,6 +940,7 @@ def assert_cluster_prechecks(mock_prechecks: Dict[str, Mock], target_scenario: d
         build_target_scenario(
             skip_sr_ra=True,
         ),
+        # Basic unavailable scenario for create flow
         build_target_scenario(
             apiControl={
                 CallKey.GET_RESOURCE_HEALTH: {
@@ -852,6 +958,67 @@ def assert_cluster_prechecks(mock_prechecks: Dict[str, Mock], target_scenario: d
                 exc_type=ValidationError,
                 exc_msg="is currently unavailable",
             ),
+            omit_http_methods=frozenset([responses.PUT, responses.POST]),
+        ),
+        # Unavailable with full details in create flow
+        build_target_scenario(
+            apiControl={
+                CallKey.GET_RESOURCE_HEALTH: {
+                    "code": 200,
+                    "body": {
+                        "properties": {
+                            "availabilityState": "Unavailable",
+                            "title": "Service Degradation",
+                            "summary": "Backend services are impacted.",
+                            "reasonType": "PlatformInitiated",
+                            "context": "Platform",
+                            "resolutionETA": "2026-01-15T12:00:00Z",
+                            "recommendedActions": [
+                                {
+                                    "action": "Wait for <action>automatic recovery</action>.",
+                                    "actionUrl": "https://status.azure.com",
+                                },
+                            ],
+                        }
+                    },
+                }
+            },
+            raises=ExceptionMeta(
+                exc_type=ValidationError,
+                exc_msg=[
+                    "is currently unavailable",
+                    "Status: Service Degradation",
+                    "Expected Resolution: 2026-01-15T12:00:00Z",
+                    "Wait for automatic recovery.",
+                    "https://status.azure.com",
+                ],
+            ),
+            omit_http_methods=frozenset([responses.PUT, responses.POST]),
+        ),
+        # Unavailable with non-platform context in create flow - no resolutionETA
+        build_target_scenario(
+            apiControl={
+                CallKey.GET_RESOURCE_HEALTH: {
+                    "code": 200,
+                    "body": {
+                        "properties": {
+                            "availabilityState": "Unavailable",
+                            "summary": "Customer-initiated action required.",
+                            "reasonType": "CustomerInitiated",
+                            "context": "Customer",
+                            "resolutionETA": "2026-01-15T12:00:00Z",
+                        }
+                    },
+                }
+            },
+            raises=ExceptionMeta(
+                exc_type=ValidationError,
+                exc_msg=[
+                    "is currently unavailable",
+                    "Customer-initiated action required.",
+                ],
+            ),
+            exclude_from_exc_msg=["Expected Resolution:"],
             omit_http_methods=frozenset([responses.PUT, responses.POST]),
         ),
         build_target_scenario(
@@ -919,7 +1086,13 @@ def test_iot_ops_create(
     exc_meta: Optional[ExceptionMeta] = target_scenario.get("raises")
     if exc_meta:
         exc_meta: ExceptionMeta
-        assert_exception(expected_exc_meta=exc_meta, call_func=create_instance, call_kwargs=create_call_kwargs)
+        exclude_from_exc_msg = target_scenario.get("exclude_from_exc_msg")
+        assert_exception(
+            expected_exc_meta=exc_meta,
+            call_func=create_instance,
+            call_kwargs=create_call_kwargs,
+            exclude_from_exc_msg=exclude_from_exc_msg,
+        )
         return
 
     create_result = create_instance(**create_call_kwargs)  # pylint: disable=assignment-from-no-return

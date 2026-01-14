@@ -97,15 +97,17 @@ class ConnectedCluster:
             )
         return self._resource_state
 
-    @property
-    def health_state(self) -> Optional[dict]:
+    def get_availability_status(self, headers: Optional[dict] = None, expand: Optional[str] = None) -> Optional[dict]:
         if not self._health_state:
             try:
-                # Consider if health_client should be cached
                 health_client = get_health_mgmt_client(subscription_id=self.subscription_id)
-                self._health_state = health_client.availability_statuses.get_by_resource(self.resource_id)
+                self._health_state = health_client.availability_statuses.get_by_resource(
+                    self.resource_id,
+                    headers=headers,
+                    expand=expand,
+                )
             except HttpResponseError as e:
-                logger.debug(f"Failed to retrieve resource health state: {e}")
+                logger.debug(f"Failed to retrieve availability status: {e}")
                 return None
         return self._health_state
 
@@ -118,15 +120,6 @@ class ConnectedCluster:
         properties = self.resource.get("properties", {})
         connectivity_status: str = properties.get("connectivityStatus", "Unknown")
         return connectivity_status.lower() == "connected"
-
-    @property
-    def available(self) -> bool:
-        health = self.health_state
-        if not health:
-            return True
-        properties = health.get("properties", {})
-        availability_state: str = properties.get("availabilityState", "Unknown")
-        return availability_state.lower() != "unavailable"
 
     @property
     def extensions(self) -> List[dict]:

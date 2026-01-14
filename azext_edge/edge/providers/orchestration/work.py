@@ -693,23 +693,53 @@ class WorkManager:
             )
 
     def _eval_cluster_health(self):
+        import re
+
         connected_cluster = self._resource_map.connected_cluster
-        if connected_cluster.available:
+        availability_status = connected_cluster.get_availability_status(
+            headers=self._headers,
+            expand="recommendedactions",
+        )
+
+        if not availability_status:
             return
 
-        health_state = connected_cluster.health_state
-        if not health_state:
+        properties: dict = availability_status.get("properties", {})
+        availability_state: str = properties.get("availabilityState", "Unknown")
+
+        if availability_state.lower() != "unavailable":
             return
 
-        properties: dict = health_state.get("properties", {})
+        title = properties.get("title", "")
         summary = properties.get("summary", "No additional details available.")
         reason_type = properties.get("reasonType", "")
+        resolution_eta = properties.get("resolutionETA", "")
+        context = properties.get("context", "")
 
-        error_msg = (
-            f"The connected cluster '{self._targets.cluster_name}' is currently unavailable.\n\nSummary: {summary}"
-        )
+        error_msg = f"The connected cluster '{self._targets.cluster_name}' is currently unavailable."
+        if title:
+            error_msg += f"\n\nStatus: {title}"
+        error_msg += f"\nSummary: {summary}"
+
         if reason_type:
             error_msg += f"\nReason: {reason_type}"
+
+        # Only show resolution ETA for platform-initiated issues
+        if resolution_eta and context.lower() == "platform":
+            error_msg += f"\nExpected Resolution: {resolution_eta}"
+
+        recommended_actions = properties.get("recommendedActions", [])
+        if recommended_actions:
+            error_msg += "\n\nRecommended Actions:"
+            for action in recommended_actions:
+                action_text = action.get("action", "")
+                action_url = action.get("actionUrl", "")
+                if action_text:
+                    # Strip XML-like <action>...</action> tags from text
+                    clean_action_text = re.sub(r"<action>(.*?)</action>", r"\1", action_text)
+                    error_msg += f"\n  - {clean_action_text}"
+                    if action_url:
+                        error_msg += f"\n    Link: {action_url}"
 
         error_msg += (
             "\n\nPlease resolve the cluster health issues before deploying Azure IoT Operations.\n"
