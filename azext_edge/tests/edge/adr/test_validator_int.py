@@ -575,7 +575,7 @@ class TestConnectorMetadataValidatorACR:
 
             az_cli = get_default_cli()
             profile = Profile(cli_ctx=az_cli)
-            cred, subscription_id, tenant_id = profile.get_login_credentials()
+            _, _, tenant_id = profile.get_login_credentials()
 
             cmd = Mock()
             cmd.cli_ctx = az_cli
