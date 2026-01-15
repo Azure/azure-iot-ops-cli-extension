@@ -13,7 +13,8 @@ def load_iotops_adr_help():
     ] = """
         type: group
         short-summary: Asset management.
-        long-summary: For more information on asset management, please see aka.ms/asset-overview
+        long-summary: This command group applies to classic assets. For namespace asset mgmt (latest), use
+          `az iot ops ns` commands. More information on asset management is available at aka.ms/asset-overview.
     """
 
     helps[
@@ -127,7 +128,8 @@ def load_iotops_adr_help():
     ] = """
         type: group
         short-summary: Manage datasets in an asset.
-        long-summary: A dataset will be created once a point is created. See `az iot ops asset dataset point add` for more details.
+        long-summary: A dataset will be created once a point is created via `az iot ops asset dataset point add`.
+          This command group applies to classic assets. For namespace asset mgmt (latest), use `az iot ops ns` commands.
     """
 
     helps[
@@ -159,6 +161,7 @@ def load_iotops_adr_help():
     ] = """
         type: group
         short-summary: Manage data-points in an asset dataset.
+        long-summary: This command group applies to classic assets. For namespace asset mgmt (latest), use `az iot ops ns` commands.
     """
 
     helps[
@@ -241,6 +244,7 @@ def load_iotops_adr_help():
     ] = """
         type: group
         short-summary: Manage events in an asset.
+        long-summary: This command group applies to classic assets. For namespace asset mgmt (latest), use `az iot ops ns` commands.
     """
 
     helps[
@@ -323,6 +327,7 @@ def load_iotops_adr_help():
     ] = """
         type: group
         short-summary: Manage asset endpoint profiles.
+        long-summary: This command group applies to classic assets. For namespace asset mgmt (latest), use `az iot ops ns` commands.
     """
 
     helps[
@@ -330,6 +335,7 @@ def load_iotops_adr_help():
     ] = """
         type: group
         short-summary: Create asset endpoint profiles.
+        long-summary: This command group applies to classic assets. For namespace asset mgmt (latest), use `az iot ops ns` commands.
     """
 
     helps[

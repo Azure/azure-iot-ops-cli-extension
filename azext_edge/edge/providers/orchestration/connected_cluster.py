@@ -4,7 +4,7 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from typing import Dict, List, Optional, Union
+from typing import List, Optional, Union
 
 from azure.core.exceptions import HttpResponseError
 from knack.log import get_logger
@@ -77,8 +77,8 @@ class ConnectedCluster:
         self.cluster_name = cluster_name
         self.resource_group_name = resource_group_name
         self.resource_graph = ResourceGraph(cmd=cmd, subscriptions=[self.subscription_id])
-        self._resource_state = None
-        self._health_state = None
+        self._resource_state: Optional[dict] = None
+        self._health_state: Optional[dict] = None
 
         # TODO - @digimaun - temp necessary due to circular import
         from ..orchestration.resources import ConnectedClusters
@@ -97,15 +97,18 @@ class ConnectedCluster:
             )
         return self._resource_state
 
-    @property
-    def health_state(self) -> Optional[dict]:
+    def get_availability_status(self, headers: Optional[dict] = None, expand: Optional[str] = None) -> Optional[dict]:
         if not self._health_state:
             try:
                 # Consider if health_client should be cached
                 health_client = get_health_mgmt_client(subscription_id=self.subscription_id)
-                self._health_state = health_client.availability_statuses.get_by_resource(self.resource_id)
+                self._health_state = health_client.availability_statuses.get_by_resource(
+                    self.resource_id,
+                    headers=headers,
+                    expand=expand,
+                )
             except HttpResponseError as e:
-                logger.debug(f"Failed to retrieve resource health state: {e}")
+                logger.debug(f"Failed to retrieve availability status: {e}")
                 return None
         return self._health_state
 
@@ -120,21 +123,12 @@ class ConnectedCluster:
         return connectivity_status.lower() == "connected"
 
     @property
-    def available(self) -> bool:
-        health = self.health_state
-        if not health:
-            return True
-        properties = health.get("properties", {})
-        availability_state: str = properties.get("availabilityState", "Unknown")
-        return availability_state.lower() != "unavailable"
-
-    @property
     def extensions(self) -> List[dict]:
         return list(
             self.clusters.extensions.list(resource_group_name=self.resource_group_name, cluster_name=self.cluster_name)
         )
 
-    def get_extensions_by_type(self, *type_names: str) -> Optional[Dict[str, dict]]:
+    def get_extensions_by_type(self, *type_names: str) -> Optional[dict[str, dict]]:
         extensions = self.extensions
         desired_extension_map = {name.lower(): None for name in type_names}
         for extension in extensions:
