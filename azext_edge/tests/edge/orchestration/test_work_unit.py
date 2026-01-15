@@ -117,6 +117,16 @@ RESOURCE_NOT_FOUND_ERROR = {
     },
 }
 
+UNAUTHORIZED_NAMESPACE_ERROR = {
+    "code": 400,
+    "body": {
+        "error": {
+            "code": "UnauthorizedNamespaceError",
+            "message": "The namespace is not authorized for custom locations. Please enable the custom locations feature.",
+        }
+    },
+}
+
 
 class ExpectedAPIVersion(Enum):
     CONNECTED_CLUSTER = "2024-07-15-preview"
@@ -282,7 +292,13 @@ class ServiceGenerator:
                 )
                 assert set(cl_payload["properties"]["clusterExtensionIds"]) == expected_cl_ext_ids
                 self.call_map[CallKey.CREATE_CUSTOM_LOCATION].append(request_kpis)
-                return (200, STANDARD_HEADERS, request_kpis.body_str)
+
+                api_control = self.scenario["apiControl"][CallKey.CREATE_CUSTOM_LOCATION]
+                status_code = api_control.get("code", 200)
+                response_body = (
+                    api_control.get("body") if api_control.get("body") else json.loads(request_kpis.body_str)
+                )
+                return (status_code, STANDARD_HEADERS, json.dumps(response_body))
 
     def _handle_create(self, request_kpis: RequestKPIs):
         if request_kpis.method == responses.GET:
@@ -506,6 +522,7 @@ def build_target_scenario(
             CallKey.GET_SCHEMA_REGISTRY: {"code": 200, "body": {}},
             CallKey.GET_ADR_NAMESPACE: {"code": 200, "body": {}},
             CallKey.GET_RESOURCE_HEALTH: {"code": 200, "body": {"properties": {"availabilityState": "Available"}}},
+            CallKey.CREATE_CUSTOM_LOCATION: {"code": 200, "body": {}},
         },
     }
     if "cluster_properties" in kwargs:
@@ -928,7 +945,6 @@ def assert_cluster_prechecks(mock_prechecks: Dict[str, Mock], target_scenario: d
                     "issuerName=selfsigned-issuer",
                 ]
             },
-            # Note: NOT omitting EXTENSION_TYPE_CM, so cert-manager exists (system trust)
             raises=ExceptionMeta(
                 exc_type=ValidationError,
                 exc_msg="Cluster was enabled with system cert-manager, "
@@ -1146,6 +1162,19 @@ def assert_cluster_prechecks(mock_prechecks: Dict[str, Mock], target_scenario: d
             raises=ExceptionMeta(
                 exc_type=ValidationError,
                 exc_msg="Unable to determine the IoT Operations system-managed identity principal Id.",
+            ),
+        ),
+        build_target_scenario(
+            apiControl={CallKey.CREATE_CUSTOM_LOCATION: UNAUTHORIZED_NAMESPACE_ERROR},
+            raises=ExceptionMeta(
+                exc_type=ValidationError,
+                exc_msg=[
+                    "Custom Locations Error:",
+                    "The namespace is not authorized for custom locations.",
+                    "[IoT Ops explanation]",
+                    "The arc custom locations feature was not enabled",
+                    "The arc custom locations feature was not enabled with the correct OID",
+                ],
             ),
         ),
     ],
