@@ -16,7 +16,6 @@ from typing import (
     List,
     NamedTuple,
     Optional,
-    Set,
     Tuple,
     Type,
     Union,
@@ -78,6 +77,46 @@ ZEROED_SUBSCRIPTION = get_zeroed_subscription()
 path_pattern_base = r"^/subscriptions/[0-9a-fA-F-]+/resourcegroups/[a-zA-Z0-9]+"
 STANDARD_HEADERS = {"content-type": "application/json"}
 
+OMIT_WRITE_METHODS = frozenset([responses.PUT, responses.POST])
+OMIT_ALL_METHODS = frozenset([responses.PUT, responses.POST, responses.GET, responses.HEAD])
+
+HEALTH_UNAVAILABLE_BASIC = {
+    "code": 200,
+    "body": {
+        "properties": {
+            "availabilityState": "Unavailable",
+            "summary": "The cluster is experiencing issues.",
+            "reasonType": "PlatformInitiated",
+        }
+    },
+}
+
+HEALTH_AVAILABLE = {
+    "code": 200,
+    "body": {"properties": {"availabilityState": "Available"}},
+}
+
+HEALTH_UNKNOWN = {
+    "code": 200,
+    "body": {"properties": {"availabilityState": "Unknown"}},
+}
+
+AUTHZ_FAILURE = {
+    "code": 403,
+    "body": {"error": {"code": "AuthorizationFailed", "message": "Access denied."}},
+}
+
+
+RESOURCE_NOT_FOUND_ERROR = {
+    "code": 404,
+    "body": {
+        "error": {
+            "code": "ResourceNotFound",
+            "message": "The Resource was not found.",
+        }
+    },
+}
+
 
 class ExpectedAPIVersion(Enum):
     CONNECTED_CLUSTER = "2024-07-15-preview"
@@ -116,14 +155,16 @@ CL_EXTENSION_TYPES = ["microsoft.azure.secretstore", "microsoft.iotoperations"]
 
 class ExceptionMeta(NamedTuple):
     exc_type: Type[Exception]
-    exc_msg: Union[str, List[str]] = ""
+    exc_msg: Optional[Union[str, List[str], re.Pattern]] = None
 
 
 class ServiceGenerator:
-    def __init__(self, scenario: dict, mocked_responses: responses, **overrides):
+    def __init__(self, scenario: dict, mocked_responses: responses, action: str = "init", **overrides):
         self.scenario = scenario
         self.mocked_responses = mocked_responses
+        self._action = action
         self.call_map: Dict[CallKey, List[RequestKPIs]] = {}
+        self._reset_call_map()
         self._bootstrap(**overrides)
 
     def _bootstrap(self, **kwargs):
@@ -183,9 +224,7 @@ class ServiceGenerator:
                 assert (
                     request_kpis.params.get("$expand") == "recommendedactions"
                 ), "Expected $expand=recommendedactions query parameter for health API call"
-                assert request_kpis.headers.get(
-                    "x-ms-correlation-request-id"
-                ), "Missing x-ms-correlation-request-id header for health API call"
+                self._assert_correlation_headers(request_kpis)
                 self.call_map[CallKey.GET_RESOURCE_HEALTH].append(request_kpis)
                 api_control = self.scenario["apiControl"][CallKey.GET_RESOURCE_HEALTH]
                 return (api_control["code"], STANDARD_HEADERS, json.dumps(api_control["body"]))
@@ -197,7 +236,7 @@ class ServiceGenerator:
                 path_pattern_base + url_deployment_seg + r"/whatIf$",
                 request_kpis.path_url,
             ):
-                self._assert_correlation_headers(request_kpis, action="init")
+                self._assert_correlation_headers(request_kpis)
                 assert request_kpis.params["api-version"] == ExpectedAPIVersion.RESOURCE.value
                 assert f"/resourcegroups/{self.scenario['resourceGroup']}/" in request_kpis.path_url
                 assert_init_deployment_body(body_str=request_kpis.body_str, target_scenario=self.scenario)
@@ -210,7 +249,7 @@ class ServiceGenerator:
                 path_pattern_base + url_deployment_seg,
                 request_kpis.path_url,
             ):
-                self._assert_correlation_headers(request_kpis, action="init")
+                self._assert_correlation_headers(request_kpis)
                 assert request_kpis.params["api-version"] == ExpectedAPIVersion.RESOURCE.value
                 assert f"/resourcegroups/{self.scenario['resourceGroup']}/" in request_kpis.path_url
                 assert_init_deployment_body(body_str=request_kpis.body_str, target_scenario=self.scenario)
@@ -360,11 +399,14 @@ class ServiceGenerator:
             if ext["properties"]["extensionType"] == extension_type:
                 return ext.get("identity")
 
-    def _assert_correlation_headers(self, request_kpis: RequestKPIs, action: str = "create"):
-        if request_kpis.method not in [responses.PUT, responses.POST]:
-            return
-        assert request_kpis.headers["x-ms-correlation-request-id"]
-        assert request_kpis.headers["CommandName"] == f"iot ops {action}"
+    def _assert_correlation_headers(self, request_kpis: RequestKPIs):
+        """
+        Assert correlation headers are present on the request.
+        """
+        assert request_kpis.headers.get("x-ms-correlation-request-id"), "Missing x-ms-correlation-request-id header"
+        assert (
+            request_kpis.headers.get("CommandName") == f"iot ops {self._action}"
+        ), f"Expected CommandName 'iot ops {self._action}', got '{request_kpis.headers.get('CommandName')}'"
 
 
 def get_deployment_path_regex(kind="instance") -> str:
@@ -385,7 +427,8 @@ def build_target_scenario(
     expected_extension_types: List[str] = list(OPS_EXTENSION_DEPS)
     expected_extension_types.append(EXTENSION_TYPE_OPS)
     if omit_extension_types:
-        [expected_extension_types.remove(ext_type) for ext_type in omit_extension_types]
+        for ext_type in omit_extension_types:
+            expected_extension_types.remove(ext_type)
 
     default_extensions_config = {
         ext_type: {
@@ -494,7 +537,6 @@ def assert_exception(
     call_kwargs: dict,
     exclude_from_exc_msg: Optional[List[str]] = None,
 ):
-    expected_exc_meta: ExceptionMeta
     with pytest.raises(expected_exc_meta.exc_type) as e:
         call_func(**call_kwargs)
     exc_msg = str(e.value)
@@ -507,7 +549,6 @@ def assert_exception(
         else:
             assert expected_exc_meta.exc_msg in exc_msg
 
-    # Verify certain strings are NOT in the error message
     if exclude_from_exc_msg:
         for excluded_msg in exclude_from_exc_msg:
             assert excluded_msg not in exc_msg, f"'{excluded_msg}' should NOT be in error message: {exc_msg}"
@@ -526,7 +567,7 @@ def assert_exception(
                 exc_type=ValidationError,
                 exc_msg="connectivityStatus is not Connected.",
             ),
-            omit_http_methods=frozenset([responses.PUT, responses.POST]),
+            omit_http_methods=OMIT_WRITE_METHODS,
         ),
         build_target_scenario(
             apiControl={CallKey.DEPLOY_INIT_WHATIF: {"code": 200, "body": {"status": "Failed"}}},
@@ -541,18 +582,7 @@ def assert_exception(
         ),
         # Basic unavailable scenario
         build_target_scenario(
-            apiControl={
-                CallKey.GET_RESOURCE_HEALTH: {
-                    "code": 200,
-                    "body": {
-                        "properties": {
-                            "availabilityState": "Unavailable",
-                            "summary": "The cluster is experiencing issues.",
-                            "reasonType": "PlatformInitiated",
-                        }
-                    },
-                }
-            },
+            apiControl={CallKey.GET_RESOURCE_HEALTH: HEALTH_UNAVAILABLE_BASIC},
             raises=ExceptionMeta(
                 exc_type=ValidationError,
                 exc_msg=[
@@ -561,7 +591,7 @@ def assert_exception(
                     "PlatformInitiated",
                 ],
             ),
-            omit_http_methods=frozenset([responses.PUT, responses.POST]),
+            omit_http_methods=OMIT_WRITE_METHODS,
         ),
         # Unavailable with full details: title, resolutionETA (platform context), and recommendedActions
         build_target_scenario(
@@ -606,7 +636,7 @@ def assert_exception(
                     "https://docs.microsoft.com/node-health",
                 ],
             ),
-            omit_http_methods=frozenset([responses.PUT, responses.POST]),
+            omit_http_methods=OMIT_WRITE_METHODS,
         ),
         # Unavailable with non-platform context - resolutionETA should NOT appear in error
         build_target_scenario(
@@ -635,7 +665,7 @@ def assert_exception(
                 ],
             ),
             exclude_from_exc_msg=["Expected Resolution:"],
-            omit_http_methods=frozenset([responses.PUT, responses.POST]),
+            omit_http_methods=OMIT_WRITE_METHODS,
         ),
         # Cluster health unknown - should pass through
         build_target_scenario(
@@ -657,15 +687,41 @@ def assert_exception(
         ),
         # Resource Health API failure (403) - should pass through gracefully
         build_target_scenario(
-            apiControl={
-                CallKey.GET_RESOURCE_HEALTH: {
-                    "code": 403,
-                    "body": {"error": {"code": "AuthorizationFailed", "message": "Access denied."}},
-                }
-            },
+            apiControl={CallKey.GET_RESOURCE_HEALTH: AUTHZ_FAILURE},
         ),
         build_target_scenario(
             no_preflight=True,
+        ),
+        # Unavailable with minimal info - only summary
+        build_target_scenario(
+            apiControl={
+                CallKey.GET_RESOURCE_HEALTH: {
+                    "code": 200,
+                    "body": {
+                        "properties": {
+                            "availabilityState": "Unavailable",
+                            "summary": "Cluster unavailable.",
+                        }
+                    },
+                }
+            },
+            raises=ExceptionMeta(
+                exc_type=ValidationError,
+                exc_msg=[
+                    "is currently unavailable",
+                    "Cluster unavailable.",
+                ],
+            ),
+            omit_http_methods=OMIT_WRITE_METHODS,
+        ),
+        # Cluster provisioningState is not Succeeded
+        build_target_scenario(
+            cluster_properties={"provisioningState": "Failed"},
+            raises=ExceptionMeta(
+                exc_type=ValidationError,
+                exc_msg="provisioningState is not Succeeded.",
+            ),
+            omit_http_methods=OMIT_WRITE_METHODS,
         ),
     ],
 )
@@ -679,7 +735,7 @@ def test_iot_ops_init(
     mocked_verify_arc_cluster_config: Mock,
     target_scenario: dict,
 ):
-    servgen = ServiceGenerator(scenario=target_scenario, mocked_responses=mocked_responses)
+    servgen = ServiceGenerator(scenario=target_scenario, mocked_responses=mocked_responses, action="init")
     from azext_edge.edge.commands_edge import init
 
     init_call_kwargs = {
@@ -779,7 +835,7 @@ def assert_cluster_prechecks(mock_prechecks: Dict[str, Mock], target_scenario: d
                 exc_type=InvalidArgumentValueError,
                 exc_msg="Provide a persist max size value to enable and customize broker disk persistence.",
             ),
-            omit_http_methods=frozenset([responses.PUT, responses.POST, responses.GET, responses.HEAD]),
+            omit_http_methods=OMIT_ALL_METHODS,
         ),
         build_target_scenario(
             persist_max_size="10Gi",
@@ -801,7 +857,7 @@ def assert_cluster_prechecks(mock_prechecks: Dict[str, Mock], target_scenario: d
                 exc_type=ValidationError,
                 exc_msg="connectivityStatus is not Connected.",
             ),
-            omit_http_methods=frozenset([responses.PUT, responses.POST]),
+            omit_http_methods=OMIT_WRITE_METHODS,
         ),
         build_target_scenario(
             extension_config_settings={
@@ -827,7 +883,7 @@ def assert_cluster_prechecks(mock_prechecks: Dict[str, Mock], target_scenario: d
                     "\n\nInstance deployment will not continue. Please run 'az iot ops init'.",
                 ],
             ),
-            omit_http_methods=frozenset([responses.PUT, responses.POST]),
+            omit_http_methods=OMIT_WRITE_METHODS,
         ),
         build_target_scenario(
             omit_extension_types=frozenset([EXTENSION_TYPE_SSC]),
@@ -839,7 +895,7 @@ def assert_cluster_prechecks(mock_prechecks: Dict[str, Mock], target_scenario: d
                     "\n\nInstance deployment will not continue. Please run 'az iot ops init'."
                 ),
             ),
-            omit_http_methods=frozenset([responses.PUT, responses.POST]),
+            omit_http_methods=OMIT_WRITE_METHODS,
         ),
         build_target_scenario(
             omit_extension_types=frozenset([EXTENSION_TYPE_CM]),
@@ -850,7 +906,7 @@ def assert_cluster_prechecks(mock_prechecks: Dict[str, Mock], target_scenario: d
                     "arguments are required to create an instance on this cluster."
                 ),
             ),
-            omit_http_methods=frozenset([responses.PUT, responses.POST]),
+            omit_http_methods=OMIT_WRITE_METHODS,
         ),
         build_target_scenario(
             omit_extension_types=frozenset([EXTENSION_TYPE_CM]),
@@ -862,6 +918,23 @@ def assert_cluster_prechecks(mock_prechecks: Dict[str, Mock], target_scenario: d
                     "issuerName=selfsigned-issuer",
                 ]
             },
+        ),
+        build_target_scenario(
+            trust={
+                "settings": [
+                    "configMapName=example-bundle",
+                    "configMapKey=trust-bundle.pem",
+                    "issuerKind=Issuer",
+                    "issuerName=selfsigned-issuer",
+                ]
+            },
+            # Note: NOT omitting EXTENSION_TYPE_CM, so cert-manager exists (system trust)
+            raises=ExceptionMeta(
+                exc_type=ValidationError,
+                exc_msg="Cluster was enabled with system cert-manager, "
+                "trust settings (--trust-settings) are not applicable to this cluster.",
+            ),
+            omit_http_methods=OMIT_WRITE_METHODS,
         ),
         build_target_scenario(
             omit_extension_types=frozenset([EXTENSION_TYPE_CM]),
@@ -876,7 +949,7 @@ def assert_cluster_prechecks(mock_prechecks: Dict[str, Mock], target_scenario: d
                 exc_type=InvalidArgumentValueError,
                 exc_msg="issuerName is a required trust setting/key.",
             ),
-            omit_http_methods=frozenset([responses.PUT, responses.POST, responses.GET, responses.HEAD]),
+            omit_http_methods=OMIT_ALL_METHODS,
         ),
         build_target_scenario(
             apiControl={CallKey.PUT_SCHEMA_REGISTRY_RA: {"code": 400, "body": {"status": "Failed"}}},
@@ -902,40 +975,20 @@ def assert_cluster_prechecks(mock_prechecks: Dict[str, Mock], target_scenario: d
             },
         ),
         build_target_scenario(
-            apiControl={
-                CallKey.GET_ADR_NAMESPACE: {
-                    "code": 404,
-                    "body": {
-                        "error": {
-                            "code": "ResourceNotFound",
-                            "message": "The Resource was not found.",
-                        }
-                    },
-                }
-            },
+            apiControl={CallKey.GET_ADR_NAMESPACE: RESOURCE_NOT_FOUND_ERROR},
             raises=ExceptionMeta(
                 exc_type=AzureResponseError,
                 exc_msg="The Resource was not found.",
             ),
-            omit_http_methods=frozenset([responses.PUT, responses.POST]),
+            omit_http_methods=OMIT_WRITE_METHODS,
         ),
         build_target_scenario(
-            apiControl={
-                CallKey.GET_SCHEMA_REGISTRY: {
-                    "code": 404,
-                    "body": {
-                        "error": {
-                            "code": "ResourceNotFound",
-                            "message": "The Resource was not found.",
-                        }
-                    },
-                }
-            },
+            apiControl={CallKey.GET_SCHEMA_REGISTRY: RESOURCE_NOT_FOUND_ERROR},
             raises=ExceptionMeta(
                 exc_type=AzureResponseError,
                 exc_msg="The Resource was not found.",
             ),
-            omit_http_methods=frozenset([responses.PUT, responses.POST]),
+            omit_http_methods=OMIT_WRITE_METHODS,
         ),
         build_target_scenario(
             skip_sr_ra=True,
@@ -958,7 +1011,7 @@ def assert_cluster_prechecks(mock_prechecks: Dict[str, Mock], target_scenario: d
                 exc_type=ValidationError,
                 exc_msg="is currently unavailable",
             ),
-            omit_http_methods=frozenset([responses.PUT, responses.POST]),
+            omit_http_methods=OMIT_WRITE_METHODS,
         ),
         # Unavailable with full details in create flow
         build_target_scenario(
@@ -993,7 +1046,7 @@ def assert_cluster_prechecks(mock_prechecks: Dict[str, Mock], target_scenario: d
                     "https://status.azure.com",
                 ],
             ),
-            omit_http_methods=frozenset([responses.PUT, responses.POST]),
+            omit_http_methods=OMIT_WRITE_METHODS,
         ),
         # Unavailable with non-platform context in create flow - no resolutionETA
         build_target_scenario(
@@ -1019,10 +1072,81 @@ def assert_cluster_prechecks(mock_prechecks: Dict[str, Mock], target_scenario: d
                 ],
             ),
             exclude_from_exc_msg=["Expected Resolution:"],
-            omit_http_methods=frozenset([responses.PUT, responses.POST]),
+            omit_http_methods=OMIT_WRITE_METHODS,
         ),
         build_target_scenario(
             no_preflight=True,
+        ),
+        # Unavailable with minimal info - only summary
+        build_target_scenario(
+            apiControl={
+                CallKey.GET_RESOURCE_HEALTH: {
+                    "code": 200,
+                    "body": {
+                        "properties": {
+                            "availabilityState": "Unavailable",
+                            "summary": "Cluster unavailable.",
+                        }
+                    },
+                }
+            },
+            raises=ExceptionMeta(
+                exc_type=ValidationError,
+                exc_msg=[
+                    "is currently unavailable",
+                    "Cluster unavailable.",
+                ],
+            ),
+            omit_http_methods=OMIT_WRITE_METHODS,
+        ),
+        # Unavailable with empty recommendedActions array - should not show "Recommended Actions:" section
+        build_target_scenario(
+            apiControl={
+                CallKey.GET_RESOURCE_HEALTH: {
+                    "code": 200,
+                    "body": {
+                        "properties": {
+                            "availabilityState": "Unavailable",
+                            "summary": "Cluster is down.",
+                            "recommendedActions": [],
+                        }
+                    },
+                }
+            },
+            raises=ExceptionMeta(
+                exc_type=ValidationError,
+                exc_msg=[
+                    "is currently unavailable",
+                    "Cluster is down.",
+                ],
+            ),
+            exclude_from_exc_msg=["Recommended Actions:"],
+            omit_http_methods=OMIT_WRITE_METHODS,
+        ),
+        build_target_scenario(
+            cluster_properties={"provisioningState": "Failed"},
+            raises=ExceptionMeta(
+                exc_type=ValidationError,
+                exc_msg="provisioningState is not Succeeded.",
+            ),
+            omit_http_methods=OMIT_WRITE_METHODS,
+        ),
+        build_target_scenario(
+            extension_config_settings={
+                EXTENSION_TYPE_OPS: {
+                    "id": generate_random_string(),
+                    "properties": {
+                        "extensionType": EXTENSION_TYPE_OPS,
+                        "provisioningState": PROVISIONING_STATE_SUCCESS,
+                        "configurationSettings": {},
+                    },
+                    "identity": {},
+                },
+            },
+            raises=ExceptionMeta(
+                exc_type=ValidationError,
+                exc_msg="Unable to determine the IoT Operations system-managed identity principal Id.",
+            ),
         ),
     ],
 )
@@ -1036,7 +1160,7 @@ def test_iot_ops_create(
     spy_work_displays: Dict[str, Mock],
     target_scenario: Dict[str, Union[bool, dict]],
 ):
-    servgen = ServiceGenerator(scenario=target_scenario, mocked_responses=mocked_responses)
+    servgen = ServiceGenerator(scenario=target_scenario, mocked_responses=mocked_responses, action="create")
     from azext_edge.edge.commands_edge import create_instance
 
     create_call_kwargs = {
@@ -1057,8 +1181,6 @@ def test_iot_ops_create(
         create_call_kwargs["location"] = target_scenario["cluster"]["location"]
     if target_scenario["customLocation"]["name"]:
         create_call_kwargs["custom_location_name"] = target_scenario["customLocation"]["name"]
-    if target_scenario["instance"]["description"]:
-        create_call_kwargs["instance_description"] = target_scenario["instance"]["description"]
     if target_scenario["dataflow"]["profileInstances"]:
         create_call_kwargs["dataflow_profile_instances"] = target_scenario["dataflow"]["profileInstances"]
     if target_scenario["trust"]["settings"]:
@@ -1167,7 +1289,7 @@ def assert_create_displays(spy_work_displays: Dict[str, Mock], target_scenario: 
     pass
 
 
-def get_expected_keys_for(phase: InstancePhase) -> Tuple[Set[str], Set[str]]:
+def get_expected_keys_for(phase: InstancePhase) -> Tuple[set[str], set[str]]:
     ext_keys = {"cluster", "aioExtension"}
     instance_keys = ext_keys.union({"customLocation", "aioInstance"})
     resource_keys = instance_keys.union(

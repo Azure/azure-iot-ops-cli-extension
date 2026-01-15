@@ -365,6 +365,12 @@ class WorkManager:
             verify_cli_client_connections()
             self._process_connected_cluster()
 
+            # Determine command name based on workflow type
+            if self._targets.instance_name:
+                self._headers["CommandName"] = "iot ops create"
+            elif self._apply_foundation:
+                self._headers["CommandName"] = "iot ops init"
+
             # Pre-Flight workflow
             if self._pre_flight:
                 # WorkStepKey.REG_RP
@@ -393,7 +399,6 @@ class WorkManager:
 
             # Enable IoT Ops workflow
             if self._apply_foundation:
-                self._headers["CommandName"] = "iot ops init"
                 enablement_work_name = self._work_format_str.format(op="enablement")
                 self._render_display(
                     category=WorkCategoryKey.ENABLE_IOT_OPS, active_step=WorkStepKey.WHAT_IF_ENABLEMENT
@@ -429,7 +434,6 @@ class WorkManager:
 
             # Deploy IoT Ops workflow
             if self._targets.instance_name:
-                self._headers["CommandName"] = "iot ops create"
                 # Ensure schema registry and namespace resources exist.
                 for resource_id in [
                     self._targets.schema_registry_resource_id,
