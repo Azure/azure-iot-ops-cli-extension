@@ -460,13 +460,6 @@ def load_iotops_arguments(self, _):
             help="ID of consumer group that the data flow uses to read messages " "from the Kafka topic.",
         )
         context.argument(
-            "latency",
-            options_list=["--latency", "-l"],
-            help="The batching latency in milliseconds. Min value: 0, max value: 65535.",
-            type=int,
-            arg_group="Batching Configuration",
-        )
-        context.argument(
             "partition_strategy",
             options_list=["--partition-strategy", "--ps"],
             arg_type=get_enum_type(KafkaPartitionStrategyType, default=KafkaPartitionStrategyType.DEFAULT.value),
@@ -635,6 +628,13 @@ def load_iotops_arguments(self, _):
     ]:
         with self.argument_context(cmd_space) as context:
             context.argument(
+                "latency",
+                options_list=["--latency", "-l"],
+                help="The batching latency in milliseconds. Min value: 0, max value: 65535.",
+                type=int,
+                arg_group="Batching Configuration",
+            )
+            context.argument(
                 "eventhub_namespace",
                 options_list=["--eventhub-namespace", "--ehns"],
                 help="The name of the Event Hubs namespace.",
@@ -665,6 +665,13 @@ def load_iotops_arguments(self, _):
         "iot ops dataflow endpoint update fabric-realtime",
     ]:
         with self.argument_context(cmd_space) as context:
+            context.argument(
+                "latency",
+                options_list=["--latency", "-l"],
+                help="The batching latency in milliseconds. Min value: 0, max value: 65535.",
+                type=int,
+                arg_group="Batching Configuration",
+            )
             context.argument(
                 "host",
                 options_list=["--host"],
@@ -699,6 +706,13 @@ def load_iotops_arguments(self, _):
         "iot ops dataflow endpoint update custom-kafka",
     ]:
         with self.argument_context(cmd_space) as context:
+            context.argument(
+                "latency",
+                options_list=["--latency", "-l"],
+                help="The batching latency in milliseconds. Min value: 0, max value: 65535.",
+                type=int,
+                arg_group="Batching Configuration",
+            )
             context.argument(
                 "hostname",
                 options_list=["--hostname"],
