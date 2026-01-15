@@ -7,12 +7,8 @@
 """
 Integration tests for ConnectorMetadataValidator.
 
-These tests employ a "Hybrid" approach:
-1. **Mocked Control Plane**: Azure Management interactions (Resource Graph, IoT Ops Client) are mocked.
-   This isolates the tests from Azure resource provisioning requirements and API latency.
-2. **Real Data Plane**: The tests perform actual HTTP requests to the Microsoft Container Registry (MCR).
-   This validates that the code can correctly fetch, decompress, and parse the real-world schemas
-   currently published in production, ensuring resilience against schema changes or artifact structure updates.
+These tests mock Azure Management interactions but perform real HTTP requests
+to Microsoft Container Registry (MCR) to validate real-world schema handling.
 """
 
 import hashlib
@@ -25,20 +21,12 @@ from azure.cli.core.azclierror import ValidationError
 pytestmark = [pytest.mark.integration, pytest.mark.requires_network]
 
 
-# Note: These tests fetch real connector metadata from Microsoft Container Registry (MCR)
-# at mcr.microsoft.com/azureiotoperations/akri-connectors/
-# They require network access and may fail if MCR is unavailable or if metadata versions change.
-
-
 class TestConnectorMetadataValidatorIntegration:
-    """Integration tests for ConnectorMetadataValidator with the complete lookup flow."""
 
     def setup_method(self):
-        """Reset the metadata cache before each test."""
         ConnectorMetadataValidator._METADATA_CACHE.clear()
 
     def _create_mock_cmd(self):
-        """Helper to create a mock cmd object."""
         cmd = Mock()
         cmd.cli_ctx = Mock()
         cmd.cli_ctx.cloud = Mock()
@@ -48,7 +36,6 @@ class TestConnectorMetadataValidatorIntegration:
         return cmd
 
     def _create_mock_connector_template(self, endpoint_type, version=None, metadata_ref=None):
-        """Helper to create a mock connector template response."""
         return {
             "name": f"{endpoint_type.lower()}-connector-template",
             "properties": {
@@ -58,18 +45,13 @@ class TestConnectorMetadataValidatorIntegration:
             },
         }
 
-    # ========== Direct Constructor with Metadata Lookup Tests ==========
-
     @patch("azext_edge.edge.providers.adr.validator.get_iotops_mgmt_client")
     def test_onvif_constructor_with_connector_template_lookup(self, mock_get_client):
-        """Test the complete flow: constructor → list templates → fetch real OCI metadata → validate."""
         cmd = self._create_mock_cmd()
 
-        # Mock IoT Ops client
         mock_client = Mock()
         mock_get_client.return_value = mock_client
 
-        # Mock connector template list
         mock_client.akri_connector_template = Mock()
         mock_client.akri_connector_template.list_by_instance_resource = Mock(
             return_value=[
@@ -81,7 +63,6 @@ class TestConnectorMetadataValidatorIntegration:
             ]
         )
 
-        # Fetch real OCI metadata from MCR
         validator = ConnectorMetadataValidator(
             cmd=cmd,
             resource_group_name="doe-int-e2e-2510",
@@ -90,19 +71,13 @@ class TestConnectorMetadataValidatorIntegration:
             endpoint_version=None,
         )
 
-        # Skip test if metadata fetch failed (network issue, registry unavailable, etc.)
         if not validator.metadata or "inboundEndpoints" not in validator.metadata:
             pytest.skip("Failed to fetch real OCI metadata from MCR - skipping integration test")
 
-        # Verify metadata was fetched from real MCR
         assert validator.metadata is not None
         assert "inboundEndpoints" in validator.metadata
         assert validator.metadata["name"] == "Azure IoT Operations connector for ONVIF"
-
-        # Verify connector template was queried
         mock_client.akri_connector_template.list_by_instance_resource.assert_called_once()
-
-        # Verify client initialization (Regression check for argument order bug)
         mock_get_client.assert_called_once_with(
             subscription_id=cmd.cli_ctx.data.get("subscription_id"),
             endpoint=cmd.cli_ctx.cloud.endpoints.resource_manager,
@@ -110,38 +85,27 @@ class TestConnectorMetadataValidatorIntegration:
 
     @patch("azext_edge.edge.providers.adr.validator.get_iotops_mgmt_client")
     def test_opcua_case_insensitivity_uses_local_schema(self, mock_get_client):
-        """
-        Regression Test: Verify that 'Microsoft.opcua' (lowercase) correctly matches
-        the local schema logic and DOES NOT attempt to fetch from OCI.
-        """
         cmd = self._create_mock_cmd()
 
-        # Initialize with lowercase 'opcua' which previously triggered a bug (fallback to OCI)
         validator = ConnectorMetadataValidator(
             cmd=cmd,
             resource_group_name="rg",
             instance_name="instance",
-            endpoint_type="Microsoft.opcua",  # Mixed/Lower case
-            endpoint_version=None,  # Empty version is required to trigger local OPC UA schema
+            endpoint_type="Microsoft.opcua",
+            endpoint_version=None,
         )
 
-        # Should have loaded metadata
         assert validator.metadata is not None
-        # Should be the local OPC UA metadata (check for a known key or value)
         assert "inboundEndpoints" in validator.metadata
-
-        # CRITICAL: Ensure we did NOT try to use the client to fetch from OCI
         mock_get_client.assert_not_called()
 
     @patch("azext_edge.edge.providers.adr.validator.get_iotops_mgmt_client")
     def test_onvif_constructor_no_version(self, mock_get_client):
-        """Test ONVIF connector which typically has no version, fetches real OCI metadata."""
         cmd = self._create_mock_cmd()
 
         mock_client = Mock()
         mock_get_client.return_value = mock_client
 
-        # ONVIF template without version
         mock_client.akri_connector_template = Mock()
         mock_client.akri_connector_template.list_by_instance_resource = Mock(
             return_value=[
@@ -153,7 +117,6 @@ class TestConnectorMetadataValidatorIntegration:
             ]
         )
 
-        # Fetch real ONVIF metadata from MCR
         validator = ConnectorMetadataValidator(
             cmd=cmd,
             resource_group_name="doe-int-e2e-2510",
@@ -162,7 +125,6 @@ class TestConnectorMetadataValidatorIntegration:
             endpoint_version=None,
         )
 
-        # Skip test if metadata fetch failed
         if not validator.metadata or "inboundEndpoints" not in validator.metadata:
             pytest.skip("Failed to fetch real OCI metadata from MCR - skipping integration test")
 
@@ -170,11 +132,8 @@ class TestConnectorMetadataValidatorIntegration:
         assert validator.metadata["name"] == "Azure IoT Operations connector for ONVIF"
         assert validator.endpoint_version is None
 
-    # ========== Dataset Validation Tests ==========
-
     @patch("azext_edge.edge.providers.adr.validator.get_iotops_mgmt_client")
     def test_validate_onvif_event_valid(self, mock_get_client):
-        """Test ONVIF event validation with valid configuration using real OCI metadata."""
         cmd = self._create_mock_cmd()
         mock_client = Mock()
         mock_get_client.return_value = mock_client
@@ -185,7 +144,6 @@ class TestConnectorMetadataValidatorIntegration:
             )]
         )
 
-        # Fetch real metadata from MCR
         validator = ConnectorMetadataValidator(
             cmd=cmd,
             resource_group_name="test-rg",
@@ -194,20 +152,14 @@ class TestConnectorMetadataValidatorIntegration:
             endpoint_version=None,
         )
 
-        # Skip test if metadata fetch failed
         if not validator.metadata or "inboundEndpoints" not in validator.metadata:
             pytest.skip("Failed to fetch real OCI metadata from MCR - skipping integration test")
 
         valid_config = {"topic": "tns1:Device/tnsaxis:Sensor/PIR", "endpointUrl": "http://example.com"}
-
-        # Should not raise
         validator.validate_event(valid_config)
-
-    # ========== Event Validation Tests ==========
 
     @patch("azext_edge.edge.providers.adr.validator.get_iotops_mgmt_client")
     def test_validate_onvif_event_empty_schema(self, mock_get_client):
-        """Test ONVIF event validation with empty schema (allows anything) using real OCI metadata."""
         cmd = self._create_mock_cmd()
         mock_client = Mock()
         mock_get_client.return_value = mock_client
@@ -218,7 +170,6 @@ class TestConnectorMetadataValidatorIntegration:
             )]
         )
 
-        # Fetch real ONVIF metadata from MCR
         validator = ConnectorMetadataValidator(
             cmd=cmd,
             resource_group_name="test-rg",
@@ -227,19 +178,14 @@ class TestConnectorMetadataValidatorIntegration:
             endpoint_version=None,
         )
 
-        # Skip test if metadata fetch failed
         if not validator.metadata or "inboundEndpoints" not in validator.metadata:
             pytest.skip("Failed to fetch real OCI metadata from MCR - skipping integration test")
 
-        # Empty schema should allow any object
         config = {"filter": "Topic = 'motion'"}
         validator.validate_event(config)
 
-    # ========== Schema Extraction Tests ==========
-
     @patch("azext_edge.edge.providers.adr.validator.get_iotops_mgmt_client")
     def test_get_schema_additional_configuration(self, mock_get_client):
-        """Test extracting additional configuration schema from real OCI metadata."""
         cmd = self._create_mock_cmd()
         mock_client = Mock()
         mock_get_client.return_value = mock_client
@@ -250,7 +196,6 @@ class TestConnectorMetadataValidatorIntegration:
             )]
         )
 
-        # Fetch real ONVIF metadata from MCR
         validator = ConnectorMetadataValidator(
             cmd=cmd,
             resource_group_name="test-rg",
@@ -259,7 +204,6 @@ class TestConnectorMetadataValidatorIntegration:
             endpoint_version=None,
         )
 
-        # Skip test if metadata fetch failed
         if not validator.metadata or "inboundEndpoints" not in validator.metadata:
             pytest.skip("Failed to fetch real OCI metadata from MCR - skipping integration test")
 
@@ -268,28 +212,21 @@ class TestConnectorMetadataValidatorIntegration:
         assert "acceptInvalidHostnames" in schema["properties"]
         assert "acceptInvalidCertificates" in schema["properties"]
 
-    # ========== OCI Artifact Fetching Tests ==========
-
     @patch("azext_edge.edge.providers.adr.validator.ConnectorMetadataValidator._get_auth_token")
     @patch("azext_edge.edge.providers.adr.validator.requests.get")
     def test_fetch_oci_artifact_success(self, mock_get, mock_get_auth_token):
-        """Test successful OCI artifact fetching with mocked HTTP responses."""
-        # Mock auth token
-        mock_get_auth_token.return_value = None  # Anonymous access
+        mock_get_auth_token.return_value = None
 
-        # Mock manifest response
         manifest_response = Mock()
         manifest_response.status_code = 200
         manifest_response.json.return_value = {
             "config": {
-                # DOE requires connector template manifests to use the connector media type
                 "mediaType": "application/vnd.microsoft.akri-connector.v1+json",
                 "digest": "sha256:config123",
             },
             "layers": [{"mediaType": "application/vnd.microsoft.akri-connector.v1+json", "digest": "sha256:abc123"}],
         }
 
-        # Mock blob response with sample metadata as tar
         sample_metadata = {
             "$schema": "https://example.com/schema.json",
             "name": "Test Connector",
@@ -308,7 +245,6 @@ class TestConnectorMetadataValidatorIntegration:
             ],
         }
 
-        # Create a tar file with the metadata JSON
         import tarfile
         import io
         import json
@@ -320,7 +256,6 @@ class TestConnectorMetadataValidatorIntegration:
             tarinfo.size = len(json_bytes)
             tar.addfile(tarinfo, io.BytesIO(json_bytes))
 
-        # Compute the real digest of the blob so the manifest matches the content we serve
         real_blob_digest = hashlib.sha256(tar_buffer.getvalue()).hexdigest()
 
         blob_response = Mock()
@@ -328,7 +263,6 @@ class TestConnectorMetadataValidatorIntegration:
         blob_response.headers = {"Content-Type": "application/vnd.oci.image.layer.v1.tar"}
         blob_response.content = tar_buffer.getvalue()
 
-        # Update manifest to advertise the actual blob digest
         manifest_response.json.return_value["layers"][0]["digest"] = f"sha256:{real_blob_digest}"
 
         mock_get.side_effect = [manifest_response, blob_response]
@@ -343,14 +277,13 @@ class TestConnectorMetadataValidatorIntegration:
     @patch("azext_edge.edge.providers.adr.validator.ConnectorMetadataValidator._get_auth_token")
     @patch("azext_edge.edge.providers.adr.validator.requests.get")
     def test_fetch_oci_artifact_rejects_standard_oci_config_media_type(self, mock_get, mock_get_auth_token):
-        """Verify manifests using the generic OCI config media type are rejected (DOE parity)."""
         mock_get_auth_token.return_value = None
 
         manifest_response = Mock()
         manifest_response.status_code = 200
         manifest_response.json.return_value = {
             "config": {
-                "mediaType": "application/vnd.oci.image.config.v1+json",  # Not allowed for connector templates
+                "mediaType": "application/vnd.oci.image.config.v1+json",
                 "digest": "sha256:config123",
             },
             "layers": [
@@ -373,14 +306,12 @@ class TestConnectorMetadataValidatorIntegration:
         assert "config media type" in str(exc_info.value)
 
     def test_fetch_oci_artifact_invalid_reference(self):
-        """Test OCI artifact fetching with invalid reference."""
         with pytest.raises(ValidationError) as exc_info:
             ConnectorMetadataValidator.fetch_oci_artifact("invalid-reference")
         assert "Invalid OCI reference" in str(exc_info.value)
 
     @patch("azext_edge.edge.providers.adr.validator.requests.get")
     def test_fetch_oci_artifact_manifest_not_found(self, mock_get):
-        """Test OCI artifact fetching when manifest is not found."""
         mock_response = Mock()
         mock_response.status_code = 404
         mock_response.text = "Not Found"
@@ -390,11 +321,8 @@ class TestConnectorMetadataValidatorIntegration:
             ConnectorMetadataValidator.fetch_oci_artifact("mcr.microsoft.com/repo:tag")
         assert "Failed to fetch manifest" in str(exc_info.value)
 
-    # ========== Caching Tests ==========
-
     @patch("azext_edge.edge.providers.adr.validator.get_iotops_mgmt_client")
     def test_metadata_caching(self, mock_get_client):
-        """Test that metadata is cached and not fetched multiple times from real MCR."""
         cmd = self._create_mock_cmd()
         mock_client = Mock()
         mock_get_client.return_value = mock_client
@@ -406,7 +334,6 @@ class TestConnectorMetadataValidatorIntegration:
             )]
         )
 
-        # Track real OCI fetches using spy
         original_fetch = ConnectorMetadataValidator.fetch_oci_artifact
         fetch_count = {"count": 0}
 
@@ -415,7 +342,6 @@ class TestConnectorMetadataValidatorIntegration:
             return original_fetch(*args, **kwargs)
 
         with patch.object(ConnectorMetadataValidator, "fetch_oci_artifact", side_effect=counting_fetch):
-            # First validator
             validator1 = ConnectorMetadataValidator(
                 cmd=cmd,
                 resource_group_name="test-rg",
@@ -424,7 +350,6 @@ class TestConnectorMetadataValidatorIntegration:
                 endpoint_version="1.0",
             )
 
-            # Second validator with same endpoint type/version
             validator2 = ConnectorMetadataValidator(
                 cmd=cmd,
                 resource_group_name="test-rg",
@@ -433,21 +358,16 @@ class TestConnectorMetadataValidatorIntegration:
                 endpoint_version="1.0",
             )
 
-            # OCI fetch should only happen once due to caching
             assert fetch_count["count"] == 1
             assert validator1.metadata == validator2.metadata
 
-    # ========== Error Handling Tests ==========
-
     @patch("azext_edge.edge.providers.adr.validator.get_iotops_mgmt_client")
     def test_no_matching_connector_template(self, mock_get_client, caplog):
-        """Test graceful handling when no connector template matches."""
-        # Silence expected error log from the validator while asserting it raises.
         cmd = self._create_mock_cmd()
         mock_client = Mock()
         mock_get_client.return_value = mock_client
         mock_client.akri_connector_template = Mock()
-        mock_client.akri_connector_template.list_by_instance_resource = Mock(return_value=[])  # No templates
+        mock_client.akri_connector_template.list_by_instance_resource = Mock(return_value=[])
 
         caplog.set_level(logging.CRITICAL, logger="cli.azext_edge.edge.providers.adr.validator")
 
@@ -462,19 +382,15 @@ class TestConnectorMetadataValidatorIntegration:
 
     @patch("azext_edge.edge.providers.adr.validator.get_iotops_mgmt_client")
     def test_connector_template_missing_metadata_ref(self, mock_get_client, caplog):
-        """Test handling when connector template has no connectorMetadataRef."""
-        # Silence expected error log from the validator while asserting it raises.
         cmd = self._create_mock_cmd()
         mock_client = Mock()
         mock_get_client.return_value = mock_client
         mock_client.akri_connector_template = Mock()
 
-        # Template without connectorMetadataRef
         template = {
             "name": "broken-template",
             "properties": {
-                "deviceInboundEndpointTypes": [{"endpointType": "Microsoft.Http", "version": "1.0"}]
-                # Missing connectorMetadataRef
+                "deviceInboundEndpointTypes": [{"endpointType": "Microsoft.Http", "version": "1.0"}],
             },
         }
         mock_client.akri_connector_template.list_by_instance_resource = Mock(return_value=[template])
@@ -492,7 +408,6 @@ class TestConnectorMetadataValidatorIntegration:
 
     @patch("azext_edge.edge.providers.adr.validator.get_iotops_mgmt_client")
     def test_validator_no_jsonschema_library(self, mock_get_client):
-        """Test validator gracefully handles missing jsonschema library."""
         cmd = self._create_mock_cmd()
         mock_client = Mock()
         mock_get_client.return_value = mock_client
@@ -503,7 +418,6 @@ class TestConnectorMetadataValidatorIntegration:
             )]
         )
 
-        # Fetch real metadata
         validator = ConnectorMetadataValidator(
             cmd=cmd,
             resource_group_name="test-rg",
@@ -512,38 +426,21 @@ class TestConnectorMetadataValidatorIntegration:
             endpoint_version=None,
         )
 
-        # Skip test if metadata fetch failed
         if not validator.metadata or "inboundEndpoints" not in validator.metadata:
             pytest.skip("Failed to fetch real OCI metadata from MCR - skipping integration test")
 
-        # Mock ImportError for jsonschema
         with patch("jsonschema.validate", side_effect=ImportError):
             config = {"topic": "tns1:Device/tnsaxis:Sensor/PIR"}
-            # Should not raise, just log warning
             validator.validate_event(config)
 
 
 @pytest.mark.acr
 @pytest.mark.integration
 class TestConnectorMetadataValidatorACR:
-    """
-    Integration tests for ConnectorMetadataValidator with a real Azure Container Registry.
-
-    These tests validate the authenticated OCI artifact fetching flow using a private ACR.
-    They require:
-    - Azure CLI login with access to the ACR
-    - Environment variables:
-      - azext_edge_acr_name: The ACR name (e.g., "aziotops")
-      - azext_edge_acr_artifact: The artifact path (e.g., "connector_metadata_validator_test_artifact:1.0.0")
-
-    To push a test artifact to your ACR, see the helper script in tools/ or run:
-        az acr login --name <acr_name>
-        oras push <acr_name>.azurecr.io/<artifact_path> ./connector-metadata.json:application/json
-    """
+    """Integration tests for ACR-based artifact fetching."""
 
     @pytest.fixture(autouse=True)
     def setup(self, settings):
-        """Setup ACR test configuration from environment variables."""
         from ...settings import EnvironmentVariables
 
         settings.add_to_config(EnvironmentVariables.acr_name.value)
@@ -552,11 +449,9 @@ class TestConnectorMetadataValidatorACR:
         self.acr_name = getattr(settings.env, EnvironmentVariables.acr_name.value, None)
         self.acr_artifact = getattr(settings.env, EnvironmentVariables.acr_artifact.value, None)
 
-        # Clear cache before each test
         ConnectorMetadataValidator._METADATA_CACHE.clear()
 
     def _skip_if_no_acr_config(self):
-        """Skip test if ACR configuration is not available."""
         if not self.acr_name or not self.acr_artifact:
             pytest.skip(
                 "ACR integration tests require azext_edge_acr_name and "
@@ -564,11 +459,9 @@ class TestConnectorMetadataValidatorACR:
             )
 
     def _get_acr_reference(self, tag: str = "1.0.0") -> str:
-        """Build the full ACR reference."""
         return f"{self.acr_name}.azurecr.io/{self.acr_artifact}:{tag}"
 
     def _create_cmd_with_cli_context(self):
-        """Create a cmd object with real Azure CLI context for ACR auth."""
         try:
             from azure.cli.core import get_default_cli
             from azure.cli.core._profile import Profile
@@ -586,13 +479,11 @@ class TestConnectorMetadataValidatorACR:
             pytest.skip(f"Could not initialize Azure CLI context: {e}")
 
     def test_fetch_oci_artifact_from_private_acr(self):
-        """Test fetching a connector metadata artifact from a private ACR using Azure AD auth."""
         self._skip_if_no_acr_config()
 
         acr_reference = self._get_acr_reference()
         cmd = self._create_cmd_with_cli_context()
 
-        # This will use _get_acr_access_token() for Azure AD → ACR token exchange
         try:
             metadata = ConnectorMetadataValidator.fetch_oci_artifact(acr_reference, cmd=cmd)
         except ValidationError as e:
@@ -602,23 +493,17 @@ class TestConnectorMetadataValidatorACR:
                 pytest.skip(f"Artifact not found at {acr_reference} - push test artifact first: {e}")
             raise
 
-        # Validate the fetched metadata structure
         assert metadata is not None, "Metadata should not be None"
         assert isinstance(metadata, dict), "Metadata should be a dictionary"
-
-        # Check for expected connector metadata fields
-        # The exact fields depend on what you push to the ACR
         assert "name" in metadata or "inboundEndpoints" in metadata, (
             f"Metadata should have 'name' or 'inboundEndpoints' field, got: {list(metadata.keys())}"
         )
 
     def test_acr_token_exchange_flow(self):
-        """Test the Azure AD → ACR token exchange mechanism."""
         self._skip_if_no_acr_config()
 
         cmd = self._create_cmd_with_cli_context()
 
-        # Test the token exchange directly
         try:
             token = ConnectorMetadataValidator._get_acr_access_token(
                 cmd=cmd,
@@ -630,7 +515,6 @@ class TestConnectorMetadataValidatorACR:
                 pytest.skip(f"Azure CLI not logged in or no access to ACR: {e}")
             raise
 
-        # Token may be None if tenant_id wasn't available, which is acceptable
         if token is None:
             pytest.skip("Could not obtain ACR token - tenant_id not available in CLI context")
 
@@ -638,51 +522,41 @@ class TestConnectorMetadataValidatorACR:
         assert len(token) > 0, "Token should not be empty"
 
     def test_fetch_artifact_nonexistent_tag(self):
-        """Test error handling when fetching a non-existent tag from ACR."""
         self._skip_if_no_acr_config()
 
         cmd = self._create_cmd_with_cli_context()
-
-        # Use a tag that definitely doesn't exist
         nonexistent_ref = self._get_acr_reference(tag="nonexistent-tag-99999")
 
         with pytest.raises(ValidationError) as exc_info:
             ConnectorMetadataValidator.fetch_oci_artifact(nonexistent_ref, cmd=cmd)
 
-        # Should get a 404 or "not found" error
         error_msg = str(exc_info.value).lower()
         assert "404" in error_msg or "not found" in error_msg or "manifest" in error_msg, (
             f"Expected 404/not found error, got: {exc_info.value}"
         )
 
     def test_fetch_artifact_invalid_acr_name(self, caplog):
-        """Test error handling with an invalid ACR name."""
         self._skip_if_no_acr_config()
         import requests
 
         invalid_ref = f"nonexistent-acr-12345.azurecr.io/{self.acr_artifact}:1.0.0"
 
-        # Suppress expected warnings about missing auth context and DNS failure
         caplog.set_level(logging.CRITICAL, logger="cli.azext_edge.edge.providers.adr.validator")
 
-        # DNS resolution failure raises ConnectionError, not ValidationError
         with pytest.raises((ValidationError, requests.exceptions.ConnectionError)) as exc_info:
             ConnectorMetadataValidator.fetch_oci_artifact(invalid_ref)
 
-        # Should fail on DNS resolution or authentication
         error_msg = str(exc_info.value).lower()
         assert any(term in error_msg for term in ["failed", "resolve", "connection", "name"]), (
             f"Expected connection/DNS error, got: {exc_info.value}"
         )
 
     def test_acr_metadata_caching(self):
-        """Test that metadata fetched from ACR is properly cached."""
         self._skip_if_no_acr_config()
 
         acr_reference = self._get_acr_reference()
         cmd = self._create_cmd_with_cli_context()
 
-        # Track fetch calls
         fetch_count = {"count": 0}
         original_fetch = ConnectorMetadataValidator.fetch_oci_artifact
 
@@ -691,7 +565,6 @@ class TestConnectorMetadataValidatorACR:
             return original_fetch(*args, **kwargs)
 
         with patch.object(ConnectorMetadataValidator, "fetch_oci_artifact", side_effect=counting_fetch):
-            # First fetch
             try:
                 metadata1 = counting_fetch(acr_reference, cmd=cmd)
             except ValidationError as e:
@@ -699,11 +572,8 @@ class TestConnectorMetadataValidatorACR:
                     pytest.skip(f"ACR access issue: {e}")
                 raise
 
-            # Add to cache manually (simulating what the validator does)
             cache_key = "test_endpoint:1.0"
             ConnectorMetadataValidator._METADATA_CACHE[cache_key] = metadata1
-
-            # Second access should use cache
             metadata2 = ConnectorMetadataValidator._METADATA_CACHE.get(cache_key)
 
             assert metadata1 == metadata2, "Cached metadata should match original"

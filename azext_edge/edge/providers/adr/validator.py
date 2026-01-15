@@ -18,10 +18,7 @@ logger = get_logger(__name__)
 
 
 class ConnectorMetadataValidator:
-    """
-    Validates Asset sub-resources (datasets, events, etc.) against schemas defined
-    in the associated Connector Template's metadata (stored as OCI artifacts).
-    """
+    """Validates Asset sub-resources against schemas from Connector Template metadata."""
 
     _METADATA_CACHE = {}
     _CONNECTOR_SCHEMA_CACHE = None
@@ -31,7 +28,7 @@ class ConnectorMetadataValidator:
     }
 
     def _make_metadata_cache_key(self) -> str:
-        """Scope cached metadata to a tenant+instance+endpoint tuple to avoid cross-instance reuse."""
+        """Generate a unique cache key for this endpoint's metadata."""
         subscription_id = (self.cmd.cli_ctx.data or {}).get("subscription_id", "unknown-subscription")
         endpoint_version = self.endpoint_version or "none"
         return ":".join(
@@ -52,14 +49,6 @@ class ConnectorMetadataValidator:
         endpoint_type: str,
         endpoint_version: Optional[str] = None,
     ):
-        """
-        Args:
-            cmd: The Azure CLI command context
-            resource_group_name: Resource group containing the IoT Operations instance
-            instance_name: Name of the IoT Operations instance
-            endpoint_type: The endpoint type (e.g., "Microsoft.Http", "Microsoft.Onvif")
-            endpoint_version: Optional version of the endpoint (e.g., "1.0")
-        """
         self.cmd = cmd
         self.resource_group_name = resource_group_name
         self.instance_name = instance_name
@@ -70,19 +59,7 @@ class ConnectorMetadataValidator:
 
     @classmethod
     def from_asset(cls, cmd, asset: Dict[str, Any], instance_name: str, instance_resource_group: str):
-        """
-        Factory method to create validator from an asset by looking up its device and endpoint.
-
-        Args:
-            cmd: The Azure CLI command context
-            asset: The asset resource dictionary
-            instance_name: The IoT Operations instance name
-            instance_resource_group: Resource group containing the IoT Operations instance
-
-        Returns:
-            ConnectorMetadataValidator instance
-        """
-        # Extract resource group and instance from the asset ID
+        """Create validator from an asset by looking up its device and endpoint."""
         from ...util.id_tools import parse_resource_id
 
         asset_id_str = asset.get("id", "")
@@ -95,13 +72,6 @@ class ConnectorMetadataValidator:
 
         asset_resource_group = asset_id.get("resource_group")
 
-        # Parse namespace from asset ID path
-        # Asset ID format:
-        # /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.DeviceRegistry/namespaces/{namespace}/assets/{asset}
-        # After parsing:
-        # - namespace: "Microsoft.DeviceRegistry"
-        # - type: "namespaces", name: "{namespace}"
-        # - child_type_1: "assets", child_name_1: "{asset}"
         namespace_name = None
         namespace_value = (asset_id.get("namespace") or "").lower()
         type_value = (asset_id.get("type") or "").lower()
@@ -121,7 +91,6 @@ class ConnectorMetadataValidator:
                 f"Expected format: .../namespaces/{{namespace}}/assets/{{asset}}"
             )
 
-        # Get device reference
         device_ref = asset.get("deviceRef") or asset.get("properties", {}).get("deviceRef", {})
         device_name = device_ref.get("deviceName")
         endpoint_name = device_ref.get("endpointName")
@@ -131,7 +100,6 @@ class ConnectorMetadataValidator:
                 "Asset must reference a device and endpoint via deviceRef.deviceName and deviceRef.endpointName"
             )
 
-        # Fetch the device to get endpoint type/version
         from ...util.az_client import get_registry_mgmt_client
 
         registry_client = get_registry_mgmt_client(
@@ -144,7 +112,6 @@ class ConnectorMetadataValidator:
             device_name=device_name,
         )
 
-        # Get endpoint from device
         endpoints_inbound = device.get("properties", {}).get("endpoints", {}).get("inbound", {})
         endpoint = endpoints_inbound.get(endpoint_name)
 
@@ -166,12 +133,7 @@ class ConnectorMetadataValidator:
         )
 
     def _load_local_opcua_metadata(self) -> Dict[str, Any]:
-        """
-        Loads OPC UA connector metadata from local bundled JSON file.
-
-        Raises ValidationError if the file cannot be found or parsed, so callers
-        don't silently skip validation when the bundled schema is expected.
-        """
+        """Load OPC UA connector metadata from local bundled JSON file."""
         import os
 
         current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -187,19 +149,7 @@ class ConnectorMetadataValidator:
             raise ValidationError(f"Failed to load local OPC UA metadata: {e}")
 
     def _get_metadata(self) -> Dict[str, Any]:
-        """
-        Retrieves the metadata JSON for the connector by:
-        1. For OPC UA endpoints, loads from local bundled schema file
-        2. For other endpoints, fetches from OCI registry:
-           - Finding the matching Connector Template based on endpoint type/version
-           - Extracting the connectorMetadataRef (OCI URI)
-           - Fetching the OCI artifact containing the JSON metadata
-        3. Caching the result for future use
-
-        Returns:
-            Dict containing the connector metadata JSON
-        """
-        # Check cache first
+        """Retrieve connector metadata from cache, local file (OPC UA), or OCI registry."""
         cache_key = self._make_metadata_cache_key()
         if cache_key in self._METADATA_CACHE:
             return self._METADATA_CACHE[cache_key]
@@ -214,7 +164,6 @@ class ConnectorMetadataValidator:
             return metadata
 
         try:
-            # Step 1: Get IoT Operations management client
             from ...vendor.clients.iotopsmgmt import MicrosoftIoTOperationsManagementService
 
             iotops_client: MicrosoftIoTOperationsManagementService = get_iotops_mgmt_client(
@@ -222,14 +171,12 @@ class ConnectorMetadataValidator:
                 endpoint=self.cmd.cli_ctx.cloud.endpoints.resource_manager,
             )
 
-            # Step 2: List all connector templates in the instance
             connector_templates = list(
                 iotops_client.akri_connector_template.list_by_instance_resource(
                     resource_group_name=self.resource_group_name, instance_name=self.instance_name
                 )
             )
 
-            # Step 3: Find matching connector template
             matched_template = None
             for template in connector_templates:
                 template_name = template.get("name")
@@ -264,20 +211,14 @@ class ConnectorMetadataValidator:
                     f"version '{self.endpoint_version}'."
                 )
 
-            # Step 4: Extract connectorMetadataRef
             connector_metadata_ref = matched_template.get("properties", {}).get("connectorMetadataRef")
-
             if not connector_metadata_ref:
                 raise ValidationError(
                     f"Connector template '{matched_template.get('name')}' is missing connectorMetadataRef."
                 )
 
             logger.info(f"Fetching connector metadata from OCI: {connector_metadata_ref}")
-
-            # Step 5: Fetch OCI artifact
             metadata = self.fetch_oci_artifact(connector_metadata_ref, cmd=self.cmd)
-
-            # Step 6: Cache the result
             self._METADATA_CACHE[cache_key] = metadata
 
             return metadata
@@ -288,19 +229,8 @@ class ConnectorMetadataValidator:
 
     @classmethod
     def fetch_oci_artifact(cls, image_ref: str, cmd=None) -> Dict[str, Any]:  # noqa: C901
-        """
-        Fetches a JSON artifact from an OCI registry without requiring the 'oras' CLI.
-
-        Args:
-            image_ref: The OCI image reference (e.g., mcr.microsoft.com/repo:tag)
-            cmd: Optional Azure CLI command context used for ACR auth when needed.
-
-        Returns:
-            The parsed JSON content of the artifact.
-        """
+        """Fetch a JSON artifact from an OCI registry."""
         logger.info(f"Fetching OCI artifact: {image_ref}")
-        # 1. Parse the reference
-        # Format: registry/repo:tag
         if "/" not in image_ref:
             raise ValidationError(f"Invalid OCI reference: {image_ref}")
 
@@ -316,7 +246,6 @@ class ConnectorMetadataValidator:
             "Accept": "application/vnd.oci.image.manifest.v1+json, application/vnd.docker.distribution.manifest.v2+json"
         }
 
-        # 2. Get Manifest
         manifest_url = f"{base_url}/manifests/{tag}"
 
         # Prefer ACR token flow for ACR, fall back to registry challenge/anonymous for MCR.
@@ -353,7 +282,6 @@ class ConnectorMetadataValidator:
         elif not actual_config_media_type:
             raise ValidationError("Missing artifact config media type.")
 
-        # 3. Use the first layer (DOE behavior)
         layers = manifest.get("layers", [])
         if not layers:
             raise ValidationError(f"Manifest for {image_ref} has no layers.")
@@ -364,14 +292,12 @@ class ConnectorMetadataValidator:
                 f"First layer in manifest for {image_ref} is missing digest. Layer: {layers[0]}"
             )
 
-        # 4. Fetch the Blob
         blob_url = f"{base_url}/blobs/{target_digest}"
 
         blob_response = requests.get(blob_url, headers=headers, timeout=30)
         if blob_response.status_code != 200:
             raise ValidationError(f"Failed to fetch blob {target_digest}: {blob_response.status_code}")
 
-        # Verify blob digest matches manifest entry to prevent tampering/stale blobs
         if ":" not in target_digest:
             raise ValidationError(f"Invalid layer digest format: {target_digest}")
 
@@ -385,34 +311,26 @@ class ConnectorMetadataValidator:
                 f"Blob digest mismatch: expected {target_digest}, got sha256:{computed_hex}"
             )
 
-        # Check if the blob is a tar file (common for OCI artifacts)
         content_type = blob_response.headers.get("Content-Type", "")
 
-        # If it's a tar file, extract the connector-metadata.json from it
-        # Accept tar/gzip content; fall back to JSON parse otherwise
-        if "tar" in content_type or blob_response.content[:2] == b"\x1f\x8b":  # Check for gzip magic number too
+        # Handle tar/gzip content or direct JSON
+        if "tar" in content_type or blob_response.content[:2] == b"\x1f\x8b":
             import tarfile
             import io
 
             try:
-                # Create tar file object from bytes
                 tar_bytes = io.BytesIO(blob_response.content)
                 with tarfile.open(fileobj=tar_bytes, mode="r:*") as tar:
-                    # List all files in tar
                     member_names = tar.getnames()
 
-                    # Find connector-metadata.json file (may be in root or subdirectory)
                     metadata_file = None
                     for member in member_names:
                         if member.endswith("connector-metadata.json"):
                             metadata_file = member
-                            logger.info(f"Found connector-metadata.json in tar: {metadata_file}")
                             break
 
-                    # If not found with path, try exact match (ONVIF case)
                     if not metadata_file and "connector-metadata.json" in member_names:
                         metadata_file = "connector-metadata.json"
-                        logger.info("Found connector-metadata.json in tar root")
 
                     if not metadata_file:
                         raise ValidationError(
@@ -420,7 +338,6 @@ class ConnectorMetadataValidator:
                             f"Files: {member_names[:10]}"
                         )
 
-                    # Extract and parse the JSON file
                     extracted = tar.extractfile(metadata_file)
                     if not extracted:
                         raise ValidationError(f"Could not extract {metadata_file} from tar")
@@ -432,21 +349,18 @@ class ConnectorMetadataValidator:
                 logger.error(f"Failed to extract tar archive: {e}")
                 raise ValidationError(f"Failed to extract connector metadata from tar: {e}")
         else:
-            # Try to parse as direct JSON
             try:
                 metadata = blob_response.json()
             except json.JSONDecodeError as e:
                 logger.error(f"Blob is not valid JSON: {e}")
                 raise ValidationError(f"Artifact at {image_ref} is not valid JSON.")
 
-        # Validate the metadata structure against the official schema
         try:
             schema = cls._get_connector_metadata_schema()
             validate(instance=metadata, schema=schema)
         except Exception as e:
             raise ValidationError(f"Connector metadata does not match schema: {e}")
 
-        # Basic sanity check for inboundEndpoints
         if "inboundEndpoints" not in metadata:
             raise ValidationError(
                 f"Artifact at {image_ref} does not contain expected connector metadata structure. "
@@ -461,8 +375,7 @@ class ConnectorMetadataValidator:
 
     @classmethod
     def _get_expected_config_media_type(cls, manifest_type: str) -> Optional[str]:
-        """Return the canonical config media type for a given manifest type (supports override for testing)."""
-
+        """Return the expected config media type for a manifest type."""
         if manifest_type == cls.CONNECTOR_TEMPLATE_MANIFEST_TYPE:
             override = os.environ.get("AZ_IOTOPS_CONNECTOR_TEMPLATE_CONFIG_MEDIA_TYPE")
             if override:
@@ -472,27 +385,13 @@ class ConnectorMetadataValidator:
 
     @staticmethod
     def _get_auth_token(registry: str, repository: str) -> Optional[str]:
-        """
-        Helper to get an anonymous auth token for the registry if required (common for MCR/Docker Hub).
-
-        This implements the Docker Registry v2 authentication flow:
-        1. Attempt unauthenticated access to /v2/ endpoint
-        2. If 401 with WWW-Authenticate header is returned, parse the authentication challenge
-        3. Request a token from the auth realm with the required service and scope
-        4. Return the token for use in subsequent requests
-
-        For public registries like MCR, this allows anonymous pull access without credentials.
-        """
+        """Get an anonymous auth token for public registries (MCR/Docker Hub)."""
         auth_url = f"https://{registry}/v2/"
         try:
-            # Ping v2 endpoint to get Www-Authenticate header
             resp = requests.get(auth_url, timeout=30)
 
             if resp.status_code == 401 and "Www-Authenticate" in resp.headers:
                 auth_header = resp.headers["Www-Authenticate"]
-
-                # Format: Bearer realm="...",service="...",scope="..."
-                # Simple parser
                 parts = {}
                 for part in auth_header.replace("Bearer ", "").split(","):
                     if "=" in part:
@@ -526,14 +425,7 @@ class ConnectorMetadataValidator:
 
     @staticmethod
     def _get_acr_access_token(cmd, registry: str, repository: str) -> Optional[str]:
-        """
-        Acquire an ACR data-plane access token using the current Azure CLI credential.
-
-        Flow mirrors ACR OAuth:
-        1) ARM access token via AzureCliCredential
-        2) Exchange ARM token for ACR refresh token (oauth2/exchange)
-        3) Exchange refresh token for registry access token scoped to repository:pull
-        """
+        """Acquire an ACR access token using Azure CLI credentials."""
 
         if cmd is None:
             logger.warning("ACR access token requested without command context; skipping ACR auth.")
@@ -616,26 +508,16 @@ class ConnectorMetadataValidator:
         return cls._CONNECTOR_SCHEMA_CACHE
 
     def validate_dataset(self, dataset: Dict[str, Any]):
-        """Validate a dataset object or its configuration.
-
-        Args:
-            dataset: Can be either:
-                - A full dataset object with 'datasetConfiguration' as JSON string
-                - A parsed configuration dictionary (for backward compatibility)
-        """
-        # Check if this is a full dataset object or just the configuration
+        """Validate a dataset configuration against the connector schema."""
         if "datasetConfiguration" in dataset:
-            # Full dataset object - extract and parse configuration
             config_str = dataset.get("datasetConfiguration")
             if not config_str:
                 return
-
             try:
                 config = json.loads(config_str) if isinstance(config_str, str) else config_str
             except (json.JSONDecodeError, TypeError) as e:
                 raise ValidationError(f"Invalid datasetConfiguration JSON: {e}")
         else:
-            # Assume it's already a parsed configuration dict (backward compatibility)
             config = dataset
 
         schema = self._get_schema("datasetConfigurationSchema")
@@ -643,18 +525,10 @@ class ConnectorMetadataValidator:
         self._validate_destination(config, "datasets")
 
     def validate_datapoint(self, datapoint: Dict[str, Any]):
-        """Validate a datapoint object or its configuration.
-
-        Args:
-            datapoint: Can be either:
-                - A full datapoint object with 'dataPointConfiguration' as JSON string
-                - A parsed configuration dictionary (for backward compatibility)
-        """
+        """Validate a datapoint configuration against the connector schema."""
         datapoint_name = datapoint.get('name', 'unnamed')
 
-        # Check if this is a full datapoint object or just the configuration
         if "dataPointConfiguration" in datapoint:
-            # Full datapoint object - extract and parse configuration
             config_str = datapoint.get("dataPointConfiguration")
             if not config_str:
                 config = {}
@@ -666,8 +540,6 @@ class ConnectorMetadataValidator:
                         f"Invalid dataPointConfiguration JSON for datapoint '{datapoint_name}': {e}"
                     )
         else:
-            # If no configuration is provided, validate against an empty config; schema-required fields
-            # will fail if the schema demands them (aligns with DOE UI behavior).
             config = {}
 
         schema = self._get_schema("dataPointConfigurationSchema")
@@ -675,21 +547,12 @@ class ConnectorMetadataValidator:
         self._validate_destination(config, "datapoints")
 
     def validate_event(self, event: Dict[str, Any]):
-        """Validate an event object or its configuration.
-
-        Args:
-            event: Can be either:
-                - A full event object with 'eventConfiguration' as JSON string
-                - A parsed configuration dictionary (for backward compatibility)
-        """
+        """Validate an event configuration against the connector schema."""
         logger.debug(f"Validating event: {event}")
 
-        # Check if this is a full event object or just the configuration
         if "eventConfiguration" in event:
-            # Full event object - extract and parse configuration
             config_str = event.get("eventConfiguration")
             if not config_str:
-                logger.debug("No eventConfiguration found, skipping validation")
                 return
 
             try:
@@ -703,18 +566,14 @@ class ConnectorMetadataValidator:
                     f"Invalid eventConfiguration JSON for event '{event_name}': {e}"
                 )
         else:
-            # Assume it's already a parsed configuration dict (backward compatibility)
             config = event
 
         schema = self._get_schema("eventConfigurationSchema")
-        logger.debug("Found event schema, performing validation")
         self._validate(config, schema, "Event")
         self._validate_destination(config, "events")
 
     def _get_schema(self, schema_key: str) -> Dict[str, Any]:
-        """
-        Extracts the specific schema from the metadata based on the endpoint type and version.
-        """
+        """Extract a schema from the endpoint metadata by key."""
         endpoint = self._get_endpoint_metadata()
 
         schema = None
@@ -746,7 +605,7 @@ class ConnectorMetadataValidator:
         return schema
 
     def _get_endpoint_metadata(self) -> Dict[str, Any]:
-        """Find the inbound endpoint matching type/version, scanning all endpoints."""
+        """Find the matching inbound endpoint from metadata."""
         if self._matched_endpoint:
             return self._matched_endpoint
 
@@ -759,8 +618,6 @@ class ConnectorMetadataValidator:
 
             endpoint_version = endpoint.get("version")
 
-            # Relaxed matching: if metadata omits version, accept the match even when caller
-            # provided one. Only reject when both sides specify a version and they differ.
             if endpoint_version is not None and self.endpoint_version is not None:
                 if str(endpoint_version) != str(self.endpoint_version):
                     continue
@@ -778,7 +635,7 @@ class ConnectorMetadataValidator:
         )
 
     def _validate_destination(self, config: Dict[str, Any], resource_kind: str):
-        """Validate destination presence/defaults and enforce supportedDestinations when provided."""
+        """Validate and auto-fill destination based on connector metadata."""
         endpoint = self._get_endpoint_metadata()
         if not endpoint:
             return
@@ -812,15 +669,12 @@ class ConnectorMetadataValidator:
                 config["destination"] = default_dest
                 return
             if supported:
-                # Auto-assign a reasonable default when metadata lists supported destinations but omits a default.
-                # Prefer a single supported value; otherwise fall back to a common option if present.
                 if len(supported) == 1:
                     config["destination"] = supported[0]
                     return
                 if "Mqtt" in supported:
                     config["destination"] = "Mqtt"
                     return
-                # As a final fallback, pick the first supported destination to avoid failing validation.
                 config["destination"] = supported[0]
                 return
             return

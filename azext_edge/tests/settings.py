@@ -29,7 +29,6 @@ class EnvironmentVariables(Enum):
     schema_registry_id = "azext_edge_schema_registry_id"
     adr_namespace_id = "azext_edge_adr_namespace_id"
     upgrade_args = "azext_edge_upgrade_args"
-    # ACR integration test settings
     acr_name = "azext_edge_acr_name"
     acr_artifact = "azext_edge_acr_artifact"
 
