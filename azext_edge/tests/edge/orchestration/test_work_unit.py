@@ -122,7 +122,8 @@ UNAUTHORIZED_NAMESPACE_ERROR = {
     "body": {
         "error": {
             "code": "UnauthorizedNamespaceError",
-            "message": "The namespace is not authorized for custom locations. Please enable the custom locations feature.",
+            "message": "The namespace is not authorized for custom locations. "
+            "Please enable the custom locations feature.",
         }
     },
 }
