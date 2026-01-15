@@ -319,7 +319,7 @@ class ConnectorMetadataValidator:
         # 2. Get Manifest
         manifest_url = f"{base_url}/manifests/{tag}"
 
-        # Prefer ACR token flow for ACR, fall back to registry challenge/anonymous for others.
+        # Prefer ACR token flow for ACR, fall back to registry challenge/anonymous for MCR.
         token = None
         if cls._is_acr_registry(registry):
             token = cls._get_acr_access_token(cmd=cmd, registry=registry, repository=repository)
