@@ -8,7 +8,8 @@
 Integration tests for ConnectorMetadataValidator.
 
 These tests mock Azure Management interactions but perform real HTTP requests
-to Microsoft Container Registry (MCR) to validate real-world schema handling.
+to Microsoft Container Registry (MCR) and Azure Container Registry (ACR) to
+validate real-world schema handling.
 """
 
 import hashlib
