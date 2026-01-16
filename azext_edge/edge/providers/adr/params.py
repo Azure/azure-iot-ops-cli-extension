@@ -714,6 +714,7 @@ def load_adr_arguments(self, _):
             "endpoint_version",
             options_list=["--version"],
             help="Endpoint version.",
+            deprecate_info=context.deprecate(hide=True),
         )
         # TODO: add description of how to use these in the wiki
         context.argument(
@@ -784,6 +785,11 @@ def load_adr_arguments(self, _):
         )
 
     with self.argument_context("iot ops ns device endpoint inbound add custom") as context:
+        context.argument(
+            "endpoint_version",
+            options_list=["--version"],
+            help="Endpoint version.",
+        )
         context.argument(
             "endpoint_type",
             options_list=["--endpoint-type", "--type"],

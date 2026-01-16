@@ -66,6 +66,23 @@ class DeviceEndpointType(ListableEnum):
         return mapped_types.get(keyword.lower(), "custom" if return_custom_keyword else keyword)
 
 
+def get_default_endpoint_version(endpoint_type: str) -> Optional[str]:
+    """
+    Returns the default version for a given endpoint type.
+
+    Returns None if no default version is defined (ONVIF, Media, OPC-UA, custom types).
+    """
+    version_map = {
+        DeviceEndpointType.REST.value: "1.0",
+        DeviceEndpointType.MQTT.value: "5",
+        DeviceEndpointType.SSE.value: "1.1",
+        DeviceEndpointType.MEDIA.value: None,
+        DeviceEndpointType.ONVIF.value: None,
+        DeviceEndpointType.OPCUA.value: None,
+    }
+    return version_map.get(endpoint_type, None)
+
+
 class NamespaceDevices(Queryable):
     def __init__(self, cmd):
         super().__init__(cmd=cmd)
@@ -320,6 +337,11 @@ class NamespaceDevices(Queryable):
         **kwargs
     ):
         from .helpers import process_additional_configuration, process_authentication
+
+        # Set default version if not provided by user
+        if endpoint_version is None:
+            endpoint_version = get_default_endpoint_version(endpoint_type)
+
         # get the original inbound endpoints
         device = self.show(
             device_name=device_name,

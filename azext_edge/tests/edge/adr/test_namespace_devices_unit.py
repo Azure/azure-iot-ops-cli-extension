@@ -1879,10 +1879,12 @@ def test_add_inbound_rest_device_endpoint(
         )
 
     # Create expected endpoint structure
+    # REST endpoints get default version "1.0" when None
+    expected_version = endpoint_version if endpoint_version is not None else "1.0"
     expected_endpoint = {
-        "endpointType": DeviceEndpointType.MEDIA.value,
+        "endpointType": DeviceEndpointType.REST.value,
         "address": endpoint_address,
-        "version": endpoint_version
+        "version": expected_version
     }
 
     # Set up authentication structure based on auth type
@@ -2003,7 +2005,7 @@ def test_add_inbound_rest_device_endpoint(
     patch_body = json.loads(mocked_responses.calls[1].request.body)
     endpoint_patch = patch_body["properties"]["endpoints"]["inbound"][endpoint_name]
     assert endpoint_patch["endpointType"] == DeviceEndpointType.REST.value
-    assert endpoint_patch["version"] == endpoint_version
+    assert endpoint_patch["version"] == expected_version
     assert endpoint_patch["address"] == endpoint_address
     assert endpoint_patch["authentication"]["method"] == expected_endpoint["authentication"]["method"]
     assert endpoint_patch["authentication"] == expected_endpoint["authentication"]
@@ -2063,10 +2065,12 @@ def test_add_inbound_sse_device_endpoint(
         )
 
     # Create expected endpoint structure
+    # Apply default version if endpoint_version is None
+    expected_version = endpoint_version if endpoint_version is not None else "1.1"
     expected_endpoint = {
         "endpointType": DeviceEndpointType.SSE.value,
         "address": endpoint_address,
-        "version": endpoint_version
+        "version": expected_version
     }
 
     # Set up authentication structure based on auth type
@@ -2187,7 +2191,7 @@ def test_add_inbound_sse_device_endpoint(
     patch_body = json.loads(mocked_responses.calls[1].request.body)
     endpoint_patch = patch_body["properties"]["endpoints"]["inbound"][endpoint_name]
     assert endpoint_patch["endpointType"] == DeviceEndpointType.SSE.value
-    assert endpoint_patch["version"] == endpoint_version
+    assert endpoint_patch["version"] == expected_version
     assert endpoint_patch["address"] == endpoint_address
     assert endpoint_patch["authentication"]["method"] == expected_endpoint["authentication"]["method"]
     assert endpoint_patch["authentication"] == expected_endpoint["authentication"]
@@ -2235,10 +2239,12 @@ def test_add_inbound_mqtt_device_endpoint(
         )
 
     # Create expected endpoint structure (MQTT has no authentication)
+    # Apply default version if endpoint_version is None (MQTT default: 5)
+    expected_version = endpoint_version if endpoint_version is not None else "5"
     expected_endpoint = {
         "endpointType": DeviceEndpointType.MQTT.value,
         "address": endpoint_address,
-        "version": endpoint_version,
+        "version": expected_version,
         "authentication": {
             "method": ADRAuthModes.anonymous.value
         }
@@ -2329,7 +2335,7 @@ def test_add_inbound_mqtt_device_endpoint(
     patch_body = json.loads(mocked_responses.calls[1].request.body)
     endpoint_patch = patch_body["properties"]["endpoints"]["inbound"][endpoint_name]
     assert endpoint_patch["endpointType"] == DeviceEndpointType.MQTT.value
-    assert endpoint_patch["version"] == endpoint_version
+    assert endpoint_patch["version"] == expected_version
     assert endpoint_patch["address"] == endpoint_address
     assert endpoint_patch["authentication"]["method"] == expected_endpoint["authentication"]["method"]
     assert endpoint_patch["authentication"] == expected_endpoint["authentication"]

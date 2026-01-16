@@ -886,12 +886,6 @@ def load_iotops_adr_help():
           text: >
             az iot ops ns device endpoint inbound add mqtt --device mydevice --instance myInstance
             -g myInstanceResourceGroup --name myMqttEndpoint --endpoint-address "aio-broker:18883"
-
-        - name: Add an MQTT endpoint with version specification
-          text: >
-            az iot ops ns device endpoint inbound add mqtt --device mydevice --instance myInstance
-            -g myInstanceResourceGroup --name myMqttEndpoint --endpoint-address "aio-broker:18883"
-            --version "0.3.4"
     """
 
     helps[
