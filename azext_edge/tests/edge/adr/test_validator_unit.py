@@ -478,6 +478,7 @@ class TestConnectorMetadataValidator(unittest.TestCase):
         validator.validate_event(event)
 
     def test_validate_datapoint_empty_configuration(self):
+        """Empty dataPointConfiguration should skip validation (no error)."""
         self.mock_get_metadata.return_value = DATAPOINT_METADATA
         mock_cmd = Mock()
         validator = ConnectorMetadataValidator(
@@ -494,8 +495,8 @@ class TestConnectorMetadataValidator(unittest.TestCase):
             "dataPointConfiguration": "",
         }
 
-        with self.assertRaises(ValidationError):
-            validator.validate_datapoint(datapoint)
+        # Should not raise - empty config skips validation
+        validator.validate_datapoint(datapoint)
 
     def test_validate_datapoint_missing_configuration(self):
         self.mock_get_metadata.return_value = DATAPOINT_METADATA

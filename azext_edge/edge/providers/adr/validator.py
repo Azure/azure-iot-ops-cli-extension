@@ -5,11 +5,14 @@
 # ----------------------------------------------------------------------------------------------
 
 import hashlib
+import io
 import json
+import jsonschema
 import os
 import requests
+import tarfile
 from jsonschema import validate
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple
 from knack.log import get_logger
 from azure.cli.core.azclierror import ValidationError
 from ...util.az_client import AZURE_CLI_CREDENTIAL, get_iotops_mgmt_client
@@ -20,26 +23,72 @@ logger = get_logger(__name__)
 class ConnectorMetadataValidator:
     """Validates Asset sub-resources against schemas from Connector Template metadata."""
 
+    # Cache storage
     _METADATA_CACHE = {}
     _CONNECTOR_SCHEMA_CACHE = None
+
+    # OCI artifact constants
     CONNECTOR_TEMPLATE_MANIFEST_TYPE = "connectortemplate"
     _RESOURCE_TYPE_CONFIG_MEDIA_TYPES = {
         CONNECTOR_TEMPLATE_MANIFEST_TYPE: "application/vnd.microsoft.akri-connector.v1+json",
     }
 
+    # Configuration keys (used in asset/datapoint/event payloads)
+    _CONFIG_KEY_DATASET = "datasetConfiguration"
+    _CONFIG_KEY_DATAPOINT = "dataPointConfiguration"
+    _CONFIG_KEY_EVENT = "eventConfiguration"
+
+    # Schema keys (used to look up schemas in connector metadata)
+    _SCHEMA_KEY_DATASET = "datasetConfigurationSchema"
+    _SCHEMA_KEY_DATAPOINT = "dataPointConfigurationSchema"
+    _SCHEMA_KEY_EVENT = "eventConfigurationSchema"
+    _SCHEMA_KEY_EVENT_GROUP = "eventGroupConfigurationSchema"
+    _SCHEMA_KEY_ADDITIONAL = "additionalConfigurationSchema"
+    _SCHEMA_KEY_ACTION = "actionConfigurationSchema"
+    _SCHEMA_KEY_MGMT_GROUP = "managementGroupConfigurationSchema"
+
+    # Resource kind constants (for destination validation)
+    _RESOURCE_KIND_DATASETS = "datasets"
+    _RESOURCE_KIND_DATAPOINTS = "datapoints"
+    _RESOURCE_KIND_EVENTS = "events"
+
+    # Endpoint type constants
+    _ENDPOINT_TYPE_OPCUA = "microsoft.opcua"
+
+    # Destination constants
+    _DEFAULT_DESTINATION_MQTT = "Mqtt"
+
+    # Error message display limits
+    _MAX_TAR_FILES_IN_ERROR = 5  # Limit file list in errors to avoid overwhelming output
+
+    # Schema path mapping: schema_key -> tuple of nested keys to traverse in endpoint metadata
+    # Each tuple represents the path to reach the schema in the endpoint dict
+    _SCHEMA_PATHS: Dict[str, Tuple[str, ...]] = {}
+
+    @classmethod
+    def _init_schema_paths(cls) -> None:
+        """Initialize schema paths mapping (called once when class attributes are set)."""
+        if not cls._SCHEMA_PATHS:
+            cls._SCHEMA_PATHS = {
+                cls._SCHEMA_KEY_DATASET: ("datasets", cls._SCHEMA_KEY_DATASET),
+                cls._SCHEMA_KEY_DATAPOINT: ("datasets", "dataPoints", cls._SCHEMA_KEY_DATAPOINT),
+                cls._SCHEMA_KEY_EVENT: ("eventGroups", "events", cls._SCHEMA_KEY_EVENT),
+                cls._SCHEMA_KEY_EVENT_GROUP: ("eventGroups", cls._SCHEMA_KEY_EVENT_GROUP),
+                cls._SCHEMA_KEY_ADDITIONAL: (cls._SCHEMA_KEY_ADDITIONAL,),
+                cls._SCHEMA_KEY_ACTION: ("managementGroups", "managementGroupActions", cls._SCHEMA_KEY_ACTION),
+                cls._SCHEMA_KEY_MGMT_GROUP: ("managementGroups", cls._SCHEMA_KEY_MGMT_GROUP),
+            }
+
     def _make_metadata_cache_key(self) -> str:
         """Generate a unique cache key for this endpoint's metadata."""
-        subscription_id = (self.cmd.cli_ctx.data or {}).get("subscription_id", "unknown-subscription")
-        endpoint_version = self.endpoint_version or "none"
-        return ":".join(
-            [
-                str(subscription_id),
-                str(self.resource_group_name or "unknown-rg"),
-                str(self.instance_name or "unknown-instance"),
-                str(self.endpoint_type or "unknown-endpoint"),
-                str(endpoint_version),
-            ]
-        )
+        parts = [
+            (self.cmd.cli_ctx.data or {}).get("subscription_id") or "unknown-subscription",
+            self.resource_group_name or "unknown-rg",
+            self.instance_name or "unknown-instance",
+            self.endpoint_type or "unknown-endpoint",
+            self.endpoint_version or "none",
+        ]
+        return ":".join(parts)
 
     def __init__(
         self,
@@ -58,7 +107,9 @@ class ConnectorMetadataValidator:
         self._matched_endpoint = None
 
     @classmethod
-    def from_asset(cls, cmd, asset: Dict[str, Any], instance_name: str, instance_resource_group: str):
+    def from_asset(
+        cls, cmd, asset: Dict[str, Any], instance_name: str, instance_resource_group: str
+    ) -> "ConnectorMetadataValidator":
         """Create validator from an asset by looking up its device and endpoint."""
         from ...util.id_tools import parse_resource_id
 
@@ -134,8 +185,6 @@ class ConnectorMetadataValidator:
 
     def _load_local_opcua_metadata(self) -> Dict[str, Any]:
         """Load OPC UA connector metadata from local bundled JSON file."""
-        import os
-
         current_dir = os.path.dirname(os.path.abspath(__file__))
         schema_file = os.path.join(current_dir, "schemas", "opcua_connector_metadata.json")
 
@@ -145,8 +194,10 @@ class ConnectorMetadataValidator:
         try:
             with open(schema_file, 'r', encoding='utf-8') as f:
                 return json.load(f)
-        except Exception as e:
-            raise ValidationError(f"Failed to load local OPC UA metadata: {e}")
+        except (OSError, IOError) as e:
+            raise ValidationError(f"Failed to read local OPC UA metadata file: {e}")
+        except json.JSONDecodeError as e:
+            raise ValidationError(f"Invalid JSON in local OPC UA metadata file: {e}")
 
     def _get_metadata(self) -> Dict[str, Any]:
         """Retrieve connector metadata from cache, local file (OPC UA), or OCI registry."""
@@ -158,7 +209,7 @@ class ConnectorMetadataValidator:
         et_lower = (self.endpoint_type or "").lower()
         version_empty = (self.endpoint_version is None) or (str(self.endpoint_version).strip() == "")
 
-        if et_lower == "microsoft.opcua" and version_empty:
+        if et_lower == self._ENDPOINT_TYPE_OPCUA and version_empty:
             metadata = self._load_local_opcua_metadata()
             self._METADATA_CACHE[cache_key] = metadata
             return metadata
@@ -228,9 +279,15 @@ class ConnectorMetadataValidator:
             raise
 
     @classmethod
-    def fetch_oci_artifact(cls, image_ref: str, cmd=None) -> Dict[str, Any]:  # noqa: C901
-        """Fetch a JSON artifact from an OCI registry."""
-        logger.info(f"Fetching OCI artifact: {image_ref}")
+    def _parse_oci_reference(cls, image_ref: str) -> tuple:
+        """Parse an OCI image reference into its components.
+
+        Args:
+            image_ref: OCI reference string (e.g., 'registry.io/repo/name:tag')
+
+        Returns:
+            Tuple of (registry, repository, tag)
+        """
         if "/" not in image_ref:
             raise ValidationError(f"Invalid OCI reference: {image_ref}")
 
@@ -241,14 +298,25 @@ class ConnectorMetadataValidator:
             repository = remainder
             tag = "latest"
 
-        base_url = f"https://{registry}/v2/{repository}"
+        return registry, repository, tag
+
+    @classmethod
+    def _get_oci_auth_headers(cls, registry: str, repository: str, cmd=None) -> Dict[str, str]:
+        """Build HTTP headers with authentication for OCI registry requests.
+
+        Args:
+            registry: Registry hostname
+            repository: Repository path
+            cmd: Azure CLI command context (optional, for ACR auth)
+
+        Returns:
+            Dict of HTTP headers including Authorization if token obtained
+        """
         headers = {
             "Accept": "application/vnd.oci.image.manifest.v1+json, application/vnd.docker.distribution.manifest.v2+json"
         }
 
-        manifest_url = f"{base_url}/manifests/{tag}"
-
-        # Prefer ACR token flow for ACR, fall back to registry challenge/anonymous for MCR.
+        # Prefer ACR token flow for ACR, fall back to registry challenge/anonymous for MCR
         token = None
         if cls._is_acr_registry(registry):
             token = cls._get_acr_access_token(cmd=cmd, registry=registry, repository=repository)
@@ -259,12 +327,30 @@ class ConnectorMetadataValidator:
         if token:
             headers["Authorization"] = f"Bearer {token}"
 
+        return headers
+
+    @classmethod
+    def _fetch_oci_manifest(cls, base_url: str, tag: str, headers: Dict[str, str], image_ref: str) -> Dict[str, Any]:
+        """Fetch and validate the OCI manifest.
+
+        Args:
+            base_url: Base OCI registry URL
+            tag: Image tag
+            headers: HTTP headers with auth
+            image_ref: Original image reference (for error messages)
+
+        Returns:
+            Parsed manifest dict
+        """
+        manifest_url = f"{base_url}/manifests/{tag}"
         response = requests.get(manifest_url, headers=headers, timeout=30)
+
         if response.status_code != 200:
             raise ValidationError(f"Failed to fetch manifest for {image_ref}: {response.status_code} {response.text}")
 
         manifest = response.json()
 
+        # Validate config media type
         expected_config_media_type = cls._get_expected_config_media_type(cls.CONNECTOR_TEMPLATE_MANIFEST_TYPE)
         manifest_config = manifest.get("config") or {}
         actual_config_media_type = manifest_config.get("mediaType")
@@ -282,47 +368,69 @@ class ConnectorMetadataValidator:
         elif not actual_config_media_type:
             raise ValidationError("Missing artifact config media type.")
 
-        layers = manifest.get("layers", [])
-        if not layers:
-            raise ValidationError(f"Manifest for {image_ref} has no layers.")
+        return manifest
 
-        target_digest = layers[0].get("digest")
-        if not target_digest:
-            raise ValidationError(
-                f"First layer in manifest for {image_ref} is missing digest. Layer: {layers[0]}"
-            )
+    @classmethod
+    def _fetch_and_verify_blob(
+        cls, base_url: str, digest: str, headers: Dict[str, str], image_ref: str
+    ) -> Tuple[bytes, str]:
+        """Fetch a blob from OCI registry and verify its digest.
 
-        blob_url = f"{base_url}/blobs/{target_digest}"
+        Args:
+            base_url: Base OCI registry URL
+            digest: Expected blob digest (e.g., 'sha256:abc123...')
+            headers: HTTP headers with auth
+            image_ref: Original image reference (for error messages)
 
-        blob_response = requests.get(blob_url, headers=headers, timeout=30)
-        if blob_response.status_code != 200:
-            raise ValidationError(f"Failed to fetch blob {target_digest}: {blob_response.status_code}")
+        Returns:
+            Tuple of (blob content as bytes, content-type string)
+        """
+        if ":" not in digest:
+            raise ValidationError(f"Invalid layer digest format: {digest}")
 
-        if ":" not in target_digest:
-            raise ValidationError(f"Invalid layer digest format: {target_digest}")
-
-        algo, expected_hex = target_digest.split(":", 1)
+        algo, expected_hex = digest.split(":", 1)
         if algo.lower() != "sha256":
-            raise ValidationError(f"Unsupported digest algorithm '{algo}' for layer {target_digest}")
+            raise ValidationError(f"Unsupported digest algorithm '{algo}' for layer {digest}")
 
+        blob_url = f"{base_url}/blobs/{digest}"
+        blob_response = requests.get(blob_url, headers=headers, timeout=30)
+
+        if blob_response.status_code != 200:
+            raise ValidationError(f"Failed to fetch blob {digest}: {blob_response.status_code}")
+
+        # Verify digest
         computed_hex = hashlib.sha256(blob_response.content).hexdigest()
         if computed_hex != expected_hex:
             raise ValidationError(
-                f"Blob digest mismatch: expected {target_digest}, got sha256:{computed_hex}"
+                f"Blob digest mismatch: expected {digest}, got sha256:{computed_hex}"
             )
 
-        content_type = blob_response.headers.get("Content-Type", "")
+        return blob_response.content, blob_response.headers.get("Content-Type", "")
 
-        # Handle tar/gzip content or direct JSON
-        if "tar" in content_type or blob_response.content[:2] == b"\x1f\x8b":
-            import tarfile
-            import io
+    @classmethod
+    def _extract_metadata_from_blob(cls, content: bytes, content_type: str, image_ref: str) -> Dict[str, Any]:
+        """Extract connector metadata from blob content.
 
+        Handles both tar/gzip archives and direct JSON content.
+
+        Args:
+            content: Raw blob bytes
+            content_type: HTTP Content-Type header value
+            image_ref: Original image reference (for error messages)
+
+        Returns:
+            Parsed metadata dict
+        """
+        # Check for tar/gzip content
+        is_tar = "tar" in content_type or content[:2] == b"\x1f\x8b"
+
+        if is_tar:
             try:
-                tar_bytes = io.BytesIO(blob_response.content)
+                tar_bytes = io.BytesIO(content)
                 with tarfile.open(fileobj=tar_bytes, mode="r:*") as tar:
                     member_names = tar.getnames()
 
+                    # Find connector-metadata.json in archive
                     metadata_file = None
                     for member in member_names:
                         if member.endswith("connector-metadata.json"):
@@ -333,9 +441,12 @@ class ConnectorMetadataValidator:
                         metadata_file = "connector-metadata.json"
 
                     if not metadata_file:
+                        # Show limited file list to help debugging without overwhelming output
+                        sample_files = member_names[:cls._MAX_TAR_FILES_IN_ERROR]
+                        total_files = len(member_names)
+                        file_hint = f"Found {total_files} files, showing first {len(sample_files)}: {sample_files}"
                         raise ValidationError(
-                            f"connector-metadata.json not found in tar archive. "
-                            f"Files: {member_names[:10]}"
+                            f"connector-metadata.json not found in tar archive. {file_hint}"
                         )
 
                     extracted = tar.extractfile(metadata_file)
@@ -343,23 +454,31 @@ class ConnectorMetadataValidator:
                         raise ValidationError(f"Could not extract {metadata_file} from tar")
 
                     json_content = extracted.read().decode("utf-8")
-                    metadata = json.loads(json_content)
+                    return json.loads(json_content)
 
             except (tarfile.TarError, IOError) as e:
-                logger.error(f"Failed to extract tar archive: {e}")
                 raise ValidationError(f"Failed to extract connector metadata from tar: {e}")
         else:
             try:
-                metadata = blob_response.json()
+                return json.loads(content.decode("utf-8"))
             except json.JSONDecodeError as e:
-                logger.error(f"Blob is not valid JSON: {e}")
-                raise ValidationError(f"Artifact at {image_ref} is not valid JSON.")
+                raise ValidationError(f"Artifact at {image_ref} is not valid JSON: {e}")
 
+    @classmethod
+    def _validate_connector_metadata(cls, metadata: Dict[str, Any], image_ref: str) -> None:
+        """Validate connector metadata against schema and structure requirements.
+
+        Args:
+            metadata: Parsed metadata dict
+            image_ref: Original image reference (for error messages)
+        """
         try:
             schema = cls._get_connector_metadata_schema()
             validate(instance=metadata, schema=schema)
-        except Exception as e:
-            raise ValidationError(f"Connector metadata does not match schema: {e}")
+        except jsonschema.ValidationError as e:
+            raise ValidationError(f"Connector metadata does not match schema: {e.message}")
+        except jsonschema.SchemaError as e:
+            raise ValidationError(f"Invalid connector metadata schema: {e.message}")
 
         if "inboundEndpoints" not in metadata:
             raise ValidationError(
@@ -367,10 +486,52 @@ class ConnectorMetadataValidator:
                 f"Found keys: {list(metadata.keys())}"
             )
 
+    @classmethod
+    def fetch_oci_artifact(cls, image_ref: str, cmd=None) -> Dict[str, Any]:
+        """Fetch a JSON artifact from an OCI registry.
+
+        Args:
+            image_ref: OCI image reference (e.g., 'mcr.microsoft.com/repo:tag')
+            cmd: Azure CLI command context (optional, for ACR authentication)
+
+        Returns:
+            Parsed connector metadata dict
+        """
+        logger.info(f"Fetching OCI artifact: {image_ref}")
+
+        # Parse reference
+        registry, repository, tag = cls._parse_oci_reference(image_ref)
+        base_url = f"https://{registry}/v2/{repository}"
+
+        # Get auth headers
+        headers = cls._get_oci_auth_headers(registry, repository, cmd)
+
+        # Fetch manifest
+        manifest = cls._fetch_oci_manifest(base_url, tag, headers, image_ref)
+
+        # Get first layer digest
+        layers = manifest.get("layers", [])
+        if not layers:
+            raise ValidationError(f"Manifest for {image_ref} has no layers.")
+
+        target_digest = layers[0].get("digest")
+        if not target_digest:
+            raise ValidationError(
+                f"First layer in manifest for {image_ref} is missing digest. Layer: {layers[0]}"
+            )
+
+        # Fetch and verify blob
+        content, content_type = cls._fetch_and_verify_blob(base_url, target_digest, headers, image_ref)
+
+        # Extract metadata from blob
+        metadata = cls._extract_metadata_from_blob(content, content_type, image_ref)
+
+        # Validate metadata
+        cls._validate_connector_metadata(metadata, image_ref)
+
         endpoint_count = len(metadata.get('inboundEndpoints', []))
-        logger.info(
-            f"Found valid connector metadata with {endpoint_count} inbound endpoints"
-        )
+        logger.info(f"Found valid connector metadata with {endpoint_count} inbound endpoints")
+
         return metadata
 
     @classmethod
@@ -415,7 +576,7 @@ class ConnectorMetadataValidator:
                         return token
                     else:
                         logger.warning(f"Token request failed: {token_resp.status_code} {token_resp.text}")
-        except Exception as e:
+        except requests.RequestException as e:
             logger.warning(f"Failed to obtain auth token: {e}")
         return None
 
@@ -502,99 +663,109 @@ class ConnectorMetadataValidator:
         try:
             with open(schema_path, "r", encoding="utf-8") as f:
                 cls._CONNECTOR_SCHEMA_CACHE = json.load(f)
-        except Exception as e:
-            raise ValidationError(f"Failed to load connector metadata schema: {e}")
+        except (OSError, IOError) as e:
+            raise ValidationError(f"Failed to read connector metadata schema file: {e}")
+        except json.JSONDecodeError as e:
+            raise ValidationError(f"Invalid JSON in connector metadata schema file: {e}")
 
         return cls._CONNECTOR_SCHEMA_CACHE
 
-    def validate_dataset(self, dataset: Dict[str, Any]):
+    def _parse_config(
+        self,
+        data: Dict[str, Any],
+        config_key: str,
+        resource_name: str,
+        default_if_empty: Optional[Dict[str, Any]] = None,
+    ) -> Optional[Dict[str, Any]]:
+        """Parse configuration from a resource payload.
+
+        Args:
+            data: The resource payload (dataset, datapoint, or event dict).
+            config_key: The key to look for (e.g., 'datasetConfiguration').
+            resource_name: Human-readable name for error messages (e.g., "datapoint 'temp'").
+            default_if_empty: Value to return if config_key exists but is empty/falsy.
+                              If None, returns None (signals caller to skip validation).
+
+        Returns:
+            Parsed config dict, default_if_empty, or None to signal early return.
+        """
+        if config_key not in data:
+            # No config key present - use the data itself or default
+            return default_if_empty if default_if_empty is not None else data
+
+        config_str = data.get(config_key)
+        if not config_str:
+            # Config key present but empty/falsy
+            return default_if_empty
+
+        try:
+            return json.loads(config_str) if isinstance(config_str, str) else config_str
+        except (json.JSONDecodeError, TypeError) as e:
+            raise ValidationError(f"Invalid {config_key} JSON for {resource_name}: {e}")
+
+    def validate_dataset(self, dataset: Dict[str, Any]) -> None:
         """Validate a dataset configuration against the connector schema."""
-        if "datasetConfiguration" in dataset:
-            config_str = dataset.get("datasetConfiguration")
-            if not config_str:
-                return
-            try:
-                config = json.loads(config_str) if isinstance(config_str, str) else config_str
-            except (json.JSONDecodeError, TypeError) as e:
-                raise ValidationError(f"Invalid datasetConfiguration JSON: {e}")
-        else:
-            config = dataset
+        config = self._parse_config(
+            data=dataset,
+            config_key=self._CONFIG_KEY_DATASET,
+            resource_name="dataset",
+        )
+        if config is None:
+            return
 
-        schema = self._get_schema("datasetConfigurationSchema")
+        schema = self._get_schema(self._SCHEMA_KEY_DATASET)
         self._validate(config, schema, "Dataset")
-        self._validate_destination(config, "datasets")
+        self._validate_and_apply_destination(config, self._RESOURCE_KIND_DATASETS)
 
-    def validate_datapoint(self, datapoint: Dict[str, Any]):
+    def validate_datapoint(self, datapoint: Dict[str, Any]) -> None:
         """Validate a datapoint configuration against the connector schema."""
         datapoint_name = datapoint.get('name', 'unnamed')
 
-        if "dataPointConfiguration" in datapoint:
-            config_str = datapoint.get("dataPointConfiguration")
-            if not config_str:
-                config = {}
-            else:
-                try:
-                    config = json.loads(config_str) if isinstance(config_str, str) else config_str
-                except (json.JSONDecodeError, TypeError) as e:
-                    raise ValidationError(
-                        f"Invalid dataPointConfiguration JSON for datapoint '{datapoint_name}': {e}"
-                    )
-        else:
-            config = {}
+        config = self._parse_config(
+            data=datapoint,
+            config_key=self._CONFIG_KEY_DATAPOINT,
+            resource_name=f"datapoint '{datapoint_name}'",
+        )
+        if config is None:
+            return
 
-        schema = self._get_schema("dataPointConfigurationSchema")
+        schema = self._get_schema(self._SCHEMA_KEY_DATAPOINT)
         self._validate(config, schema, "Datapoint")
-        self._validate_destination(config, "datapoints")
+        self._validate_and_apply_destination(config, self._RESOURCE_KIND_DATAPOINTS)
 
-    def validate_event(self, event: Dict[str, Any]):
+    def validate_event(self, event: Dict[str, Any]) -> None:
         """Validate an event configuration against the connector schema."""
-        logger.debug(f"Validating event: {event}")
+        event_name = event.get('name', 'unnamed')
 
-        if "eventConfiguration" in event:
-            config_str = event.get("eventConfiguration")
-            if not config_str:
-                return
+        config = self._parse_config(
+            data=event,
+            config_key=self._CONFIG_KEY_EVENT,
+            resource_name=f"event '{event_name}'",
+        )
+        if config is None:
+            return
 
-            try:
-                config = json.loads(config_str) if isinstance(config_str, str) else config_str
-            except (json.JSONDecodeError, TypeError) as e:
-                event_name = event.get('name', 'unnamed')
-                logger.error(
-                    f"Invalid JSON in eventConfiguration for event '{event_name}': {e}"
-                )
-                raise ValidationError(
-                    f"Invalid eventConfiguration JSON for event '{event_name}': {e}"
-                )
-        else:
-            config = event
-
-        schema = self._get_schema("eventConfigurationSchema")
+        schema = self._get_schema(self._SCHEMA_KEY_EVENT)
         self._validate(config, schema, "Event")
-        self._validate_destination(config, "events")
+        self._validate_and_apply_destination(config, self._RESOURCE_KIND_EVENTS)
 
     def _get_schema(self, schema_key: str) -> Dict[str, Any]:
         """Extract a schema from the endpoint metadata by key."""
+        self._init_schema_paths()
         endpoint = self._get_endpoint_metadata()
 
-        schema = None
-        if schema_key == "datasetConfigurationSchema":
-            schema = endpoint.get("datasets", {}).get("datasetConfigurationSchema")
-        elif schema_key == "dataPointConfigurationSchema":
-            schema = endpoint.get("datasets", {}).get("dataPoints", {}).get("dataPointConfigurationSchema")
-        elif schema_key == "eventConfigurationSchema":
-            schema = endpoint.get("eventGroups", {}).get("events", {}).get("eventConfigurationSchema")
-        elif schema_key == "eventGroupConfigurationSchema":
-            schema = endpoint.get("eventGroups", {}).get("eventGroupConfigurationSchema")
-        elif schema_key == "additionalConfigurationSchema":
-            schema = endpoint.get("additionalConfigurationSchema")
-        elif schema_key == "actionConfigurationSchema":
-            schema = (
-                endpoint.get("managementGroups", {})
-                .get("managementGroupActions", {})
-                .get("actionConfigurationSchema")
-            )
-        elif schema_key == "managementGroupConfigurationSchema":
-            schema = endpoint.get("managementGroups", {}).get("managementGroupConfigurationSchema")
+        path = self._SCHEMA_PATHS.get(schema_key)
+        if path is None:
+            raise ValidationError(f"Unknown schema key: '{schema_key}'")
+
+        # Traverse nested path; empty dict {} is a valid JSON schema
+        schema = endpoint
+        for i, key in enumerate(path):
+            if not isinstance(schema, dict):
+                schema = None
+                break
+            is_last = (i == len(path) - 1)
+            schema = schema.get(key) if is_last else schema.get(key, {})
 
         if schema is None:
             raise ValidationError(
@@ -634,17 +805,19 @@ class ConnectorMetadataValidator:
             f"Available inbound endpoints: {available or 'none found'}"
         )
 
-    def _validate_destination(self, config: Dict[str, Any], resource_kind: str):
-        """Validate and auto-fill destination based on connector metadata."""
-        endpoint = self._get_endpoint_metadata()
-        if not endpoint:
-            return
+    def _validate_and_apply_destination(self, config: Dict[str, Any], resource_kind: str) -> None:
+        """Validate and auto-fill destination based on connector metadata.
 
-        if resource_kind == "datasets":
+        Note: This method modifies `config` in-place by setting the 'destination' key
+        if not already present and a default can be determined.
+        """
+        endpoint = self._get_endpoint_metadata()
+
+        if resource_kind == self._RESOURCE_KIND_DATASETS:
             dest_meta = endpoint.get("datasets", {}).get("destinations", {})
-        elif resource_kind == "datapoints":
+        elif resource_kind == self._RESOURCE_KIND_DATAPOINTS:
             dest_meta = endpoint.get("datasets", {}).get("dataPoints", {}).get("destinations", {})
-        elif resource_kind == "events":
+        elif resource_kind == self._RESOURCE_KIND_EVENTS:
             dest_meta = endpoint.get("eventGroups", {}).get("events", {}).get("destinations", {})
         else:
             dest_meta = {}
@@ -672,8 +845,8 @@ class ConnectorMetadataValidator:
                 if len(supported) == 1:
                     config["destination"] = supported[0]
                     return
-                if "Mqtt" in supported:
-                    config["destination"] = "Mqtt"
+                if self._DEFAULT_DESTINATION_MQTT in supported:
+                    config["destination"] = self._DEFAULT_DESTINATION_MQTT
                     return
                 config["destination"] = supported[0]
                 return
@@ -684,9 +857,11 @@ class ConnectorMetadataValidator:
                 f"Destination '{destination_value}' is not supported. Supported: {supported}"
             )
 
-    def _validate(self, instance: Dict[str, Any], schema: Dict[str, Any], resource_name: str):
+    def _validate(self, instance: Dict[str, Any], schema: Dict[str, Any], resource_name: str) -> None:
         try:
             validate(instance=instance, schema=schema)
             logger.debug(f"{resource_name} configuration is VALID")
-        except Exception as e:
-            raise ValidationError(f"{resource_name} configuration is invalid: {str(e)}")
+        except jsonschema.ValidationError as e:
+            raise ValidationError(f"{resource_name} configuration is invalid: {e.message}")
+        except jsonschema.SchemaError as e:
+            raise ValidationError(f"{resource_name} schema is invalid: {e.message}")
