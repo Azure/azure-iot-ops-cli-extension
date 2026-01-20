@@ -369,11 +369,7 @@ def ensure_schema_structure(schema: dict, input_data: dict, name: Optional[str] 
                     if e.validator not in ["additionalProperties", "required", "type", "const", "enum"]
                 ]
 
-                if value_errors:
-                    best = jsonschema.exceptions.best_match(value_errors)
-                else:
-                    best = jsonschema.exceptions.best_match(context_errors)
-
+                best = jsonschema.exceptions.best_match(value_errors or context_errors)
                 msg = best.message
             else:
                 msg = error.message

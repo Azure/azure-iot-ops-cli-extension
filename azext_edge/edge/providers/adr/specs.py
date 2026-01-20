@@ -16,10 +16,8 @@ def _load_schema(filename):
         return json.load(f)
 
 
-# DEVICE
+# Device Schemas
 NAMESPACE_DEVICE_OPCUA_ENDPOINT_SCHEMA = _load_schema("opcua_endpoint.json")
-
-
 NAMESPACE_DEVICE_ONVIF_ENDPOINT_SCHEMA = _load_schema("onvif_endpoint.json")
 
 
@@ -28,7 +26,6 @@ class SecurityPolicy(Enum):
     Security policies for the OPC UA connector as defined in NAMESPACE_DEVICE_OPCUA_ENDPOINT_SCHEMA.
     Values correspond to the part after the "#" in the security policy URLs.
     """
-    # TODO: (nice to have) more user friendly names
     none = "None"
     basic128 = "Basic128Rsa15"
     basic256 = "Basic256"
@@ -38,45 +35,28 @@ class SecurityPolicy(Enum):
 
     @property
     def full_value(self):
-        """
-        Returns the full value of the security policy, including the URL prefix.
-        """
+        """Returns the full security policy URL."""
         return f"http://opcfoundation.org/UA/SecurityPolicy#{self.value}"
 
 
 class SecurityMode(Enum):
-    """
-    Security modes for the OPC UA connector as defined in NAMESPACE_DEVICE_OPCUA_ENDPOINT_SCHEMA.
-    """
+    """Security modes for the OPC UA connector."""
     none = "none"
     sign = "sign"
     signandencrypt = "signAndEncrypt"
 
 
-# ASSETS
-# OPCUA
+# Asset Schemas - OPC UA
 NAMESPACE_ASSET_OPCUA_DATASET_CONFIGURATION_SCHEMA_V1 = _load_schema("opcua_dataset_config_v1.json")
-
-
-# not used yet
 NAMESPACE_ASSET_OPCUA_DATASET_CONFIGURATION_SCHEMA_V2 = _load_schema("opcua_dataset_config_v2.json")
-
-
 NAMESPACE_ASSET_OPCUA_EVENT_CONFIGURATION_SCHEMA_V1 = _load_schema("opcua_event_config_v1.json")
-
-
-# not used yet
 NAMESPACE_ASSET_OPCUA_EVENT_CONFIGURATION_SCHEMA_V2 = _load_schema("opcua_event_config_v2.json")
-
-
 NAMESPACE_ASSET_OPCUA_DATAPOINT_CONFIGURATION_SCHEMA = _load_schema("opcua_datapoint_config.json")
 
-
-# MEDIA
+# Asset Schemas - Media
 NAMESPACE_ASSET_MEDIA_STREAM_CONFIGURATION_SCHEMA = _load_schema("media_stream_config.json")
 
-
-# REST
+# Asset Schemas - REST
 NAMESPACE_ASSET_REST_DATASET_CONFIGURATION_SCHEMA = _load_schema("rest_dataset_config.json")
 
 
