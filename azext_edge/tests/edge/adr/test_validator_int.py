@@ -17,6 +17,7 @@ import logging
 import pytest
 from unittest.mock import patch, Mock
 from azext_edge.edge.providers.adr.validator import ConnectorMetadataValidator
+from azext_edge.edge.util.oci_client import get_oci_client
 from azure.cli.core.azclierror import ValidationError
 
 pytestmark = [pytest.mark.integration, pytest.mark.requires_network]
@@ -213,13 +214,10 @@ class TestConnectorMetadataValidatorIntegration:
         assert "acceptInvalidHostnames" in schema["properties"]
         assert "acceptInvalidCertificates" in schema["properties"]
 
-    @patch("azext_edge.edge.providers.adr.validator.ConnectorMetadataValidator._get_auth_token")
-    @patch("azext_edge.edge.providers.adr.validator.get_oci_client")
-    def test_fetch_oci_artifact_success(self, mock_get_oci_client, mock_get_auth_token):
+    @patch("azext_edge.edge.util.oci_client.OciRegistryClient._get_anonymous_token")
+    @patch("azext_edge.edge.util.oci_client.OciRegistryClient.get")
+    def test_fetch_oci_artifact_success(self, mock_get, mock_get_auth_token):
         mock_get_auth_token.return_value = None
-
-        mock_client = Mock()
-        mock_get_oci_client.return_value = mock_client
 
         manifest_response = Mock()
         manifest_response.status_code = 200
@@ -269,22 +267,26 @@ class TestConnectorMetadataValidatorIntegration:
 
         manifest_response.json.return_value["layers"][0]["digest"] = f"sha256:{real_blob_digest}"
 
-        mock_client.get.side_effect = [manifest_response, blob_response]
+        mock_get.side_effect = [manifest_response, blob_response]
 
-        result = ConnectorMetadataValidator.fetch_oci_artifact(
-            "mcr.microsoft.com/azureiotoperations/akri-connectors/rest-metadata:1.0.5"
+        oci_client = get_oci_client()
+        artifact_info = oci_client.fetch_first_layer(
+            "mcr.microsoft.com/azureiotoperations/akri-connectors/rest-metadata:1.0.5",
+            expected_config_media_type="application/vnd.microsoft.akri-connector.v1+json",
         )
 
-        assert result == sample_metadata
-        assert mock_client.get.call_count == 2
+        # Extract and validate metadata like the validator does
+        metadata = ConnectorMetadataValidator._extract_metadata_from_blob(
+            artifact_info.content, artifact_info.content_type, "test"
+        )
 
-    @patch("azext_edge.edge.providers.adr.validator.ConnectorMetadataValidator._get_auth_token")
-    @patch("azext_edge.edge.providers.adr.validator.get_oci_client")
-    def test_fetch_oci_artifact_rejects_standard_oci_config_media_type(self, mock_get_oci_client, mock_get_auth_token):
+        assert metadata == sample_metadata
+        assert mock_get.call_count == 2
+
+    @patch("azext_edge.edge.util.oci_client.OciRegistryClient._get_anonymous_token")
+    @patch("azext_edge.edge.util.oci_client.OciRegistryClient.get")
+    def test_fetch_oci_artifact_rejects_standard_oci_config_media_type(self, mock_get, mock_get_auth_token):
         mock_get_auth_token.return_value = None
-
-        mock_client = Mock()
-        mock_get_oci_client.return_value = mock_client
 
         manifest_response = Mock()
         manifest_response.status_code = 200
@@ -303,36 +305,41 @@ class TestConnectorMetadataValidatorIntegration:
         blob_response.headers = {"Content-Type": "application/vnd.oci.image.layer.v1.tar"}
         blob_response.content = b"dummy"
 
-        mock_client.get.side_effect = [manifest_response, blob_response]
+        mock_get.side_effect = [manifest_response, blob_response]
 
+        oci_client = get_oci_client()
         with pytest.raises(ValidationError) as exc_info:
-            ConnectorMetadataValidator.fetch_oci_artifact(
-                "mcr.microsoft.com/azureiotoperations/akri-connectors/rest-metadata:1.0.5"
+            oci_client.fetch_first_layer(
+                "mcr.microsoft.com/azureiotoperations/akri-connectors/rest-metadata:1.0.5",
+                expected_config_media_type="application/vnd.microsoft.akri-connector.v1+json",
             )
 
         assert "config media type" in str(exc_info.value)
 
     def test_fetch_oci_artifact_invalid_reference(self):
+        oci_client = get_oci_client()
         with pytest.raises(ValidationError) as exc_info:
-            ConnectorMetadataValidator.fetch_oci_artifact("invalid-reference")
+            oci_client.fetch_first_layer("invalid-reference")
         assert "Invalid OCI reference" in str(exc_info.value)
 
-    @patch("azext_edge.edge.providers.adr.validator.get_oci_client")
-    def test_fetch_oci_artifact_manifest_not_found(self, mock_get_oci_client):
-        mock_client = Mock()
-        mock_get_oci_client.return_value = mock_client
+    @patch("azext_edge.edge.util.oci_client.OciRegistryClient._get_anonymous_token")
+    @patch("azext_edge.edge.util.oci_client.OciRegistryClient.get")
+    def test_fetch_oci_artifact_manifest_not_found(self, mock_get, mock_get_auth_token):
+        mock_get_auth_token.return_value = None
 
         mock_response = Mock()
         mock_response.status_code = 404
         mock_response.text.return_value = "Not Found"
-        mock_client.get.return_value = mock_response
+        mock_get.return_value = mock_response
 
+        oci_client = get_oci_client()
         with pytest.raises(ValidationError) as exc_info:
-            ConnectorMetadataValidator.fetch_oci_artifact("mcr.microsoft.com/repo:tag")
+            oci_client.fetch_first_layer("mcr.microsoft.com/repo:tag")
         assert "Failed to fetch manifest" in str(exc_info.value)
 
+    @patch("azext_edge.edge.providers.adr.validator.get_oci_client")
     @patch("azext_edge.edge.providers.adr.validator.get_iotops_mgmt_client")
-    def test_metadata_caching(self, mock_get_client):
+    def test_metadata_caching(self, mock_get_client, mock_get_oci_client):
         cmd = self._create_mock_cmd()
         mock_client = Mock()
         mock_get_client.return_value = mock_client
@@ -344,32 +351,62 @@ class TestConnectorMetadataValidatorIntegration:
             )]
         )
 
-        original_fetch = ConnectorMetadataValidator.fetch_oci_artifact
+        # Mock the OCI client's fetch_first_layer method
+        mock_oci_client = Mock()
+        mock_get_oci_client.return_value = mock_oci_client
         fetch_count = {"count": 0}
+
+        # Create a valid metadata that passes schema validation
+        sample_metadata = {
+            "$schema": "https://json.schemastore.org/aio-connector-metadata-9.0-preview.json",
+            "name": "Test Connector",
+            "version": "1.0.0",
+            "supportedArchitectures": ["linux/amd64"],
+            "imageConfigurationSettings": {"imageName": "test", "tag": "1.0.0"},
+            "inboundEndpoints": [
+                {
+                    "endpointType": "Microsoft.Http",
+                    "fields": {"address": {"input": "required"}},
+                    "datasets": {
+                        "limits": {"minimum": 0},
+                        "fields": {
+                            "dataSource": {"input": "optional"},
+                            "typeRef": {"input": "optional"},
+                        },
+                    },
+                }
+            ],
+        }
+
+        import json as json_module
 
         def counting_fetch(*args, **kwargs):
             fetch_count["count"] += 1
-            return original_fetch(*args, **kwargs)
+            mock_artifact = Mock()
+            mock_artifact.content = json_module.dumps(sample_metadata).encode('utf-8')
+            mock_artifact.content_type = "application/json"
+            return mock_artifact
 
-        with patch.object(ConnectorMetadataValidator, "fetch_oci_artifact", side_effect=counting_fetch):
-            validator1 = ConnectorMetadataValidator(
-                cmd=cmd,
-                resource_group_name="test-rg",
-                instance_name="test-instance",
-                endpoint_type="Microsoft.Http",
-                endpoint_version="1.0",
-            )
+        mock_oci_client.fetch_first_layer.side_effect = counting_fetch
 
-            validator2 = ConnectorMetadataValidator(
-                cmd=cmd,
-                resource_group_name="test-rg",
-                instance_name="test-instance",
-                endpoint_type="Microsoft.Http",
-                endpoint_version="1.0",
-            )
+        validator1 = ConnectorMetadataValidator(
+            cmd=cmd,
+            resource_group_name="test-rg",
+            instance_name="test-instance",
+            endpoint_type="Microsoft.Http",
+            endpoint_version="1.0",
+        )
 
-            assert fetch_count["count"] == 1
-            assert validator1.metadata == validator2.metadata
+        validator2 = ConnectorMetadataValidator(
+            cmd=cmd,
+            resource_group_name="test-rg",
+            instance_name="test-instance",
+            endpoint_type="Microsoft.Http",
+            endpoint_version="1.0",
+        )
+
+        assert fetch_count["count"] == 1
+        assert validator1.metadata == validator2.metadata
 
     @patch("azext_edge.edge.providers.adr.validator.get_iotops_mgmt_client")
     def test_no_matching_connector_template(self, mock_get_client, caplog):
@@ -468,7 +505,15 @@ class TestConnectorMetadataValidatorACR:
         cmd = self._create_cmd_with_cli_context()
 
         try:
-            metadata = ConnectorMetadataValidator.fetch_oci_artifact(acr_reference, cmd=cmd)
+            oci_client = get_oci_client()
+            artifact_info = oci_client.fetch_first_layer(
+                acr_reference,
+                cmd=cmd,
+                expected_config_media_type="application/vnd.microsoft.akri-connector.v1+json",
+            )
+            metadata = ConnectorMetadataValidator._extract_metadata_from_blob(
+                artifact_info.content, artifact_info.content_type, acr_reference
+            )
         except ValidationError as e:
             if "401" in str(e) or "403" in str(e) or "authentication" in str(e).lower():
                 pytest.skip(f"ACR authentication failed - ensure 'az login' has access to {self.acr_name}: {e}")
@@ -488,7 +533,8 @@ class TestConnectorMetadataValidatorACR:
         cmd = self._create_cmd_with_cli_context()
 
         try:
-            token = ConnectorMetadataValidator._get_acr_access_token(
+            oci_client = get_oci_client()
+            token = oci_client._get_acr_access_token(
                 cmd=cmd,
                 registry=f"{self.acr_name}.azurecr.io",
                 repository=self.acr_artifact
@@ -510,8 +556,9 @@ class TestConnectorMetadataValidatorACR:
         cmd = self._create_cmd_with_cli_context()
         nonexistent_ref = self._get_acr_reference(tag="nonexistent-tag-99999")
 
+        oci_client = get_oci_client()
         with pytest.raises(ValidationError) as exc_info:
-            ConnectorMetadataValidator.fetch_oci_artifact(nonexistent_ref, cmd=cmd)
+            oci_client.fetch_first_layer(nonexistent_ref, cmd=cmd)
 
         error_msg = str(exc_info.value).lower()
         assert "404" in error_msg or "not found" in error_msg or "manifest" in error_msg, (
@@ -525,10 +572,11 @@ class TestConnectorMetadataValidatorACR:
 
         invalid_ref = f"nonexistent-acr-12345.azurecr.io/{self.acr_artifact}:1.0.0"
 
-        caplog.set_level(logging.CRITICAL, logger="cli.azext_edge.edge.providers.adr.validator")
+        caplog.set_level(logging.CRITICAL, logger="cli.azext_edge.edge.util.oci_client")
 
+        oci_client = get_oci_client()
         with pytest.raises((ValidationError, requests.exceptions.ConnectionError, ServiceRequestError)) as exc_info:
-            ConnectorMetadataValidator.fetch_oci_artifact(invalid_ref)
+            oci_client.fetch_first_layer(invalid_ref)
 
         error_msg = str(exc_info.value).lower()
         assert any(term in error_msg for term in ["failed", "resolve", "connection", "name"]), (
@@ -542,15 +590,23 @@ class TestConnectorMetadataValidatorACR:
         cmd = self._create_cmd_with_cli_context()
 
         fetch_count = {"count": 0}
-        original_fetch = ConnectorMetadataValidator.fetch_oci_artifact
+        oci_client = get_oci_client()
+        original_fetch = oci_client.fetch_first_layer
 
         def counting_fetch(*args, **kwargs):
             fetch_count["count"] += 1
             return original_fetch(*args, **kwargs)
 
-        with patch.object(ConnectorMetadataValidator, "fetch_oci_artifact", side_effect=counting_fetch):
+        with patch.object(oci_client, "fetch_first_layer", side_effect=counting_fetch):
             try:
-                metadata1 = counting_fetch(acr_reference, cmd=cmd)
+                artifact_info = counting_fetch(
+                    acr_reference,
+                    cmd=cmd,
+                    expected_config_media_type="application/vnd.microsoft.akri-connector.v1+json",
+                )
+                metadata1 = ConnectorMetadataValidator._extract_metadata_from_blob(
+                    artifact_info.content, artifact_info.content_type, acr_reference
+                )
             except ValidationError as e:
                 if "404" in str(e) or "401" in str(e) or "403" in str(e):
                     pytest.skip(f"ACR access issue: {e}")

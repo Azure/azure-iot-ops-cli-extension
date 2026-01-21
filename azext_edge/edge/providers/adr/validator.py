@@ -4,7 +4,6 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-import hashlib
 import io
 import json
 import os
@@ -12,7 +11,8 @@ import tarfile
 from typing import Any, Dict, Optional, Tuple
 from knack.log import get_logger
 from azure.cli.core.azclierror import ValidationError
-from ...util.az_client import AZURE_CLI_CREDENTIAL, get_iotops_mgmt_client
+from azure.cli.core.commands.client_factory import get_subscription_id
+from ...util.az_client import get_iotops_mgmt_client
 from ...util.oci_client import get_oci_client
 
 logger = get_logger(__name__)
@@ -68,7 +68,7 @@ class ConnectorMetadataValidator:
     def _make_metadata_cache_key(self) -> str:
         """Generate a unique cache key for this endpoint's metadata."""
         return ":".join([
-            (self.cmd.cli_ctx.data or {}).get("subscription_id") or "unknown-subscription",
+            get_subscription_id(cli_ctx=self.cmd.cli_ctx) or "unknown-subscription",
             self.resource_group_name or "unknown-rg",
             self.instance_name or "unknown-instance",
             self.endpoint_type or "unknown-endpoint",
@@ -201,7 +201,7 @@ class ConnectorMetadataValidator:
             from ...vendor.clients.iotopsmgmt import MicrosoftIoTOperationsManagementService
 
             iotops_client: MicrosoftIoTOperationsManagementService = get_iotops_mgmt_client(
-                subscription_id=self.cmd.cli_ctx.data.get("subscription_id"),
+                subscription_id=get_subscription_id(cli_ctx=self.cmd.cli_ctx),
                 endpoint=self.cmd.cli_ctx.cloud.endpoints.resource_manager,
             )
 
@@ -252,7 +252,7 @@ class ConnectorMetadataValidator:
                 )
 
             logger.info(f"Fetching connector metadata from OCI: {connector_metadata_ref}")
-            metadata = self.fetch_oci_artifact(connector_metadata_ref, cmd=self.cmd)
+            metadata = self._fetch_connector_metadata_from_oci(connector_metadata_ref)
             self._METADATA_CACHE[cache_key] = metadata
 
             return metadata
@@ -261,99 +261,51 @@ class ConnectorMetadataValidator:
             logger.error(f"Failed to fetch connector metadata: {e}")
             raise
 
-    @classmethod
-    def _parse_oci_reference(cls, image_ref: str) -> tuple:
-        """Parse OCI reference into (registry, repository, tag)."""
-        if "/" not in image_ref:
-            raise ValidationError(f"Invalid OCI reference: {image_ref}")
+    def _fetch_connector_metadata_from_oci(self, image_ref: str) -> Dict[str, Any]:
+        """Fetch connector metadata from an OCI registry.
 
-        registry, remainder = image_ref.split("/", 1)
-        if ":" in remainder:
-            repository, tag = remainder.split(":", 1)
-        else:
-            repository = remainder
-            tag = "latest"
+        Args:
+            image_ref: OCI image reference (e.g., "registry/repo:tag").
 
-        return registry, repository, tag
+        Returns:
+            Parsed and validated connector metadata dictionary.
+        """
+        logger.info(f"Fetching OCI artifact: {image_ref}")
 
-    @classmethod
-    def _get_oci_auth_headers(cls, registry: str, repository: str, cmd=None) -> Dict[str, str]:
-        """Build authentication headers for OCI registry requests."""
-        headers: Dict[str, str] = {}
+        oci_client = get_oci_client()
+        expected_media_type = self._get_expected_config_media_type(self.CONNECTOR_TEMPLATE_MANIFEST_TYPE)
 
-        token = None
-        if cls._is_acr_registry(registry):
-            token = cls._get_acr_access_token(cmd=cmd, registry=registry, repository=repository)
-        if not token:
-            token = cls._get_auth_token(registry, repository)
-        if token:
-            headers["Authorization"] = f"Bearer {token}"
+        # Fetch first layer using the OCI client's high-level API
+        artifact_info = oci_client.fetch_first_layer(
+            image_ref=image_ref,
+            cmd=self.cmd,
+            expected_config_media_type=expected_media_type,
+        )
 
-        return headers
+        # Extract metadata from blob content
+        metadata = self._extract_metadata_from_blob(
+            content=artifact_info.content,
+            content_type=artifact_info.content_type,
+            image_ref=image_ref,
+        )
 
-    @classmethod
-    def _fetch_oci_manifest(cls, base_url: str, tag: str, headers: Dict[str, str], image_ref: str) -> Dict[str, Any]:
-        """Fetch and validate the OCI manifest."""
-        manifest_url = f"{base_url}/manifests/{tag}"
-        client = get_oci_client()
-        response = client.get(manifest_url, headers=headers)
+        # Validate metadata structure and schema
+        self._validate_connector_metadata(metadata, image_ref)
 
-        if response.status_code != 200:
-            raise ValidationError(
-                f"Failed to fetch manifest for {image_ref}: {response.status_code} {response.text()}"
-            )
+        endpoint_count = len(metadata.get('inboundEndpoints', []))
+        logger.info(f"Found valid connector metadata with {endpoint_count} inbound endpoints")
 
-        manifest = response.json()
-
-        # Validate config media type
-        expected_config_media_type = cls._get_expected_config_media_type(cls.CONNECTOR_TEMPLATE_MANIFEST_TYPE)
-        manifest_config = manifest.get("config") or {}
-        actual_config_media_type = manifest_config.get("mediaType")
-
-        if expected_config_media_type:
-            if not actual_config_media_type:
-                raise ValidationError(
-                    f"Missing artifact config media type; expected '{expected_config_media_type}'."
-                )
-            if actual_config_media_type != expected_config_media_type:
-                raise ValidationError(
-                    f"Artifact config media type '{actual_config_media_type}' does not match expected "
-                    f"'{expected_config_media_type}'."
-                )
-        elif not actual_config_media_type:
-            raise ValidationError("Missing artifact config media type.")
-
-        return manifest
+        return metadata
 
     @classmethod
-    def _fetch_and_verify_blob(
-        cls, base_url: str, digest: str, headers: Dict[str, str], image_ref: str
-    ) -> Tuple[bytes, str]:
-        """Fetch a blob and verify its SHA256 digest."""
-        if ":" not in digest:
-            raise ValidationError(f"Invalid layer digest format: {digest}")
+    def _get_expected_config_media_type(cls, manifest_type: str) -> Optional[str]:
+        """Return the expected config media type for a manifest type."""
+        if manifest_type == cls.CONNECTOR_TEMPLATE_MANIFEST_TYPE:
+            override = os.environ.get("AZ_IOTOPS_CONNECTOR_TEMPLATE_CONFIG_MEDIA_TYPE")
+            if override:
+                return override
 
-        algo, expected_hex = digest.split(":", 1)
-        if algo.lower() != "sha256":
-            raise ValidationError(f"Unsupported digest algorithm '{algo}' for layer {digest}")
-
-        blob_url = f"{base_url}/blobs/{digest}"
-        client = get_oci_client()
-        blob_response = client.get(blob_url, headers=headers)
-
-        if blob_response.status_code != 200:
-            raise ValidationError(f"Failed to fetch blob {digest}: {blob_response.status_code}")
-
-        blob_content = blob_response.content
-
-        # Verify digest
-        computed_hex = hashlib.sha256(blob_content).hexdigest()
-        if computed_hex != expected_hex:
-            raise ValidationError(
-                f"Blob digest mismatch: expected {digest}, got sha256:{computed_hex}"
-            )
-
-        return blob_content, blob_response.headers.get("Content-Type", "")
+        return cls._RESOURCE_TYPE_CONFIG_MEDIA_TYPES.get(manifest_type)
 
     @classmethod
     def _extract_metadata_from_blob(cls, content: bytes, content_type: str, image_ref: str) -> Dict[str, Any]:
@@ -412,167 +364,6 @@ class ConnectorMetadataValidator:
                 f"Artifact at {image_ref} does not contain expected connector metadata structure. "
                 f"Found keys: {list(metadata.keys())}"
             )
-
-    @classmethod
-    def fetch_oci_artifact(cls, image_ref: str, cmd=None) -> Dict[str, Any]:
-        """Fetch connector metadata from an OCI registry."""
-        logger.info(f"Fetching OCI artifact: {image_ref}")
-
-        # Parse reference
-        registry, repository, tag = cls._parse_oci_reference(image_ref)
-        base_url = f"https://{registry}/v2/{repository}"
-
-        # Get auth headers
-        headers = cls._get_oci_auth_headers(registry, repository, cmd)
-
-        # Fetch manifest
-        manifest = cls._fetch_oci_manifest(base_url, tag, headers, image_ref)
-
-        # Get first layer digest
-        layers = manifest.get("layers", [])
-        if not layers:
-            raise ValidationError(f"Manifest for {image_ref} has no layers.")
-
-        target_digest = layers[0].get("digest")
-        if not target_digest:
-            raise ValidationError(
-                f"First layer in manifest for {image_ref} is missing digest. Layer: {layers[0]}"
-            )
-
-        # Fetch and verify blob
-        content, content_type = cls._fetch_and_verify_blob(base_url, target_digest, headers, image_ref)
-
-        # Extract metadata from blob
-        metadata = cls._extract_metadata_from_blob(content, content_type, image_ref)
-
-        # Validate metadata
-        cls._validate_connector_metadata(metadata, image_ref)
-
-        endpoint_count = len(metadata.get('inboundEndpoints', []))
-        logger.info(f"Found valid connector metadata with {endpoint_count} inbound endpoints")
-
-        return metadata
-
-    @classmethod
-    def _get_expected_config_media_type(cls, manifest_type: str) -> Optional[str]:
-        """Return the expected config media type for a manifest type."""
-        if manifest_type == cls.CONNECTOR_TEMPLATE_MANIFEST_TYPE:
-            override = os.environ.get("AZ_IOTOPS_CONNECTOR_TEMPLATE_CONFIG_MEDIA_TYPE")
-            if override:
-                return override
-
-        return cls._RESOURCE_TYPE_CONFIG_MEDIA_TYPES.get(manifest_type)
-
-    @staticmethod
-    def _get_auth_token(registry: str, repository: str) -> Optional[str]:
-        """Get an anonymous auth token for public registries (MCR/Docker Hub)."""
-        from azure.core.exceptions import HttpResponseError
-
-        auth_url = f"https://{registry}/v2/"
-        client = get_oci_client()
-        try:
-            resp = client.get(auth_url)
-
-            if resp.status_code == 401 and "Www-Authenticate" in resp.headers:
-                auth_header = resp.headers["Www-Authenticate"]
-                parts = {}
-                for part in auth_header.replace("Bearer ", "").split(","):
-                    if "=" in part:
-                        k, v = part.split("=", 1)
-                        parts[k.strip()] = v.strip().strip('"')
-
-                if "realm" in parts:
-                    token_params = {"service": parts.get("service")}
-                    if "scope" not in parts:
-                        token_params["scope"] = f"repository:{repository}:pull"
-                    else:
-                        token_params["scope"] = parts.get("scope")
-
-                    token_resp = client.get(parts["realm"], params=token_params)
-
-                    if token_resp.status_code == 200:
-                        token = token_resp.json().get("token")
-                        logger.info(
-                            f"Successfully obtained anonymous auth token (length: {len(token) if token else 0})"
-                        )
-                        return token
-                    else:
-                        logger.warning(f"Token request failed: {token_resp.status_code} {token_resp.text()}")
-        except HttpResponseError as e:
-            logger.warning(f"Failed to obtain auth token: {e}")
-        return None
-
-    @staticmethod
-    def _is_acr_registry(registry: str) -> bool:
-        return registry.endswith(".azurecr.io")
-
-    @staticmethod
-    def _get_acr_access_token(cmd, registry: str, repository: str) -> Optional[str]:
-        """Acquire an ACR access token using Azure CLI credentials."""
-        from azure.core.exceptions import HttpResponseError
-
-        if cmd is None:
-            logger.warning("ACR access token requested without command context; skipping ACR auth.")
-            return None
-
-        try:
-            arm_token = AZURE_CLI_CREDENTIAL.get_token("https://management.azure.com/.default").token
-        except Exception as ex:  # pragma: no cover - credential failures
-            logger.warning(f"Failed to obtain ARM token for ACR: {ex}")
-            return None
-
-        tenant_id = (cmd.cli_ctx.data or {}).get("tenant_id")
-        if not tenant_id:
-            logger.warning("Tenant ID not found in CLI context; cannot acquire ACR token.")
-            return None
-
-        exchange_url = f"https://{registry}/oauth2/exchange"
-        exchange_payload = {
-            "grant_type": "access_token",
-            "service": registry,
-            "tenant": tenant_id,
-            "access_token": arm_token,
-        }
-
-        client = get_oci_client()
-        try:
-            exchange_resp = client.post(exchange_url, data=exchange_payload)
-        except HttpResponseError as ex:  # pragma: no cover - network errors
-            logger.warning(f"ACR exchange request failed: {ex}")
-            return None
-
-        if exchange_resp.status_code != 200:
-            response_text = exchange_resp.text()
-            logger.warning(
-                f"ACR exchange failed ({exchange_resp.status_code}): {response_text[:200]}"
-            )
-            return None
-
-        refresh_token = exchange_resp.json().get("refresh_token")
-        if not refresh_token:
-            logger.warning("ACR exchange response missing refresh_token")
-            return None
-
-        token_url = f"https://{registry}/oauth2/token"
-        token_payload = {
-            "grant_type": "refresh_token",
-            "service": registry,
-            "scope": f"repository:{repository}:pull",
-            "refresh_token": refresh_token,
-        }
-
-        try:
-            token_resp = client.post(token_url, data=token_payload)
-        except HttpResponseError as ex:  # pragma: no cover - network errors
-            logger.warning(f"ACR token request failed: {ex}")
-            return None
-
-        if token_resp.status_code != 200:
-            response_text = token_resp.text()
-            logger.warning(f"ACR token fetch failed ({token_resp.status_code}): {response_text[:200]}")
-            return None
-
-        return token_resp.json().get("access_token")
 
     @classmethod
     def _get_connector_metadata_schema(cls) -> Dict[str, Any]:
