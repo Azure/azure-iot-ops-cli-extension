@@ -5,7 +5,6 @@
 # ----------------------------------------------------------------------------------------------
 
 import json
-import jsonschema
 from knack.log import get_logger
 from typing import Dict, Optional, Union
 from azure.cli.core.azclierror import (
@@ -351,6 +350,8 @@ def ensure_schema_structure(schema: dict, input_data: dict, name: Optional[str] 
     """
     Validates the input data against the provided schema using jsonschema.
     """
+    import jsonschema
+
     validator = jsonschema.validators.validator_for(schema)(schema)
     errors = sorted(validator.iter_errors(input_data), key=lambda e: str(list(e.path)))
 
