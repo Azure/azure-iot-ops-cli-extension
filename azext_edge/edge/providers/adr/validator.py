@@ -7,10 +7,8 @@
 import hashlib
 import io
 import json
-import jsonschema
 import os
 import tarfile
-from jsonschema import validate
 from typing import Any, Dict, Optional, Tuple
 from knack.log import get_logger
 from azure.cli.core.azclierror import ValidationError
@@ -399,9 +397,11 @@ class ConnectorMetadataValidator:
     @classmethod
     def _validate_connector_metadata(cls, metadata: Dict[str, Any], image_ref: str) -> None:
         """Validate connector metadata against schema."""
+        import jsonschema
+
         try:
             schema = cls._get_connector_metadata_schema()
-            validate(instance=metadata, schema=schema)
+            jsonschema.validate(instance=metadata, schema=schema)
         except jsonschema.ValidationError as e:
             raise ValidationError(f"Connector metadata does not match schema: {e.message}")
         except jsonschema.SchemaError as e:
@@ -763,8 +763,10 @@ class ConnectorMetadataValidator:
             )
 
     def _validate(self, instance: Dict[str, Any], schema: Dict[str, Any], resource_name: str) -> None:
+        import jsonschema
+
         try:
-            validate(instance=instance, schema=schema)
+            jsonschema.validate(instance=instance, schema=schema)
             logger.debug(f"{resource_name} configuration is VALID")
         except jsonschema.ValidationError as e:
             raise ValidationError(f"{resource_name} configuration is invalid: {e.message}")

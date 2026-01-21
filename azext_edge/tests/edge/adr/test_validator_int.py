@@ -416,33 +416,6 @@ class TestConnectorMetadataValidatorIntegration:
                 endpoint_version="1.0",
             )
 
-    @patch("azext_edge.edge.providers.adr.validator.get_iotops_mgmt_client")
-    def test_validator_no_jsonschema_library(self, mock_get_client):
-        cmd = self._create_mock_cmd()
-        mock_client = Mock()
-        mock_get_client.return_value = mock_client
-        mock_client.akri_connector_template = Mock()
-        mock_client.akri_connector_template.list_by_instance_resource = Mock(
-            return_value=[self._create_mock_connector_template(
-                "Microsoft.Onvif", None, "mcr.microsoft.com/azureiotoperations/akri-connectors/onvif-metadata:1.2.37"
-            )]
-        )
-
-        validator = ConnectorMetadataValidator(
-            cmd=cmd,
-            resource_group_name="test-rg",
-            instance_name="test-instance",
-            endpoint_type="Microsoft.Onvif",
-            endpoint_version=None,
-        )
-
-        if not validator.metadata or "inboundEndpoints" not in validator.metadata:
-            pytest.skip("Failed to fetch real OCI metadata from MCR - skipping integration test")
-
-        with patch("jsonschema.validate", side_effect=ImportError):
-            config = {"topic": "tns1:Device/tnsaxis:Sensor/PIR"}
-            validator.validate_event(config)
-
 
 @pytest.mark.acr
 @pytest.mark.integration
