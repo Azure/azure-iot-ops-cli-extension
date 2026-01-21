@@ -345,7 +345,7 @@ class OciRegistryClient:
                         )
                         return token
                     else:
-                        logger.warning(f"Token request failed: {token_resp.status_code} {token_resp.text()}")
+                        logger.warning(f"Token request failed with status code: {token_resp.status_code}")
         except HttpResponseError as e:
             logger.warning(f"Failed to obtain auth token: {e}")
         return None
@@ -382,10 +382,7 @@ class OciRegistryClient:
             return None
 
         if exchange_resp.status_code != 200:
-            response_text = exchange_resp.text()
-            logger.warning(
-                f"ACR exchange failed ({exchange_resp.status_code}): {response_text[:200]}"
-            )
+            logger.warning(f"ACR exchange failed with status code: {exchange_resp.status_code}")
             return None
 
         refresh_token = exchange_resp.json().get("refresh_token")
@@ -408,8 +405,7 @@ class OciRegistryClient:
             return None
 
         if token_resp.status_code != 200:
-            response_text = token_resp.text()
-            logger.warning(f"ACR token fetch failed ({token_resp.status_code}): {response_text[:200]}")
+            logger.warning(f"ACR token fetch failed with status code: {token_resp.status_code}")
             return None
 
         return token_resp.json().get("access_token")
