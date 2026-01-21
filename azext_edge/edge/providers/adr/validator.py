@@ -4,10 +4,8 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-import io
 import json
 import os
-import tarfile
 from typing import Any, Dict, Optional, Tuple
 from knack.log import get_logger
 from azure.cli.core.azclierror import ValidationError
@@ -47,7 +45,6 @@ class ConnectorMetadataValidator:
 
     _ENDPOINT_TYPE_OPCUA = "microsoft.opcua"
     _DEFAULT_DESTINATION_MQTT = "Mqtt"
-    _MAX_TAR_FILES_IN_ERROR = 5
 
     _SCHEMA_PATHS: Dict[str, Tuple[str, ...]] = {}
 
@@ -309,42 +306,11 @@ class ConnectorMetadataValidator:
 
     @classmethod
     def _extract_metadata_from_blob(cls, content: bytes, content_type: str, image_ref: str) -> Dict[str, Any]:
-        """Extract connector metadata from blob (handles tar/gzip or raw JSON)."""
-        is_tar = "tar" in content_type or content[:2] == b"\x1f\x8b"
-
-        if is_tar:
-            try:
-                tar_bytes = io.BytesIO(content)
-                with tarfile.open(fileobj=tar_bytes, mode="r:*") as tar:
-                    member_names = tar.getnames()
-
-                    metadata_file = None
-                    for member in member_names:
-                        if member.endswith("connector-metadata.json"):
-                            metadata_file = member
-                            break
-
-                    if not metadata_file:
-                        sample_files = member_names[:cls._MAX_TAR_FILES_IN_ERROR]
-                        file_hint = f"Found {len(member_names)} files, first {len(sample_files)}: {sample_files}"
-                        raise ValidationError(
-                            f"connector-metadata.json not found in tar archive. {file_hint}"
-                        )
-
-                    extracted = tar.extractfile(metadata_file)
-                    if not extracted:
-                        raise ValidationError(f"Could not extract {metadata_file} from tar")
-
-                    json_content = extracted.read().decode("utf-8")
-                    return json.loads(json_content)
-
-            except (tarfile.TarError, IOError) as e:
-                raise ValidationError(f"Failed to extract connector metadata from tar: {e}")
-        else:
-            try:
-                return json.loads(content.decode("utf-8"))
-            except json.JSONDecodeError as e:
-                raise ValidationError(f"Artifact at {image_ref} is not valid JSON: {e}")
+        """Parse connector metadata blob as JSON."""
+        try:
+            return json.loads(content.decode("utf-8"))
+        except json.JSONDecodeError as e:
+            raise ValidationError(f"Artifact at {image_ref} is not valid JSON: {e}")
 
     @classmethod
     def _validate_connector_metadata(cls, metadata: Dict[str, Any], image_ref: str) -> None:

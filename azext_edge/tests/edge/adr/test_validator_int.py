@@ -247,23 +247,15 @@ class TestConnectorMetadataValidatorIntegration:
             ],
         }
 
-        import tarfile
-        import io
         import json
 
-        tar_buffer = io.BytesIO()
-        with tarfile.open(fileobj=tar_buffer, mode="w") as tar:
-            json_bytes = json.dumps(sample_metadata).encode('utf-8')
-            tarinfo = tarfile.TarInfo(name="connector-metadata.json")
-            tarinfo.size = len(json_bytes)
-            tar.addfile(tarinfo, io.BytesIO(json_bytes))
-
-        real_blob_digest = hashlib.sha256(tar_buffer.getvalue()).hexdigest()
+        json_bytes = json.dumps(sample_metadata).encode('utf-8')
+        real_blob_digest = hashlib.sha256(json_bytes).hexdigest()
 
         blob_response = Mock()
         blob_response.status_code = 200
-        blob_response.headers = {"Content-Type": "application/vnd.oci.image.layer.v1.tar"}
-        blob_response.content = tar_buffer.getvalue()
+        blob_response.headers = {"Content-Type": "application/json"}
+        blob_response.content = json_bytes
 
         manifest_response.json.return_value["layers"][0]["digest"] = f"sha256:{real_blob_digest}"
 
@@ -302,8 +294,8 @@ class TestConnectorMetadataValidatorIntegration:
 
         blob_response = Mock()
         blob_response.status_code = 200
-        blob_response.headers = {"Content-Type": "application/vnd.oci.image.layer.v1.tar"}
-        blob_response.content = b"dummy"
+        blob_response.headers = {"Content-Type": "application/json"}
+        blob_response.content = b"{}"
 
         mock_get.side_effect = [manifest_response, blob_response]
 
