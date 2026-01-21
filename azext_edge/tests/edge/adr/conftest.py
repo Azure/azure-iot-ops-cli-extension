@@ -91,13 +91,13 @@ def mocked_check_cluster_connectivity(mocker):
 
 @pytest.fixture()
 def mocked_get_namespace_for_instance(mocker):
-    # Patch where the function is defined (helpers) so all imports get the mocked version
+    # Patch where the function is used (namespace_assets), not where it's defined (helpers)
     return_value = parse_resource_id(
         rid=f"/subscriptions/{get_zeroed_subscription()}/resourceGroups/rg{generate_random_string(size=5)}"
         f"/providers/Microsoft.DeviceRegistry/namespaces/ns{generate_random_string(size=5)}"
     )
     mock = mocker.patch(
-        "azext_edge.edge.providers.adr.helpers.get_namespace_for_instance",
+        "azext_edge.edge.providers.adr.namespace_assets.get_namespace_for_instance",
         return_value=return_value,
         autospec=True
     )
