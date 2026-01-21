@@ -83,10 +83,13 @@ def mocked_get_extended_location(mocker):
 @pytest.fixture()
 def mocked_check_cluster_connectivity(mocker):
     # Patch where the function is used (namespace_assets), not where it's defined (helpers)
-    yield mocker.patch(
+    mock = mocker.Mock()
+    for target in [
         "azext_edge.edge.providers.adr.namespace_assets.check_cluster_connectivity",
-        autospec=True  # TODO: uncomment when GA
-    )
+        "azext_edge.edge.providers.adr.helpers.check_cluster_connectivity",
+    ]:
+        mocker.patch(target, mock)
+    yield mock
 
 
 @pytest.fixture()
