@@ -96,11 +96,16 @@ def mocked_get_namespace_for_instance(mocker):
         rid=f"/subscriptions/{get_zeroed_subscription()}/resourceGroups/rg{generate_random_string(size=5)}"
         f"/providers/Microsoft.DeviceRegistry/namespaces/ns{generate_random_string(size=5)}"
     )
-    mock = mocker.patch(
+
+    # Use a shared mock so assertions capture calls from any module under test.
+    mock = mocker.Mock(return_value=return_value)
+
+    for target in [
         "azext_edge.edge.providers.adr.namespace_assets.get_namespace_for_instance",
-        return_value=return_value,
-        autospec=True
-    )
+        "azext_edge.edge.providers.adr.helpers.get_namespace_for_instance",
+    ]:
+        mocker.patch(target, mock)
+
     yield mock
 
 
