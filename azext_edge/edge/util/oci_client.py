@@ -17,7 +17,6 @@ from azure.core.pipeline import Pipeline
 from azure.core.pipeline.policies import (
     HeadersPolicy,
     HttpLoggingPolicy,
-    NetworkTraceLoggingPolicy,
     RedirectPolicy,
     RetryPolicy,
     UserAgentPolicy,
@@ -33,7 +32,11 @@ logger = get_logger(__name__)
 
 
 def _get_oci_logging_policy() -> HttpLoggingPolicy:
-    """Create HTTP logging policy for OCI requests with --debug support."""
+    """Create HTTP logging policy for OCI requests with --debug support.
+
+    HttpLoggingPolicy logs method, URL, and allowlisted headers only.
+    It does NOT log request/response bodies, which keeps tokens secure.
+    """
     policy = HttpLoggingPolicy(logger=logger)
     policy.allowed_query_params.update(["scope", "service"])
     policy.allowed_header_names.update([
@@ -93,7 +96,6 @@ class OciRegistryClient:
                 _get_oci_headers_policy(),
                 RedirectPolicy(**kwargs),
                 _get_oci_retry_policy(),
-                NetworkTraceLoggingPolicy(**kwargs),
                 _get_oci_logging_policy(),
             ],
         )
