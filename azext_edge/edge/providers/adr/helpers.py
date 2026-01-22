@@ -346,70 +346,40 @@ def process_authentication(
     return auth_props
 
 
-def ensure_schema_structure(schema: dict, input_data: dict):
+def ensure_schema_structure(schema: dict, input_data: dict, name: Optional[str] = None):
     """
-    Quick and dirty alternative for using jsonschema (to avoid conflicts in other extensions).
-
-    This partial implementation focuses on checks (in the current adr schemas) not covered by azure
-    core parameter checks: minimum and maximum checks for integers. This handles nested objects and
-    oneOf schemas.
-
-    Not covered in this:
-    - required properties checks
-    - type checks
-    - enum checks
-    - array checks (cause the only schema with an array only has objects with string types)
+    Validates the input data against the provided schema using jsonschema.
     """
-    def _recursive_check(schema: dict, input_data: dict) -> list:
-        invalid_items = []
+    import jsonschema
 
-        # extract schemas from oneOf
-        schemas = schema.get("oneOf", [schema])
+    validator = jsonschema.validators.validator_for(schema)(schema)
+    errors = sorted(validator.iter_errors(input_data), key=lambda e: str(list(e.path)))
 
-        for sub_schema in schemas:
-            schema_properties = sub_schema.get("properties", {})
-            for key, value in input_data.items():
-                if value is None:
-                    # assume this is to clear the value
-                    continue
+    if errors:
+        final_messages = []
+        for error in errors:
+            path = ".".join([str(p) for p in error.path])
+            if error.validator in ["oneOf", "anyOf"] and error.context:
+                # Try to find the most relevant error from the context
+                # We prefer errors that are not about structural mismatch (like additionalProperties)
+                # if there are other errors available.
+                context_errors = error.context
+                # Filter for errors that indicate a value mismatch rather than a structure mismatch
+                value_errors = [
+                    e for e in context_errors
+                    if e.validator not in ["additionalProperties", "required", "type", "const", "enum"]
+                ]
 
-                if key in schema_properties and ("type" in schema_properties[key]):
-                    schema_value = schema_properties[key]
-                    expected_type = schema_value["type"]
+                best = jsonschema.exceptions.best_match(value_errors or context_errors)
+                msg = best.message
+            else:
+                msg = error.message
 
-                    # go deeper if the expected type is an object
-                    if expected_type == "object":
-                        invalid_items.extend(_recursive_check(schema_value, value))
+            if path:
+                final_messages.append(f"Property '{path}' is invalid: {msg}")
+            else:
+                final_messages.append(f"Invalid configuration: {msg}")
 
-                    # lazy way of getting first item for now - assume that the second item is a null type
-                    if isinstance(expected_type, list):
-                        expected_type = expected_type[0]
-
-                    # minimum and maximum checks for integers
-                    if expected_type in ["integer", "number"]:
-                        if (
-                            "minimum" in schema_value
-                            and "maximum" in schema_value
-                            and not schema_value["minimum"] <= value <= schema_value["maximum"]
-                        ):
-                            invalid_items.append(
-                                f"Invalid value for {key}: the value must be between {schema_value['minimum']} and "
-                                f"{schema_value['maximum']} inclusive, instead got {value}"
-                            )
-                        elif "minimum" in schema_value and (value < schema_value["minimum"]):
-                            invalid_items.append(
-                                f"Invalid value for {key}: the value must be at least {schema_value['minimum']}, "
-                                f"instead got {value}"
-                            )
-                        elif "maximum" in schema_value and (value > schema_value["maximum"]):
-                            invalid_items.append(
-                                f"Invalid value for {key}: the value must be at most {schema_value['maximum']}, "
-                                f"instead got {value}"
-                            )
-            # maybe add popping keys that are not there?
-        return invalid_items
-
-    invalid_items = _recursive_check(schema, input_data)
-    if invalid_items:
-        error_msg = ', \n'.join(set(invalid_items))
-        raise InvalidArgumentValueError(f"Invalid input data: {error_msg}")
+        error_msg = "\n".join(final_messages)
+        prefix = f"The following {name} values are invalid:\n" if name else "Invalid input data:\n"
+        raise InvalidArgumentValueError(f"{prefix}{error_msg}")

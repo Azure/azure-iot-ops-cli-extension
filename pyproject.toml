@@ -36,6 +36,7 @@ dependencies = [
     "opentelemetry-proto~=1.20.0",
     "packaging>=23.2",
     "semver>=3.0.4,<4",
+    "jsonschema>=4.25,<5",
 ]
 
 [project.urls]
@@ -49,7 +50,7 @@ include = ["azext_edge", "azext_edge.*"]
 exclude = ["tests", "*.tests", "*.tests.*", "scripts"]
 
 [tool.setuptools.package-data]
-azext_edge = ["azext_metadata.json"]
+azext_edge = ["azext_metadata.json", "edge/providers/adr/schemas/*.json"]
 
 # Pytest configuration (from setup.cfg)
 [tool.pytest.ini_options]

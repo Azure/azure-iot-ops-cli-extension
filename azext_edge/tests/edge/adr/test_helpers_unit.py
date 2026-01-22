@@ -824,7 +824,7 @@ def test_process_authentication_error(
     (
         NAMESPACE_ASSET_MEDIA_STREAM_CONFIGURATION_SCHEMA,
         {
-            "tasKType": "stream-to-rtsp",
+            "taskType": "stream-to-rtsp",
             "mediaServerAddress": "rtsp://example.com/stream",
             "mediaServerPort": 554,
             "mediaServerPath": "/live",
@@ -857,7 +857,7 @@ def test_process_authentication_error(
             },
             "session": {
                 "timeoutMilliseconds": 60000,
-                "keepAliveIntervalMilliseconds": None,
+                "keepAliveIntervalMilliseconds": 10000,
                 "reconnectPeriodMilliseconds": 2000,
                 "reconnectExponentialBackOffMilliseconds": 10000,
                 "enableTracingHeaders": False
@@ -898,7 +898,7 @@ def test_ensure_schema_structure_valid(schema, data):
         {
             "age": 15
         },
-        "Invalid value for age: the value must be at least 18, instead got 15"
+        "15 is less than the minimum of 18"
     ),
     # Test with two values above maximum
     (
@@ -912,8 +912,8 @@ def test_ensure_schema_structure_valid(schema, data):
             "percentage": 120,
             "error": 12
         },
-        "Invalid value for percentage: the value must be at most 100, instead got 120\n"
-        "Invalid value for error: the value must be at most 10, instead got 12"
+        "12 is greater than the maximum of 10\n"
+        "120 is greater than the maximum of 100"
     ),
     # Test with value outside of both min and max
     (
@@ -925,7 +925,7 @@ def test_ensure_schema_structure_valid(schema, data):
         {
             "score": 15
         },
-        "Invalid value for score: the value must be between 0 and 10 inclusive, instead got 15"
+        "15 is greater than the maximum of 10"
     ),
     # Test with nested object having invalid value
     (
@@ -944,7 +944,7 @@ def test_ensure_schema_structure_valid(schema, data):
                 "threshold": 2
             }
         },
-        "Invalid value for threshold: the value must be between 5 and 50 inclusive, instead got 2"
+        "2 is less than the minimum of 5"
     ),
     # Test with oneOf schema with invalid data
     (
@@ -955,12 +955,14 @@ def test_ensure_schema_structure_valid(schema, data):
                         "yellowCount": {"type": "integer", "minimum": 0, "maximum": 255},
                         "blueCount": {"type": "integer", "minimum": 0, "maximum": 255},
                     },
+                    "additionalProperties": False
                 },
                 {
                     "properties": {
                         "redCount": {"type": "integer", "minimum": 0, "maximum": 255},
                         "greenCount": {"type": "integer", "minimum": 0, "maximum": 255},
                     },
+                    "additionalProperties": False
                 }
             ]
         },
@@ -968,7 +970,7 @@ def test_ensure_schema_structure_valid(schema, data):
             "redCount": 300,
             "greenCount": 100
         },
-        "Invalid value for redCount: the value must be between 0 and 255 inclusive, instead got 300"
+        "300 is greater than the maximum of 255"
     )
 ])
 def test_ensure_schema_structure_invalid(schema, data, expected_error):

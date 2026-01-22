@@ -274,14 +274,15 @@ def test_add_namespace_asset_dataset(
     assert result == expected_dataset
 
     # Verify API calls were made correctly
-    assert len(mocked_responses.calls) == 4  # GET device + GET asset + PATCH asset + GET Asset
+    assert len(mocked_responses.calls) == 5  # GET device + GET connector metadata + GET asset + PATCH asset + GET Asset
     assert mocked_responses.calls[0].request.method == "GET"  # Device GET call
-    assert mocked_responses.calls[1].request.method == "GET"  # Asset GET call
-    assert mocked_responses.calls[2].request.method == "PATCH"  # Asset PATCH call
-    assert mocked_responses.calls[3].request.method == "GET"  # Asset GET call
+    assert mocked_responses.calls[1].request.method == "GET"  # Connector metadata GET call
+    assert mocked_responses.calls[2].request.method == "GET"  # Asset GET call
+    assert mocked_responses.calls[3].request.method == "PATCH"  # Asset PATCH call
+    assert mocked_responses.calls[4].request.method == "GET"  # Asset GET call
 
     # Verify the PATCH request body contains the expected dataset structure
-    patch_body = json.loads(mocked_responses.calls[2].request.body)
+    patch_body = json.loads(mocked_responses.calls[3].request.body)
 
     # Datasets should be in the properties section
     assert "datasets" in patch_body["properties"]
@@ -901,14 +902,15 @@ def test_update_namespace_asset_dataset(
     assert result == expected_dataset
 
     # Verify API calls were made correctly
-    assert len(mocked_responses.calls) == 4
+    assert len(mocked_responses.calls) == 5  # GET device + GET connector metadata + GET asset + PATCH asset + GET asset
     assert mocked_responses.calls[0].request.method == "GET"  # Device endpoint check
-    assert mocked_responses.calls[1].request.method == "GET"  # Asset get
-    assert mocked_responses.calls[2].request.method == "PATCH"  # Update asset
-    assert mocked_responses.calls[3].request.method == "GET"  # Asset get
+    assert mocked_responses.calls[1].request.method == "GET"  # Connector metadata GET call
+    assert mocked_responses.calls[2].request.method == "GET"  # Asset get
+    assert mocked_responses.calls[3].request.method == "PATCH"  # Update asset
+    assert mocked_responses.calls[4].request.method == "GET"  # Asset get
 
     # Verify the PATCH request body contains the expected updated dataset
-    patch_body = json.loads(mocked_responses.calls[2].request.body)
+    patch_body = json.loads(mocked_responses.calls[3].request.body)
 
     # Datasets should be in the properties section
     assert "datasets" in patch_body["properties"]
@@ -1115,14 +1117,15 @@ def test_add_namespace_asset_dataset_point(
     assert result == updated_asset["properties"]["datasets"][0]["dataPoints"]
 
     # Verify API calls were made correctly
-    assert len(mocked_responses.calls) == 4  # GET device + GET asset + PATCH asset + GET asset
+    assert len(mocked_responses.calls) == 5  # GET device + GET connector metadata + GET asset + PATCH asset + GET asset
     assert mocked_responses.calls[0].request.method == "GET"  # Device GET call
-    assert mocked_responses.calls[1].request.method == "GET"  # Asset GET call
-    assert mocked_responses.calls[2].request.method == "PATCH"  # Asset PATCH call
-    assert mocked_responses.calls[3].request.method == "GET"  # Asset GET call
+    assert mocked_responses.calls[1].request.method == "GET"  # Connector metadata GET call
+    assert mocked_responses.calls[2].request.method == "GET"  # Asset GET call
+    assert mocked_responses.calls[3].request.method == "PATCH"  # Asset PATCH call
+    assert mocked_responses.calls[4].request.method == "GET"  # Asset GET call
 
     # Verify the PATCH request payload contains the expected data point
-    patch_body = json.loads(mocked_responses.calls[2].request.body)
+    patch_body = json.loads(mocked_responses.calls[3].request.body)
     patch_dataset = patch_body["properties"]["datasets"][0]
     assert len(patch_dataset["dataPoints"]) == len(updated_dataset["dataPoints"])
 

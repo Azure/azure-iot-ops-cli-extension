@@ -82,22 +82,33 @@ def mocked_get_extended_location(mocker):
 
 @pytest.fixture()
 def mocked_check_cluster_connectivity(mocker):
-    yield mocker.patch(
+    # Patch where the function is used (namespace_assets), not where it's defined (helpers)
+    mock = mocker.Mock()
+    for target in [
+        "azext_edge.edge.providers.adr.namespace_assets.check_cluster_connectivity",
         "azext_edge.edge.providers.adr.helpers.check_cluster_connectivity",
-        autospec=True  # TODO: uncomment when GA
-    )
+    ]:
+        mocker.patch(target, mock)
+    yield mock
 
 
 @pytest.fixture()
 def mocked_get_namespace_for_instance(mocker):
-    mock = mocker.patch(
-        "azext_edge.edge.providers.adr.helpers.get_namespace_for_instance",
-        return_value=parse_resource_id(
-            rid=f"/subscriptions/{get_zeroed_subscription()}/resourceGroups/rg{generate_random_string(size=5)}"
-            f"/providers/Microsoft.DeviceRegistry/namespaces/ns{generate_random_string(size=5)}"
-        ),
-        autospec=True
+    # Patch where the function is used (namespace_assets), not where it's defined (helpers)
+    return_value = parse_resource_id(
+        rid=f"/subscriptions/{get_zeroed_subscription()}/resourceGroups/rg{generate_random_string(size=5)}"
+        f"/providers/Microsoft.DeviceRegistry/namespaces/ns{generate_random_string(size=5)}"
     )
+
+    # Use a shared mock so assertions capture calls from any module under test.
+    mock = mocker.Mock(return_value=return_value)
+
+    for target in [
+        "azext_edge.edge.providers.adr.namespace_assets.get_namespace_for_instance",
+        "azext_edge.edge.providers.adr.helpers.get_namespace_for_instance",
+    ]:
+        mocker.patch(target, mock)
+
     yield mock
 
 

@@ -8,7 +8,6 @@ import json
 from typing import TYPE_CHECKING, Dict, Iterable, Optional
 
 from azure.cli.core.azclierror import (
-    InvalidArgumentValueError,
     MutuallyExclusiveArgumentError,
     RequiredArgumentMissingError,
 )
@@ -28,6 +27,8 @@ from .user_strings import (
     REMOVED_CERT_REF_MSG,
     REMOVED_USERPASS_REF_MSG,
 )
+from .helpers import ensure_schema_structure
+from .specs import NAMESPACE_DEVICE_OPCUA_ENDPOINT_SCHEMA
 
 if TYPE_CHECKING:
     from ...vendor.clients.deviceregistrymgmt.operations import (
@@ -216,20 +217,6 @@ class AssetEndpointProfiles(Queryable):
 
 
 # Helpers
-def _assert_above_min(param: str, value: int, minimum: int = 0) -> str:
-    if value < minimum:
-        return f"The parameter {param} needs to be at least {minimum}.\n"
-    return ""
-
-
-def _raise_if_connector_error(connector_type: str, error_msg: str):
-    if error_msg:
-        raise InvalidArgumentValueError(
-            f"The following {connector_type} connector arguments are invalid:\n{error_msg}"
-        )
-
-
-# TODO: use jsonschema lib
 def _build_opcua_config(
     original_config: Optional[str] = None,
     application_name: Optional[str] = None,
@@ -251,11 +238,9 @@ def _build_opcua_config(
 ) -> str:
     config = json.loads(original_config) if original_config else {}
 
-    error_msg = ""
     if application_name:
         config["applicationName"] = application_name
     if keep_alive:
-        error_msg += _assert_above_min("--keep-alive", keep_alive)
         config["keepAliveMilliseconds"] = keep_alive
     if run_asset_discovery is not None:
         config["runAssetDiscovery"] = run_asset_discovery
@@ -266,13 +251,10 @@ def _build_opcua_config(
     ]) and not config.get("defaults"):
         config["defaults"] = {}
     if default_publishing_interval:
-        error_msg += _assert_above_min("--default-publishing-int", default_publishing_interval, -1)
         config["defaults"]["publishingIntervalMilliseconds"] = default_publishing_interval
     if default_sampling_interval:
-        error_msg += _assert_above_min("--default-sampling-int", default_sampling_interval, -1)
         config["defaults"]["samplingIntervalMilliseconds"] = default_sampling_interval
     if default_queue_size:
-        error_msg += _assert_above_min("--default-queue-size", default_queue_size, 0)
         config["defaults"]["queueSize"] = default_queue_size
 
     # session
@@ -281,26 +263,20 @@ def _build_opcua_config(
     ]) and not config.get("session"):
         config["session"] = {}
     if session_timeout:
-        error_msg += _assert_above_min("--session-timeout", session_timeout)
         config["session"]["timeoutMilliseconds"] = session_timeout
     if session_keep_alive:
-        error_msg += _assert_above_min("--session-keep-alive", session_keep_alive)
         config["session"]["keepAliveIntervalMilliseconds"] = session_keep_alive
     if session_reconnect_period:
-        error_msg += _assert_above_min("--session-reconnect-period", session_reconnect_period)
         config["session"]["reconnectPeriodMilliseconds"] = session_reconnect_period
     if session_reconnect_exponential_back_off:
-        error_msg += _assert_above_min("--session-reconnect-backoff", session_reconnect_exponential_back_off, -1)
         config["session"]["reconnectExponentialBackOffMilliseconds"] = session_reconnect_exponential_back_off
 
     # subscription
     if any([sub_life_time, sub_max_items]) and not config.get("subscription"):
         config["subscription"] = {}
     if sub_life_time:
-        error_msg += _assert_above_min("--subscription-life-time", sub_life_time)
         config["subscription"]["lifeTimeMilliseconds"] = sub_life_time
     if sub_max_items:
-        error_msg += _assert_above_min("--subscription-max-items", sub_max_items, 1)
         config["subscription"]["maxItems"] = sub_max_items
 
     # security
@@ -315,7 +291,8 @@ def _build_opcua_config(
     if security_policy:
         config["security"]["securityPolicy"] = "http://opcfoundation.org/UA/SecurityPolicy#" + security_policy
 
-    _raise_if_connector_error(connector_type="OPCUA", error_msg=error_msg)
+    ensure_schema_structure(schema=NAMESPACE_DEVICE_OPCUA_ENDPOINT_SCHEMA, input_data=config, name="OPCUA")
+
     return json.dumps(config)
 
 

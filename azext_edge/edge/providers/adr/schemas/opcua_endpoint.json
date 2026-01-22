@@ -1,0 +1,129 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "https://azure-iot-operations/schemas/assetendpointprofile/additionalconfiguration/opcua/1.1.0.json",
+    "title": "AIO OPC UA Asset Endpoint Profile Additional Configuration Schema",
+    "description": "Schema for the additional configuration of OPC UA asset endpoint profile in Azure Industrial Operations",
+    "type": "object",
+    "properties": {
+        "applicationName": {
+            "type": "string",
+            "default": "OPC UA Broker"
+        },
+        "keepAliveMilliseconds": {
+            "type": "integer",
+            "minimum": 0,
+            "default": 10000
+        },
+        "defaults": {
+            "type": "object",
+            "properties": {
+                "publishingIntervalMilliseconds": {
+                    "type": "integer",
+                    "minimum": -1,
+                    "default": 1000
+                },
+                "samplingIntervalMilliseconds": {
+                    "type": "integer",
+                    "minimum": -1,
+                    "default": 1000
+                },
+                "queueSize": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "default": 1
+                },
+                "keyFrameCount": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "default": 0
+                }
+            }
+        },
+        "session": {
+            "type": "object",
+            "properties": {
+                "timeoutMilliseconds": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "default": 60000
+                },
+                "keepAliveIntervalMilliseconds": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "default": 10000
+                },
+                "reconnectPeriodMilliseconds": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "default": 2000
+                },
+                "reconnectExponentialBackOffMilliseconds": {
+                    "type": "integer",
+                    "minimum": -1,
+                    "default": 10000
+                },
+                "enableTracingHeaders": {
+                    "type": "boolean",
+                    "default": false
+                }
+            }
+        },
+        "subscription": {
+            "type": "object",
+            "properties": {
+                "maxItems": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "default": 1000
+                },
+                "lifeTimeMilliseconds": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "default": 60000
+                }
+            }
+        },
+        "security": {
+            "type": "object",
+            "properties": {
+                "autoAcceptUntrustedServerCertificates": {
+                    "type": "boolean",
+                    "default": false
+                },
+                "securityPolicy": {
+                    "type": [
+                        "string",
+                        "null"
+                    ],
+                    "enum": [
+                        "http://opcfoundation.org/UA/SecurityPolicy#None",
+                        "http://opcfoundation.org/UA/SecurityPolicy#Basic128Rsa15",
+                        "http://opcfoundation.org/UA/SecurityPolicy#Basic256",
+                        "http://opcfoundation.org/UA/SecurityPolicy#Basic256Sha256",
+                        "http://opcfoundation.org/UA/SecurityPolicy#Aes128_Sha256_RsaOaep",
+                        "http://opcfoundation.org/UA/SecurityPolicy#Aes256_Sha256_RsaPss",
+                        null
+                    ],
+                    "default": null
+                },
+                "securityMode": {
+                    "type": [
+                        "string",
+                        "null"
+                    ],
+                    "enum": [
+                        "none",
+                        "sign",
+                        "signAndEncrypt",
+                        null
+                    ],
+                    "default": null
+                }
+            }
+        },
+        "runAssetDiscovery": {
+            "type": "boolean",
+            "default": false
+        }
+    }
+}

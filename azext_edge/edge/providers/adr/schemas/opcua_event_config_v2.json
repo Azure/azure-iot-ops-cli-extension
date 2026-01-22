@@ -1,0 +1,51 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "https://azure-iot-operations/schemas/asset/defaulteventsconfiguration/opcua/1.2.0.json",
+    "title": "AIO OPC UA Asset Default Events Additional Configuration Schema",
+    "description": "Schema for the additional configuration of OPC UA asset default events in Azure Industrial Operations",
+    "type": "object",
+    "properties": {
+        "publishingInterval": {
+            "type": "integer",
+            "minimum": -1,
+            "default": 1000
+        },
+        "queueSize": {
+            "type": "integer",
+            "minimum": 0,
+            "default": 1
+        },
+        "startInstance": {
+            "type": "string",
+            "default": null
+        },
+        "eventFilter": {
+            "type": "object",
+            "properties": {
+                "typeDefinitionId": {
+                    "type": "string"
+                },
+                "selectClauses": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "browsePath": {
+                                "type": "string"
+                            },
+                            "typeDefinitionId": {
+                                "type": "string"
+                            },
+                            "fieldId": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "browsePath"
+                        ]
+                    }
+                }
+            }
+        }
+    }
+}

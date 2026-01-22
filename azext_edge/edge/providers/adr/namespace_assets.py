@@ -12,6 +12,7 @@ from azure.cli.core.azclierror import (
     InvalidArgumentValueError,
     MutuallyExclusiveArgumentError,
     RequiredArgumentMissingError,
+    ValidationError,
 )
 from knack.log import get_logger
 from rich.console import Console
@@ -25,10 +26,15 @@ from ...util.common import parse_kvp_nargs, should_continue_prompt
 from ...util.id_tools import parse_resource_id
 from ...util.queryable import Queryable
 from .helpers import (
+    check_cluster_connectivity,
     ensure_schema_structure,
+    get_instance_query,
+    get_namespace_for_instance,
+    get_query,
     process_additional_configuration,
 )
 from .namespace_devices import DeviceEndpointType
+from .validator import ConnectorMetadataValidator
 
 if TYPE_CHECKING:
     from ...vendor.clients.deviceregistrymgmt.operations import (
@@ -161,7 +167,6 @@ class NamespaceAssets(Queryable):
         if not should_continue_prompt(confirm_yes):
             return
 
-        from .helpers import get_namespace_for_instance
         namespace = get_namespace_for_instance(
             cmd=self.cmd,
             instance_name=instance_name,
@@ -186,7 +191,6 @@ class NamespaceAssets(Queryable):
     ) -> dict:
         if not namespace_name:
             # assume resource group is instance resource group
-            from .helpers import get_namespace_for_instance
             namespace = get_namespace_for_instance(
                 cmd=self.cmd,
                 instance_name=instance_name,
@@ -199,7 +203,6 @@ class NamespaceAssets(Queryable):
             resource_group_name=resource_group, namespace_name=namespace_name, asset_name=asset_name
         )
         if check_cluster:
-            from .helpers import check_cluster_connectivity
             check_cluster_connectivity(self.cmd, asset)
 
         return asset
@@ -228,7 +231,6 @@ class NamespaceAssets(Queryable):
         """
         Queries the asset using Azure Resource Graph.
         """
-        from .helpers import get_instance_query, get_query
         query = "Resources | where type =~ '{}'".format(NAMESPACE_ASSET_RESOURCE_TYPE)
 
         # for now, keep it simple
@@ -419,16 +421,32 @@ class NamespaceAssets(Queryable):
             default=False,
             **kwargs
         )
-        unmatched_datasets.append(
-            {
-                "name": dataset_name,
-                "dataSource": data_source,
-                "datasetConfiguration": processed_configs.get("datasetsConfiguration"),
-                "destinations": processed_configs.get("datasetsDestinations", []),
-                "dataPoints": [],  # TODO: future pr, add datapoints
-                "typeRef": type_ref
-            }
-        )
+        new_dataset = {
+            "name": dataset_name,
+            "dataSource": data_source,
+            "datasetConfiguration": processed_configs.get("datasetsConfiguration"),
+            "destinations": processed_configs.get("datasetsDestinations", []),
+            "dataPoints": [],  # TODO: future pr, add datapoints
+            "typeRef": type_ref
+        }
+
+        # Validate the dataset configuration against connector metadata
+        try:
+            validator = ConnectorMetadataValidator.from_asset(
+                self.cmd, asset, instance_name, instance_resource_group
+            )
+            validator.validate_dataset(new_dataset)
+            logger.info(f"Dataset '{dataset_name}' configuration validated successfully.")
+        except ValidationError:
+            raise
+        except Exception as e:
+            logger.warning(
+                f"Dataset validation skipped: {e}. "
+                "This may occur if the connector is not deployed or the cluster is not connected. "
+                "The dataset will be created but may fail at runtime if the configuration is invalid."
+            )
+
+        unmatched_datasets.append(new_dataset)
 
         update_payload = {
             "properties": {
@@ -512,6 +530,22 @@ class NamespaceAssets(Queryable):
             dataset["typeRef"] = type_ref
         if "datasetsDestinations" in processed_configs:
             dataset["destinations"] = processed_configs["datasetsDestinations"]
+
+        # Validate the updated dataset configuration against connector metadata
+        try:
+            validator = ConnectorMetadataValidator.from_asset(
+                self.cmd, asset, instance_name, instance_resource_group
+            )
+            validator.validate_dataset(dataset)
+            logger.info(f"Updated dataset '{dataset_name}' configuration validated successfully.")
+        except ValidationError:
+            raise
+        except Exception as e:
+            logger.warning(
+                f"Dataset validation skipped: {e}. "
+                "This may occur if the connector is not deployed or the cluster is not connected. "
+                "The dataset will be updated but may fail at runtime if the configuration is invalid."
+            )
 
         update_payload = {
             "properties": {
@@ -616,6 +650,23 @@ class NamespaceAssets(Queryable):
             custom_configuration=custom_configuration,
             type_ref=type_ref
         )
+
+        # Validate the datapoint configuration against connector metadata
+        try:
+            validator = ConnectorMetadataValidator.from_asset(
+                self.cmd, asset, instance_name, instance_resource_group
+            )
+            validator.validate_datapoint(datapoint)
+            logger.info(f"Datapoint '{datapoint_name}' configuration validated successfully.")
+        except ValidationError:
+            raise
+        except Exception as e:
+            logger.warning(
+                f"Datapoint validation skipped: {e}. "
+                "This may occur if the connector is not deployed or the cluster is not connected. "
+                "The datapoint will be created but may fail at runtime if the configuration is invalid."
+            )
+
         non_matched_points.append(datapoint)
         dataset["dataPoints"] = non_matched_points
 
@@ -1563,8 +1614,6 @@ class NamespaceAssets(Queryable):
         If asset_name is provided (in the case of the asset is already created), it will retrieve the
         asset to populate the device_name and device_endpoint_name.
         """
-        from .helpers import check_cluster_connectivity, get_namespace_for_instance
-
         asset = None
         namespace = None
         if asset_name:

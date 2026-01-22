@@ -5,154 +5,20 @@
 # ----------------------------------------------------------------------------------------------
 
 from enum import Enum
+import json
+import os
 from ...common import ListableEnum
 
 
-# DEVICE
-NAMESPACE_DEVICE_OPCUA_ENDPOINT_SCHEMA = {
-    "$schema": "http://json-schema.org/draft-07/schema#",
-    "$id": "https://azure-iot-operations/schemas/assetendpointprofile/additionalconfiguration/opcua/1.1.0.json",
-    "title": "AIO OPC UA Asset Endpoint Profile Additional Configuration Schema",
-    "description": "Schema for the additional configuration of OPC UA asset endpoint profile "
-    "in Azure Industrial Operations",
-    "type": "object",
-    "properties": {
-        "applicationName": {
-            "type": "string",
-            "default": "OPC UA Broker"
-        },
-        "keepAliveMilliseconds": {
-            "type": "integer",
-            "minimum": 0,
-            "default": 10000
-        },
-        "defaults": {
-            "type": "object",
-            "properties": {
-                "publishingIntervalMilliseconds": {
-                    "type": "integer",
-                    "minimum": -1,
-                    "default": 1000
-                },
-                "samplingIntervalMilliseconds": {
-                    "type": "integer",
-                    "minimum": -1,
-                    "default": 1000
-                },
-                "queueSize": {
-                    "type": "integer",
-                    "minimum": 0,
-                    "default": 1
-                },
-                "keyFrameCount": {
-                    "type": "integer",
-                    "minimum": 0,
-                    "default": 0
-                }
-            }
-        },
-        "session": {
-            "type": "object",
-            "properties": {
-                "timeoutMilliseconds": {
-                    "type": "integer",
-                    "minimum": 0,
-                    "default": 60000
-                },
-                "keepAliveIntervalMilliseconds": {
-                    "type": "integer",
-                    "minimum": 0,
-                    "default": 10000
-                },
-                "reconnectPeriodMilliseconds": {
-                    "type": "integer",
-                    "minimum": 0,
-                    "default": 2000
-                },
-                "reconnectExponentialBackOffMilliseconds": {
-                    "type": "integer",
-                    "minimum": -1,
-                    "default": 10000
-                },
-                "enableTracingHeaders": {
-                    "type": "boolean",
-                    "default": False
-                }
-            }
-        },
-        "subscription": {
-            "type": "object",
-            "properties": {
-                "maxItems": {
-                    "type": "integer",
-                    "minimum": 1,
-                    "default": 1000
-                },
-                "lifeTimeMilliseconds": {
-                    "type": "integer",
-                    "minimum": 0,
-                    "default": 60000
-                }
-            }
-        },
-        "security": {
-            "type": "object",
-            "properties": {
-                "autoAcceptUntrustedServerCertificates": {
-                    "type": "boolean",
-                    "default": False
-                },
-                "securityPolicy": {
-                    "type": ["string", "null"],
-                    "enum": [
-                        "http://opcfoundation.org/UA/SecurityPolicy#None",
-                        "http://opcfoundation.org/UA/SecurityPolicy#Basic128Rsa15",
-                        "http://opcfoundation.org/UA/SecurityPolicy#Basic256",
-                        "http://opcfoundation.org/UA/SecurityPolicy#Basic256Sha256",
-                        "http://opcfoundation.org/UA/SecurityPolicy#Aes128_Sha256_RsaOaep",
-                        "http://opcfoundation.org/UA/SecurityPolicy#Aes256_Sha256_RsaPss",
-                        None
-                    ],
-                    "default": None
-                },
-                "securityMode": {
-                    "type": ["string", "null"],
-                    "enum": [
-                        "none",
-                        "sign",
-                        "signAndEncrypt",
-                        None
-                    ],
-                    "default": None
-                }
-            }
-        },
-        "runAssetDiscovery": {
-            "type": "boolean",
-            "default": False
-        }
-    }
-}
+def _load_schema(filename):
+    schema_path = os.path.join(os.path.dirname(__file__), "schemas", filename)
+    with open(schema_path, "r", encoding="utf-8") as f:
+        return json.load(f)
 
 
-NAMESPACE_DEVICE_ONVIF_ENDPOINT_SCHEMA = {
-    "$schema": "http://json-schema.org/draft-07/schema#",
-    "$id": "https://azure-iot-operations/schemas/assetendpointprofile/additionalconfiguration/onvif/1.2.0.json",
-    "title": "AIO ONVIF Asset Endpoint Profile Additional Configuration Schema",
-    "description": "Schema for the additional configuration of ONVIF asset endpoint profile in Azure Industrial "
-    "Operations",
-    "type": "object",
-    "properties": {
-        "acceptInvalidHostnames": {
-            "type": "boolean",
-            "default": False
-        },
-        "acceptInvalidCertificates": {
-            "type": "boolean",
-            "default": False
-        }
-    }
-}
+# Device Schemas
+NAMESPACE_DEVICE_OPCUA_ENDPOINT_SCHEMA = _load_schema("opcua_endpoint.json")
+NAMESPACE_DEVICE_ONVIF_ENDPOINT_SCHEMA = _load_schema("onvif_endpoint.json")
 
 
 class SecurityPolicy(Enum):
@@ -160,7 +26,6 @@ class SecurityPolicy(Enum):
     Security policies for the OPC UA connector as defined in NAMESPACE_DEVICE_OPCUA_ENDPOINT_SCHEMA.
     Values correspond to the part after the "#" in the security policy URLs.
     """
-    # TODO: (nice to have) more user friendly names
     none = "None"
     basic128 = "Basic128Rsa15"
     basic256 = "Basic256"
@@ -170,393 +35,29 @@ class SecurityPolicy(Enum):
 
     @property
     def full_value(self):
-        """
-        Returns the full value of the security policy, including the URL prefix.
-        """
+        """Returns the full security policy URL."""
         return f"http://opcfoundation.org/UA/SecurityPolicy#{self.value}"
 
 
 class SecurityMode(Enum):
-    """
-    Security modes for the OPC UA connector as defined in NAMESPACE_DEVICE_OPCUA_ENDPOINT_SCHEMA.
-    """
+    """Security modes for the OPC UA connector."""
     none = "none"
     sign = "sign"
     signandencrypt = "signAndEncrypt"
 
 
-# ASSETS
-# OPCUA
-NAMESPACE_ASSET_OPCUA_DATASET_CONFIGURATION_SCHEMA_V1 = {
-    "$schema": "http://json-schema.org/draft-07/schema#",
-    "$id": "https://azure-iot-operations/schemas/asset/datasetconfiguration/opcua/1.1.0.json",
-    "title": "AIO OPC UA Asset Dataset Additional Configuration Schema",
-    "description": "Schema for the additional configuration of OPC UA asset dataset in Azure Industrial Operations",
-    "type": "object",
-    "properties": {
-        "publishingInterval": {
-            "type": "integer",
-            "minimum" : -1,
-            "default": 1000
-        },
-        "samplingInterval": {
-            "type": "integer",
-            "minimum" : -1,
-            "default": 1000
-        },
-        "queueSize": {
-            "type": "integer",
-            "minimum" : 0,
-            "default": 1
-        },
-        "keyFrameCount": {
-            "type": "integer",
-            "minimum" : 0,
-            "default": 0
-        }
-    }
-}
+# Asset Schemas - OPC UA
+NAMESPACE_ASSET_OPCUA_DATASET_CONFIGURATION_SCHEMA_V1 = _load_schema("opcua_dataset_config_v1.json")
+NAMESPACE_ASSET_OPCUA_DATASET_CONFIGURATION_SCHEMA_V2 = _load_schema("opcua_dataset_config_v2.json")
+NAMESPACE_ASSET_OPCUA_EVENT_CONFIGURATION_SCHEMA_V1 = _load_schema("opcua_event_config_v1.json")
+NAMESPACE_ASSET_OPCUA_EVENT_CONFIGURATION_SCHEMA_V2 = _load_schema("opcua_event_config_v2.json")
+NAMESPACE_ASSET_OPCUA_DATAPOINT_CONFIGURATION_SCHEMA = _load_schema("opcua_datapoint_config.json")
 
+# Asset Schemas - Media
+NAMESPACE_ASSET_MEDIA_STREAM_CONFIGURATION_SCHEMA = _load_schema("media_stream_config.json")
 
-# not used yet
-NAMESPACE_ASSET_OPCUA_DATASET_CONFIGURATION_SCHEMA_V2 = {
-    "$schema": "http://json-schema.org/draft-07/schema#",
-    "$id": "https://azure-iot-operations/schemas/asset/defaultdatasetsconfiguration/opcua/1.2.0.json",
-    "title": "AIO OPC UA Asset Default Datasets Additional Configuration Schema",
-    "description": "Schema for the additional configuration of OPC UA asset default datasets in Azure Industrial "
-    "Operations",
-    "type": "object",
-    "properties": {
-        "publishingInterval": {
-            "type": "integer",
-            "minimum" : -1,
-            "default": 1000
-        },
-        "samplingInterval": {
-            "type": "integer",
-            "minimum" : -1,
-            "default": 1000
-        },
-        "queueSize": {
-            "type": "integer",
-            "minimum" : 0,
-            "default": 1
-        },
-        "keyFrameCount": {
-            "type": "integer",
-            "minimum" : 0,
-            "default": 0
-        },
-        "startInstance": {
-            "type": "string",
-            "default": None
-        }
-    }
-}
-
-
-NAMESPACE_ASSET_OPCUA_EVENT_CONFIGURATION_SCHEMA_V1 = {
-    "$schema": "http://json-schema.org/draft-07/schema#",
-    "$id": "https://azure-iot-operations/schemas/asset/eventconfiguration/opcua/1.0.0.json",
-    "title": "AIO OPC UA Asset Event Additional Configuration Schema",
-    "description": "Schema for the additional configuration of OPC UA asset event in Azure Industrial Operations",
-    "type": "object",
-    "properties": {
-        "publishingInterval": {
-            "type": "integer",
-            "minimum" : -1,
-            "default": 1000
-        },
-        "queueSize": {
-            "type": "integer",
-            "minimum" : 0,
-            "default": 1
-        }
-    }
-}
-
-
-# not used yet
-NAMESPACE_ASSET_OPCUA_EVENT_CONFIGURATION_SCHEMA_V2 = {
-    "$schema": "http://json-schema.org/draft-07/schema#",
-    "$id": "https://azure-iot-operations/schemas/asset/defaulteventsconfiguration/opcua/1.2.0.json",
-    "title": "AIO OPC UA Asset Default Events Additional Configuration Schema",
-    "description": "Schema for the additional configuration of OPC UA asset default events in Azure Industrial "
-    "Operations",
-    "type": "object",
-    "properties": {
-        "publishingInterval": {
-            "type": "integer",
-            "minimum" : -1,
-            "default": 1000
-        },
-        "queueSize": {
-            "type": "integer",
-            "minimum" : 0,
-            "default": 1
-        },
-        "startInstance": {  # only used in asset default configuration
-            "type": "string",
-            "default": None
-        },
-        "eventFilter": {
-            "type": "object",
-            "properties": {
-                "typeDefinitionId": {
-                    "type": "string"
-                },
-                "selectClauses": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "browsePath": {
-                                "type": "string"
-                            },
-                            "typeDefinitionId": {
-                                "type": "string"
-                            },
-                            "fieldId": {
-                                "type": "string"
-                            }
-                        },
-                        "required": ["browsePath"]
-                    }
-                }
-            }
-        }
-    }
-}
-
-
-NAMESPACE_ASSET_OPCUA_DATAPOINT_CONFIGURATION_SCHEMA = {
-    "$schema": "http://json-schema.org/draft-07/schema#",
-    "$id": "https://azure-iot-operations/schemas/asset/datapointconfiguration/opcua/1.0.0.json",
-    "title": "AIO OPC UA Asset Data-Point Additional Configuration Schema",
-    "description": "Schema for the additional configuration of OPC UA asset data-point in Azure Industrial Operations",
-    "type": "object",
-    "properties": {
-        "samplingInterval": {
-            "type": "integer",
-            "minimum" : -1,
-            "default": 1000
-        },
-        "queueSize": {
-            "type": "integer",
-            "minimum" : 0,
-            "default": 1
-        }
-    }
-}
-
-
-# MEDIA
-NAMESPACE_ASSET_MEDIA_STREAM_CONFIGURATION_SCHEMA = {
-    "$id": "https://azure-iot-operations/schemas/asset/streamconfiguration/media.json",
-    "$schema": "http://json-schema.org/draft-07/schema#",
-    "title": "AIO Media Asset stream configuration schema",
-    "description": "Schema of an Asset's stream configuration for endpointType Microsoft.Media",
-
-    "type": "object",
-    "properties": {
-        "taskType": {
-            "type": "string"
-        }
-    },
-    "required": ["taskType"],
-
-    "oneOf": [
-        {
-            "properties": {
-                "taskType": {
-                    "const": "snapshot-to-mqtt"
-                },
-                "autostart": {
-                    "type": "boolean",
-                    "description": "Whether to start immediately. The default is true.",
-                    "default": True
-                },
-                "format": {
-                    "type": "string",
-                    "enum": ["png", "bmp", "jpg", "jpeg", "tif", "tiff"],
-                    "description": "The image format for the snapshot. The default is jpeg.",
-                    "default": "jpeg"
-                },
-                "snapshotsPerSecond": {
-                    "type": "number",
-                    "minimum": 0,
-                    "description": "The number of snapshots per second to capture. Default is 1. If empty or "
-                    "0, the source frame rate will be used. Example: 30 for a 30 snapshots per second; 0.0167 "
-                    "for approximately one snapshot per minute.",
-                    "default": 1
-                }
-            }
-        },
-        {
-            "properties": {
-                "taskType": {
-                    "const": "snapshot-to-fs"
-                },
-                "autostart": {
-                    "type": "boolean",
-                    "description": "Whether to start immediately. The default is true.",
-                    "default": True
-                },
-                "format": {
-                    "type": "string",
-                    "enum": ["png", "bmp", "jpg", "jpeg", "tif", "tiff"],
-                    "description": "The image format for the snapshot. Default is png.",
-                    "default": "png"
-                },
-                "snapshotsPerSecond": {
-                    "type": "number",
-                    "minimum": 0,
-                    "description": "The number of snapshots per second to capture. Default is 1. If empty or 0,"
-                    " the source frame rate will be used. Example: 30 for a 30 snapshots per second; 0.0167 for "
-                    "approximately one snapshot per minute.",
-                    "default": 1
-                },
-                "path": {
-                    "type": "string",
-                    "description": "The path where snapshot will be written, by default set by the broker as "
-                    "/tmp/<namespace>/data/<asset>.",
-                    "default": ""
-                }
-            }
-        },
-        {
-            "properties": {
-                "taskType": {
-                    "const": "clip-to-fs"
-                },
-                "autostart": {
-                    "type": "boolean",
-                    "description": "Whether to start immediately. The default is true.",
-                    "default": True
-                },
-                "format": {
-                    "type": "string",
-                    "enum": ["avi", "mp4", "mkv", "mts", "mjpeg", "mpg", "mpeg", "flv", "webm"],
-                    "description": "The video clip format. The default is mkv.",
-                    "default": "mkv"
-                },
-                "duration": {
-                    "type": "integer",
-                    "minimum": 1,
-                    "description": "The duration of each clip segment, in seconds. The default is 60 seconds.",
-                    "default": 60
-                },
-                "path": {
-                    "type": "string",
-                    "description": "The path where clips will be written, by default set by the connector as "
-                    "/tmp/<namespace>/data/<asset>.",
-                    "default": ""
-                }
-            }
-        },
-        {
-            "properties": {
-                "taskType": {
-                    "const": "stream-to-rtsp"
-                },
-                "autostart": {
-                    "type": "boolean",
-                    "description": "Whether to start immediately. The default is true.",
-                    "default": True
-                },
-                "mediaServerAddress": {
-                    "type": "string",
-                    "description": "The media server address or IP. The default is "
-                    "media-server.media-server.svc.cluster.local",
-                    "default": "media-server.media-server.svc.cluster.local"
-                },
-                "mediaServerPort": {
-                    "type": "integer",
-                    "minimum": 1,
-                    "description": "The media server port. The default is 8554.",
-                    "default": 8554
-                },
-                "mediaServerPath": {
-                    "type": "string",
-                    "description": "The media server path, by default set by the connector as "
-                    "<namespace>/data/<asset>.",
-                    "default": ""
-                },
-                "mediaServerUsernameRef": {
-                    "type": "string",
-                    "description": "The media server username reference. The default is empty.",
-                    "default": ""
-                },
-                "mediaServerPasswordRef": {
-                    "type": "string",
-                    "description": "The media server password reference. The default is empty.",
-                    "default": ""
-                }
-            }
-        },
-        {
-            "properties": {
-                "taskType": {
-                    "const": "stream-to-rtsps"
-                },
-                "autostart": {
-                    "type": "boolean",
-                    "description": "Whether to start immediately. The default is true.",
-                    "default": True
-                },
-                "mediaServerAddress": {
-                    "type": "string",
-                    "description": "The media server address or IP. The default is "
-                    "media-server.media-server.svc.cluster.local",
-                    "default": "media-server.media-server.svc.cluster.local"
-                },
-                "mediaServerPort": {
-                    "type": "integer",
-                    "minimum": 1,
-                    "description": "The media server port. The default is 8554.",
-                    "default": 8554
-                },
-                "mediaServerPath": {
-                    "type": "string",
-                    "description": "The media server path, by default set by the connector as "
-                    "<namespace>/data/<asset>.",
-                    "default": ""
-                },
-                "mediaServerUsernameRef": {
-                    "type": "string",
-                    "description": "The media server username reference. The default is empty.",
-                    "default": ""
-                },
-                "mediaServerPasswordRef": {
-                    "type": "string",
-                    "description": "The media server password reference. The default is empty.",
-                    "default": ""
-                },
-                "mediaServerCertificateRef": {
-                    "type": "string",
-                    "description": "The media server certificate reference. The default is empty.",
-                    "default": ""
-                }
-            }
-        }
-    ]
-}
-
-
-# REST
-NAMESPACE_ASSET_REST_DATASET_CONFIGURATION_SCHEMA = {
-    "$schema": "http://json-schema.org/draft-07/schema#",
-    "title": "REST Dataset Config Schema",
-    "description": "The JSON schema for both the default dataset configuration field on an asset and "
-    "dataset-specific configuration fields",
-    "type": "object",
-    "properties": {
-        "samplingIntervalInMilliseconds": {
-            "description": "How frequently to sample each dataset in milliseconds",
-            "type": "integer",
-        },
-    },
-}
+# Asset Schemas - REST
+NAMESPACE_ASSET_REST_DATASET_CONFIGURATION_SCHEMA = _load_schema("rest_dataset_config.json")
 
 
 class MediaTaskType(Enum):

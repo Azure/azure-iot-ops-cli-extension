@@ -1,0 +1,17 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "https://azure-iot-operations/schemas/assetendpointprofile/additionalconfiguration/onvif/1.2.0.json",
+    "title": "AIO ONVIF Asset Endpoint Profile Additional Configuration Schema",
+    "description": "Schema for the additional configuration of ONVIF asset endpoint profile in Azure Industrial Operations",
+    "type": "object",
+    "properties": {
+        "acceptInvalidHostnames": {
+            "type": "boolean",
+            "default": false
+        },
+        "acceptInvalidCertificates": {
+            "type": "boolean",
+            "default": false
+        }
+    }
+}
