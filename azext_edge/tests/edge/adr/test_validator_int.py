@@ -402,22 +402,33 @@ class TestConnectorMetadataValidatorIntegration:
 
     @patch("azext_edge.edge.providers.adr.validator.get_iotops_mgmt_client")
     def test_no_matching_connector_template(self, mock_get_client, caplog):
+        """Test that when no connector template matches, metadata is None and validation is skipped."""
         cmd = self._create_mock_cmd()
         mock_client = Mock()
         mock_get_client.return_value = mock_client
         mock_client.akri_connector_template = Mock()
         mock_client.akri_connector_template.list_by_instance_resource = Mock(return_value=[])
 
-        caplog.set_level(logging.CRITICAL, logger="cli.azext_edge.edge.providers.adr.validator")
+        caplog.set_level(logging.WARNING, logger="cli.azext_edge.edge.providers.adr.validator")
 
-        with pytest.raises(ValidationError):
-            ConnectorMetadataValidator(
-                cmd=cmd,
-                resource_group_name="test-rg",
-                instance_name="test-instance",
-                endpoint_type="Microsoft.Unknown",
-                endpoint_version="1.0",
-            )
+        validator = ConnectorMetadataValidator(
+            cmd=cmd,
+            resource_group_name="test-rg",
+            instance_name="test-instance",
+            endpoint_type="Microsoft.Unknown",
+            endpoint_version="1.0",
+        )
+
+        # Metadata should be None when no template is found
+        assert validator.metadata is None
+
+        # Validation methods should skip without error
+        validator.validate_dataset({"name": "test", "datasetConfiguration": "{}"})
+        validator.validate_datapoint({"name": "test", "dataPointConfiguration": "{}"})
+        validator.validate_event({"name": "test", "eventConfiguration": "{}"})
+
+        # Should have logged a warning about no template found
+        assert any("No connector template found" in record.message for record in caplog.records)
 
     @patch("azext_edge.edge.providers.adr.validator.get_iotops_mgmt_client")
     def test_connector_template_missing_metadata_ref(self, mock_get_client, caplog):

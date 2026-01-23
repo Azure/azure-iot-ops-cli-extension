@@ -180,7 +180,7 @@ class ConnectorMetadataValidator:
         except json.JSONDecodeError as e:
             raise ValidationError(f"Invalid JSON in local OPC UA metadata file: {e}")
 
-    def _get_metadata(self) -> Dict[str, Any]:
+    def _get_metadata(self) -> Optional[Dict[str, Any]]:
         """Retrieve connector metadata from cache, local file (OPC UA), or OCI registry."""
         cache_key = self._make_metadata_cache_key()
         if cache_key in self._METADATA_CACHE:
@@ -237,10 +237,11 @@ class ConnectorMetadataValidator:
                     break
 
             if not matched_template:
-                raise ValidationError(
+                logger.warning(
                     f"No connector template found for endpoint type '{self.endpoint_type}' "
-                    f"version '{self.endpoint_version}'."
+                    f"version '{self.endpoint_version}'. Validation will be skipped."
                 )
+                return None
 
             connector_metadata_ref = matched_template.get("properties", {}).get("connectorMetadataRef")
             if not connector_metadata_ref:
@@ -375,6 +376,10 @@ class ConnectorMetadataValidator:
 
     def validate_dataset(self, dataset: Dict[str, Any]) -> None:
         """Validate a dataset configuration against the connector schema."""
+        if self.metadata is None:
+            logger.info("Skipping dataset validation: no connector metadata available.")
+            return
+
         config = self._parse_config(
             data=dataset,
             config_key=self._CONFIG_KEY_DATASET,
@@ -389,6 +394,10 @@ class ConnectorMetadataValidator:
 
     def validate_datapoint(self, datapoint: Dict[str, Any]) -> None:
         """Validate a datapoint configuration against the connector schema."""
+        if self.metadata is None:
+            logger.info("Skipping datapoint validation: no connector metadata available.")
+            return
+
         datapoint_name = datapoint.get('name', 'unnamed')
 
         config = self._parse_config(
@@ -405,6 +414,10 @@ class ConnectorMetadataValidator:
 
     def validate_event(self, event: Dict[str, Any]) -> None:
         """Validate an event configuration against the connector schema."""
+        if self.metadata is None:
+            logger.info("Skipping event validation: no connector metadata available.")
+            return
+
         event_name = event.get('name', 'unnamed')
 
         config = self._parse_config(
@@ -448,6 +461,9 @@ class ConnectorMetadataValidator:
         """Find the matching inbound endpoint from metadata."""
         if self._matched_endpoint:
             return self._matched_endpoint
+
+        if self.metadata is None:
+            raise ValidationError("Cannot get endpoint metadata: connector metadata is not available.")
 
         inbound_endpoints = self.metadata.get("inboundEndpoints", [])
 

@@ -13,3 +13,7 @@ pytest-xdist
 pytest-rerunfailures
 tox
 build
+rich
+kubernetes
+jsonschema
+responses
