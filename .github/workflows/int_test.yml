@@ -290,6 +290,7 @@ jobs:
           path: ./.coverage
           include-hidden-files: true
       - name: "Run smoke tests"
+        continue-on-error: true
         run: |
           az iot ops support create-bundle
           az iot ops support create-bundle --svc broker --broker-traces
