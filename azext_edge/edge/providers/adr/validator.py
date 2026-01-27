@@ -245,9 +245,11 @@ class ConnectorMetadataValidator:
 
             connector_metadata_ref = matched_template.get("properties", {}).get("connectorMetadataRef")
             if not connector_metadata_ref:
-                raise ValidationError(
-                    f"Connector template '{matched_template.get('name')}' is missing connectorMetadataRef."
+                logger.warning(
+                    f"Connector template '{matched_template.get('name')}' is missing connectorMetadataRef. "
+                    "Validation will be skipped."
                 )
+                return None
 
             logger.info(f"Fetching connector metadata from OCI: {connector_metadata_ref}")
             metadata = self._fetch_connector_metadata_from_oci(connector_metadata_ref)
