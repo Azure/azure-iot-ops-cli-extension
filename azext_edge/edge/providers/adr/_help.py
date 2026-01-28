@@ -3229,7 +3229,7 @@ def load_iotops_adr_help():
             --dest topic="updated/mqtt/topic" retain=Never qos=Qos0 ttl=1800
     """
 
-    # Dataset, datapoint, event-group, and event import/export
+    # OPC UA event commands
     helps[
         "iot ops ns asset opcua event"
     ] = """
