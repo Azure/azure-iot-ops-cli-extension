@@ -1882,3 +1882,115 @@ def load_adr_arguments(self, _):
             options_list=["--config"],
             help="Custom action configuration as a JSON string or file path. ",
         )
+# coding=utf-8
+# Temporary file with export/import parameter definitions
+# This should be appended to params.py at the end of load_adr_namespace_arguments function
+
+    # Add common export/import parameters for all asset types
+    for asset_type in ["custom", "opcua", "rest", "sse", "mqtt"]:
+        with self.argument_context(f"iot ops ns asset {asset_type} dataset export") as context:
+            context.argument(
+                "extension",
+                options_list=["--extension", "--ext"],
+                arg_type=get_enum_type(FileType, default=FileType.json.value),
+                help="Export file format.",
+            )
+            context.argument(
+                "output_dir",
+                options_list=["--output-dir", "--od"],
+                help="Output directory for export.",
+            )
+
+        with self.argument_context(f"iot ops ns asset {asset_type} dataset import") as context:
+            context.argument(
+                "file_path",
+                options_list=["--file-path", "--fp"],
+                help="Path to import file (JSON or YAML).",
+            )
+
+    for asset_type in ["custom", "opcua"]:
+        with self.argument_context(f"iot ops ns asset {asset_type} datapoint export") as context:
+            context.argument(
+                "extension",
+                options_list=["--extension", "--ext"],
+                arg_type=get_enum_type(FileType, default=FileType.json.value),
+                help="Export file format.",
+            )
+            context.argument(
+                "output_dir",
+                options_list=["--output-dir", "--od"],
+                help="Output directory for export.",
+            )
+
+        with self.argument_context(f"iot ops ns asset {asset_type} datapoint import") as context:
+            context.argument(
+                "file_path",
+                options_list=["--file-path", "--fp"],
+                help="Path to import file (JSON, YAML, or CSV).",
+            )
+
+    for asset_type in ["custom", "opcua", "onvif", "sse"]:
+        with self.argument_context(f"iot ops ns asset {asset_type} event-group export") as context:
+            context.argument(
+                "extension",
+                options_list=["--extension", "--ext"],
+                arg_type=get_enum_type(FileType, default=FileType.json.value),
+                help="Export file format.",
+            )
+            context.argument(
+                "output_dir",
+                options_list=["--output-dir", "--od"],
+                help="Output directory for export.",
+            )
+
+        with self.argument_context(f"iot ops ns asset {asset_type} event-group import") as context:
+            context.argument(
+                "file_path",
+                options_list=["--file-path", "--fp"],
+                help="Path to import file (JSON or YAML).",
+            )
+
+    for asset_type in ["custom", "opcua", "sse"]:
+        with self.argument_context(f"iot ops ns asset {asset_type} event export") as context:
+            context.argument(
+                "event_group_name",
+                options_list=["--event-group", "--eg"],
+                help="Event-group name.",
+            )
+            context.argument(
+                "extension",
+                options_list=["--extension", "--ext"],
+                arg_type=get_enum_type(FileType, default=FileType.json.value),
+                help="Export file format.",
+            )
+            context.argument(
+                "output_dir",
+                options_list=["--output-dir", "--od"],
+                help="Output directory for export.",
+            )
+
+        with self.argument_context(f"iot ops ns asset {asset_type} event import") as context:
+            context.argument(
+                "event_group_name",
+                options_list=["--event-group", "--eg"],
+                help="Event-group name.",
+            )
+            context.argument(
+                "file_path",
+                options_list=["--file-path", "--fp"],
+                help="Path to import file (JSON, YAML, or CSV).",
+            )
+
+    with self.argument_context("iot ops ns asset opcua event add") as context:
+        context.argument(
+            "queue_size",
+            options_list=["--queue-size", "--qs"],
+            help="Queue size.",
+            type=int,
+        )
+        context.argument(
+            "sampling_interval",
+            options_list=["--sampling-interval", "--si"],
+            help="Sampling interval in milliseconds.",
+            type=int,
+        )
