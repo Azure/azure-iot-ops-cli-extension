@@ -3229,7 +3229,7 @@ def load_iotops_adr_help():
             --dest topic="updated/mqtt/topic" retain=Never qos=Qos0 ttl=1800
     """
 
-    # Export/Import Help
+    # Dataset, datapoint, event-group, and event import/export
     helps[
         "iot ops ns asset opcua event"
     ] = """
@@ -3237,7 +3237,6 @@ def load_iotops_adr_help():
         short-summary: Manage OPC UA asset events.
     """
 
-    # OPC UA event commands (add, list, remove)
     helps[
         "iot ops ns asset opcua event add"
     ] = """

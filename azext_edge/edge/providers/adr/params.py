@@ -1882,11 +1882,8 @@ def load_adr_arguments(self, _):
             options_list=["--config"],
             help="Custom action configuration as a JSON string or file path. ",
         )
-# coding=utf-8
-# Temporary file with export/import parameter definitions
-# This should be appended to params.py at the end of load_adr_namespace_arguments function
 
-    # Add common export/import parameters for all asset types
+    # Dataset and datapoint export/import parameters
     for asset_type in ["custom", "opcua", "rest", "sse", "mqtt"]:
         with self.argument_context(f"iot ops ns asset {asset_type} dataset export") as context:
             context.argument(
@@ -1929,6 +1926,7 @@ def load_adr_arguments(self, _):
                 help="Path to import file (JSON, YAML, or CSV).",
             )
 
+    # Event-group export/import parameters
     for asset_type in ["custom", "opcua", "onvif", "sse"]:
         with self.argument_context(f"iot ops ns asset {asset_type} event-group export") as context:
             context.argument(
@@ -1950,6 +1948,7 @@ def load_adr_arguments(self, _):
                 help="Path to import file (JSON or YAML).",
             )
 
+    # Event export/import parameters
     for asset_type in ["custom", "opcua", "sse"]:
         with self.argument_context(f"iot ops ns asset {asset_type} event export") as context:
             context.argument(
@@ -1981,6 +1980,7 @@ def load_adr_arguments(self, _):
                 help="Path to import file (JSON, YAML, or CSV).",
             )
 
+    # OPC UA event add parameters
     with self.argument_context("iot ops ns asset opcua event add") as context:
         context.argument(
             "queue_size",
