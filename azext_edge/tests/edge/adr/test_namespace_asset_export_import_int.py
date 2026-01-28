@@ -90,7 +90,7 @@ def test_namespace_asset_dataset_export_import(
 
     # Verify exported file content
     assert os.path.exists(exported_file)
-    with open(exported_file, 'r') as f:
+    with open(exported_file, 'r', encoding='utf-8') as f:
         exported_datasets = json.load(f)
 
     assert len(exported_datasets) == 2
@@ -260,7 +260,7 @@ def test_namespace_asset_datapoint_export_import(
     # Test REPLACE mode
     # replace=True means: merge with overwrite on collision (overwrites matching names from file)
     if export_format == "json":
-        with open(exported_file, 'r') as f:
+        with open(exported_file, 'r', encoding='utf-8') as f:
             datapoints = json.load(f)
 
         # Modify first 2 datapoints' data sources
@@ -270,7 +270,7 @@ def test_namespace_asset_datapoint_export_import(
 
         modified_file = exported_file.replace(".json", "_modified.json")
         tracked_files.append(modified_file)
-        with open(modified_file, 'w') as f:
+        with open(modified_file, 'w', encoding='utf-8') as f:
             json.dump(modified_datapoints, f)
 
         # Import with replace - should overwrite the 2 matching datapoints and keep the 3rd
@@ -362,7 +362,7 @@ def test_namespace_asset_event_group_export_import(
 
     # Verify exported file content
     assert os.path.exists(exported_file)
-    with open(exported_file, 'r') as f:
+    with open(exported_file, 'r', encoding='utf-8') as f:
         exported_event_groups = json.load(f)
 
     assert len(exported_event_groups) == 2
@@ -533,7 +533,7 @@ def test_namespace_asset_event_export_import(
     # Test REPLACE mode
     # replace=True means: merge with overwrite on collision (overwrites matching names from file)
     if export_format == "json":
-        with open(exported_file, 'r') as f:
+        with open(exported_file, 'r', encoding='utf-8') as f:
             events = json.load(f)
 
         # Modify first 2 events' data sources
@@ -543,7 +543,7 @@ def test_namespace_asset_event_export_import(
 
         modified_file = exported_file.replace(".json", "_modified.json")
         tracked_files.append(modified_file)
-        with open(modified_file, 'w') as f:
+        with open(modified_file, 'w', encoding='utf-8') as f:
             json.dump(modified_events, f)
 
         # Import with replace - should overwrite the 2 matching events and keep the 3rd

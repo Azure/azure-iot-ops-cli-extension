@@ -1476,7 +1476,7 @@ def test_import_namespace_asset_datasets(
 
     # Create import file
     import_file = tmp_path / "datasets_import.json"
-    with open(import_file, 'w') as f:
+    with open(import_file, 'w', encoding='utf-8') as f:
         json_module.dump(datasets_to_import, f)
 
     # Mock the asset GET call
@@ -1673,7 +1673,7 @@ def test_import_namespace_asset_datapoints(
 
     # Create import file
     import_file = tmp_path / "datapoints_import.json"
-    with open(import_file, 'w') as f:
+    with open(import_file, 'w', encoding='utf-8') as f:
         json_module.dump(datapoints_to_import, f)
 
     # Mock the asset GET call
@@ -1906,7 +1906,7 @@ def test_import_namespace_asset_event_groups(
 
     # Create import file
     import_file = tmp_path / "event_groups_import.json"
-    with open(import_file, 'w') as f:
+    with open(import_file, 'w', encoding='utf-8') as f:
         json_module.dump(event_groups_to_import, f)
 
     # Mock the asset GET call
@@ -2105,7 +2105,7 @@ def test_import_namespace_asset_event_group_events(
 
     # Create import file
     import_file = tmp_path / "events_import.json"
-    with open(import_file, 'w') as f:
+    with open(import_file, 'w', encoding='utf-8') as f:
         json_module.dump(events_to_import, f)
 
     # Mock the asset GET call
