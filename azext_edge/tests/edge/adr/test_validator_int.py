@@ -409,7 +409,7 @@ class TestConnectorMetadataValidatorIntegration:
         mock_client.akri_connector_template = Mock()
         mock_client.akri_connector_template.list_by_instance_resource = Mock(return_value=[])
 
-        caplog.set_level(logging.WARNING, logger="cli.azext_edge.edge.providers.adr.validator")
+        caplog.set_level(logging.INFO, logger="cli.azext_edge.edge.providers.adr.validator")
 
         validator = ConnectorMetadataValidator(
             cmd=cmd,
@@ -427,7 +427,7 @@ class TestConnectorMetadataValidatorIntegration:
         validator.validate_datapoint({"name": "test", "dataPointConfiguration": "{}"})
         validator.validate_event({"name": "test", "eventConfiguration": "{}"})
 
-        # Should have logged a warning about no template found
+        # Should have logged about no template found
         assert any("No connector template found" in record.message for record in caplog.records)
 
     @patch("azext_edge.edge.providers.adr.validator.get_iotops_mgmt_client")
@@ -445,16 +445,20 @@ class TestConnectorMetadataValidatorIntegration:
         }
         mock_client.akri_connector_template.list_by_instance_resource = Mock(return_value=[template])
 
-        caplog.set_level(logging.CRITICAL, logger="cli.azext_edge.edge.providers.adr.validator")
+        caplog.set_level(logging.INFO, logger="cli.azext_edge.edge.providers.adr.validator")
 
-        with pytest.raises(ValidationError):
-            ConnectorMetadataValidator(
-                cmd=cmd,
-                resource_group_name="test-rg",
-                instance_name="test-instance",
-                endpoint_type="Microsoft.Http",
-                endpoint_version="1.0",
-            )
+        validator = ConnectorMetadataValidator(
+            cmd=cmd,
+            resource_group_name="test-rg",
+            instance_name="test-instance",
+            endpoint_type="Microsoft.Http",
+            endpoint_version="1.0",
+        )
+
+        # Metadata should be None when connectorMetadataRef is missing and validation should skip.
+        assert validator.metadata is None
+
+        assert any("missing connectorMetadataRef" in record.message for record in caplog.records)
 
 
 @pytest.mark.acr
