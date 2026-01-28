@@ -1673,7 +1673,7 @@ def remove_namespace_asset_dataset(
     )
 
 
-# Dataset export/import commands
+# DATASET EXPORT/IMPORT
 def export_namespace_custom_asset_dataset(
     cmd,
     asset_name: str,
@@ -1945,7 +1945,7 @@ def remove_namespace_asset_dataset_point(
     )
 
 
-# Datapoint export/import commands (custom and OPC UA assets only)
+# DATAPOINT EXPORT/IMPORT
 def export_namespace_custom_asset_datapoint(
     cmd,
     asset_name: str,
@@ -2030,7 +2030,7 @@ def import_namespace_opcua_asset_datapoint(
     )
 
 
-# Event-group export/import commands (custom, OPC UA, ONVIF, and SSE assets)
+# EVENT-GROUP EXPORT/IMPORT
 def export_namespace_custom_asset_event_group(
     cmd,
     asset_name: str,
@@ -2183,7 +2183,7 @@ def import_namespace_sse_asset_event_group(
     )
 
 
-# Event export/import commands (custom, OPC UA, and SSE assets only)
+# EVENT EXPORT/IMPORT
 def export_namespace_custom_asset_event(
     cmd,
     asset_name: str,

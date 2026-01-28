@@ -1883,7 +1883,7 @@ def load_adr_arguments(self, _):
             help="Custom action configuration as a JSON string or file path. ",
         )
 
-    # Dataset and datapoint export/import parameters
+    # Dataset export/import
     for asset_type in ["custom", "opcua", "rest", "sse", "mqtt"]:
         with self.argument_context(f"iot ops ns asset {asset_type} dataset export") as context:
             context.argument(
@@ -1905,6 +1905,7 @@ def load_adr_arguments(self, _):
                 help="Path to import file (JSON or YAML).",
             )
 
+    # Datapoint export/import
     for asset_type in ["custom", "opcua"]:
         with self.argument_context(f"iot ops ns asset {asset_type} datapoint export") as context:
             context.argument(
@@ -1926,7 +1927,7 @@ def load_adr_arguments(self, _):
                 help="Path to import file (JSON, YAML, or CSV).",
             )
 
-    # Event-group export/import parameters
+    # Event-group export/import
     for asset_type in ["custom", "opcua", "onvif", "sse"]:
         with self.argument_context(f"iot ops ns asset {asset_type} event-group export") as context:
             context.argument(
@@ -1948,7 +1949,7 @@ def load_adr_arguments(self, _):
                 help="Path to import file (JSON or YAML).",
             )
 
-    # Event export/import parameters
+    # Event export/import
     for asset_type in ["custom", "opcua", "sse"]:
         with self.argument_context(f"iot ops ns asset {asset_type} event export") as context:
             context.argument(
@@ -1980,7 +1981,7 @@ def load_adr_arguments(self, _):
                 help="Path to import file (JSON, YAML, or CSV).",
             )
 
-    # OPC UA event add parameters
+    # OPC UA event add
     with self.argument_context("iot ops ns asset opcua event add") as context:
         context.argument(
             "queue_size",

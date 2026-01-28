@@ -329,8 +329,6 @@ def load_iotops_commands(self, _):
             cmd_group.command("import", f"import_namespace_{asset_type}_asset_datapoint")
             cmd_group.command("list", "list_namespace_asset_dataset_points")
             cmd_group.command("remove", "remove_namespace_asset_dataset_point")
-            cmd_group.command("list", "list_namespace_asset_dataset_points")
-            cmd_group.command("remove", "remove_namespace_asset_dataset_point")
 
     # event group
     for asset_type in ["custom", "opcua", "onvif", "sse"]:
