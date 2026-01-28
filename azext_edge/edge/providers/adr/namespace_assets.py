@@ -52,7 +52,6 @@ NAMESPACE_ASSET_RESOURCE_TYPE = "Microsoft.DeviceRegistry/namespaces/assets"
 
 
 # Namespace-specific CSV conversion functions
-# Note: observabilityMode is stored in configuration JSON (not a top-level field)
 
 def _convert_sub_points_to_csv_namespace(
     sub_points: List[Dict[str, str]],
@@ -60,11 +59,7 @@ def _convert_sub_points_to_csv_namespace(
     default_configuration: str,
     portal_friendly: bool = False
 ) -> List[str]:
-    """Convert datapoints or events to CSV format.
-
-    Modifies sub_points in-place.
-    Note: observabilityMode is extracted from configuration if present.
-    """
+    """Convert datapoints or events to CSV format. Modifies sub_points in-place."""
     from collections import OrderedDict
 
     csv_conversion_map = [
@@ -104,11 +99,7 @@ def _convert_sub_points_to_csv_namespace(
 
 
 def _convert_sub_points_from_csv_namespace(sub_points: List[Dict[str, str]]):
-    """Convert CSV format back to JSON.
-
-    Modifies sub_points in-place.
-    Note: observabilityMode is stored in configuration JSON if present in CSV.
-    """
+    """Convert CSV format back to JSON. Modifies sub_points in-place."""
     csv_conversion_map = {
         "CapabilityId": "capabilityId",
         "Capability Id": "capabilityId",
@@ -940,7 +931,7 @@ class NamespaceAssets(Queryable):
         output_dir: str = ".",
         replace: bool = False
     ) -> dict:
-        """Export datapoints from a dataset to a file (JSON, YAML, or CSV)."""
+        """Export datapoints from a dataset to a file. Supports JSON, YAML, and CSV formats."""
         asset = self.show(
             asset_name=asset_name,
             instance_name=instance_name,
@@ -982,11 +973,7 @@ class NamespaceAssets(Queryable):
         replace: bool = False,
         **kwargs
     ) -> List[dict]:
-        """Import datapoints from file (JSON/YAML/CSV).
-
-        Args:
-            replace: True=overwrite duplicates, False=skip duplicates
-        """
+        """Import datapoints from file. Supports JSON, YAML, and CSV formats."""
         asset = self.show(
             asset_name=asset_name,
             instance_name=instance_name,
@@ -1031,7 +1018,6 @@ class NamespaceAssets(Queryable):
             validator.validate_datapoint(datapoint)
 
         dataset["dataPoints"] = imported_datapoints
-        dataset["dataPoints"] = imported_datapoints
 
         update_payload = {
             "properties": {
@@ -1063,7 +1049,7 @@ class NamespaceAssets(Queryable):
         output_dir: str = ".",
         replace: bool = False
     ) -> dict:
-        """Export event-groups from an asset to a file (JSON or YAML)."""
+        """Export event-groups from an asset to a file. Supports JSON and YAML formats."""
         asset = self.show(
             asset_name=asset_name,
             instance_name=instance_name,
@@ -1089,11 +1075,7 @@ class NamespaceAssets(Queryable):
         replace: bool = False,
         **kwargs
     ) -> List[dict]:
-        """Import event-groups from file (JSON/YAML).
-
-        Args:
-            replace: True=overwrite duplicates, False=skip duplicates
-        """
+        """Import event-groups from file. Supports JSON and YAML formats."""
         asset = self.show(
             asset_name=asset_name,
             instance_name=instance_name,
@@ -1101,8 +1083,6 @@ class NamespaceAssets(Queryable):
             check_cluster=True
         )
         namespace = parse_resource_id(asset["id"])
-
-        # Merge or replace event-groups based on flag
         original_event_groups = asset["properties"].get("eventGroups", [])
         imported_event_groups = _process_namespace_sub_points_file_path(
             file_path=file_path,
@@ -1163,7 +1143,7 @@ class NamespaceAssets(Queryable):
         output_dir: str = ".",
         replace: bool = False
     ) -> dict:
-        """Export events from an event-group to a file (JSON, YAML, or CSV)."""
+        """Export events from an event-group to a file. Supports JSON, YAML, and CSV formats."""
         asset = self.show(
             asset_name=asset_name,
             instance_name=instance_name,
@@ -1205,11 +1185,7 @@ class NamespaceAssets(Queryable):
         replace: bool = False,
         **kwargs
     ) -> List[dict]:
-        """Import events from file (JSON/YAML/CSV).
-
-        Args:
-            replace: True=overwrite duplicates, False=skip duplicates
-        """
+        """Import events from file. Supports JSON, YAML, and CSV formats."""
         asset = self.show(
             asset_name=asset_name,
             instance_name=instance_name,
@@ -1217,8 +1193,6 @@ class NamespaceAssets(Queryable):
             check_cluster=True
         )
         namespace = parse_resource_id(asset["id"])
-
-        # Find the target event-group
         event_groups = asset["properties"].get("eventGroups", [])
         event_group = None
         for eg in event_groups:
@@ -1232,7 +1206,6 @@ class NamespaceAssets(Queryable):
                 f"Create the event-group first before importing events."
             )
 
-        # Merge or replace events based on flag
         original_events = event_group.get("events", [])
         imported_events = _process_namespace_sub_points_file_path(
             file_path=file_path,
@@ -2832,11 +2805,7 @@ def _process_namespace_sub_points_file_path(
     replace: bool = False,
     csv_converter=None
 ) -> List[Dict[str, str]]:
-    """Merge items from file with existing items.
-
-    Args:
-        replace: True=overwrite duplicates, False=skip duplicates with warning
-    """
+    """Merge items from file with existing items."""
     from ...util import deserialize_file_content
 
     file_points = list(deserialize_file_content(file_path=file_path))
