@@ -22,9 +22,11 @@ from ...util.az_client import (
     get_resource_client,
     wait_for_terminal_state
 )
+from ...util import dump_content_to_file, deserialize_file_content
 from ...util.common import parse_kvp_nargs, should_continue_prompt
 from ...util.id_tools import parse_resource_id
 from ...util.queryable import Queryable
+from .common import FileType
 from .helpers import (
     check_cluster_connectivity,
     ensure_schema_structure,
@@ -160,6 +162,8 @@ class NamespaceAssets(Queryable):
         asset_name: str,
         instance_name: str,
         instance_resource_group: str,
+
+
         confirm_yes: bool = False,
         **kwargs
     ):
@@ -605,6 +609,81 @@ class NamespaceAssets(Queryable):
                 resource_group=namespace["resource_group"],
             )["properties"]["datasets"]
 
+    def export_datasets(
+        self,
+        asset_name: str,
+        instance_name: str,
+        instance_resource_group: str,
+        extension: str = FileType.json.value,
+        output_dir: str = ".",
+        replace: bool = False
+    ) -> dict:
+        """Export all datasets from an asset to a file (JSON or YAML)."""
+        asset = self.show(
+            asset_name=asset_name,
+            instance_name=instance_name,
+            resource_group=instance_resource_group
+        )
+        datasets = asset["properties"].get("datasets", [])
+
+        file_path = dump_content_to_file(
+            content=datasets,
+            file_name=f"{asset_name}_datasets",
+            extension=extension,
+            output_dir=output_dir,
+            replace=replace
+        )
+        return {"file_path": file_path, "dataset_count": len(datasets)}
+
+    def import_datasets(
+        self,
+        asset_name: str,
+        instance_name: str,
+        instance_resource_group: str,
+        file_path: str,
+        **kwargs
+    ) -> List[dict]:
+        """Import datasets from a file, replacing all existing datasets in the asset."""
+        asset = self.show(
+            asset_name=asset_name,
+            instance_name=instance_name,
+            resource_group=instance_resource_group,
+            check_cluster=True
+        )
+        namespace = parse_resource_id(asset["id"])
+
+        imported_datasets = list(deserialize_file_content(file_path=file_path))
+
+        # Validate imported datasets
+        validator = ConnectorMetadataValidator.from_asset(
+            cmd=self.cmd,
+            asset=asset,
+            instance_name=instance_name,
+            instance_resource_group=instance_resource_group
+        )
+
+        for dataset in imported_datasets:
+            validator.validate_dataset(dataset)
+        update_payload = {
+            "properties": {
+                "datasets": imported_datasets
+            }
+        }
+
+        with console.status(f"Importing datasets for asset {asset_name}..."):
+            poller = self.ops.begin_update(
+                resource_group_name=namespace["resource_group"],
+                namespace_name=namespace["name"],
+                asset_name=asset_name,
+                properties=update_payload
+            )
+            wait_for_terminal_state(poller, **kwargs)
+            return self.show(
+                asset_name=asset_name,
+                namespace_name=namespace["name"],
+                resource_group=namespace["resource_group"],
+            )["properties"]["datasets"]
+
     def add_dataset_datapoint(
         self,
         asset_name: str,
@@ -737,6 +816,129 @@ class NamespaceAssets(Queryable):
         with console.status(
             f"Removing datapoint {datapoint_name} from dataset {dataset_name} in asset {asset_name}..."
         ):
+            poller = self.ops.begin_update(
+                resource_group_name=namespace["resource_group"],
+                namespace_name=namespace["name"],
+                asset_name=asset_name,
+                properties=update_payload
+            )
+            wait_for_terminal_state(poller, **kwargs)
+            asset = self.show(
+                asset_name=asset_name,
+                namespace_name=namespace["name"],
+                resource_group=namespace["resource_group"],
+            )
+            return _get_sub_property(asset, dataset_name, property_key="datasets")["dataPoints"]
+
+    def export_dataset_datapoints(
+        self,
+        asset_name: str,
+        dataset_name: str,
+        instance_name: str,
+        instance_resource_group: str,
+        extension: str = FileType.json.value,
+        output_dir: str = ".",
+        replace: bool = False
+    ) -> dict:
+        """Export datapoints from a dataset to a file (JSON, YAML, or CSV)."""
+        asset = self.show(
+            asset_name=asset_name,
+            instance_name=instance_name,
+            resource_group=instance_resource_group
+        )
+        dataset = _get_sub_property(asset, dataset_name, property_key="datasets")
+        datapoints = dataset.get("dataPoints", [])
+
+        # Convert to CSV format if requested
+        fieldnames = None
+        if extension == FileType.csv.value:
+            from .assets import _convert_sub_points_to_csv
+            default_configuration = dataset.get("datasetConfiguration", "{}")
+            if default_configuration == "{}":
+                default_configuration = asset["properties"].get("defaultDatasetsConfiguration", "{}")
+            fieldnames = _convert_sub_points_to_csv(
+                sub_points=datapoints,
+                sub_point_type="dataPoints",
+                default_configuration=default_configuration,
+                portal_friendly=True
+            )
+
+        file_path = dump_content_to_file(
+            content=datapoints,
+            file_name=f"{asset_name}_{dataset_name}_datapoints",
+            extension=extension,
+            fieldnames=fieldnames,
+            output_dir=output_dir,
+            replace=replace
+        )
+        return {"file_path": file_path, "datapoint_count": len(datapoints)}
+
+    def import_dataset_datapoints(
+        self,
+        asset_name: str,
+        dataset_name: str,
+        instance_name: str,
+        instance_resource_group: str,
+        file_path: str,
+        replace: bool = False,
+        **kwargs
+    ) -> List[dict]:
+        """Import datapoints into a dataset from a file.
+        Args:
+            replace: If True, merges and overwrites duplicates. If False, skips duplicates.
+        """
+        asset = self.show(
+            asset_name=asset_name,
+            instance_name=instance_name,
+            resource_group=instance_resource_group,
+            check_cluster=True
+        )
+        namespace = parse_resource_id(asset["id"])
+
+        # Find the target dataset
+        datasets = asset["properties"].get("datasets", [])
+        dataset = None
+        for dset in datasets:
+            if dset["name"] == dataset_name:
+                dataset = dset
+                break
+
+        if dataset is None:
+            raise InvalidArgumentValueError(
+                f"Dataset '{dataset_name}' not found in asset '{asset_name}'. "
+                f"Create the dataset first before importing datapoints."
+            )
+
+        # Merge or replace datapoints based on flag
+        original_datapoints = dataset.get("dataPoints", [])
+        imported_datapoints = _process_namespace_sub_points_file_path(
+            file_path=file_path,
+            original_items=original_datapoints,
+            point_key="name",
+            replace=replace
+        )
+
+        # Validate imported datapoints
+        validator = ConnectorMetadataValidator.from_asset(
+            cmd=self.cmd,
+            asset=asset,
+            instance_name=instance_name,
+            instance_resource_group=instance_resource_group
+        )
+
+        for datapoint in imported_datapoints:
+            validator.validate_datapoint(datapoint)
+
+        dataset["dataPoints"] = imported_datapoints
+        dataset["dataPoints"] = imported_datapoints
+
+        update_payload = {
+            "properties": {
+                "datasets": datasets
+            }
+        }
+
+        with console.status(f"Importing datapoints for dataset {dataset_name} in asset {asset_name}..."):
             poller = self.ops.begin_update(
                 resource_group_name=namespace["resource_group"],
                 namespace_name=namespace["name"],
@@ -1674,7 +1876,6 @@ class NamespaceAssets(Queryable):
         return (asset if asset_name else device, namespace)
 
 
-# Helpers
 def _build_destination(
     destination_args: List[List[str]],
     allowed_types: Optional[List[str]] = None
@@ -2289,3 +2490,44 @@ def _update_asset_props(
         properties["serialNumber"] = serial_number
     if software_revision:
         properties["softwareRevision"] = software_revision
+
+
+def _process_namespace_sub_points_file_path(
+    file_path: str,
+    original_items: Optional[List[dict]] = None,
+    point_key: Optional[str] = None,
+    replace: bool = False
+) -> List[Dict[str, str]]:
+    """Process and merge datapoints/events from file with existing items.
+
+    Args:
+        file_path: Path to file containing datapoints or events
+        original_items: Existing items to merge with
+        point_key: Key for identifying duplicates (typically 'name')
+        replace: If True, overwrite duplicates; if False, skip with warning
+
+    Returns:
+        Merged list of datapoints or events
+    """
+    from ...util import deserialize_file_content
+    from .assets import _convert_sub_points_from_csv
+
+    file_points = list(deserialize_file_content(file_path=file_path))
+    _convert_sub_points_from_csv(file_points)
+
+    if point_key is None:
+        return file_points
+
+    if not original_items:
+        original_items = []
+
+    original_points = {point[point_key]: point for point in original_items}
+    file_points_dict = {point[point_key]: point for point in file_points}
+
+    for key in file_points_dict:
+        if key in original_points and not replace:
+            logger.warning(f"{key} is already present in the asset and will be ignored.")
+        else:
+            original_points[key] = file_points_dict[key]
+
+    return list(original_points.values())

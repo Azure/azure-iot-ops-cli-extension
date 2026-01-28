@@ -112,6 +112,24 @@ def mocked_get_namespace_for_instance(mocker):
     yield mock
 
 
+@pytest.fixture()
+def mocked_connector_metadata_validator(mocker):
+    """Mock the ConnectorMetadataValidator to avoid actual validation during tests."""
+    mock_validator_instance = mocker.Mock()
+    mock_validator_instance.validate_dataset = mocker.Mock(return_value=None)
+    mock_validator_instance.validate_datapoint = mocker.Mock(return_value=None)
+
+    mock_validator_class = mocker.Mock(return_value=mock_validator_instance)
+    mock_validator_class.from_asset = mocker.Mock(return_value=mock_validator_instance)
+
+    mocker.patch(
+        "azext_edge.edge.providers.adr.namespace_assets.ConnectorMetadataValidator",
+        mock_validator_class
+    )
+
+    yield mock_validator_instance
+
+
 def get_asset_id(
     asset_name: Optional[str] = None,
     asset_resource_group: Optional[str] = None,

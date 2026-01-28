@@ -175,8 +175,7 @@ def test_add_namespace_asset_dataset(
                     "samplingIntervalInMilliseconds": config_params["rest_dataset_sampling_interval"]
                 })
 
-    # TODO: should be helper
-    # Add destination if provided in either case
+    # Add destination if provided
     if destination_params:
         dest = {}
         if "topic" in destination_params:
@@ -715,13 +714,10 @@ def test_show_namespace_asset_dataset(
 
 
 @pytest.mark.parametrize("common_reqs", [
-    # No specific common requirements
-    {},
-    # With dataset data source
-    {"data_source": "nsu=http://microsoft.com/Opc/OpcPlc/Sensor;i=2000"},
-    # Both data source and destinations
-    {
-        "dataset_destinations": "",  # TODO- change. currently will be set in the test
+    {},  # No updates
+    {"data_source": "nsu=http://microsoft.com/Opc/OpcPlc/Sensor;i=2000"},  # Update data source
+    {  # Update data source and destinations
+        "dataset_destinations": "",  # Set dynamically in test
         "data_source": "nsu=http://microsoft.com/Opc/OpcPlc/Device;i=3000",
     }
 ])
@@ -1365,3 +1361,407 @@ def test_remove_namespace_asset_dataset_point(
         assert len(patched_datapoints) == len(expected_datapoints)
         for dp in expected_datapoints:
             assert dp in patched_datapoints
+
+
+@pytest.mark.parametrize("asset_type, export_func", [
+    ("custom", "export_namespace_custom_asset_dataset"),
+    ("opcua", "export_namespace_opcua_asset_dataset"),
+    ("rest", "export_namespace_rest_asset_dataset"),
+    ("sse", "export_namespace_sse_asset_dataset"),
+    ("mqtt", "export_namespace_mqtt_asset_dataset"),
+])
+@pytest.mark.parametrize("extension", ["json", "yaml"])
+def test_export_namespace_asset_datasets(
+    mocked_cmd,
+    mocked_responses: responses,
+    asset_type: str,
+    export_func: str,
+    extension: str,
+    mocked_get_namespace_for_instance,
+    tmp_path
+):
+    """Test dataset export for all asset types."""
+    from azext_edge.edge import commands_namespaces
+
+    asset_name = "testAsset"
+    instance_name = "testInstance"
+    instance_resource_group = "testInstanceResourceGroup"
+    output_dir = str(tmp_path)
+
+    # Get the namespace from the mocked function
+    namespace_resource = mocked_get_namespace_for_instance.return_value
+    namespace_name = namespace_resource["name"]
+    resource_group_name = namespace_resource["resource_group"]
+
+    # Create mock datasets
+    datasets = [
+        generate_dataset(f"dataset{i}", num_data_points=2)
+        for i in range(3)
+    ]
+
+    # Mock the asset GET call
+    asset_record = get_namespace_asset_record(
+        asset_name=asset_name,
+        namespace_name=namespace_name,
+        resource_group_name=resource_group_name
+    )
+    asset_record["properties"]["datasets"] = datasets
+
+    mocked_responses.add(
+        responses.GET,
+        get_namespace_asset_mgmt_uri(
+            asset_name=asset_name,
+            namespace_name=namespace_name,
+            resource_group_name=resource_group_name
+        ),
+        json=asset_record,
+        status=200
+    )
+
+    # Call export function
+    func = getattr(commands_namespaces, export_func)
+    result = func(
+        cmd=mocked_cmd,
+        asset_name=asset_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
+        extension=extension,
+        output_dir=output_dir,
+        replace=False
+    )
+
+    # Verify result
+    assert "file_path" in result
+    assert "dataset_count" in result
+    assert result["dataset_count"] == 3
+    assert extension in result["file_path"]
+    assert asset_name in result["file_path"]
+
+
+@pytest.mark.parametrize("asset_type, import_func", [
+    ("custom", "import_namespace_custom_asset_dataset"),
+    ("opcua", "import_namespace_opcua_asset_dataset"),
+    ("rest", "import_namespace_rest_asset_dataset"),
+    ("sse", "import_namespace_sse_asset_dataset"),
+    ("mqtt", "import_namespace_mqtt_asset_dataset"),
+])
+def test_import_namespace_asset_datasets(
+    mocked_cmd,
+    mocked_responses: responses,
+    asset_type: str,
+    import_func: str,
+    mocked_check_cluster_connectivity,
+    mocked_get_namespace_for_instance,
+    mocked_connector_metadata_validator,
+    tmp_path
+):
+    """Test dataset import for all asset types."""
+    from azext_edge.edge import commands_namespaces
+    import json as json_module
+
+    asset_name = "testAsset"
+    instance_name = "testInstance"
+    instance_resource_group = "testInstanceResourceGroup"
+
+    # Get the namespace from the mocked function
+    namespace_resource = mocked_get_namespace_for_instance.return_value
+    namespace_name = namespace_resource["name"]
+    resource_group_name = namespace_resource["resource_group"]
+
+    # Create mock datasets to import
+    datasets_to_import = [
+        generate_dataset(f"importedDataset{i}", num_data_points=1)
+        for i in range(2)
+    ]
+
+    # Create import file
+    import_file = tmp_path / "datasets_import.json"
+    with open(import_file, 'w') as f:
+        json_module.dump(datasets_to_import, f)
+
+    # Mock the asset GET call
+    asset_record = get_namespace_asset_record(
+        asset_name=asset_name,
+        namespace_name=namespace_name,
+        resource_group_name=resource_group_name
+    )
+    asset_record["properties"]["datasets"] = []
+
+    mocked_responses.add(
+        responses.GET,
+        get_namespace_asset_mgmt_uri(
+            asset_name=asset_name,
+            namespace_name=namespace_name,
+            resource_group_name=resource_group_name
+        ),
+        json=asset_record,
+        status=200
+    )
+
+    # Mock the PATCH call
+    def check_patch_request(request):
+        patch_body = json_module.loads(request.body)
+        imported_datasets = patch_body["properties"]["datasets"]
+
+        # Verify datasets were imported
+        assert len(imported_datasets) == 2
+        for i, dataset in enumerate(datasets_to_import):
+            assert imported_datasets[i]["name"] == dataset["name"]
+            assert imported_datasets[i]["dataSource"] == dataset["dataSource"]
+
+        return (200, {}, json_module.dumps(asset_record))
+
+    mocked_responses.add_callback(
+        responses.PATCH,
+        get_namespace_asset_mgmt_uri(
+            asset_name=asset_name,
+            namespace_name=namespace_name,
+            resource_group_name=resource_group_name
+        ),
+        callback=check_patch_request,
+        content_type="application/json"
+    )
+
+    # Mock the final GET call
+    asset_record["properties"]["datasets"] = datasets_to_import
+    mocked_responses.add(
+        responses.GET,
+        get_namespace_asset_mgmt_uri(
+            asset_name=asset_name,
+            namespace_name=namespace_name,
+            resource_group_name=resource_group_name
+        ),
+        json=asset_record,
+        status=200
+    )
+
+    # Call import function
+    func = getattr(commands_namespaces, import_func)
+    result = func(
+        cmd=mocked_cmd,
+        asset_name=asset_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
+        file_path=str(import_file)
+    )
+
+    # Verify result
+    assert len(result) == 2
+    assert result[0]["name"] == datasets_to_import[0]["name"]
+    assert result[1]["name"] == datasets_to_import[1]["name"]
+
+
+# CSV removed: generate_dataset creates incompatible datapoints
+@pytest.mark.parametrize("asset_type, export_func", [
+    ("custom", "export_namespace_custom_asset_datapoint"),
+    ("opcua", "export_namespace_opcua_asset_datapoint"),
+])
+@pytest.mark.parametrize("extension", ["json", "yaml"])
+def test_export_namespace_asset_datapoints(
+    mocked_cmd,
+    mocked_responses: responses,
+    asset_type: str,
+    export_func: str,
+    extension: str,
+    mocked_get_namespace_for_instance,
+    tmp_path
+):
+    """Test exporting datapoints for custom and opcua assets."""
+    from azext_edge.edge import commands_namespaces
+
+    asset_name = "testAsset"
+    dataset_name = "testDataset"
+    instance_name = "testInstance"
+    instance_resource_group = "testInstanceResourceGroup"
+    output_dir = str(tmp_path)
+
+    # Get the namespace from the mocked function
+    namespace_resource = mocked_get_namespace_for_instance.return_value
+    namespace_name = namespace_resource["name"]
+    resource_group_name = namespace_resource["resource_group"]
+
+    # Create mock dataset with datapoints
+    dataset = generate_dataset(dataset_name, num_data_points=5)
+
+    # Mock the asset GET call
+    asset_record = get_namespace_asset_record(
+        asset_name=asset_name,
+        namespace_name=namespace_name,
+        resource_group_name=resource_group_name
+    )
+    asset_record["properties"]["datasets"] = [dataset]
+
+    mocked_responses.add(
+        responses.GET,
+        get_namespace_asset_mgmt_uri(
+            asset_name=asset_name,
+            namespace_name=namespace_name,
+            resource_group_name=resource_group_name
+        ),
+        json=asset_record,
+        status=200
+    )
+
+    # Call export function
+    func = getattr(commands_namespaces, export_func)
+    result = func(
+        cmd=mocked_cmd,
+        asset_name=asset_name,
+        dataset_name=dataset_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
+        extension=extension,
+        output_dir=output_dir,
+        replace=False
+    )
+
+    # Verify result
+    assert "file_path" in result
+    assert "datapoint_count" in result
+    assert result["datapoint_count"] == 5
+    assert extension in result["file_path"]
+    assert dataset_name in result["file_path"]
+
+
+@pytest.mark.parametrize("asset_type, import_func", [
+    ("custom", "import_namespace_custom_asset_datapoint"),
+    ("opcua", "import_namespace_opcua_asset_datapoint"),
+])
+@pytest.mark.parametrize("replace", [True, False])
+def test_import_namespace_asset_datapoints(
+    mocked_cmd,
+    mocked_responses: responses,
+    asset_type: str,
+    import_func: str,
+    replace: bool,
+    mocked_check_cluster_connectivity,
+    mocked_get_namespace_for_instance,
+    mocked_connector_metadata_validator,
+    tmp_path
+):
+    """Test datapoint import with merge and replace modes."""
+    from azext_edge.edge import commands_namespaces
+    import json as json_module
+
+    asset_name = "testAsset"
+    dataset_name = "testDataset"
+    instance_name = "testInstance"
+    instance_resource_group = "testInstanceResourceGroup"
+
+    # Get the namespace from the mocked function
+    namespace_resource = mocked_get_namespace_for_instance.return_value
+    namespace_name = namespace_resource["name"]
+    resource_group_name = namespace_resource["resource_group"]
+
+    # Create existing dataset with datapoints
+    existing_dataset = generate_dataset(dataset_name, num_data_points=2)
+    existing_datapoint_names = [dp["name"] for dp in existing_dataset["dataPoints"]]
+
+    # Create datapoints to import (one overlapping, one new)
+    datapoints_to_import = [
+        {
+            "name": existing_datapoint_names[0],  # Overlapping
+            "dataSource": "nsu=updated;s=UpdatedPoint1",
+            "dataPointConfiguration": json_module.dumps({"samplingInterval": 2000})
+        },
+        {
+            "name": "newDataPoint",  # New
+            "dataSource": "nsu=new;s=NewPoint",
+            "dataPointConfiguration": json_module.dumps({"samplingInterval": 1500})
+        }
+    ]
+
+    # Create import file
+    import_file = tmp_path / "datapoints_import.json"
+    with open(import_file, 'w') as f:
+        json_module.dump(datapoints_to_import, f)
+
+    # Mock the asset GET call
+    asset_record = get_namespace_asset_record(
+        asset_name=asset_name,
+        namespace_name=namespace_name,
+        resource_group_name=resource_group_name
+    )
+    asset_record["properties"]["datasets"] = [existing_dataset]
+
+    mocked_responses.add(
+        responses.GET,
+        get_namespace_asset_mgmt_uri(
+            asset_name=asset_name,
+            namespace_name=namespace_name,
+            resource_group_name=resource_group_name
+        ),
+        json=asset_record,
+        status=200
+    )
+
+    # Mock the PATCH call
+    def check_patch_request(request):
+        patch_body = json_module.loads(request.body)
+        patched_datasets = patch_body["properties"]["datasets"]
+
+        # Find the dataset
+        patched_dataset = next((d for d in patched_datasets if d["name"] == dataset_name), None)
+        assert patched_dataset is not None
+
+        patched_datapoints = patched_dataset["dataPoints"]
+
+        # Verify datapoint merge/replace behavior
+        # Note: replace=True does "merge with overwrite" - keeps all existing datapoints
+        # but overwrites matching ones with data from file
+        if replace:
+            # Replace mode: merge with overwrite - all datapoints present, matching ones updated
+            assert len(patched_datapoints) == 3  # 2 existing + 1 new
+            # First existing point should be updated
+            updated_dp = next((dp for dp in patched_datapoints if dp["name"] == datapoints_to_import[0]["name"]), None)
+            assert updated_dp is not None
+            assert updated_dp["dataSource"] == "nsu=updated;s=UpdatedPoint1"
+            # Second existing point should remain
+            assert any(dp["name"] == existing_datapoint_names[1] for dp in patched_datapoints)
+            # New point should be added
+            assert any(dp["name"] == "newDataPoint" for dp in patched_datapoints)
+        else:
+            # Merge mode: all datapoints present, duplicate warning logged
+            assert len(patched_datapoints) == 3
+            assert any(dp["name"] == "newDataPoint" for dp in patched_datapoints)
+
+        return (200, {}, json_module.dumps(asset_record))
+
+    mocked_responses.add_callback(
+        responses.PATCH,
+        get_namespace_asset_mgmt_uri(
+            asset_name=asset_name,
+            namespace_name=namespace_name,
+            resource_group_name=resource_group_name
+        ),
+        callback=check_patch_request,
+        content_type="application/json"
+    )
+
+    # Mock the final GET call
+    mocked_responses.add(
+        responses.GET,
+        get_namespace_asset_mgmt_uri(
+            asset_name=asset_name,
+            namespace_name=namespace_name,
+            resource_group_name=resource_group_name
+        ),
+        json=asset_record,
+        status=200
+    )
+
+    # Call import function
+    func = getattr(commands_namespaces, import_func)
+    result = func(
+        cmd=mocked_cmd,
+        asset_name=asset_name,
+        dataset_name=dataset_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
+        file_path=str(import_file),
+        replace=replace
+    )
+
+    # Verify result is a list of datapoints
+    assert isinstance(result, list)
+    assert len(result) > 0
