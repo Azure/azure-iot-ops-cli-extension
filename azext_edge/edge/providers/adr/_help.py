@@ -3237,6 +3237,31 @@ def load_iotops_adr_help():
         short-summary: Manage OPC UA asset events.
     """
 
+    # OPC UA event commands (add, list, remove)
+    helps[
+        "iot ops ns asset opcua event add"
+    ] = """
+        type: command
+        short-summary: Add an event to an OPC UA asset event-group.
+        long-summary: Add a new event to an existing event-group in an OPC UA namespaced asset.
+    """
+
+    helps[
+        "iot ops ns asset opcua event list"
+    ] = """
+        type: command
+        short-summary: List events in an OPC UA asset event-group.
+        long-summary: List all events within a specific event-group of an OPC UA namespaced asset.
+    """
+
+    helps[
+        "iot ops ns asset opcua event remove"
+    ] = """
+        type: command
+        short-summary: Remove an event from an OPC UA asset event-group.
+        long-summary: Remove an event from an existing event-group in an OPC UA namespaced asset.
+    """
+
     for asset_type in ["custom", "opcua", "rest", "sse", "mqtt"]:
         helps[
             f"iot ops ns asset {asset_type} dataset export"
