@@ -118,6 +118,8 @@ def mocked_connector_metadata_validator(mocker):
     mock_validator_instance = mocker.Mock()
     mock_validator_instance.validate_dataset = mocker.Mock(return_value=None)
     mock_validator_instance.validate_datapoint = mocker.Mock(return_value=None)
+    mock_validator_instance.validate_event = mocker.Mock(return_value=None)
+    mock_validator_instance.validate_event_group = mocker.Mock(return_value=None)
 
     mock_validator_class = mocker.Mock(return_value=mock_validator_instance)
     mock_validator_class.from_asset = mocker.Mock(return_value=mock_validator_instance)

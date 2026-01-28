@@ -2030,6 +2030,286 @@ def import_namespace_opcua_asset_datapoint(
     )
 
 
+# Event-group export/import commands (custom, OPC UA, ONVIF, and SSE assets)
+def export_namespace_custom_asset_event_group(
+    cmd,
+    asset_name: str,
+    instance_name: str,
+    instance_resource_group: str,
+    extension: str = "json",
+    output_dir: str = ".",
+    replace: bool = False
+) -> dict:
+    return NamespaceAssets(cmd).export_event_groups(
+        asset_name=asset_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
+        extension=extension,
+        output_dir=output_dir,
+        replace=replace
+    )
+
+
+def export_namespace_opcua_asset_event_group(
+    cmd,
+    asset_name: str,
+    instance_name: str,
+    instance_resource_group: str,
+    extension: str = "json",
+    output_dir: str = ".",
+    replace: bool = False
+) -> dict:
+    return NamespaceAssets(cmd).export_event_groups(
+        asset_name=asset_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
+        extension=extension,
+        output_dir=output_dir,
+        replace=replace
+    )
+
+
+def export_namespace_onvif_asset_event_group(
+    cmd,
+    asset_name: str,
+    instance_name: str,
+    instance_resource_group: str,
+    extension: str = "json",
+    output_dir: str = ".",
+    replace: bool = False
+) -> dict:
+    return NamespaceAssets(cmd).export_event_groups(
+        asset_name=asset_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
+        extension=extension,
+        output_dir=output_dir,
+        replace=replace
+    )
+
+
+def export_namespace_sse_asset_event_group(
+    cmd,
+    asset_name: str,
+    instance_name: str,
+    instance_resource_group: str,
+    extension: str = "json",
+    output_dir: str = ".",
+    replace: bool = False
+) -> dict:
+    return NamespaceAssets(cmd).export_event_groups(
+        asset_name=asset_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
+        extension=extension,
+        output_dir=output_dir,
+        replace=replace
+    )
+
+
+def import_namespace_custom_asset_event_group(
+    cmd,
+    asset_name: str,
+    instance_name: str,
+    instance_resource_group: str,
+    file_path: str,
+    replace: bool = False,
+    **kwargs
+) -> List[dict]:
+    return NamespaceAssets(cmd).import_event_groups(
+        asset_name=asset_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
+        file_path=file_path,
+        replace=replace,
+        **kwargs
+    )
+
+
+def import_namespace_opcua_asset_event_group(
+    cmd,
+    asset_name: str,
+    instance_name: str,
+    instance_resource_group: str,
+    file_path: str,
+    replace: bool = False,
+    **kwargs
+) -> List[dict]:
+    return NamespaceAssets(cmd).import_event_groups(
+        asset_name=asset_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
+        file_path=file_path,
+        replace=replace,
+        **kwargs
+    )
+
+
+def import_namespace_onvif_asset_event_group(
+    cmd,
+    asset_name: str,
+    instance_name: str,
+    instance_resource_group: str,
+    file_path: str,
+    replace: bool = False,
+    **kwargs
+) -> List[dict]:
+    return NamespaceAssets(cmd).import_event_groups(
+        asset_name=asset_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
+        file_path=file_path,
+        replace=replace,
+        **kwargs
+    )
+
+
+def import_namespace_sse_asset_event_group(
+    cmd,
+    asset_name: str,
+    instance_name: str,
+    instance_resource_group: str,
+    file_path: str,
+    replace: bool = False,
+    **kwargs
+) -> List[dict]:
+    return NamespaceAssets(cmd).import_event_groups(
+        asset_name=asset_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
+        file_path=file_path,
+        replace=replace,
+        **kwargs
+    )
+
+
+# Event export/import commands (custom, OPC UA, and SSE assets only)
+def export_namespace_custom_asset_event(
+    cmd,
+    asset_name: str,
+    event_group_name: str,
+    instance_name: str,
+    instance_resource_group: str,
+    extension: str = "json",
+    output_dir: str = ".",
+    replace: bool = False
+) -> dict:
+    return NamespaceAssets(cmd).export_event_group_events(
+        asset_name=asset_name,
+        event_group_name=event_group_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
+        extension=extension,
+        output_dir=output_dir,
+        replace=replace
+    )
+
+
+def export_namespace_opcua_asset_event(
+    cmd,
+    asset_name: str,
+    event_group_name: str,
+    instance_name: str,
+    instance_resource_group: str,
+    extension: str = "json",
+    output_dir: str = ".",
+    replace: bool = False
+) -> dict:
+    return NamespaceAssets(cmd).export_event_group_events(
+        asset_name=asset_name,
+        event_group_name=event_group_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
+        extension=extension,
+        output_dir=output_dir,
+        replace=replace
+    )
+
+
+def export_namespace_sse_asset_event(
+    cmd,
+    asset_name: str,
+    event_group_name: str,
+    instance_name: str,
+    instance_resource_group: str,
+    extension: str = "json",
+    output_dir: str = ".",
+    replace: bool = False
+) -> dict:
+    return NamespaceAssets(cmd).export_event_group_events(
+        asset_name=asset_name,
+        event_group_name=event_group_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
+        extension=extension,
+        output_dir=output_dir,
+        replace=replace
+    )
+
+
+def import_namespace_custom_asset_event(
+    cmd,
+    asset_name: str,
+    event_group_name: str,
+    instance_name: str,
+    instance_resource_group: str,
+    file_path: str,
+    replace: bool = False,
+    **kwargs
+) -> List[dict]:
+    return NamespaceAssets(cmd).import_event_group_events(
+        asset_name=asset_name,
+        event_group_name=event_group_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
+        file_path=file_path,
+        replace=replace,
+        **kwargs
+    )
+
+
+def import_namespace_opcua_asset_event(
+    cmd,
+    asset_name: str,
+    event_group_name: str,
+    instance_name: str,
+    instance_resource_group: str,
+    file_path: str,
+    replace: bool = False,
+    **kwargs
+) -> List[dict]:
+    return NamespaceAssets(cmd).import_event_group_events(
+        asset_name=asset_name,
+        event_group_name=event_group_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
+        file_path=file_path,
+        replace=replace,
+        **kwargs
+    )
+
+
+def import_namespace_sse_asset_event(
+    cmd,
+    asset_name: str,
+    event_group_name: str,
+    instance_name: str,
+    instance_resource_group: str,
+    file_path: str,
+    replace: bool = False,
+    **kwargs
+) -> List[dict]:
+    return NamespaceAssets(cmd).import_event_group_events(
+        asset_name=asset_name,
+        event_group_name=event_group_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
+        file_path=file_path,
+        replace=replace,
+        **kwargs
+    )
+
+
 # ASSET EVENT GROUP COMMANDS
 def add_namespace_custom_asset_event_group(
     cmd,

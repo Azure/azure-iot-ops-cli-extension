@@ -51,6 +51,101 @@ logger = get_logger(__name__)
 NAMESPACE_ASSET_RESOURCE_TYPE = "Microsoft.DeviceRegistry/namespaces/assets"
 
 
+# Namespace-specific CSV conversion functions
+# Note: Excludes observabilityMode field (not supported by namespace asset API)
+
+def _convert_sub_points_to_csv_namespace(
+    sub_points: List[Dict[str, str]],
+    sub_point_type: str,
+    default_configuration: str,
+    portal_friendly: bool = False
+) -> List[str]:
+    """Convert datapoints or events to CSV format.
+
+    Excludes observabilityMode to avoid API validation errors.
+    Modifies sub_points in-place.
+    """
+    from collections import OrderedDict
+
+    csv_conversion_map = [
+        ("queueSize", "QueueSize" if portal_friendly else "Queue Size"),
+    ]
+
+    if not portal_friendly or sub_point_type == "dataPoints":
+        csv_conversion_map.append(("samplingInterval", "Sampling Interval Milliseconds"))
+    if not portal_friendly:
+        csv_conversion_map.append(("capabilityId", "Capability Id"))
+
+    if sub_point_type == "dataPoints":
+        csv_conversion_map.insert(0, ("dataSource", "NodeID" if portal_friendly else "Data Source"))
+        csv_conversion_map.insert(1, ("name", "TagName" if portal_friendly else "Name"))
+    else:
+        csv_conversion_map.insert(0, ("dataSource", "Data Source"))
+        csv_conversion_map.insert(1, ("name", "EventName" if portal_friendly else "Name"))
+
+    csv_conversion_map = OrderedDict(csv_conversion_map)
+    default_config = json.loads(default_configuration) if portal_friendly else {}
+
+    for point in sub_points:
+        config_key = f"{sub_point_type[:-1]}Configuration"
+        configuration = point.pop(config_key, "{}")
+        point.update(json.loads(configuration))
+
+        if portal_friendly:
+            point.pop("capabilityId", None)
+            if sub_point_type == "events":
+                point.pop("samplingInterval", None)
+
+        for asset_key, csv_key in csv_conversion_map.items():
+            point[csv_key] = point.pop(asset_key, default_config.get(asset_key))
+
+    return list(csv_conversion_map.values())
+
+
+def _convert_sub_points_from_csv_namespace(sub_points: List[Dict[str, str]]):
+    """Convert CSV format back to JSON.
+
+    Does NOT add observabilityMode (not supported by namespace asset API).
+    Modifies sub_points in-place.
+    """
+    csv_conversion_map = {
+        "CapabilityId": "capabilityId",
+        "Capability Id": "capabilityId",
+        "Data Source": "dataSource",
+        "EventName": "name",
+        "EventNotifier": "eventNotifier",
+        "Event Notifier": "eventNotifier",
+        "Name": "name",
+        "NodeID": "dataSource",
+        "QueueSize": "queueSize",
+        "Queue Size": "queueSize",
+        "Sampling Interval Milliseconds": "samplingInterval",
+        "TagName": "name",
+    }
+
+    for point in sub_points:
+        point.pop("", None)
+
+        for csv_key, json_key in csv_conversion_map.items():
+            if csv_key in point:
+                point[json_key] = point.pop(csv_key)
+
+        configuration = {}
+        if point.get("samplingInterval"):
+            configuration["samplingInterval"] = int(point.pop("samplingInterval"))
+        else:
+            point.pop("samplingInterval", None)
+
+        if point.get("queueSize"):
+            configuration["queueSize"] = int(point.pop("queueSize"))
+        else:
+            point.pop("queueSize", None)
+
+        if configuration:
+            config_key = "dataPointConfiguration" if "dataSource" in point else "eventConfiguration"
+            point[config_key] = json.dumps(configuration)
+
+
 class NamespaceAssets(Queryable):
     def __init__(self, cmd):
         super().__init__(cmd=cmd)
@@ -852,11 +947,10 @@ class NamespaceAssets(Queryable):
         # Convert to CSV format if requested
         fieldnames = None
         if extension == FileType.csv.value:
-            from .assets import _convert_sub_points_to_csv
             default_configuration = dataset.get("datasetConfiguration", "{}")
             if default_configuration == "{}":
                 default_configuration = asset["properties"].get("defaultDatasetsConfiguration", "{}")
-            fieldnames = _convert_sub_points_to_csv(
+            fieldnames = _convert_sub_points_to_csv_namespace(
                 sub_points=datapoints,
                 sub_point_type="dataPoints",
                 default_configuration=default_configuration,
@@ -883,9 +977,10 @@ class NamespaceAssets(Queryable):
         replace: bool = False,
         **kwargs
     ) -> List[dict]:
-        """Import datapoints into a dataset from a file.
+        """Import datapoints from file (JSON/YAML/CSV).
+
         Args:
-            replace: If True, merges and overwrites duplicates. If False, skips duplicates.
+            replace: True=overwrite duplicates, False=skip duplicates
         """
         asset = self.show(
             asset_name=asset_name,
@@ -915,7 +1010,8 @@ class NamespaceAssets(Queryable):
             file_path=file_path,
             original_items=original_datapoints,
             point_key="name",
-            replace=replace
+            replace=replace,
+            csv_converter=_convert_sub_points_from_csv_namespace
         )
 
         # Validate imported datapoints
@@ -952,6 +1048,238 @@ class NamespaceAssets(Queryable):
                 resource_group=namespace["resource_group"],
             )
             return _get_sub_property(asset, dataset_name, property_key="datasets")["dataPoints"]
+
+    def export_event_groups(
+        self,
+        asset_name: str,
+        instance_name: str,
+        instance_resource_group: str,
+        extension: str = FileType.json.value,
+        output_dir: str = ".",
+        replace: bool = False
+    ) -> dict:
+        """Export event-groups from an asset to a file (JSON or YAML)."""
+        asset = self.show(
+            asset_name=asset_name,
+            instance_name=instance_name,
+            resource_group=instance_resource_group
+        )
+        event_groups = asset["properties"].get("eventGroups", [])
+
+        file_path = dump_content_to_file(
+            content=event_groups,
+            file_name=f"{asset_name}_event_groups",
+            extension=extension,
+            output_dir=output_dir,
+            replace=replace
+        )
+        return {"file_path": file_path, "event_group_count": len(event_groups)}
+
+    def import_event_groups(
+        self,
+        asset_name: str,
+        instance_name: str,
+        instance_resource_group: str,
+        file_path: str,
+        replace: bool = False,
+        **kwargs
+    ) -> List[dict]:
+        """Import event-groups from file (JSON/YAML).
+
+        Args:
+            replace: True=overwrite duplicates, False=skip duplicates
+        """
+        asset = self.show(
+            asset_name=asset_name,
+            instance_name=instance_name,
+            resource_group=instance_resource_group,
+            check_cluster=True
+        )
+        namespace = parse_resource_id(asset["id"])
+
+        # Merge or replace event-groups based on flag
+        original_event_groups = asset["properties"].get("eventGroups", [])
+        imported_event_groups = _process_namespace_sub_points_file_path(
+            file_path=file_path,
+            original_items=original_event_groups,
+            point_key="name",
+            replace=replace
+        )
+
+        # Validate imported event-groups
+        try:
+            validator = ConnectorMetadataValidator.from_asset(
+                cmd=self.cmd,
+                asset=asset,
+                instance_name=instance_name,
+                instance_resource_group=instance_resource_group
+            )
+
+            for event_group in imported_event_groups:
+                validator.validate_event_group(event_group)
+            logger.info("Event-groups validated successfully.")
+        except ValidationError:
+            raise
+        except Exception as e:
+            logger.warning(
+                f"Event-group validation skipped: {e}. "
+                "This may occur if the connector is not deployed or the cluster is not connected. "
+                "The event-groups will be imported but may fail at runtime if the configuration is invalid."
+            )
+
+        update_payload = {
+            "properties": {
+                "eventGroups": imported_event_groups
+            }
+        }
+
+        with console.status(f"Importing event-groups for asset {asset_name}..."):
+            poller = self.ops.begin_update(
+                resource_group_name=namespace["resource_group"],
+                namespace_name=namespace["name"],
+                asset_name=asset_name,
+                properties=update_payload
+            )
+            wait_for_terminal_state(poller, **kwargs)
+            asset = self.show(
+                asset_name=asset_name,
+                namespace_name=namespace["name"],
+                resource_group=namespace["resource_group"],
+            )
+            return asset["properties"].get("eventGroups", [])
+
+    def export_event_group_events(
+        self,
+        asset_name: str,
+        event_group_name: str,
+        instance_name: str,
+        instance_resource_group: str,
+        extension: str = FileType.json.value,
+        output_dir: str = ".",
+        replace: bool = False
+    ) -> dict:
+        """Export events from an event-group to a file (JSON, YAML, or CSV)."""
+        asset = self.show(
+            asset_name=asset_name,
+            instance_name=instance_name,
+            resource_group=instance_resource_group
+        )
+        event_group = _get_sub_property(asset, event_group_name, property_key="eventGroups")
+        events = event_group.get("events", [])
+
+        # Convert to CSV format if requested
+        fieldnames = None
+        if extension == FileType.csv.value:
+            default_configuration = event_group.get("eventGroupConfiguration", "{}")
+            if default_configuration == "{}":
+                default_configuration = asset["properties"].get("defaultEventsConfiguration", "{}")
+            fieldnames = _convert_sub_points_to_csv_namespace(
+                sub_points=events,
+                sub_point_type="events",
+                default_configuration=default_configuration,
+                portal_friendly=True
+            )
+
+        file_path = dump_content_to_file(
+            content=events,
+            file_name=f"{asset_name}_{event_group_name}_events",
+            extension=extension,
+            fieldnames=fieldnames,
+            output_dir=output_dir,
+            replace=replace
+        )
+        return {"file_path": file_path, "event_count": len(events)}
+
+    def import_event_group_events(
+        self,
+        asset_name: str,
+        event_group_name: str,
+        instance_name: str,
+        instance_resource_group: str,
+        file_path: str,
+        replace: bool = False,
+        **kwargs
+    ) -> List[dict]:
+        """Import events from file (JSON/YAML/CSV).
+
+        Args:
+            replace: True=overwrite duplicates, False=skip duplicates
+        """
+        asset = self.show(
+            asset_name=asset_name,
+            instance_name=instance_name,
+            resource_group=instance_resource_group,
+            check_cluster=True
+        )
+        namespace = parse_resource_id(asset["id"])
+
+        # Find the target event-group
+        event_groups = asset["properties"].get("eventGroups", [])
+        event_group = None
+        for eg in event_groups:
+            if eg["name"] == event_group_name:
+                event_group = eg
+                break
+
+        if event_group is None:
+            raise InvalidArgumentValueError(
+                f"Event-group '{event_group_name}' not found in asset '{asset_name}'. "
+                f"Create the event-group first before importing events."
+            )
+
+        # Merge or replace events based on flag
+        original_events = event_group.get("events", [])
+        imported_events = _process_namespace_sub_points_file_path(
+            file_path=file_path,
+            original_items=original_events,
+            point_key="name",
+            replace=replace,
+            csv_converter=_convert_sub_points_from_csv_namespace
+        )
+
+        # Validate imported events
+        try:
+            validator = ConnectorMetadataValidator.from_asset(
+                cmd=self.cmd,
+                asset=asset,
+                instance_name=instance_name,
+                instance_resource_group=instance_resource_group
+            )
+
+            for event in imported_events:
+                validator.validate_event(event)
+            logger.info("Events validated successfully.")
+        except ValidationError:
+            raise
+        except Exception as e:
+            logger.warning(
+                f"Event validation skipped: {e}. "
+                "This may occur if the connector is not deployed or the cluster is not connected. "
+                "The events will be imported but may fail at runtime if the configuration is invalid."
+            )
+
+        event_group["events"] = imported_events
+
+        update_payload = {
+            "properties": {
+                "eventGroups": event_groups
+            }
+        }
+
+        with console.status(f"Importing events for event-group {event_group_name} in asset {asset_name}..."):
+            poller = self.ops.begin_update(
+                resource_group_name=namespace["resource_group"],
+                namespace_name=namespace["name"],
+                asset_name=asset_name,
+                properties=update_payload
+            )
+            wait_for_terminal_state(poller, **kwargs)
+            asset = self.show(
+                asset_name=asset_name,
+                namespace_name=namespace["name"],
+                resource_group=namespace["resource_group"],
+            )
+            return _get_sub_property(asset, event_group_name, property_key="eventGroups")["events"]
 
     # EVENT GROUPS - allowed for opcua, and custom assets
     def add_event_group(
@@ -2496,24 +2824,23 @@ def _process_namespace_sub_points_file_path(
     file_path: str,
     original_items: Optional[List[dict]] = None,
     point_key: Optional[str] = None,
-    replace: bool = False
+    replace: bool = False,
+    csv_converter=None
 ) -> List[Dict[str, str]]:
-    """Process and merge datapoints/events from file with existing items.
+    """Merge items from file with existing items.
 
     Args:
-        file_path: Path to file containing datapoints or events
-        original_items: Existing items to merge with
-        point_key: Key for identifying duplicates (typically 'name')
-        replace: If True, overwrite duplicates; if False, skip with warning
-
-    Returns:
-        Merged list of datapoints or events
+        replace: True=overwrite duplicates, False=skip duplicates with warning
     """
     from ...util import deserialize_file_content
-    from .assets import _convert_sub_points_from_csv
 
     file_points = list(deserialize_file_content(file_path=file_path))
-    _convert_sub_points_from_csv(file_points)
+
+    if file_path.endswith('.csv'):
+        if csv_converter:
+            csv_converter(file_points)
+        else:
+            raise InvalidArgumentValueError("CSV conversion not supported for this operation.")
 
     if point_key is None:
         return file_points

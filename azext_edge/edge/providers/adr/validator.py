@@ -30,6 +30,7 @@ class ConnectorMetadataValidator:
     _CONFIG_KEY_DATASET = "datasetConfiguration"
     _CONFIG_KEY_DATAPOINT = "dataPointConfiguration"
     _CONFIG_KEY_EVENT = "eventConfiguration"
+    _CONFIG_KEY_EVENT_GROUP = "eventGroupConfiguration"
 
     _SCHEMA_KEY_DATASET = "datasetConfigurationSchema"
     _SCHEMA_KEY_DATAPOINT = "dataPointConfigurationSchema"
@@ -42,6 +43,7 @@ class ConnectorMetadataValidator:
     _RESOURCE_KIND_DATASETS = "datasets"
     _RESOURCE_KIND_DATAPOINTS = "datapoints"
     _RESOURCE_KIND_EVENTS = "events"
+    _RESOURCE_KIND_EVENT_GROUPS = "event_groups"
 
     _ENDPOINT_TYPE_OPCUA = "microsoft.opcua"
     _DEFAULT_DESTINATION_MQTT = "Mqtt"
@@ -433,6 +435,25 @@ class ConnectorMetadataValidator:
         schema = self._get_schema(self._SCHEMA_KEY_EVENT)
         self._validate(config, schema, "Event")
         self._validate_and_apply_destination(config, self._RESOURCE_KIND_EVENTS)
+
+    def validate_event_group(self, event_group: Dict[str, Any]) -> None:
+        """Validate an event-group configuration against the connector schema."""
+        if self.metadata is None:
+            logger.info("Skipping event-group validation: no connector metadata available.")
+            return
+
+        event_group_name = event_group.get('name', 'unnamed')
+
+        config = self._parse_config(
+            data=event_group,
+            config_key=self._CONFIG_KEY_EVENT_GROUP,
+            resource_name=f"event-group '{event_group_name}'",
+        )
+        if config is None:
+            return
+
+        schema = self._get_schema(self._SCHEMA_KEY_EVENT_GROUP)
+        self._validate(config, schema, "Event-group")
 
     def _get_schema(self, schema_key: str) -> Dict[str, Any]:
         """Extract a schema from endpoint metadata by key."""
