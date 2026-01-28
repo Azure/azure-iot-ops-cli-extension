@@ -52,7 +52,7 @@ NAMESPACE_ASSET_RESOURCE_TYPE = "Microsoft.DeviceRegistry/namespaces/assets"
 
 
 # Namespace-specific CSV conversion functions
-# Note: Excludes observabilityMode field (not supported by namespace asset API)
+# Note: observabilityMode is stored in configuration JSON (not a top-level field)
 
 def _convert_sub_points_to_csv_namespace(
     sub_points: List[Dict[str, str]],
@@ -62,13 +62,14 @@ def _convert_sub_points_to_csv_namespace(
 ) -> List[str]:
     """Convert datapoints or events to CSV format.
 
-    Excludes observabilityMode to avoid API validation errors.
     Modifies sub_points in-place.
+    Note: observabilityMode is extracted from configuration if present.
     """
     from collections import OrderedDict
 
     csv_conversion_map = [
         ("queueSize", "QueueSize" if portal_friendly else "Queue Size"),
+        ("observabilityMode", "ObservabilityMode" if portal_friendly else "Observability Mode"),
     ]
 
     if not portal_friendly or sub_point_type == "dataPoints":
@@ -105,8 +106,8 @@ def _convert_sub_points_to_csv_namespace(
 def _convert_sub_points_from_csv_namespace(sub_points: List[Dict[str, str]]):
     """Convert CSV format back to JSON.
 
-    Does NOT add observabilityMode (not supported by namespace asset API).
     Modifies sub_points in-place.
+    Note: observabilityMode is stored in configuration JSON if present in CSV.
     """
     csv_conversion_map = {
         "CapabilityId": "capabilityId",
@@ -117,6 +118,8 @@ def _convert_sub_points_from_csv_namespace(sub_points: List[Dict[str, str]]):
         "Event Notifier": "eventNotifier",
         "Name": "name",
         "NodeID": "dataSource",
+        "ObservabilityMode": "observabilityMode",
+        "Observability Mode": "observabilityMode",
         "QueueSize": "queueSize",
         "Queue Size": "queueSize",
         "Sampling Interval Milliseconds": "samplingInterval",
@@ -131,6 +134,8 @@ def _convert_sub_points_from_csv_namespace(sub_points: List[Dict[str, str]]):
                 point[json_key] = point.pop(csv_key)
 
         configuration = {}
+        if point.get("observabilityMode"):
+            configuration["observabilityMode"] = point.pop("observabilityMode").capitalize()
         if point.get("samplingInterval"):
             configuration["samplingInterval"] = int(point.pop("samplingInterval"))
         else:
