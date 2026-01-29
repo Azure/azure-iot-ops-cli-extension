@@ -125,17 +125,20 @@ def _convert_sub_points_from_csv_namespace(sub_points: List[Dict[str, str]]):
                 point[json_key] = point.pop(csv_key)
 
         configuration = {}
-        if point.get("observabilityMode"):
-            configuration["observabilityMode"] = point.pop("observabilityMode").capitalize()
-        if point.get("samplingInterval"):
-            configuration["samplingInterval"] = int(point.pop("samplingInterval"))
-        else:
-            point.pop("samplingInterval", None)
+        # Move observabilityMode to configuration if it exists and is not empty
+        observability_value = point.pop("observabilityMode", None)
+        if observability_value and observability_value.strip():
+            configuration["observabilityMode"] = observability_value.strip().capitalize()
 
-        if point.get("queueSize"):
-            configuration["queueSize"] = int(point.pop("queueSize"))
-        else:
-            point.pop("queueSize", None)
+        # Move samplingInterval to configuration if it exists and is not empty
+        sampling_value = point.pop("samplingInterval", None)
+        if sampling_value and str(sampling_value).strip():
+            configuration["samplingInterval"] = int(sampling_value)
+
+        # Move queueSize to configuration if it exists and is not empty
+        queue_value = point.pop("queueSize", None)
+        if queue_value and str(queue_value).strip():
+            configuration["queueSize"] = int(queue_value)
 
         if configuration:
             config_key = "dataPointConfiguration" if "dataSource" in point else "eventConfiguration"
