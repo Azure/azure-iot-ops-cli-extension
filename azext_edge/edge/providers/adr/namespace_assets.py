@@ -1260,7 +1260,7 @@ class NamespaceAssets(Queryable):
             )
             return _get_sub_property(asset, event_group_name, property_key="eventGroups")["events"]
 
-    # EVENT GROUPS - allowed for opcua, and custom assets
+    # EVENT GROUPS - allowed for opcua, onvif, and custom assets
     def add_event_group(
         self,
         asset_name: str,
@@ -1281,7 +1281,7 @@ class NamespaceAssets(Queryable):
             asset_name=asset_name
         )
         original_egs = asset["properties"].get("eventGroups", [])
-        # remove event if it exists
+        # remove event group if it exists
         new_egs = [event for event in original_egs if event["name"] != group_name]
         if len(new_egs) < len(original_egs) and not replace:
             raise InvalidArgumentValueError(
@@ -1289,7 +1289,7 @@ class NamespaceAssets(Queryable):
                 "Use --replace to overwrite the existing event group."
             )
 
-        # create the event
+        # create the event group
         processed_configs = _process_configs(
             asset_type=asset_type,
             default=False,
@@ -1549,10 +1549,10 @@ class NamespaceAssets(Queryable):
         namespace = parse_resource_id(asset["id"])
         event_group = _get_sub_property(asset, group_name, property_key="eventGroups")
         og_events = event_group.get("events", [])
-        # note that delete should be ok with datapoint not there
+        # note that delete should be ok with event not there
         event_group["events"] = [ev for ev in og_events if ev["name"] != event_name]
 
-        # no need for update if the datapoint is not found
+        # no need for update if the event is not found
         if len(event_group["events"]) == len(og_events):
             logger.info(
                 f"Event '{event_name}' not found in event group '{group_name}' of asset '{asset_name}'."
@@ -1566,7 +1566,7 @@ class NamespaceAssets(Queryable):
             }
         }
         with console.status(
-            f"Removing datapoint {event_name} from event {group_name} in asset {asset_name}..."
+            f"Removing event {event_name} from event group {group_name} in asset {asset_name}..."
         ):
             poller = self.ops.begin_update(
                 resource_group_name=namespace["resource_group"],
