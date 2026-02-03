@@ -325,8 +325,8 @@ def load_iotops_commands(self, _):
             command_type=namespace_resource_ops,
         ) as cmd_group:
             cmd_group.command("add", f"add_namespace_{asset_type}_asset_dataset_point")
-            cmd_group.command("export", f"export_namespace_{asset_type}_asset_datapoint")
-            cmd_group.command("import", f"import_namespace_{asset_type}_asset_datapoint")
+            cmd_group.command("export", f"export_namespace_{asset_type}_asset_dataset_point")
+            cmd_group.command("import", f"import_namespace_{asset_type}_asset_dataset_point")
             cmd_group.command("list", "list_namespace_asset_dataset_points")
             cmd_group.command("remove", "remove_namespace_asset_dataset_point")
 
@@ -351,8 +351,8 @@ def load_iotops_commands(self, _):
             command_type=namespace_resource_ops,
         ) as cmd_group:
             cmd_group.command("add", f"add_namespace_{asset_type}_asset_event_group_event")
-            cmd_group.command("export", f"export_namespace_{asset_type}_asset_event")
-            cmd_group.command("import", f"import_namespace_{asset_type}_asset_event")
+            cmd_group.command("export", f"export_namespace_{asset_type}_asset_event_group_event")
+            cmd_group.command("import", f"import_namespace_{asset_type}_asset_event_group_event")
             cmd_group.command("list", "list_namespace_asset_event_group_events")
             cmd_group.command("remove", "remove_namespace_asset_event_group_event")
 

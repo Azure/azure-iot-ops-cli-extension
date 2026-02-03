@@ -1946,7 +1946,7 @@ def remove_namespace_asset_dataset_point(
 
 
 # DATAPOINT EXPORT/IMPORT
-def export_namespace_custom_asset_datapoint(
+def export_namespace_custom_asset_dataset_point(
     cmd,
     asset_name: str,
     dataset_name: str,
@@ -1967,7 +1967,7 @@ def export_namespace_custom_asset_datapoint(
     )
 
 
-def export_namespace_opcua_asset_datapoint(
+def export_namespace_opcua_asset_dataset_point(
     cmd,
     asset_name: str,
     dataset_name: str,
@@ -1988,7 +1988,7 @@ def export_namespace_opcua_asset_datapoint(
     )
 
 
-def import_namespace_custom_asset_datapoint(
+def import_namespace_custom_asset_dataset_point(
     cmd,
     asset_name: str,
     dataset_name: str,
@@ -2009,7 +2009,7 @@ def import_namespace_custom_asset_datapoint(
     )
 
 
-def import_namespace_opcua_asset_datapoint(
+def import_namespace_opcua_asset_dataset_point(
     cmd,
     asset_name: str,
     dataset_name: str,
@@ -2184,7 +2184,7 @@ def import_namespace_sse_asset_event_group(
 
 
 # EVENT EXPORT/IMPORT
-def export_namespace_custom_asset_event(
+def export_namespace_custom_asset_event_group_event(
     cmd,
     asset_name: str,
     event_group_name: str,
@@ -2205,7 +2205,7 @@ def export_namespace_custom_asset_event(
     )
 
 
-def export_namespace_opcua_asset_event(
+def export_namespace_opcua_asset_event_group_event(
     cmd,
     asset_name: str,
     event_group_name: str,
@@ -2226,7 +2226,7 @@ def export_namespace_opcua_asset_event(
     )
 
 
-def export_namespace_sse_asset_event(
+def export_namespace_sse_asset_event_group_event(
     cmd,
     asset_name: str,
     event_group_name: str,
@@ -2247,7 +2247,7 @@ def export_namespace_sse_asset_event(
     )
 
 
-def import_namespace_custom_asset_event(
+def import_namespace_custom_asset_event_group_event(
     cmd,
     asset_name: str,
     event_group_name: str,
@@ -2268,7 +2268,7 @@ def import_namespace_custom_asset_event(
     )
 
 
-def import_namespace_opcua_asset_event(
+def import_namespace_opcua_asset_event_group_event(
     cmd,
     asset_name: str,
     event_group_name: str,
@@ -2289,7 +2289,7 @@ def import_namespace_opcua_asset_event(
     )
 
 
-def import_namespace_sse_asset_event(
+def import_namespace_sse_asset_event_group_event(
     cmd,
     asset_name: str,
     event_group_name: str,

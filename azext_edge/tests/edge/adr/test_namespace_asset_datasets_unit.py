@@ -1553,11 +1553,11 @@ def test_import_namespace_asset_datasets(
 
 # CSV removed: generate_dataset creates incompatible datapoints
 @pytest.mark.parametrize("asset_type, export_func", [
-    ("custom", "export_namespace_custom_asset_datapoint"),
-    ("opcua", "export_namespace_opcua_asset_datapoint"),
+    ("custom", "export_namespace_custom_asset_dataset_point"),
+    ("opcua", "export_namespace_opcua_asset_dataset_point"),
 ])
 @pytest.mark.parametrize("extension", ["json", "yaml"])
-def test_export_namespace_asset_datapoints(
+def test_export_namespace_asset_dataset_points(
     mocked_cmd,
     mocked_responses: responses,
     asset_type: str,
@@ -1624,11 +1624,11 @@ def test_export_namespace_asset_datapoints(
 
 
 @pytest.mark.parametrize("asset_type, import_func", [
-    ("custom", "import_namespace_custom_asset_datapoint"),
-    ("opcua", "import_namespace_opcua_asset_datapoint"),
+    ("custom", "import_namespace_custom_asset_dataset_point"),
+    ("opcua", "import_namespace_opcua_asset_dataset_point"),
 ])
 @pytest.mark.parametrize("replace", [True, False])
-def test_import_namespace_asset_datapoints(
+def test_import_namespace_asset_dataset_points(
     mocked_cmd,
     mocked_responses: responses,
     asset_type: str,
@@ -1983,9 +1983,9 @@ def test_import_namespace_asset_event_groups(
 
 # CSV removed: generate_event_group creates incompatible events
 @pytest.mark.parametrize("asset_type, export_func", [
-    ("custom", "export_namespace_custom_asset_event"),
-    ("opcua", "export_namespace_opcua_asset_event"),
-    ("sse", "export_namespace_sse_asset_event"),
+    ("custom", "export_namespace_custom_asset_event_group_event"),
+    ("opcua", "export_namespace_opcua_asset_event_group_event"),
+    ("sse", "export_namespace_sse_asset_event_group_event"),
 ])
 @pytest.mark.parametrize("extension", ["json", "yaml"])
 def test_export_namespace_asset_event_group_events(
@@ -2055,9 +2055,9 @@ def test_export_namespace_asset_event_group_events(
 
 
 @pytest.mark.parametrize("asset_type, import_func", [
-    ("custom", "import_namespace_custom_asset_event"),
-    ("opcua", "import_namespace_opcua_asset_event"),
-    ("sse", "import_namespace_sse_asset_event"),
+    ("custom", "import_namespace_custom_asset_event_group_event"),
+    ("opcua", "import_namespace_opcua_asset_event_group_event"),
+    ("sse", "import_namespace_sse_asset_event_group_event"),
 ])
 @pytest.mark.parametrize("replace", [True, False])
 def test_import_namespace_asset_event_group_events(

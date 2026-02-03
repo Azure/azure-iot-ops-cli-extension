@@ -4,6 +4,9 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
+import json
+import os
+
 import pytest
 from typing import List
 
@@ -26,9 +29,6 @@ def test_namespace_asset_dataset_export_import(
     endpoint_type: str, endpoint_address: str
 ):
     """Test dataset export and import for all asset types."""
-    import os
-    import json
-
     instance_name = require_init["instanceName"]
     resource_group = require_init["resourceGroup"]
     output_dir = str(tmp_path)
@@ -76,7 +76,7 @@ def test_namespace_asset_dataset_export_import(
     # EXPORT datasets as JSON
     export_result_json = run(
         f"az iot ops ns asset {asset_type} dataset export --asset {asset_name} "
-        f"--instance {instance_name} -g {resource_group} --extension json "
+        f"--instance {instance_name} -g {resource_group} -f json "
         f"--output-dir {output_dir}"
     )
 
@@ -114,7 +114,7 @@ def test_namespace_asset_dataset_export_import(
     # IMPORT datasets back (should restore both)
     imported_datasets = run(
         f"az iot ops ns asset {asset_type} dataset import --asset {asset_name} "
-        f"--instance {instance_name} -g {resource_group} --file-path {exported_file}"
+        f"--instance {instance_name} -g {resource_group} --input-file {exported_file}"
     )
 
     assert len(imported_datasets) == 2
@@ -132,7 +132,7 @@ def test_namespace_asset_dataset_export_import(
     # EXPORT as YAML
     export_result_yaml = run(
         f"az iot ops ns asset {asset_type} dataset export --asset {asset_name} "
-        f"--instance {instance_name} -g {resource_group} --extension yaml --replace "
+        f"--instance {instance_name} -g {resource_group} -f yaml --replace "
         f"--output-dir {output_dir}"
     )
 
@@ -151,9 +151,6 @@ def test_namespace_asset_datapoint_export_import(
     asset_type: str, endpoint_type: str, endpoint_address: str, export_format: str
 ):
     """Test datapoint export and import for custom and opcua assets."""
-    import os
-    import json
-
     instance_name = require_init["instanceName"]
     resource_group = require_init["resourceGroup"]
     output_dir = str(tmp_path)
@@ -208,7 +205,7 @@ def test_namespace_asset_datapoint_export_import(
     export_result = run(
         f"az iot ops ns asset {asset_type} datapoint export --asset {asset_name} "
         f"--instance {instance_name} -g {resource_group} --dataset {dataset_name} "
-        f"--extension {export_format} --output-dir {output_dir}"
+        f"-f {export_format} --output-dir {output_dir}"
     )
 
     assert "file_path" in export_result
@@ -241,7 +238,7 @@ def test_namespace_asset_datapoint_export_import(
     imported_datapoints = run(
         f"az iot ops ns asset {asset_type} datapoint import --asset {asset_name} "
         f"--instance {instance_name} -g {resource_group} --dataset {dataset_name} "
-        f"--file-path {exported_file}"
+        f"--input-file {exported_file}"
     )
 
     assert len(imported_datapoints) == 3
@@ -277,7 +274,7 @@ def test_namespace_asset_datapoint_export_import(
         replaced_datapoints = run(
             f"az iot ops ns asset {asset_type} datapoint import --asset {asset_name} "
             f"--instance {instance_name} -g {resource_group} --dataset {dataset_name} "
-            f"--file-path {modified_file} --replace"
+            f"--input-file {modified_file} --replace"
         )
 
         # Should still have 3 datapoints (2 modified from file + 1 original untouched)
@@ -301,9 +298,6 @@ def test_namespace_asset_event_group_export_import(
     endpoint_type: str, endpoint_address: str
 ):
     """Test event-group export and import for all asset types."""
-    import os
-    import json
-
     instance_name = require_init["instanceName"]
     resource_group = require_init["resourceGroup"]
     output_dir = str(tmp_path)
@@ -348,7 +342,7 @@ def test_namespace_asset_event_group_export_import(
     # EXPORT event-groups as JSON
     export_result_json = run(
         f"az iot ops ns asset {asset_type} event-group export --asset {asset_name} "
-        f"--instance {instance_name} -g {resource_group} --extension json "
+        f"--instance {instance_name} -g {resource_group} -f json "
         f"--output-dir {output_dir}"
     )
 
@@ -386,7 +380,7 @@ def test_namespace_asset_event_group_export_import(
     # IMPORT event-groups back (should restore both)
     imported_event_groups = run(
         f"az iot ops ns asset {asset_type} event-group import --asset {asset_name} "
-        f"--instance {instance_name} -g {resource_group} --file-path {exported_file}"
+        f"--instance {instance_name} -g {resource_group} --input-file {exported_file}"
     )
 
     assert len(imported_event_groups) == 2
@@ -404,7 +398,7 @@ def test_namespace_asset_event_group_export_import(
     # EXPORT as YAML
     export_result_yaml = run(
         f"az iot ops ns asset {asset_type} event-group export --asset {asset_name} "
-        f"--instance {instance_name} -g {resource_group} --extension yaml --replace "
+        f"--instance {instance_name} -g {resource_group} -f yaml --replace "
         f"--output-dir {output_dir}"
     )
 
@@ -424,9 +418,6 @@ def test_namespace_asset_event_export_import(
     asset_type: str, endpoint_type: str, endpoint_address: str, export_format: str
 ):
     """Test event export and import for custom, opcua, and sse assets."""
-    import os
-    import json
-
     instance_name = require_init["instanceName"]
     resource_group = require_init["resourceGroup"]
     output_dir = str(tmp_path)
@@ -481,7 +472,7 @@ def test_namespace_asset_event_export_import(
     export_result = run(
         f"az iot ops ns asset {asset_type} event export --asset {asset_name} "
         f"--instance {instance_name} -g {resource_group} --event-group {event_group_name} "
-        f"--extension {export_format} --output-dir {output_dir}"
+        f"-f {export_format} --output-dir {output_dir}"
     )
 
     assert "file_path" in export_result
@@ -514,7 +505,7 @@ def test_namespace_asset_event_export_import(
     imported_events = run(
         f"az iot ops ns asset {asset_type} event import --asset {asset_name} "
         f"--instance {instance_name} -g {resource_group} --event-group {event_group_name} "
-        f"--file-path {exported_file}"
+        f"--input-file {exported_file}"
     )
 
     assert len(imported_events) == 3
@@ -550,7 +541,7 @@ def test_namespace_asset_event_export_import(
         replaced_events = run(
             f"az iot ops ns asset {asset_type} event import --asset {asset_name} "
             f"--instance {instance_name} -g {resource_group} --event-group {event_group_name} "
-            f"--file-path {modified_file} --replace"
+            f"--input-file {modified_file} --replace"
         )
 
         # Should still have 3 events (2 modified from file + 1 original untouched)

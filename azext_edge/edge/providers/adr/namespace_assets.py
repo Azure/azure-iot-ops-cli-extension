@@ -256,8 +256,6 @@ class NamespaceAssets(Queryable):
         asset_name: str,
         instance_name: str,
         instance_resource_group: str,
-
-
         confirm_yes: bool = False,
         **kwargs
     ):

@@ -1888,7 +1888,7 @@ def load_adr_arguments(self, _):
         with self.argument_context(f"iot ops ns asset {asset_type} dataset export") as context:
             context.argument(
                 "extension",
-                options_list=["--extension", "--ext"],
+                options_list=["--format", "-f"],
                 arg_type=get_enum_type(FileType, default=FileType.json.value),
                 help="Export file format.",
             )
@@ -1901,7 +1901,7 @@ def load_adr_arguments(self, _):
         with self.argument_context(f"iot ops ns asset {asset_type} dataset import") as context:
             context.argument(
                 "file_path",
-                options_list=["--file-path", "--fp"],
+                options_list=["--input-file", "--if"],
                 help="Path to import file (JSON or YAML).",
             )
 
@@ -1910,7 +1910,7 @@ def load_adr_arguments(self, _):
         with self.argument_context(f"iot ops ns asset {asset_type} datapoint export") as context:
             context.argument(
                 "extension",
-                options_list=["--extension", "--ext"],
+                options_list=["--format", "-f"],
                 arg_type=get_enum_type(FileType, default=FileType.json.value),
                 help="Export file format.",
             )
@@ -1923,7 +1923,7 @@ def load_adr_arguments(self, _):
         with self.argument_context(f"iot ops ns asset {asset_type} datapoint import") as context:
             context.argument(
                 "file_path",
-                options_list=["--file-path", "--fp"],
+                options_list=["--input-file", "--if"],
                 help="Path to import file (JSON, YAML, or CSV).",
             )
 
@@ -1932,7 +1932,7 @@ def load_adr_arguments(self, _):
         with self.argument_context(f"iot ops ns asset {asset_type} event-group export") as context:
             context.argument(
                 "extension",
-                options_list=["--extension", "--ext"],
+                options_list=["--format", "-f"],
                 arg_type=get_enum_type(FileType, default=FileType.json.value),
                 help="Export file format.",
             )
@@ -1945,7 +1945,7 @@ def load_adr_arguments(self, _):
         with self.argument_context(f"iot ops ns asset {asset_type} event-group import") as context:
             context.argument(
                 "file_path",
-                options_list=["--file-path", "--fp"],
+                options_list=["--input-file", "--if"],
                 help="Path to import file (JSON or YAML).",
             )
 
@@ -1959,7 +1959,7 @@ def load_adr_arguments(self, _):
             )
             context.argument(
                 "extension",
-                options_list=["--extension", "--ext"],
+                options_list=["--format", "-f"],
                 arg_type=get_enum_type(FileType, default=FileType.json.value),
                 help="Export file format.",
             )
@@ -1977,7 +1977,7 @@ def load_adr_arguments(self, _):
             )
             context.argument(
                 "file_path",
-                options_list=["--file-path", "--fp"],
+                options_list=["--input-file", "--if"],
                 help="Path to import file (JSON, YAML, or CSV).",
             )
 
