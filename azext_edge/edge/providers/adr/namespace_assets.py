@@ -1259,6 +1259,12 @@ class NamespaceAssets(Queryable):
             )
 
         original_events = event_group.get("events", [])
+
+        # Get default destinations from event-group or asset configuration
+        default_destinations = event_group.get("defaultDestinations")
+        if not default_destinations:
+            default_destinations = asset["properties"].get("defaultEventsDestinations", [])
+
         imported_events = _process_namespace_sub_points_file_path(
             file_path=file_path,
             original_items=original_events,
@@ -1266,6 +1272,11 @@ class NamespaceAssets(Queryable):
             replace=replace,
             csv_converter=_convert_sub_points_from_csv_namespace
         )
+
+        # Auto-assign destinations if not present (required by API)
+        for event in imported_events:
+            if "destinations" not in event or not event["destinations"]:
+                event["destinations"] = deepcopy(default_destinations)
 
         # Validate imported events
         try:
