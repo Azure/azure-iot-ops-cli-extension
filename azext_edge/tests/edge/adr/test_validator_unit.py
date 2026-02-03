@@ -318,10 +318,10 @@ class TestConnectorMetadataValidator(unittest.TestCase):
             endpoint_version="1.0",
         )
 
-        invalid_config = {"filter": 123}  # Should be string
+        invalid_event = {"name": "test", "eventConfiguration": json.dumps({"filter": 123})}  # filter should be string
 
         with self.assertRaises(ValidationError):
-            validator.validate_event(invalid_config)
+            validator.validate_event(invalid_event)
 
     def test_validate_event_autofill_destination_single_supported(self):
         self.mock_get_metadata.return_value = ONVIF_METADATA
@@ -334,9 +334,10 @@ class TestConnectorMetadataValidator(unittest.TestCase):
             endpoint_version="1.0",
         )
 
-        config = {"filter": "Topic = 'motion'"}
-        validator.validate_event(config)
-        self.assertEqual(config.get("destination"), "Mqtt")
+        event = {"name": "test", "eventConfiguration": json.dumps({"filter": "Topic = 'motion'"})}
+        validator.validate_event(event)
+        # destinations array should be added to event with Mqtt as target
+        self.assertEqual(event.get("destinations"), [{"target": "Mqtt"}])
 
     def test_validate_event_destination_not_supported(self):
         self.mock_get_metadata.return_value = ONVIF_METADATA
@@ -349,8 +350,13 @@ class TestConnectorMetadataValidator(unittest.TestCase):
             endpoint_version="1.0",
         )
 
+        event = {
+            "name": "test",
+            "eventConfiguration": json.dumps({"filter": "Topic = 'motion'"}),
+            "destinations": [{"target": "Storage"}]
+        }
         with self.assertRaises(ValidationError):
-            validator.validate_event({"filter": "Topic = 'motion'", "destination": "Storage"})
+            validator.validate_event(event)
 
     def test_validate_event_autofill_destination_prefers_mqtt_when_multiple(self):
         metadata = copy.deepcopy(ONVIF_METADATA)
@@ -368,9 +374,10 @@ class TestConnectorMetadataValidator(unittest.TestCase):
             endpoint_version="1.0",
         )
 
-        config = {"filter": "Topic = 'motion'"}
-        validator.validate_event(config)
-        self.assertEqual(config.get("destination"), "Mqtt")
+        event = {"name": "test", "eventConfiguration": json.dumps({"filter": "Topic = 'motion'"})}
+        validator.validate_event(event)
+        # Should prefer Mqtt when available
+        self.assertEqual(event.get("destinations"), [{"target": "Mqtt"}])
 
     def test_get_schema_traversal(self):
         self.mock_get_metadata.return_value = ONVIF_METADATA
@@ -849,9 +856,10 @@ class TestValidateDestination(unittest.TestCase):
             endpoint_version="1.0",
         )
 
-        config = {"filter": "Topic = 'motion'"}
-        validator.validate_event(config)
-        self.assertEqual(config.get("destination"), "Storage")
+        event = {"name": "test", "eventConfiguration": json.dumps({"filter": "Topic = 'motion'"})}
+        validator.validate_event(event)
+        # Should use default destination from metadata
+        self.assertEqual(event.get("destinations"), [{"target": "Storage"}])
 
     def test_validate_destination_fallback_first_when_mqtt_absent(self):
         metadata = self._create_metadata_with_destinations(
@@ -867,9 +875,10 @@ class TestValidateDestination(unittest.TestCase):
             endpoint_version="1.0",
         )
 
-        config = {"filter": "Topic = 'motion'"}
-        validator.validate_event(config)
-        self.assertEqual(config.get("destination"), "Storage")
+        event = {"name": "test", "eventConfiguration": json.dumps({"filter": "Topic = 'motion'"})}
+        validator.validate_event(event)
+        # Should fall back to first supported destination
+        self.assertEqual(event.get("destinations"), [{"target": "Storage"}])
 
     def test_validate_destination_explicit_overrides_default(self):
         metadata = self._create_metadata_with_destinations(
@@ -886,9 +895,14 @@ class TestValidateDestination(unittest.TestCase):
             endpoint_version="1.0",
         )
 
-        config = {"filter": "Topic = 'motion'", "destination": "Mqtt"}
-        validator.validate_event(config)
-        self.assertEqual(config.get("destination"), "Mqtt")
+        event = {
+            "name": "test",
+            "eventConfiguration": json.dumps({"filter": "Topic = 'motion'"}),
+            "destinations": [{"target": "Mqtt"}]
+        }
+        validator.validate_event(event)
+        # Explicit destinations should be preserved
+        self.assertEqual(event.get("destinations"), [{"target": "Mqtt"}])
 
     def test_validate_destination_no_destinations_defined(self):
         metadata = copy.deepcopy(ONVIF_METADATA)
@@ -904,9 +918,10 @@ class TestValidateDestination(unittest.TestCase):
             endpoint_version="1.0",
         )
 
-        config = {"filter": "Topic = 'motion'"}
-        validator.validate_event(config)
-        self.assertIsNone(config.get("destination"))
+        event = {"name": "test", "eventConfiguration": json.dumps({"filter": "Topic = 'motion'"})}
+        validator.validate_event(event)
+        # No destinations should be added when none defined in metadata
+        self.assertIsNone(event.get("destinations"))
 
 
 class TestGetEndpointMetadata(unittest.TestCase):
