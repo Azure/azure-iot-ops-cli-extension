@@ -367,7 +367,7 @@ class ConnectorMetadataValidator:
     ) -> Optional[Dict[str, Any]]:
         """Parse JSON configuration from a resource payload. Returns None to skip validation."""
         if config_key not in data:
-            return default_if_empty if default_if_empty is not None else {}
+            return default_if_empty or {}
 
         config_str = data.get(config_key)
         if not config_str:
