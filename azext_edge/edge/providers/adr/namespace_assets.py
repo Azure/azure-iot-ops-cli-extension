@@ -1879,15 +1879,9 @@ class NamespaceAssets(Queryable):
         # Get default destinations from asset configuration
         default_destinations = asset["properties"].get("defaultStreamsDestinations")
         if not default_destinations:
-            # Fallback to MQTT default
-            default_destinations = [{
-                "target": "Mqtt",
-                "configuration": {
-                    "topic": "",
-                    "retain": "Never",
-                    "qos": "Qos1"
-                }
-            }]
+            # Fallback to empty array - backend will handle default assignment
+            # (same behavior as add_stream)
+            default_destinations = []
 
         imported_streams = _process_namespace_sub_points_file_path(
             file_path=file_path,
