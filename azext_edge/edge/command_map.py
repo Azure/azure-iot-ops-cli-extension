@@ -244,7 +244,6 @@ def load_iotops_commands(self, _):
     with self.command_group(
         "iot ops ns",
         command_type=namespace_resource_ops,
-        is_preview=True,
     ) as cmd_group:
         cmd_group.command("create", "create_namespace")
         cmd_group.command("delete", "delete_namespace")

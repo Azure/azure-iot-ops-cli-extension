@@ -54,9 +54,7 @@ TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "languageVersion": "2.0",
         "contentVersion": "1.0.0.0",
-        "metadata": {
-            "_generator": {"name": "bicep", "version": "0.39.26.7824", "templateHash": "15101221845416558399"}
-        },
+        "metadata": {"_generator": {"name": "bicep", "version": "0.40.2.10011", "templateHash": "9573832769461058187"}},
         "definitions": {
             "_1.AdvancedConfig": {
                 "type": "object",
@@ -576,7 +574,7 @@ TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
             "advancedConfig": {"$ref": "#/definitions/_1.AdvancedConfig", "defaultValue": {}},
         },
         "variables": {
-            "VERSIONS": {"certManager": "0.7.0", "secretStore": "1.1.5"},
+            "VERSIONS": {"certManager": "0.9.0", "secretStore": "1.1.6"},
             "TRAINS": {"certManager": "stable", "secretStore": "stable"},
         },
         "resources": {
@@ -590,7 +588,7 @@ TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
                 "condition": "[equals(parameters('trustConfig').source, 'SelfSigned')]",
                 "type": "Microsoft.KubernetesConfiguration/extensions",
                 "apiVersion": "2023-05-01",
-                "scope": "[format('Microsoft.Kubernetes/connectedClusters/{0}', parameters('clusterName'))]",
+                "scope": "[resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName'))]",
                 "name": "cert-manager",
                 "identity": {"type": "SystemAssigned"},
                 "properties": {
@@ -608,7 +606,7 @@ TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
             "secretStoreExtension": {
                 "type": "Microsoft.KubernetesConfiguration/extensions",
                 "apiVersion": "2023-05-01",
-                "scope": "[format('Microsoft.Kubernetes/connectedClusters/{0}', parameters('clusterName'))]",
+                "scope": "[resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName'))]",
                 "name": "azure-secret-store",
                 "identity": {"type": "SystemAssigned"},
                 "properties": {
@@ -660,7 +658,7 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
         "languageVersion": "2.0",
         "contentVersion": "1.0.0.0",
         "metadata": {
-            "_generator": {"name": "bicep", "version": "0.39.26.7824", "templateHash": "13036458787995748304"}
+            "_generator": {"name": "bicep", "version": "0.40.2.10011", "templateHash": "13658084248989400749"}
         },
         "definitions": {
             "_1.AdvancedConfig": {
@@ -1245,7 +1243,7 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
             "advancedConfig": {"$ref": "#/definitions/_1.AdvancedConfig", "defaultValue": {}},
         },
         "variables": {
-            "VERSIONS": {"iotOperations": "1.2.188"},
+            "VERSIONS": {"iotOperations": "1.2.189"},
             "TRAINS": {"iotOperations": "integration"},
             "HASH": "[coalesce(tryGet(parameters('advancedConfig'), 'resourceSuffix'), take(uniqueString(resourceGroup().id, parameters('clusterName'), parameters('clusterNamespace')), 5))]",
             "AIO_EXTENSION_SUFFIX": "[take(uniqueString(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName'))), 5)]",
@@ -1303,7 +1301,7 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
             "aioExtension": {
                 "type": "Microsoft.KubernetesConfiguration/extensions",
                 "apiVersion": "2023-05-01",
-                "scope": "[format('Microsoft.Kubernetes/connectedClusters/{0}', parameters('clusterName'))]",
+                "scope": "[resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName'))]",
                 "name": "[format('azure-iot-operations-{0}', variables('AIO_EXTENSION_SUFFIX'))]",
                 "identity": {"type": "SystemAssigned"},
                 "properties": {
