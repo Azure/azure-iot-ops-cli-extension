@@ -3228,3 +3228,103 @@ def load_iotops_adr_help():
             -g myInstanceResourceGroup --name sensorData
             --dest topic="updated/mqtt/topic" retain=Never qos=Qos0 ttl=1800
     """
+
+    # OPC UA event commands
+    helps[
+        "iot ops ns asset opcua event"
+    ] = """
+        type: group
+        short-summary: Manage OPC UA asset events.
+    """
+
+    helps[
+        "iot ops ns asset opcua event add"
+    ] = """
+        type: command
+        short-summary: Add an event to an OPC UA asset event-group.
+        long-summary: Add a new event to an existing event-group in an OPC UA namespaced asset.
+    """
+
+    helps[
+        "iot ops ns asset opcua event list"
+    ] = """
+        type: command
+        short-summary: List events in an OPC UA asset event-group.
+        long-summary: List all events within a specific event-group of an OPC UA namespaced asset.
+    """
+
+    helps[
+        "iot ops ns asset opcua event remove"
+    ] = """
+        type: command
+        short-summary: Remove an event from an OPC UA asset event-group.
+        long-summary: Remove an event from an existing event-group in an OPC UA namespaced asset.
+    """
+
+    for asset_type in ["custom", "opcua", "rest", "sse", "mqtt"]:
+        helps[
+            f"iot ops ns asset {asset_type} dataset export"
+        ] = """
+            type: command
+            short-summary: Export datasets to file.
+            long-summary: Export all datasets from an asset to JSON or YAML format.
+        """
+
+        helps[
+            f"iot ops ns asset {asset_type} dataset import"
+        ] = """
+            type: command
+            short-summary: Import datasets from file.
+            long-summary: Import datasets from JSON or YAML file. Use --replace to merge with overwrite.
+        """
+
+    for asset_type in ["custom", "opcua"]:
+        helps[
+            f"iot ops ns asset {asset_type} datapoint export"
+        ] = """
+            type: command
+            short-summary: Export datapoints to file.
+            long-summary: Export datapoints from a dataset to JSON, YAML, or CSV format.
+        """
+
+        helps[
+            f"iot ops ns asset {asset_type} datapoint import"
+        ] = """
+            type: command
+            short-summary: Import datapoints from file.
+            long-summary: Import datapoints from JSON, YAML, or CSV file. Use --replace to merge with overwrite.
+        """
+
+    for asset_type in ["custom", "opcua", "onvif", "sse"]:
+        helps[
+            f"iot ops ns asset {asset_type} event-group export"
+        ] = """
+            type: command
+            short-summary: Export event-groups to file.
+            long-summary: Export all event-groups from an asset to JSON or YAML format.
+        """
+
+        helps[
+            f"iot ops ns asset {asset_type} event-group import"
+        ] = """
+            type: command
+            short-summary: Import event-groups from file.
+            long-summary: Import event-groups from JSON or YAML file. Use --replace to merge with overwrite.
+        """
+
+    for asset_type in ["custom", "opcua", "sse"]:
+        helps[
+            f"iot ops ns asset {asset_type} event export"
+        ] = """
+            type: command
+            short-summary: Export events to file.
+            long-summary: Export events from an event-group to JSON, YAML, or CSV format.
+        """
+
+        helps[
+            f"iot ops ns asset {asset_type} event import"
+        ] = """
+            type: command
+            short-summary: Import events from file.
+            long-summary: Import events from JSON, YAML, or CSV file. Use --replace to merge with overwrite.
+        """

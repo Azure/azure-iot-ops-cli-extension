@@ -311,6 +311,8 @@ def load_iotops_commands(self, _):
             command_type=namespace_resource_ops,
         ) as cmd_group:
             cmd_group.command("add", f"add_namespace_{asset_type}_asset_dataset")
+            cmd_group.command("export", f"export_namespace_{asset_type}_asset_dataset")
+            cmd_group.command("import", f"import_namespace_{asset_type}_asset_dataset")
             cmd_group.command("list", "list_namespace_asset_datasets")
             cmd_group.command("remove", "remove_namespace_asset_dataset")
             cmd_group.show_command("show", "show_namespace_asset_dataset")
@@ -323,6 +325,8 @@ def load_iotops_commands(self, _):
             command_type=namespace_resource_ops,
         ) as cmd_group:
             cmd_group.command("add", f"add_namespace_{asset_type}_asset_dataset_point")
+            cmd_group.command("export", f"export_namespace_{asset_type}_asset_dataset_point")
+            cmd_group.command("import", f"import_namespace_{asset_type}_asset_dataset_point")
             cmd_group.command("list", "list_namespace_asset_dataset_points")
             cmd_group.command("remove", "remove_namespace_asset_dataset_point")
 
@@ -333,18 +337,22 @@ def load_iotops_commands(self, _):
             command_type=namespace_resource_ops,
         ) as cmd_group:
             cmd_group.command("add", f"add_namespace_{asset_type}_asset_event_group")
+            cmd_group.command("export", f"export_namespace_{asset_type}_asset_event_group")
+            cmd_group.command("import", f"import_namespace_{asset_type}_asset_event_group")
             cmd_group.command("list", "list_namespace_asset_event_groups")
             cmd_group.command("remove", "remove_namespace_asset_event_group")
             cmd_group.show_command("show", "show_namespace_asset_event_group")
             cmd_group.command("update", f"update_namespace_{asset_type}_asset_event_group")
 
     # event group event
-    for asset_type in ["custom", "sse"]:
+    for asset_type in ["custom", "opcua", "sse"]:
         with self.command_group(
             f"iot ops ns asset {asset_type} event",
             command_type=namespace_resource_ops,
         ) as cmd_group:
             cmd_group.command("add", f"add_namespace_{asset_type}_asset_event_group_event")
+            cmd_group.command("export", f"export_namespace_{asset_type}_asset_event_group_event")
+            cmd_group.command("import", f"import_namespace_{asset_type}_asset_event_group_event")
             cmd_group.command("list", "list_namespace_asset_event_group_events")
             cmd_group.command("remove", "remove_namespace_asset_event_group_event")
 
