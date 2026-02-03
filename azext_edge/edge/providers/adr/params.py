@@ -1995,3 +1995,79 @@ def load_adr_arguments(self, _):
             help="Sampling interval in milliseconds.",
             type=int,
         )
+
+    # Stream export/import
+    for asset_type in ["custom", "media"]:
+        with self.argument_context(f"iot ops ns asset {asset_type} stream export") as context:
+            context.argument(
+                "extension",
+                options_list=["--format", "-f"],
+                arg_type=get_enum_type([FileType.json.value, FileType.yaml.value], default=FileType.json.value),
+                help="Export file format (JSON or YAML).",
+            )
+            context.argument(
+                "output_dir",
+                options_list=["--output-dir", "--od"],
+                help="Output directory for export.",
+            )
+
+        with self.argument_context(f"iot ops ns asset {asset_type} stream import") as context:
+            context.argument(
+                "file_path",
+                options_list=["--input-file", "--if"],
+                help="Path to import file (JSON or YAML).",
+            )
+
+    # Management group export/import
+    for asset_type in ["custom", "opcua", "onvif"]:
+        with self.argument_context(f"iot ops ns asset {asset_type} mgmt-group export") as context:
+            context.argument(
+                "extension",
+                options_list=["--format", "-f"],
+                arg_type=get_enum_type([FileType.json.value, FileType.yaml.value], default=FileType.json.value),
+                help="Export file format (JSON or YAML).",
+            )
+            context.argument(
+                "output_dir",
+                options_list=["--output-dir", "--od"],
+                help="Output directory for export.",
+            )
+
+        with self.argument_context(f"iot ops ns asset {asset_type} mgmt-group import") as context:
+            context.argument(
+                "file_path",
+                options_list=["--input-file", "--if"],
+                help="Path to import file (JSON or YAML).",
+            )
+
+    # Management action export/import
+    for asset_type in ["custom", "opcua"]:
+        with self.argument_context(f"iot ops ns asset {asset_type} mgmt-action export") as context:
+            context.argument(
+                "group_name",
+                options_list=["--group"],
+                help="Management group name.",
+            )
+            context.argument(
+                "extension",
+                options_list=["--format", "-f"],
+                arg_type=get_enum_type(FileType, default=FileType.json.value),
+                help="Export file format.",
+            )
+            context.argument(
+                "output_dir",
+                options_list=["--output-dir", "--od"],
+                help="Output directory for export.",
+            )
+
+        with self.argument_context(f"iot ops ns asset {asset_type} mgmt-action import") as context:
+            context.argument(
+                "group_name",
+                options_list=["--group"],
+                help="Management group name.",
+            )
+            context.argument(
+                "file_path",
+                options_list=["--input-file", "--if"],
+                help="Path to import file (JSON, YAML, or CSV).",
+            )

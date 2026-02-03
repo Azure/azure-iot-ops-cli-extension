@@ -2864,6 +2864,83 @@ def remove_namespace_asset_stream(
     )
 
 
+# STREAM EXPORT/IMPORT
+def export_namespace_custom_asset_stream(
+    cmd,
+    asset_name: str,
+    instance_name: str,
+    instance_resource_group: str,
+    extension: str = "json",
+    output_dir: str = ".",
+    replace: bool = False
+) -> dict:
+    return NamespaceAssets(cmd).export_streams(
+        asset_name=asset_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
+        extension=extension,
+        output_dir=output_dir,
+        replace=replace
+    )
+
+
+def export_namespace_media_asset_stream(
+    cmd,
+    asset_name: str,
+    instance_name: str,
+    instance_resource_group: str,
+    extension: str = "json",
+    output_dir: str = ".",
+    replace: bool = False
+) -> dict:
+    return NamespaceAssets(cmd).export_streams(
+        asset_name=asset_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
+        extension=extension,
+        output_dir=output_dir,
+        replace=replace
+    )
+
+
+def import_namespace_custom_asset_stream(
+    cmd,
+    asset_name: str,
+    instance_name: str,
+    instance_resource_group: str,
+    file_path: str,
+    replace: bool = False,
+    **kwargs
+) -> List[dict]:
+    return NamespaceAssets(cmd).import_streams(
+        asset_name=asset_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
+        file_path=file_path,
+        replace=replace,
+        **kwargs
+    )
+
+
+def import_namespace_media_asset_stream(
+    cmd,
+    asset_name: str,
+    instance_name: str,
+    instance_resource_group: str,
+    file_path: str,
+    replace: bool = False,
+    **kwargs
+) -> List[dict]:
+    return NamespaceAssets(cmd).import_streams(
+        asset_name=asset_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
+        file_path=file_path,
+        replace=replace,
+        **kwargs
+    )
+
+
 # MANAGEMENT GROUP COMMANDS
 def add_namespace_custom_asset_management_group(
     cmd,
@@ -3076,6 +3153,121 @@ def remove_namespace_asset_management_group(
     )
 
 
+# MANAGEMENT GROUP EXPORT/IMPORT
+def export_namespace_custom_asset_management_group(
+    cmd,
+    asset_name: str,
+    instance_name: str,
+    instance_resource_group: str,
+    extension: str = "json",
+    output_dir: str = ".",
+    replace: bool = False
+) -> dict:
+    return NamespaceAssets(cmd).export_management_groups(
+        asset_name=asset_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
+        extension=extension,
+        output_dir=output_dir,
+        replace=replace
+    )
+
+
+def export_namespace_opcua_asset_management_group(
+    cmd,
+    asset_name: str,
+    instance_name: str,
+    instance_resource_group: str,
+    extension: str = "json",
+    output_dir: str = ".",
+    replace: bool = False
+) -> dict:
+    return NamespaceAssets(cmd).export_management_groups(
+        asset_name=asset_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
+        extension=extension,
+        output_dir=output_dir,
+        replace=replace
+    )
+
+
+def export_namespace_onvif_asset_management_group(
+    cmd,
+    asset_name: str,
+    instance_name: str,
+    instance_resource_group: str,
+    extension: str = "json",
+    output_dir: str = ".",
+    replace: bool = False
+) -> dict:
+    return NamespaceAssets(cmd).export_management_groups(
+        asset_name=asset_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
+        extension=extension,
+        output_dir=output_dir,
+        replace=replace
+    )
+
+
+def import_namespace_custom_asset_management_group(
+    cmd,
+    asset_name: str,
+    instance_name: str,
+    instance_resource_group: str,
+    file_path: str,
+    replace: bool = False,
+    **kwargs
+) -> List[dict]:
+    return NamespaceAssets(cmd).import_management_groups(
+        asset_name=asset_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
+        file_path=file_path,
+        replace=replace,
+        **kwargs
+    )
+
+
+def import_namespace_opcua_asset_management_group(
+    cmd,
+    asset_name: str,
+    instance_name: str,
+    instance_resource_group: str,
+    file_path: str,
+    replace: bool = False,
+    **kwargs
+) -> List[dict]:
+    return NamespaceAssets(cmd).import_management_groups(
+        asset_name=asset_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
+        file_path=file_path,
+        replace=replace,
+        **kwargs
+    )
+
+
+def import_namespace_onvif_asset_management_group(
+    cmd,
+    asset_name: str,
+    instance_name: str,
+    instance_resource_group: str,
+    file_path: str,
+    replace: bool = False,
+    **kwargs
+) -> List[dict]:
+    return NamespaceAssets(cmd).import_management_groups(
+        asset_name=asset_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
+        file_path=file_path,
+        replace=replace,
+        **kwargs
+    )
+
+
 # MANAGEMENT GROUP ACTION COMMANDS
 def add_namespace_custom_asset_management_group_action(
     cmd,
@@ -3206,5 +3398,90 @@ def remove_namespace_asset_management_group_action(
         instance_resource_group=instance_resource_group,
         group_name=group_name,
         action_name=action_name,
+        **kwargs
+    )
+
+
+# MANAGEMENT GROUP ACTION EXPORT/IMPORT
+def export_namespace_custom_asset_management_group_action(
+    cmd,
+    asset_name: str,
+    instance_name: str,
+    instance_resource_group: str,
+    group_name: str,
+    extension: str = "json",
+    output_dir: str = ".",
+    replace: bool = False
+) -> dict:
+    return NamespaceAssets(cmd).export_management_group_actions(
+        asset_name=asset_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
+        group_name=group_name,
+        extension=extension,
+        output_dir=output_dir,
+        replace=replace
+    )
+
+
+def export_namespace_opcua_asset_management_group_action(
+    cmd,
+    asset_name: str,
+    instance_name: str,
+    instance_resource_group: str,
+    group_name: str,
+    extension: str = "json",
+    output_dir: str = ".",
+    replace: bool = False
+) -> dict:
+    return NamespaceAssets(cmd).export_management_group_actions(
+        asset_name=asset_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
+        group_name=group_name,
+        extension=extension,
+        output_dir=output_dir,
+        replace=replace
+    )
+
+
+def import_namespace_custom_asset_management_group_action(
+    cmd,
+    asset_name: str,
+    instance_name: str,
+    instance_resource_group: str,
+    group_name: str,
+    file_path: str,
+    replace: bool = False,
+    **kwargs
+) -> List[dict]:
+    return NamespaceAssets(cmd).import_management_group_actions(
+        asset_name=asset_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
+        group_name=group_name,
+        file_path=file_path,
+        replace=replace,
+        **kwargs
+    )
+
+
+def import_namespace_opcua_asset_management_group_action(
+    cmd,
+    asset_name: str,
+    instance_name: str,
+    instance_resource_group: str,
+    group_name: str,
+    file_path: str,
+    replace: bool = False,
+    **kwargs
+) -> List[dict]:
+    return NamespaceAssets(cmd).import_management_group_actions(
+        asset_name=asset_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
+        group_name=group_name,
+        file_path=file_path,
+        replace=replace,
         **kwargs
     )

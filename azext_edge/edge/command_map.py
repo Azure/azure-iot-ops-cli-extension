@@ -363,6 +363,8 @@ def load_iotops_commands(self, _):
             command_type=namespace_resource_ops,
         ) as cmd_group:
             cmd_group.command("add", f"add_namespace_{asset_type}_asset_stream")
+            cmd_group.command("export", f"export_namespace_{asset_type}_asset_stream")
+            cmd_group.command("import", f"import_namespace_{asset_type}_asset_stream")
             cmd_group.command("list", "list_namespace_asset_streams")
             cmd_group.command("remove", "remove_namespace_asset_stream")
             cmd_group.show_command("show", "show_namespace_asset_stream")
@@ -375,6 +377,8 @@ def load_iotops_commands(self, _):
             command_type=namespace_resource_ops,
         ) as cmd_group:
             cmd_group.command("add", f"add_namespace_{asset_type}_asset_management_group")
+            cmd_group.command("export", f"export_namespace_{asset_type}_asset_management_group")
+            cmd_group.command("import", f"import_namespace_{asset_type}_asset_management_group")
             cmd_group.command("list", "list_namespace_asset_management_groups")
             cmd_group.command("remove", "remove_namespace_asset_management_group")
             cmd_group.show_command("show", "show_namespace_asset_management_group")
@@ -387,6 +391,8 @@ def load_iotops_commands(self, _):
             command_type=namespace_resource_ops,
         ) as cmd_group:
             cmd_group.command("add", f"add_namespace_{asset_type}_asset_management_group_action")
+            cmd_group.command("export", f"export_namespace_{asset_type}_asset_management_group_action")
+            cmd_group.command("import", f"import_namespace_{asset_type}_asset_management_group_action")
             cmd_group.command("list", "list_namespace_asset_management_group_actions")
             cmd_group.command("remove", "remove_namespace_asset_management_group_action")
 
