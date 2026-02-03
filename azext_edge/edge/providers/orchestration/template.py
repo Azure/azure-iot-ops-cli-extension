@@ -49,7 +49,7 @@ class TemplateBlueprint(NamedTuple):
 
 
 TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
-    commit_id="ad7733d81df9337dcc40785444b8f85229d5983d",
+    commit_id="7a2f2d118ed1ecd950affc1cdb9be7cdc334977b",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "languageVersion": "2.0",
@@ -652,7 +652,7 @@ TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
 )
 
 TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
-    commit_id="12f98b921d27116d8939bb9adb6bedc5668580f0",
+    commit_id="0c9e2b15c2b704dd237b77bee99a87b9f66aead1",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "languageVersion": "2.0",
