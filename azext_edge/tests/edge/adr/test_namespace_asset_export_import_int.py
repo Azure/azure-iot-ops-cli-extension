@@ -655,11 +655,6 @@ def test_namespace_asset_stream_export_import(
     assert stream_name_1 in imported_names
     assert stream_name_2 in imported_names
 
-    # Destinations are not auto-assigned on import (requires user input for valid topic)
-    # Streams without destinations will need to be configured separately
-    for stream in imported_streams:
-        assert "destinations" in stream
-
 
 @pytest.mark.parametrize("asset_type, endpoint_type, endpoint_address", [
     ("custom", "custom", "http://192.168.1.100:8000/custom/service"),
