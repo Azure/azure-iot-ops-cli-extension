@@ -1887,12 +1887,8 @@ class NamespaceAssets(Queryable):
         namespace = parse_resource_id(asset["id"])
         original_streams = asset["properties"].get("streams", [])
 
-        # Get default destinations from asset configuration
-        default_destinations = asset["properties"].get("defaultStreamsDestinations")
-        if not default_destinations:
-            # Fallback to empty array - backend will handle default assignment
-            # (same behavior as add_stream)
-            default_destinations = []
+        # Get default destinations from asset configuration (if configured)
+        default_destinations = asset["properties"].get("defaultStreamsDestinations") or []
 
         imported_streams = _process_namespace_sub_points_file_path(
             file_path=file_path,
@@ -1911,8 +1907,8 @@ class NamespaceAssets(Queryable):
 
         for stream in imported_streams:
             validator.validate_stream(stream)
-            # Auto-assign destinations if not present
-            if "destinations" not in stream or not stream["destinations"]:
+            # Auto-assign destinations from asset defaults if available
+            if default_destinations and ("destinations" not in stream or not stream["destinations"]):
                 stream["destinations"] = deepcopy(default_destinations)
 
         update_payload = {
