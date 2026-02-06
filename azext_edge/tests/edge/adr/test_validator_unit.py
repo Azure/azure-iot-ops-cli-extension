@@ -1172,5 +1172,279 @@ class TestMakeCacheKey(unittest.TestCase):
         self.assertEqual(key1, key2)
 
 
+class TestValidateStream(unittest.TestCase):
+    """Tests for validate_stream method."""
+
+    def setUp(self):
+        self.patcher = patch(
+            "azext_edge.edge.providers.adr.validator.ConnectorMetadataValidator._get_metadata"
+        )
+        self.mock_get_metadata = self.patcher.start()
+        self.mock_get_metadata.return_value = None  # No metadata needed for field validation
+
+    def tearDown(self):
+        self.patcher.stop()
+
+    def _create_validator(self):
+        return ConnectorMetadataValidator(
+            cmd=Mock(),
+            resource_group_name="test-rg",
+            instance_name="test-instance",
+            endpoint_type="Microsoft.Custom",
+            endpoint_version="1.0",
+        )
+
+    def test_validate_stream_valid(self):
+        """Valid stream should pass validation."""
+        validator = self._create_validator()
+        stream = {"name": "my-stream"}
+        validator.validate_stream(stream)  # Should not raise
+
+    def test_validate_stream_valid_max_length_name(self):
+        """Stream with max length name (128 chars) should pass."""
+        validator = self._create_validator()
+        stream = {"name": "a" * 128}
+        validator.validate_stream(stream)  # Should not raise
+
+    def test_validate_stream_missing_name(self):
+        """Stream without name should fail."""
+        validator = self._create_validator()
+        stream = {}
+        with self.assertRaises(ValidationError) as cm:
+            validator.validate_stream(stream)
+        self.assertIn("name is required", str(cm.exception))
+
+    def test_validate_stream_empty_name(self):
+        """Stream with empty name should fail."""
+        validator = self._create_validator()
+        stream = {"name": ""}
+        with self.assertRaises(ValidationError) as cm:
+            validator.validate_stream(stream)
+        self.assertIn("name is required", str(cm.exception))
+
+    def test_validate_stream_name_too_long(self):
+        """Stream with name > 128 chars should fail."""
+        validator = self._create_validator()
+        stream = {"name": "a" * 129}
+        with self.assertRaises(ValidationError) as cm:
+            validator.validate_stream(stream)
+        self.assertIn("at most 128 characters", str(cm.exception))
+
+
+class TestValidateManagementGroup(unittest.TestCase):
+    """Tests for validate_management_group method."""
+
+    def setUp(self):
+        self.patcher = patch(
+            "azext_edge.edge.providers.adr.validator.ConnectorMetadataValidator._get_metadata"
+        )
+        self.mock_get_metadata = self.patcher.start()
+        self.mock_get_metadata.return_value = None
+
+    def tearDown(self):
+        self.patcher.stop()
+
+    def _create_validator(self):
+        return ConnectorMetadataValidator(
+            cmd=Mock(),
+            resource_group_name="test-rg",
+            instance_name="test-instance",
+            endpoint_type="Microsoft.OpcUa",
+            endpoint_version="1.0",
+        )
+
+    def test_validate_management_group_valid(self):
+        """Valid management group should pass validation."""
+        validator = self._create_validator()
+        mgmt_group = {"name": "my-group"}
+        validator.validate_management_group(mgmt_group)  # Should not raise
+
+    def test_validate_management_group_with_optional_fields(self):
+        """Management group with all optional fields should pass."""
+        validator = self._create_validator()
+        mgmt_group = {
+            "name": "my-group",
+            "defaultTopic": "/contoso/mgmt",
+            "defaultTimeoutInSeconds": 30
+        }
+        validator.validate_management_group(mgmt_group)  # Should not raise
+
+    def test_validate_management_group_missing_name(self):
+        """Management group without name should fail."""
+        validator = self._create_validator()
+        mgmt_group = {}
+        with self.assertRaises(ValidationError) as cm:
+            validator.validate_management_group(mgmt_group)
+        self.assertIn("name is required", str(cm.exception))
+
+    def test_validate_management_group_empty_name(self):
+        """Management group with empty name should fail."""
+        validator = self._create_validator()
+        mgmt_group = {"name": ""}
+        with self.assertRaises(ValidationError) as cm:
+            validator.validate_management_group(mgmt_group)
+        self.assertIn("name is required", str(cm.exception))
+
+    def test_validate_management_group_name_too_long(self):
+        """Management group with name > 128 chars should fail."""
+        validator = self._create_validator()
+        mgmt_group = {"name": "a" * 129}
+        with self.assertRaises(ValidationError) as cm:
+            validator.validate_management_group(mgmt_group)
+        self.assertIn("at most 128 characters", str(cm.exception))
+
+    def test_validate_management_group_default_topic_too_long(self):
+        """Management group with defaultTopic > 128 chars should fail."""
+        validator = self._create_validator()
+        mgmt_group = {"name": "my-group", "defaultTopic": "a" * 129}
+        with self.assertRaises(ValidationError) as cm:
+            validator.validate_management_group(mgmt_group)
+        self.assertIn("defaultTopic must be at most 128 characters", str(cm.exception))
+
+    def test_validate_management_group_negative_timeout(self):
+        """Management group with negative timeout should fail."""
+        validator = self._create_validator()
+        mgmt_group = {"name": "my-group", "defaultTimeoutInSeconds": -1}
+        with self.assertRaises(ValidationError) as cm:
+            validator.validate_management_group(mgmt_group)
+        self.assertIn("non-negative integer", str(cm.exception))
+
+    def test_validate_management_group_invalid_timeout_type(self):
+        """Management group with non-integer timeout should fail."""
+        validator = self._create_validator()
+        mgmt_group = {"name": "my-group", "defaultTimeoutInSeconds": "30"}
+        with self.assertRaises(ValidationError) as cm:
+            validator.validate_management_group(mgmt_group)
+        self.assertIn("non-negative integer", str(cm.exception))
+
+
+class TestValidateAction(unittest.TestCase):
+    """Tests for validate_action method."""
+
+    def setUp(self):
+        self.patcher = patch(
+            "azext_edge.edge.providers.adr.validator.ConnectorMetadataValidator._get_metadata"
+        )
+        self.mock_get_metadata = self.patcher.start()
+        self.mock_get_metadata.return_value = None
+
+    def tearDown(self):
+        self.patcher.stop()
+
+    def _create_validator(self):
+        return ConnectorMetadataValidator(
+            cmd=Mock(),
+            resource_group_name="test-rg",
+            instance_name="test-instance",
+            endpoint_type="Microsoft.OpcUa",
+            endpoint_version="1.0",
+        )
+
+    def test_validate_action_valid(self):
+        """Valid action should pass validation."""
+        validator = self._create_validator()
+        action = {"name": "my-action", "targetUri": "ns=2;s=MyMethod"}
+        validator.validate_action(action)  # Should not raise
+
+    def test_validate_action_with_all_optional_fields(self):
+        """Action with all optional fields should pass."""
+        validator = self._create_validator()
+        action = {
+            "name": "my-action",
+            "targetUri": "ns=2;s=MyMethod",
+            "topic": "/contoso/action",
+            "timeoutInSeconds": 30,
+            "actionType": "Call"
+        }
+        validator.validate_action(action)  # Should not raise
+
+    def test_validate_action_missing_name(self):
+        """Action without name should fail."""
+        validator = self._create_validator()
+        action = {"targetUri": "ns=2;s=MyMethod"}
+        with self.assertRaises(ValidationError) as cm:
+            validator.validate_action(action)
+        self.assertIn("name is required", str(cm.exception))
+
+    def test_validate_action_empty_name(self):
+        """Action with empty name should fail."""
+        validator = self._create_validator()
+        action = {"name": "", "targetUri": "ns=2;s=MyMethod"}
+        with self.assertRaises(ValidationError) as cm:
+            validator.validate_action(action)
+        self.assertIn("name is required", str(cm.exception))
+
+    def test_validate_action_name_too_long(self):
+        """Action with name > 128 chars should fail."""
+        validator = self._create_validator()
+        action = {"name": "a" * 129, "targetUri": "ns=2;s=MyMethod"}
+        with self.assertRaises(ValidationError) as cm:
+            validator.validate_action(action)
+        self.assertIn("name must be at most 128 characters", str(cm.exception))
+
+    def test_validate_action_missing_target_uri(self):
+        """Action without targetUri should fail."""
+        validator = self._create_validator()
+        action = {"name": "my-action"}
+        with self.assertRaises(ValidationError) as cm:
+            validator.validate_action(action)
+        self.assertIn("targetUri is required", str(cm.exception))
+
+    def test_validate_action_empty_target_uri(self):
+        """Action with empty targetUri should fail."""
+        validator = self._create_validator()
+        action = {"name": "my-action", "targetUri": ""}
+        with self.assertRaises(ValidationError) as cm:
+            validator.validate_action(action)
+        self.assertIn("targetUri is required", str(cm.exception))
+
+    def test_validate_action_target_uri_too_long(self):
+        """Action with targetUri > 512 chars should fail."""
+        validator = self._create_validator()
+        action = {"name": "my-action", "targetUri": "a" * 513}
+        with self.assertRaises(ValidationError) as cm:
+            validator.validate_action(action)
+        self.assertIn("targetUri must be at most 512 characters", str(cm.exception))
+
+    def test_validate_action_topic_too_long(self):
+        """Action with topic > 128 chars should fail."""
+        validator = self._create_validator()
+        action = {"name": "my-action", "targetUri": "ns=2;s=MyMethod", "topic": "a" * 129}
+        with self.assertRaises(ValidationError) as cm:
+            validator.validate_action(action)
+        self.assertIn("topic must be at most 128 characters", str(cm.exception))
+
+    def test_validate_action_negative_timeout(self):
+        """Action with negative timeout should fail."""
+        validator = self._create_validator()
+        action = {"name": "my-action", "targetUri": "ns=2;s=MyMethod", "timeoutInSeconds": -1}
+        with self.assertRaises(ValidationError) as cm:
+            validator.validate_action(action)
+        self.assertIn("non-negative integer", str(cm.exception))
+
+    def test_validate_action_invalid_timeout_type(self):
+        """Action with non-integer timeout should fail."""
+        validator = self._create_validator()
+        action = {"name": "my-action", "targetUri": "ns=2;s=MyMethod", "timeoutInSeconds": "30"}
+        with self.assertRaises(ValidationError) as cm:
+            validator.validate_action(action)
+        self.assertIn("non-negative integer", str(cm.exception))
+
+    def test_validate_action_valid_action_types(self):
+        """Action with valid actionType values should pass."""
+        validator = self._create_validator()
+        for action_type in ["Call", "Read", "Write"]:
+            action = {"name": "my-action", "targetUri": "ns=2;s=MyMethod", "actionType": action_type}
+            validator.validate_action(action)  # Should not raise
+
+    def test_validate_action_invalid_action_type(self):
+        """Action with invalid actionType should fail."""
+        validator = self._create_validator()
+        action = {"name": "my-action", "targetUri": "ns=2;s=MyMethod", "actionType": "Invalid"}
+        with self.assertRaises(ValidationError) as cm:
+            validator.validate_action(action)
+        self.assertIn("must be one of", str(cm.exception))
+
+
 if __name__ == "__main__":
     unittest.main()

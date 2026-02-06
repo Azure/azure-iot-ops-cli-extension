@@ -145,6 +145,57 @@ def _convert_sub_points_from_csv_namespace(sub_points: List[Dict[str, str]]):
             point[config_key] = json.dumps(configuration)
 
 
+def _convert_actions_to_csv(actions: List[Dict[str, str]]) -> List[str]:
+    """Convert actions to CSV format. Modifies actions in-place and returns fieldnames."""
+    # CSV column order per DOE design
+    fieldnames = ["name", "targetUri", "actionType", "topic", "timeoutInSeconds"]
+
+    for action in actions:
+        # Ensure all standard fields are present (empty string if missing)
+        for field in fieldnames:
+            if field not in action:
+                action[field] = ""
+            elif action[field] is None:
+                action[field] = ""
+
+    return fieldnames
+
+
+def _convert_actions_from_csv(actions: List[Dict[str, str]]):
+    """Convert CSV format back to action objects. Modifies actions in-place."""
+    # Only map CSV column names that differ from JSON property names
+    csv_to_json_map = {
+        "Name": "name",
+        "Target URI": "targetUri",
+        "Action Type": "actionType",
+        "Topic": "topic",
+        "Timeout Seconds": "timeoutInSeconds",
+    }
+
+    for action in actions:
+        action.pop("", None)
+
+        # Map alternate CSV column names to JSON property names
+        for csv_key, json_key in csv_to_json_map.items():
+            if csv_key in action:
+                action[json_key] = action.pop(csv_key)
+
+        # Convert timeoutInSeconds to integer if present and non-empty
+        timeout_value = action.get("timeoutInSeconds")
+        if timeout_value and str(timeout_value).strip():
+            try:
+                action["timeoutInSeconds"] = int(timeout_value)
+            except ValueError:
+                pass  # Let validation catch invalid values
+        elif "timeoutInSeconds" in action:
+            del action["timeoutInSeconds"]
+
+        # Remove empty optional fields
+        for field in ["topic", "actionType", "typeRef"]:
+            if field in action and (action[field] is None or action[field] == ""):
+                del action[field]
+
+
 class NamespaceAssets(Queryable):
     def __init__(self, cmd):
         super().__init__(cmd=cmd)
@@ -1208,6 +1259,12 @@ class NamespaceAssets(Queryable):
             )
 
         original_events = event_group.get("events", [])
+
+        # Get default destinations from event-group or asset configuration
+        default_destinations = event_group.get("defaultDestinations")
+        if not default_destinations:
+            default_destinations = asset["properties"].get("defaultEventsDestinations", [])
+
         imported_events = _process_namespace_sub_points_file_path(
             file_path=file_path,
             original_items=original_events,
@@ -1215,6 +1272,11 @@ class NamespaceAssets(Queryable):
             replace=replace,
             csv_converter=_convert_sub_points_from_csv_namespace
         )
+
+        # Auto-assign destinations if not present (required by API)
+        for event in imported_events:
+            if "destinations" not in event or not event["destinations"]:
+                event["destinations"] = deepcopy(default_destinations)
 
         # Validate imported events
         try:
@@ -1769,6 +1831,107 @@ class NamespaceAssets(Queryable):
             )["properties"]["streams"]
             return next(stream for stream in streams if stream["name"] == stream_name)
 
+    def export_streams(
+        self,
+        asset_name: str,
+        instance_name: str,
+        instance_resource_group: str,
+        extension: str = FileType.json.value,
+        output_dir: str = ".",
+        replace: bool = False
+    ) -> dict:
+        """Export streams from an asset to a file. Supports JSON and YAML formats."""
+        asset = self.show(
+            asset_name=asset_name,
+            instance_name=instance_name,
+            resource_group=instance_resource_group
+        )
+        streams = asset["properties"].get("streams", [])
+
+        # Strip properties that should not be exported (per DOE design)
+        export_streams = []
+        for stream in streams:
+            export_stream = {"name": stream.get("name")}
+            # Include streamConfiguration if present (but not destinations - auto-assigned on import)
+            if stream.get("streamConfiguration"):
+                export_stream["streamConfiguration"] = stream["streamConfiguration"]
+            if stream.get("typeRef"):
+                export_stream["typeRef"] = stream["typeRef"]
+            export_streams.append(export_stream)
+
+        file_path = dump_content_to_file(
+            content=export_streams,
+            file_name=f"{asset_name}_streams",
+            extension=extension,
+            output_dir=output_dir,
+            replace=replace
+        )
+        return {"file_path": file_path, "stream_count": len(export_streams)}
+
+    def import_streams(
+        self,
+        asset_name: str,
+        instance_name: str,
+        instance_resource_group: str,
+        file_path: str,
+        replace: bool = False,
+        **kwargs
+    ) -> List[dict]:
+        """Import streams from file. Supports JSON and YAML formats."""
+        asset = self.show(
+            asset_name=asset_name,
+            instance_name=instance_name,
+            resource_group=instance_resource_group,
+            check_cluster=True
+        )
+        namespace = parse_resource_id(asset["id"])
+        original_streams = asset["properties"].get("streams", [])
+
+        # Get default destinations from asset configuration (if configured)
+        default_destinations = asset["properties"].get("defaultStreamsDestinations") or []
+
+        imported_streams = _process_namespace_sub_points_file_path(
+            file_path=file_path,
+            original_items=original_streams,
+            point_key="name",
+            replace=replace
+        )
+
+        # Validate imported streams using ConnectorMetadataValidator
+        validator = ConnectorMetadataValidator.from_asset(
+            cmd=self.cmd,
+            asset=asset,
+            instance_name=instance_name,
+            instance_resource_group=instance_resource_group
+        )
+
+        for stream in imported_streams:
+            validator.validate_stream(stream)
+            # Auto-assign destinations from asset defaults if available
+            if default_destinations and ("destinations" not in stream or not stream["destinations"]):
+                stream["destinations"] = deepcopy(default_destinations)
+
+        update_payload = {
+            "properties": {
+                "streams": imported_streams
+            }
+        }
+
+        with console.status(f"Importing streams for asset {asset_name}..."):
+            poller = self.ops.begin_update(
+                resource_group_name=namespace["resource_group"],
+                namespace_name=namespace["name"],
+                asset_name=asset_name,
+                properties=update_payload
+            )
+            wait_for_terminal_state(poller, **kwargs)
+            asset = self.show(
+                asset_name=asset_name,
+                namespace_name=namespace["name"],
+                resource_group=namespace["resource_group"],
+            )
+            return asset["properties"].get("streams", [])
+
     # Management Groups - allowed for opcua, onvif, and custom assets
     def add_management_group(
         self,
@@ -2103,6 +2266,253 @@ class NamespaceAssets(Queryable):
                 resource_group=namespace["resource_group"],
             )["properties"]["managementGroups"]
             return next(mgmt for mgmt in mgmt_groups if mgmt["name"] == group_name)["actions"]
+
+    def export_management_groups(
+        self,
+        asset_name: str,
+        instance_name: str,
+        instance_resource_group: str,
+        extension: str = FileType.json.value,
+        output_dir: str = ".",
+        replace: bool = False
+    ) -> dict:
+        """Export management groups from an asset to a file. Supports JSON and YAML formats."""
+        asset = self.show(
+            asset_name=asset_name,
+            instance_name=instance_name,
+            resource_group=instance_resource_group
+        )
+        mgmt_groups = asset["properties"].get("managementGroups", [])
+
+        # Strip properties that should not be exported (per DOE design)
+        export_mgmt_groups = []
+        for mgmt_group in mgmt_groups:
+            export_group = {
+                "name": mgmt_group.get("name"),
+            }
+            # Include optional fields if present
+            if mgmt_group.get("dataSource"):
+                export_group["dataSource"] = mgmt_group["dataSource"]
+            if mgmt_group.get("defaultTopic"):
+                export_group["defaultTopic"] = mgmt_group["defaultTopic"]
+            if mgmt_group.get("defaultTimeoutInSeconds") is not None:
+                export_group["defaultTimeoutInSeconds"] = mgmt_group["defaultTimeoutInSeconds"]
+            if mgmt_group.get("typeRef"):
+                export_group["typeRef"] = mgmt_group["typeRef"]
+            # Note: 'actions' array is NOT exported (exported separately)
+            # Note: 'key' and 'managementGroupConfiguration' are stripped
+            export_mgmt_groups.append(export_group)
+
+        file_path = dump_content_to_file(
+            content=export_mgmt_groups,
+            file_name=f"{asset_name}_management_groups",
+            extension=extension,
+            output_dir=output_dir,
+            replace=replace
+        )
+        return {"file_path": file_path, "management_group_count": len(export_mgmt_groups)}
+
+    def import_management_groups(
+        self,
+        asset_name: str,
+        instance_name: str,
+        instance_resource_group: str,
+        file_path: str,
+        replace: bool = False,
+        **kwargs
+    ) -> List[dict]:
+        """Import management groups from file. Supports JSON and YAML formats."""
+        asset = self.show(
+            asset_name=asset_name,
+            instance_name=instance_name,
+            resource_group=instance_resource_group,
+            check_cluster=True
+        )
+        namespace = parse_resource_id(asset["id"])
+        original_mgmt_groups = asset["properties"].get("managementGroups", [])
+
+        imported_mgmt_groups = _process_namespace_sub_points_file_path(
+            file_path=file_path,
+            original_items=original_mgmt_groups,
+            point_key="name",
+            replace=replace
+        )
+
+        # Validate imported management groups using ConnectorMetadataValidator
+        validator = ConnectorMetadataValidator.from_asset(
+            cmd=self.cmd,
+            asset=asset,
+            instance_name=instance_name,
+            instance_resource_group=instance_resource_group
+        )
+
+        for mgmt_group in imported_mgmt_groups:
+            validator.validate_management_group(mgmt_group)
+            # Ensure actions array exists (preserve existing actions if merging)
+            if "actions" not in mgmt_group:
+                # Check if there's an original group with the same name
+                name = mgmt_group.get("name", "")
+                original = next((g for g in original_mgmt_groups if g["name"] == name), None)
+                mgmt_group["actions"] = original.get("actions", []) if original else []
+
+        update_payload = {
+            "properties": {
+                "managementGroups": imported_mgmt_groups
+            }
+        }
+
+        with console.status(f"Importing management groups for asset {asset_name}..."):
+            poller = self.ops.begin_update(
+                resource_group_name=namespace["resource_group"],
+                namespace_name=namespace["name"],
+                asset_name=asset_name,
+                properties=update_payload
+            )
+            wait_for_terminal_state(poller, **kwargs)
+            asset = self.show(
+                asset_name=asset_name,
+                namespace_name=namespace["name"],
+                resource_group=namespace["resource_group"],
+            )
+            return asset["properties"].get("managementGroups", [])
+
+    def export_management_group_actions(
+        self,
+        asset_name: str,
+        instance_name: str,
+        instance_resource_group: str,
+        group_name: str,
+        extension: str = FileType.json.value,
+        output_dir: str = ".",
+        replace: bool = False
+    ) -> dict:
+        """Export actions from a management group to a file. Supports JSON, YAML, and CSV formats."""
+        asset = self.show(
+            asset_name=asset_name,
+            instance_name=instance_name,
+            resource_group=instance_resource_group
+        )
+        mgmt_group = _get_sub_property(asset, group_name, property_key="managementGroups")
+        actions = mgmt_group.get("actions", [])
+
+        # Strip properties that should not be exported (per DOE design)
+        export_actions = []
+        for action in actions:
+            export_action = {
+                "name": action.get("name"),
+                "targetUri": action.get("targetUri"),
+            }
+            # Include optional fields if present
+            if action.get("actionType"):
+                export_action["actionType"] = action["actionType"]
+            if action.get("topic"):
+                export_action["topic"] = action["topic"]
+            if action.get("timeoutInSeconds") is not None:
+                export_action["timeoutInSeconds"] = action["timeoutInSeconds"]
+            if action.get("typeRef"):
+                export_action["typeRef"] = action["typeRef"]
+            # Note: 'key' and 'managementGroup' are stripped
+            export_actions.append(export_action)
+
+        # Convert to CSV format if requested
+        fieldnames = None
+        if extension == FileType.csv.value:
+            fieldnames = _convert_actions_to_csv(export_actions)
+
+        file_path = dump_content_to_file(
+            content=export_actions,
+            file_name=f"{asset_name}_{group_name}_actions",
+            extension=extension,
+            fieldnames=fieldnames,
+            output_dir=output_dir,
+            replace=replace
+        )
+        return {"file_path": file_path, "action_count": len(export_actions)}
+
+    def import_management_group_actions(
+        self,
+        asset_name: str,
+        instance_name: str,
+        instance_resource_group: str,
+        group_name: str,
+        file_path: str,
+        replace: bool = False,
+        **kwargs
+    ) -> List[dict]:
+        """Import actions from file. Supports JSON, YAML, and CSV formats."""
+        asset = self.show(
+            asset_name=asset_name,
+            instance_name=instance_name,
+            resource_group=instance_resource_group,
+            check_cluster=True
+        )
+        namespace = parse_resource_id(asset["id"])
+
+        # Check that management group exists
+        mgmt_groups = asset["properties"].get("managementGroups", [])
+        if not mgmt_groups:
+            raise InvalidArgumentValueError(
+                f"No management groups found in asset '{asset_name}'. "
+                "Create a management group first before importing actions."
+            )
+
+        mgmt_group = None
+        for mg in mgmt_groups:
+            if mg["name"] == group_name:
+                mgmt_group = mg
+                break
+
+        if mgmt_group is None:
+            raise InvalidArgumentValueError(
+                f"Management group '{group_name}' not found in asset '{asset_name}'. "
+                f"Create the management group first before importing actions."
+            )
+
+        original_actions = mgmt_group.get("actions", [])
+        imported_actions = _process_namespace_sub_points_file_path(
+            file_path=file_path,
+            original_items=original_actions,
+            point_key="name",
+            replace=replace,
+            csv_converter=_convert_actions_from_csv
+        )
+
+        # Validate imported actions using ConnectorMetadataValidator
+        validator = ConnectorMetadataValidator.from_asset(
+            cmd=self.cmd,
+            asset=asset,
+            instance_name=instance_name,
+            instance_resource_group=instance_resource_group
+        )
+
+        for action in imported_actions:
+            validator.validate_action(action)
+            # Default actionType to 'Call' if not specified
+            if not action.get("actionType"):
+                action["actionType"] = "Call"
+
+        mgmt_group["actions"] = imported_actions
+
+        update_payload = {
+            "properties": {
+                "managementGroups": mgmt_groups
+            }
+        }
+
+        with console.status(f"Importing actions for management group {group_name} in asset {asset_name}..."):
+            poller = self.ops.begin_update(
+                resource_group_name=namespace["resource_group"],
+                namespace_name=namespace["name"],
+                asset_name=asset_name,
+                properties=update_payload
+            )
+            wait_for_terminal_state(poller, **kwargs)
+            asset = self.show(
+                asset_name=asset_name,
+                namespace_name=namespace["name"],
+                resource_group=namespace["resource_group"],
+            )
+            return _get_sub_property(asset, group_name, property_key="managementGroups")["actions"]
 
     def _check_device_props(
         self,
