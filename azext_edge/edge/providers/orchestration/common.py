@@ -9,6 +9,7 @@ from enum import Enum
 # Urls
 ARM_ENDPOINT = "https://management.azure.com/"
 MCR_ENDPOINT = "https://mcr.microsoft.com/"
+DEFAULT_REGISTRY_HOST = "mcr.microsoft.com"
 
 # App IDs
 CUSTOM_LOCATIONS_RP_APP_ID = "bc313c14-388c-4e7d-a58e-70017303ee3b"

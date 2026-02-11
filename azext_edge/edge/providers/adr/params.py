@@ -713,8 +713,10 @@ def load_adr_arguments(self, _):
         context.argument(
             "endpoint_version",
             options_list=["--version"],
-            help="Endpoint version.",
-            deprecate_info=context.deprecate(hide=True),
+            help="Endpoint version. If not provided, the version is automatically retrieved from the "
+            "connector template matching this endpoint type (if one exists). The endpoint version is required "
+            "for connector pods to be created - without it, devices will not have associated connector pods "
+            "even if a connector template is deployed.",
         )
         # TODO: add description of how to use these in the wiki
         context.argument(
@@ -788,7 +790,9 @@ def load_adr_arguments(self, _):
         context.argument(
             "endpoint_version",
             options_list=["--version"],
-            help="Endpoint version.",
+            help="Endpoint version. For custom (3rd-party) connectors, the version is required if you want "
+            "connector pods to be created. If a connector template exists for this endpoint type, the version "
+            "will be automatically retrieved from the template when not provided.",
         )
         context.argument(
             "endpoint_type",

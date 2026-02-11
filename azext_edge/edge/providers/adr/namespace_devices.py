@@ -20,6 +20,7 @@ from ...util.az_client import (
 from ...util.common import parse_kvp_nargs, should_continue_prompt
 from ...util.id_tools import parse_resource_id
 from ...util.queryable import Queryable
+from ..orchestration.resources.connector_templates import ConnectorTemplates
 
 if TYPE_CHECKING:
     from ...vendor.clients.deviceregistrymgmt.operations import (
@@ -64,23 +65,6 @@ class DeviceEndpointType(ListableEnum):
             "mqtt": cls.MQTT.value
         }
         return mapped_types.get(keyword.lower(), "custom" if return_custom_keyword else keyword)
-
-
-def get_default_endpoint_version(endpoint_type: str) -> Optional[str]:
-    """
-    Returns the default version for a given endpoint type.
-
-    Returns None if no default version is defined (ONVIF, Media, OPC-UA, custom types).
-    """
-    version_map = {
-        DeviceEndpointType.REST.value: "1.0",
-        DeviceEndpointType.MQTT.value: "5",
-        DeviceEndpointType.SSE.value: "1.1",
-        DeviceEndpointType.MEDIA.value: None,
-        DeviceEndpointType.ONVIF.value: None,
-        DeviceEndpointType.OPCUA.value: None,
-    }
-    return version_map.get(endpoint_type, None)
 
 
 class NamespaceDevices(Queryable):
@@ -334,13 +318,20 @@ class NamespaceDevices(Queryable):
         username_reference: Optional[str] = None,
         trust_list: Optional[str] = None,
         replace: Optional[bool] = False,
+        is_custom_command: bool = False,
         **kwargs
     ):
         from .helpers import process_additional_configuration, process_authentication
 
-        # Set default version if not provided by user
+        # Set version from connector template if not provided by user
         if endpoint_version is None:
-            endpoint_version = get_default_endpoint_version(endpoint_type)
+            connector_templates = ConnectorTemplates(cmd=self.cmd)
+            endpoint_version = connector_templates.get_endpoint_version_for_type(
+                instance_name=instance_name,
+                instance_resource_group=instance_resource_group,
+                endpoint_type=endpoint_type,
+                is_custom_command=is_custom_command,
+            )
 
         # get the original inbound endpoints
         device = self.show(

@@ -957,7 +957,8 @@ def test_add_inbound_custom_device_endpoint(
     endpoint_version: Optional[str],
     endpoints_present: bool,
     replace: bool,
-    mocked_get_namespace_for_instance
+    mocked_get_namespace_for_instance,
+    mocked_get_endpoint_version_from_template
 ):
     # Setup test data
     device_name = generate_random_string()
@@ -1157,7 +1158,8 @@ def test_add_inbound_media_device_endpoint(
     endpoint_version: Optional[str],
     endpoints_present: bool,
     replace: bool,
-    mocked_get_namespace_for_instance
+    mocked_get_namespace_for_instance,
+    mocked_get_endpoint_version_from_template
 ):
     # Setup test data
     device_name = generate_random_string()
@@ -1324,7 +1326,8 @@ def test_add_inbound_onvif_device_endpoint(
     endpoint_version: Optional[str],
     endpoints_present: bool,
     replace: bool,
-    mocked_get_namespace_for_instance
+    mocked_get_namespace_for_instance,
+    mocked_get_endpoint_version_from_template
 ):
     # Setup test data
     device_name = generate_random_string()
@@ -1527,7 +1530,8 @@ def test_add_inbound_opcua_device_endpoint(
     response_status: int,
     endpoints_present: bool,
     replace: bool,
-    mocked_get_namespace_for_instance
+    mocked_get_namespace_for_instance,
+    mocked_get_endpoint_version_from_template
 ):
     # Setup test data
     device_name = generate_random_string()
@@ -1851,7 +1855,8 @@ def test_add_inbound_rest_device_endpoint(
     endpoint_version: Optional[str],
     endpoints_present: bool,
     replace: bool,
-    mocked_get_namespace_for_instance
+    mocked_get_namespace_for_instance,
+    mocked_get_endpoint_version_from_template
 ):
     # Setup test data
     device_name = generate_random_string()
@@ -1879,8 +1884,13 @@ def test_add_inbound_rest_device_endpoint(
         )
 
     # Create expected endpoint structure
-    # REST endpoints get default version "1.0" when None
-    expected_version = endpoint_version if endpoint_version is not None else "1.0"
+    # Simulate connector template returning version when user doesn't provide one
+    template_version = "1.0"  # REST connector template default
+    if endpoint_version is None:
+        mocked_get_endpoint_version_from_template.return_value = template_version
+        expected_version = template_version
+    else:
+        expected_version = endpoint_version
     expected_endpoint = {
         "endpointType": DeviceEndpointType.REST.value,
         "address": endpoint_address,
@@ -2037,7 +2047,8 @@ def test_add_inbound_sse_device_endpoint(
     endpoint_version: Optional[str],
     endpoints_present: bool,
     replace: bool,
-    mocked_get_namespace_for_instance
+    mocked_get_namespace_for_instance,
+    mocked_get_endpoint_version_from_template
 ):
     # Setup test data
     device_name = generate_random_string()
@@ -2065,8 +2076,13 @@ def test_add_inbound_sse_device_endpoint(
         )
 
     # Create expected endpoint structure
-    # Apply default version if endpoint_version is None
-    expected_version = endpoint_version if endpoint_version is not None else "1.1"
+    # Simulate connector template returning version when user doesn't provide one
+    template_version = "1.1"  # SSE connector template default
+    if endpoint_version is None:
+        mocked_get_endpoint_version_from_template.return_value = template_version
+        expected_version = template_version
+    else:
+        expected_version = endpoint_version
     expected_endpoint = {
         "endpointType": DeviceEndpointType.SSE.value,
         "address": endpoint_address,
@@ -2211,7 +2227,8 @@ def test_add_inbound_mqtt_device_endpoint(
     endpoint_version: Optional[str],
     endpoints_present: bool,
     replace: bool,
-    mocked_get_namespace_for_instance
+    mocked_get_namespace_for_instance,
+    mocked_get_endpoint_version_from_template
 ):
     # Setup test data
     device_name = generate_random_string()
@@ -2239,8 +2256,13 @@ def test_add_inbound_mqtt_device_endpoint(
         )
 
     # Create expected endpoint structure (MQTT has no authentication)
-    # Apply default version if endpoint_version is None (MQTT default: 5)
-    expected_version = endpoint_version if endpoint_version is not None else "5"
+    # Simulate connector template returning version when user doesn't provide one
+    template_version = "5"  # MQTT connector template default
+    if endpoint_version is None:
+        mocked_get_endpoint_version_from_template.return_value = template_version
+        expected_version = template_version
+    else:
+        expected_version = endpoint_version
     expected_endpoint = {
         "endpointType": DeviceEndpointType.MQTT.value,
         "address": endpoint_address,

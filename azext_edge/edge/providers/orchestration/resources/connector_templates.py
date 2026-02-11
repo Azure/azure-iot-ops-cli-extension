@@ -32,6 +32,7 @@ from azure.cli.core.azclierror import (
 from knack.log import get_logger
 from rich.console import Console
 
+from ..common import DEFAULT_REGISTRY_HOST
 from ....util import assemble_nargs_to_dict
 from ....util.common import should_continue_prompt
 from ....util.az_client import wait_for_terminal_state
@@ -64,6 +65,135 @@ class ConnectorTemplates(Queryable):
         self.ops: "AkriConnectorTemplateOperations" = (
             self.iotops_mgmt_client.akri_connector_template
         )
+
+    def get_endpoint_version_for_type(
+        self,
+        instance_name: str,
+        instance_resource_group: str,
+        endpoint_type: str,
+        is_custom_command: bool = False,
+    ) -> Optional[str]:
+        """
+        Returns the endpoint version from a connector template if one exists for the endpoint type.
+
+        Looks up connector templates for the specified instance and returns the version
+        from the matching template's deviceInboundEndpointTypes. If multiple templates
+        match the endpoint type, the one with the latest version is selected.
+
+        For 1P commands (opcua, rest, mqtt, etc.), only MCR templates are considered.
+        For custom commands (is_custom_command=True), only non-MCR (3P) templates are considered.
+
+        Args:
+            instance_name: IoT Operations instance name.
+            instance_resource_group: Resource group containing the instance.
+            endpoint_type: The device endpoint type (e.g., "Microsoft.OpcUa").
+            is_custom_command: If True, this is the 'custom' command which should look for 3P templates.
+                               If False, this is a 1P command (rest, opcua, etc.) which should look for MCR templates.
+
+        Returns:
+            The endpoint version string if found in a connector template, None otherwise.
+        """
+        from ....util.machinery import scoped_semver_import
+
+        # Custom command always looks for 3P templates, 1P commands look for MCR templates
+        look_for_mcr = not is_custom_command
+
+        try:
+            connector_templates = list(
+                self.ops.list_by_instance_resource(
+                    resource_group_name=instance_resource_group,
+                    instance_name=instance_name,
+                )
+            )
+
+            # Collect all matching templates with their versions
+            # Each entry: (tag_version for comparison, endpoint_type_version to return, template_name)
+            matching_templates = []
+
+            for template in connector_templates:
+                template_name = template.get("name")
+                properties = template.get("properties", {})
+                connector_metadata_ref = properties.get("connectorMetadataRef", "")
+                device_endpoint_types = properties.get("deviceInboundEndpointTypes", [])
+
+                # Filter templates based on whether we're looking for 1P (MCR) or 3P (non-MCR)
+                is_mcr_template = connector_metadata_ref.startswith(DEFAULT_REGISTRY_HOST)
+                if look_for_mcr and not is_mcr_template:
+                    continue
+                if not look_for_mcr and is_mcr_template:
+                    continue
+
+                # Get tag version from tagDigestSettings.tag (for comparison)
+                runtime_config = properties.get("runtimeConfiguration", {})
+                managed_config = runtime_config.get("managedConfigurationSettings", {})
+                image_config = managed_config.get("imageConfigurationSettings", {})
+                tag_settings = image_config.get("tagDigestSettings", {})
+                tag_version = tag_settings.get("tag")
+
+                if not tag_version:
+                    continue
+
+                for endpoint_type_info in device_endpoint_types:
+                    et = endpoint_type_info.get("endpointType")
+                    endpoint_type_version = endpoint_type_info.get("version")
+
+                    # Match endpoint type (case-insensitive)
+                    if et and et.lower() == endpoint_type.lower():
+                        matching_templates.append((tag_version, endpoint_type_version, template_name))
+
+            if not matching_templates:
+                logger.info(
+                    f"No connector template found for endpoint type '{endpoint_type}'. "
+                    "Endpoint version will be None."
+                )
+                return None
+
+            # If only one matching template, return its endpoint type version
+            if len(matching_templates) == 1:
+                tag_version, endpoint_type_version, template_name = matching_templates[0]
+                logger.info(
+                    f"Found endpoint version '{endpoint_type_version}' from connector template "
+                    f"'{template_name}' (tag: {tag_version}) for endpoint type '{endpoint_type}'"
+                )
+                return endpoint_type_version
+
+            # Multiple matching templates - compare using tag version to find the latest
+            semver = scoped_semver_import()
+            latest_tag_version = None
+            latest_endpoint_type_version = None
+            latest_template_name = None
+
+            for tag_version, endpoint_type_version, template_name in matching_templates:
+                try:
+                    parsed_version = semver.parse(tag_version)
+                    if latest_tag_version is None:
+                        latest_tag_version = tag_version
+                        latest_endpoint_type_version = endpoint_type_version
+                        latest_template_name = template_name
+                    elif parsed_version > semver.parse(latest_tag_version):
+                        latest_tag_version = tag_version
+                        latest_endpoint_type_version = endpoint_type_version
+                        latest_template_name = template_name
+                except (ValueError, AttributeError):
+                    # If version can't be parsed, use as fallback
+                    logger.debug(
+                        f"Could not parse tag version '{tag_version}' from template '{template_name}' for comparison"
+                    )
+                    if latest_tag_version is None:
+                        latest_tag_version = tag_version
+                        latest_endpoint_type_version = endpoint_type_version
+                        latest_template_name = template_name
+
+            logger.info(
+                f"Found {len(matching_templates)} matching templates for endpoint type '{endpoint_type}'. "
+                f"Selected endpoint version '{latest_endpoint_type_version}' from template "
+                f"'{latest_template_name}' (tag: {latest_tag_version}, latest)."
+            )
+            return latest_endpoint_type_version
+
+        except Exception as e:
+            logger.warning(f"Failed to retrieve connector templates: {e}. Endpoint version will be None.")
+            return None
 
     def create(
         self,

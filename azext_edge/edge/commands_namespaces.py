@@ -225,6 +225,7 @@ def add_inbound_custom_device_endpoint(
         username_reference=username_reference,
         trust_list=trust_list,
         replace=replace,
+        is_custom_command=True,
         **kwargs
     )
 
