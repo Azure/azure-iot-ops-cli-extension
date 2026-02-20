@@ -2110,6 +2110,73 @@ def load_iotops_help():
     """
 
     helps[
+        "iot ops mgmt-actions"
+    ] = """
+        type: group
+        short-summary: Instance management actions configuration.
+    """
+
+    helps[
+        "iot ops mgmt-actions enable"
+    ] = """
+        type: command
+        short-summary: Enable management actions for an IoT Operations instance.
+        long-summary: |
+            Bootstraps the outer loop infrastructure enabling cloud-based invocation of management
+            actions on assets through Event Grid MQTT broker integration.
+
+            The operation configures resources across three domains:
+            - Event Grid Namespace: topic space, topic templates, and permission bindings.
+            - Device Registry Namespace: managed identity enablement and management endpoint configuration.
+            - IoT Operations Instance: EG dataflow endpoint, dataflow graph, and response dataflow.
+
+            The command is idempotent. If a resource already exists, it is skipped. On partial failure,
+            re-run the command to reach the desired state.
+
+            By default, role assignments (Event Grid TopicSpaces Publisher and Subscriber) are created for
+            both the ADR namespace MI and the AIO extension MI against the EG namespace. Use --skip-ra to
+            skip role assignment creation, or --adr-role-ids / --ops-role-ids to provide custom role Ids.
+
+        examples:
+        - name: Enable management actions for an instance using system managed identity.
+          text: >
+            az iot ops mgmt-actions enable --instance myinstance -g myresourcegroup
+            --eg-resource-id $EG_NAMESPACE_RESOURCE_ID
+        - name: Enable management actions using a user-assigned managed identity for the EG dataflow endpoint.
+          text: >
+            az iot ops mgmt-actions enable --instance myinstance -g myresourcegroup
+            --eg-resource-id $EG_NAMESPACE_RESOURCE_ID --mi-user-assigned $UA_MI_RESOURCE_ID
+        - name: Enable management actions and skip role assignments.
+          text: >
+            az iot ops mgmt-actions enable --instance myinstance -g myresourcegroup
+            --eg-resource-id $EG_NAMESPACE_RESOURCE_ID --skip-ra
+    """
+
+    helps[
+        "iot ops mgmt-actions disable"
+    ] = """
+        type: command
+        short-summary: Disable management actions for an IoT Operations instance.
+        long-summary: |
+            Removes the outer loop resources associated with the instance including the dataflow graph,
+            response dataflow, EG dataflow endpoint, EG topic space and permission bindings, and the
+            ADR namespace management endpoint entry.
+
+            Role assignments are not removed as they may be shared with other resources.
+
+            The Event Grid namespace is discovered from the ADR namespace management endpoint configuration.
+            If the management endpoint entry has already been removed, Event Grid cleanup is skipped gracefully.
+
+        examples:
+        - name: Disable management actions for an instance.
+          text: >
+            az iot ops mgmt-actions disable --instance myinstance -g myresourcegroup
+        - name: Disable management actions without confirmation prompt.
+          text: >
+            az iot ops mgmt-actions disable --instance myinstance -g myresourcegroup --yes
+    """
+
+    helps[
         "iot ops schema"
     ] = """
         type: group

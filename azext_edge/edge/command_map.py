@@ -15,6 +15,7 @@ dataflow_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands
 registry_endpoint_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_registry_endpoints#{}")
 edge_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_edge#{}")
 secretsync_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_secretsync#{}")
+mgmt_actions_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_mgmt_actions#{}")
 asset_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_assets#{}")
 aep_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_asset_endpoint_profiles#{}")
 namespace_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_namespaces#{}")
@@ -57,6 +58,13 @@ def load_iotops_commands(self, _):
         cmd_group.command("enable", "secretsync_enable")
         cmd_group.command("disable", "secretsync_disable")
         cmd_group.show_command("list", "secretsync_list")
+
+    with self.command_group(
+        "iot ops mgmt-actions",
+        command_type=mgmt_actions_resource_ops,
+    ) as cmd_group:
+        cmd_group.command("enable", "mgmt_actions_enable")
+        cmd_group.command("disable", "mgmt_actions_disable")
 
     with self.command_group(
         "iot ops support",

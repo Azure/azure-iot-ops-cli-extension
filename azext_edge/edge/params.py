@@ -1527,6 +1527,50 @@ def load_iotops_arguments(self, _):
             help="IoT Operations instance name.",
         )
 
+    with self.argument_context("iot ops mgmt-actions") as context:
+        context.argument(
+            "instance_name",
+            options_list=["--instance", "-i", "-n"],
+            help="IoT Operations instance name.",
+        )
+
+    with self.argument_context("iot ops mgmt-actions enable") as context:
+        context.argument(
+            "eg_resource_id",
+            options_list=["--eg-resource-id"],
+            help="Event Grid Namespace ARM resource Id.",
+        )
+        context.argument(
+            "mi_user_assigned",
+            options_list=["--mi-user-assigned"],
+            help="User-assigned managed identity resource Id for EG dataflow endpoint authentication. "
+            "Default: system managed identity.",
+        )
+        context.argument(
+            "eg_client_group",
+            options_list=["--eg-client-group"],
+            help="Client group for EG permission bindings. Default: $all.",
+        )
+        context.argument(
+            "adr_role_ids",
+            options_list=["--adr-role-ids"],
+            nargs="+",
+            help="Custom role Ids for ADR namespace managed identity role assignments against the EG namespace. "
+            "Default: 'Event Grid TopicSpaces Publisher' and 'Event Grid TopicSpaces Subscriber'.",
+        )
+        context.argument(
+            "ops_role_ids",
+            options_list=["--ops-role-ids"],
+            nargs="+",
+            help="Custom role Ids for AIO extension managed identity role assignments against the EG namespace. "
+            "Default: 'Event Grid TopicSpaces Publisher' and 'Event Grid TopicSpaces Subscriber'.",
+        )
+        context.argument(
+            "dataflow_profile",
+            options_list=["--dataflow-profile"],
+            help="Dataflow profile name for graph and dataflow resources. Default: 'default'.",
+        )
+
     with self.argument_context("iot ops schema") as context:
         context.argument(
             "schema_name",

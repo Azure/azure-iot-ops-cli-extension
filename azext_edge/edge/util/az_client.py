@@ -49,6 +49,7 @@ if TYPE_CHECKING:
     from ..vendor.clients.resourcehealthmgmt import MicrosoftResourceHealth
     from ..vendor.clients.secretsyncmgmt import MicrosoftSecretSyncController
     from ..vendor.clients.storagemgmt import StorageManagementClient
+    from ..vendor.clients.eventgridmgmt import EventGridManagementClient
 
 
 # TODO @digimaun - simplify client init pattern. Consider multi-profile vs static API client.
@@ -131,6 +132,20 @@ def get_storage_mgmt_client(subscription_id: str, **kwargs) -> "StorageManagemen
         kwargs["http_logging_policy"] = get_default_logging_policy()
 
     return StorageManagementClient(
+        credential=AZURE_CLI_CREDENTIAL,
+        subscription_id=subscription_id,
+        user_agent_policy=UserAgentPolicy(user_agent=USER_AGENT),
+        **kwargs,
+    )
+
+
+def get_eventgrid_mgmt_client(subscription_id: str, **kwargs) -> "EventGridManagementClient":
+    from ..vendor.clients.eventgridmgmt import EventGridManagementClient
+
+    if "http_logging_policy" not in kwargs:
+        kwargs["http_logging_policy"] = get_default_logging_policy()
+
+    return EventGridManagementClient(
         credential=AZURE_CLI_CREDENTIAL,
         subscription_id=subscription_id,
         user_agent_policy=UserAgentPolicy(user_agent=USER_AGENT),
