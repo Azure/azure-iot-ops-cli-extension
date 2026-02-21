@@ -1301,10 +1301,11 @@ def test_iot_ops_create_block_feature_config(
         "instance_features": target_scenario["instance_features"],
     }
 
-    with pytest.raises(ValidationError) as exc:
+    with pytest.raises(InvalidArgumentValueError) as exc:
         create_instance(**create_call_kwargs)
     exc_msg = str(exc.value)
-    assert "No feature keys are supported in this version of IoT Operations." == exc_msg
+    assert "Supported feature keys:" in exc_msg
+    assert "opcua.mode" in exc_msg
 
 
 def assert_logger(mocked_logger: Mock, target_scenario: dict):
