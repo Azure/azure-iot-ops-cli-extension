@@ -63,7 +63,7 @@ KEYVAULT_ROLE_ID_SECRETS_USER = "4633458b-17de-408a-b874-0445c86b69e6"
 KEYVAULT_ROLE_ID_READER = "21090545-7ca7-4776-b22c-e363652d74d2"
 MANAGED_IDENTITY_API_VERSION = "2023-01-31"
 
-COMPAT_FEAT_KEY_SET = {}
+COMPAT_FEAT_KEY_SET = {"opcua.mode"}
 
 
 def get_user_msg_warn_ra(prefix: str, principal_id: str, scope: str) -> str:
