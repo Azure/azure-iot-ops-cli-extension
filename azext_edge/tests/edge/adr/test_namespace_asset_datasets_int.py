@@ -55,7 +55,6 @@ def test_namespace_custom_asset_dataset_lifecycle_operations(
     tracked_resources.append(asset_custom["id"])
 
     # 1. CREATE DATASET
-    dataset_data_source = "sensor/temperature"
     dataset_destinations = "topic=factory/temperature qos=Qos1 retain=Keep ttl=3600"
     custom_config_path, custom_config = create_config_file(tracked_files)
 
@@ -63,7 +62,6 @@ def test_namespace_custom_asset_dataset_lifecycle_operations(
     dataset_result = run(
         f"az iot ops ns asset custom dataset add --asset {asset_name} "
         f"--instance {instance_name} -g {resource_group} --name {dataset_name_1} "
-        f"--data-source {dataset_data_source} "
         f"--destination {dataset_destinations} "
         f"--config {custom_config_path}"
     )
@@ -71,7 +69,6 @@ def test_namespace_custom_asset_dataset_lifecycle_operations(
     assert_dataset_properties(
         dataset_result,
         name=dataset_name_1,
-        data_source=dataset_data_source,
         asset_type="custom",
         custom_configuration=custom_config
     )
@@ -95,7 +92,6 @@ def test_namespace_custom_asset_dataset_lifecycle_operations(
     assert_dataset_properties(
         shown_dataset,
         name=dataset_name_1,
-        data_source=dataset_data_source,
         asset_type="custom"
     )
 
@@ -291,14 +287,12 @@ def test_namespace_opcua_asset_dataset_lifecycle_operations(require_init, tracke
     tracked_resources.append(asset_opcua["id"])
 
     # 1. CREATE DATASET
-    dataset_data_source = "ns=2;i=1001"
     dataset_destinations = "topic=factory/opcua/temperature qos=Qos1 retain=Keep ttl=3600"
 
     # Add OPCUA asset dataset with specific OPCUA parameters
     dataset_result = run(
         f"az iot ops ns asset opcua dataset add --asset {asset_name} "
         f"--instance {instance_name} -g {resource_group} --name {dataset_name_1} "
-        f"--data-source \"{dataset_data_source}\" "
         f"--destination {dataset_destinations} "
         f"--publish-int 1000 "
         f"--sampling-int 500 "
@@ -309,7 +303,6 @@ def test_namespace_opcua_asset_dataset_lifecycle_operations(require_init, tracke
     assert_dataset_properties(
         dataset_result,
         name=dataset_name_1,
-        data_source=dataset_data_source,
         asset_type="opcua",
         publishing_interval=1000,
     )
@@ -333,7 +326,6 @@ def test_namespace_opcua_asset_dataset_lifecycle_operations(require_init, tracke
     assert_dataset_properties(
         shown_dataset,
         name=dataset_name_1,
-        data_source=dataset_data_source,
         asset_type="opcua",
         publishing_interval=1000,
     )
@@ -525,14 +517,12 @@ def test_namespace_rest_asset_dataset_lifecycle_operations(require_init, tracked
     tracked_resources.append(asset_rest["id"])
 
     # 1. CREATE DATASET
-    dataset_data_source = "/api/temperature"
     dataset_destinations = "topic=factory/rest/temperature qos=Qos1 retain=Keep ttl=3600"
 
     # Add REST asset dataset with specific REST parameters
     dataset_result = run(
         f"az iot ops ns asset rest dataset add --asset {asset_name} "
         f"--instance {instance_name} -g {resource_group} --name {dataset_name_1} "
-        f"--data-source {dataset_data_source} "
         f"--destination {dataset_destinations} "
         f"--sampling-int 5000"
     )
@@ -540,7 +530,6 @@ def test_namespace_rest_asset_dataset_lifecycle_operations(require_init, tracked
     assert_dataset_properties(
         dataset_result,
         name=dataset_name_1,
-        data_source=dataset_data_source,
         asset_type="rest",
     )
 
@@ -563,7 +552,6 @@ def test_namespace_rest_asset_dataset_lifecycle_operations(require_init, tracked
     assert_dataset_properties(
         shown_dataset,
         name=dataset_name_1,
-        data_source=dataset_data_source,
         asset_type="rest",
     )
 
@@ -679,21 +667,18 @@ def test_namespace_sse_asset_dataset_lifecycle_operations(require_init, tracked_
     tracked_resources.append(asset_sse["id"])
 
     # 1. CREATE DATASET
-    dataset_data_source = "/events/temperature"
     dataset_destinations = "topic=factory/sse/temperature qos=Qos1 retain=Keep ttl=3600"
 
     # Add SSE asset dataset (NOTE: No sampling interval since SSE is event-driven)
     dataset_result = run(
         f"az iot ops ns asset sse dataset add --asset {asset_name} "
         f"--instance {instance_name} -g {resource_group} --name {dataset_name_1} "
-        f"--data-source {dataset_data_source} "
         f"--destination {dataset_destinations}"
     )
 
     assert_dataset_properties(
         dataset_result,
         name=dataset_name_1,
-        data_source=dataset_data_source,
         asset_type="sse",
     )
 
@@ -716,7 +701,6 @@ def test_namespace_sse_asset_dataset_lifecycle_operations(require_init, tracked_
     assert_dataset_properties(
         dataset_show,
         name=dataset_name_1,
-        data_source=dataset_data_source,
         asset_type="sse",
     )
 
@@ -832,21 +816,18 @@ def test_namespace_mqtt_asset_dataset_lifecycle_operations(require_init, tracked
     tracked_resources.append(asset_mqtt["id"])
 
     # 1. CREATE DATASET
-    dataset_data_source = "factory/temperature"
     dataset_destinations = "topic=telemetry/mqtt/temperature qos=Qos1 retain=Keep ttl=3600"
 
     # Add MQTT asset dataset (NOTE: MQTT datasets support BrokerStateStore and MQTT destinations only, no events)
     dataset_result = run(
         f"az iot ops ns asset mqtt dataset add --asset {asset_name} "
         f"--instance {instance_name} -g {resource_group} --name {dataset_name_1} "
-        f"--data-source {dataset_data_source} "
         f"--destination {dataset_destinations}"
     )
 
     assert_dataset_properties(
         dataset_result,
         name=dataset_name_1,
-        data_source=dataset_data_source,
         asset_type="mqtt",
     )
 
@@ -869,7 +850,6 @@ def test_namespace_mqtt_asset_dataset_lifecycle_operations(require_init, tracked
     assert_dataset_properties(
         dataset_show,
         name=dataset_name_1,
-        data_source=dataset_data_source,
         asset_type="mqtt",
     )
 

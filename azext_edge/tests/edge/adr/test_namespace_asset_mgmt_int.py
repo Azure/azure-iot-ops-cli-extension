@@ -59,19 +59,17 @@ def test_namespace_custom_asset_management_group_lifecycle_operations(
     # 1. CREATE MANAGEMENT GROUP
     default_topic = "factory/custom/management/responses"
     default_timeout = 30
-    data_source = f"nsu=customNamespace;i={randint(1, 999)}"
     custom_config_path, custom_config = create_config_file(tracked_files)
 
     mgmt_group_result = run(
         f"az iot ops ns asset custom mgmt-group add --asset {asset_name} --instance {instance_name} "
-        f"-g {resource_group} --name {mgmt_group_name} --data-source '{data_source}' "
+        f"-g {resource_group} --name {mgmt_group_name} "
         f"--default-topic '{default_topic}' --default-timeout {default_timeout} --config {custom_config_path}"
     )
 
     assert_management_group_properties(
         mgmt_group_result,
         name=mgmt_group_name,
-        data_source=data_source,
         default_topic=default_topic,
         default_timeout=default_timeout,
         custom_configuration=custom_config,

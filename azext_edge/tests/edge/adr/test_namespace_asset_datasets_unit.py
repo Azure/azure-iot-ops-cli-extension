@@ -116,6 +116,10 @@ def generate_dataset(dataset_name: Optional[str] = None, num_data_points: int = 
         "ttl": 3600
     },
 ])
+@pytest.mark.parametrize("data_source", [
+    None,
+    f"nsu=http://microsoft.com/Opc/OpcPlc/Oven;i={randint(1, 1000)}",
+])
 @pytest.mark.parametrize("previous_datasets, replace", [
     (False, True),  # No previous datasets, replace should not matter
     (False, False),
@@ -130,6 +134,7 @@ def test_add_namespace_asset_dataset(
     destination_params: Dict[str, str],
     previous_datasets: bool,
     replace: bool,
+    data_source: Optional[str],
     mocked_check_cluster_connectivity,
     mocked_get_namespace_for_instance
 ):
@@ -137,7 +142,6 @@ def test_add_namespace_asset_dataset(
     instance_name = "testInstance"
     instance_resource_group = "testInstanceResourceGroup"
     dataset_name = f"dataset{randint(0, 100)}"
-    data_source = f"nsu=http://microsoft.com/Opc/OpcPlc/Oven;i={randint(1, 1000)}"
 
     # Get the namespace from the mocked function
     namespace_resource = mocked_get_namespace_for_instance.return_value
@@ -147,9 +151,10 @@ def test_add_namespace_asset_dataset(
     # Create the expected dataset
     expected_dataset = {
         "name": dataset_name,
-        "dataSource": data_source,
         "dataPoints": []
     }
+    if data_source:
+        expected_dataset["dataSource"] = data_source
 
     config_params = deepcopy(config_params)
     # Add configuration based on asset type
@@ -294,7 +299,10 @@ def test_add_namespace_asset_dataset(
     # Find our dataset in the list
     added_dataset = next((d for d in datasets if d["name"] == dataset_name), None)
     assert added_dataset is not None, "Added dataset not found in the list of datasets"
-    assert added_dataset["dataSource"] == data_source
+    if data_source:
+        assert added_dataset["dataSource"] == data_source
+    else:
+        assert "dataSource" not in added_dataset
     assert added_dataset["typeRef"] == config_params.get("type_ref")
 
     # Check configuration and destinations using helper functions

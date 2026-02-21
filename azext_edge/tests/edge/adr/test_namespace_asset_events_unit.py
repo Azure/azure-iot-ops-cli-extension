@@ -123,6 +123,10 @@ def generate_event_group(
     (True, False),   # Has previous events, no replace
     (True, True)     # Has previous events, with replace
 ])
+@pytest.mark.parametrize("data_source", [
+    None,
+    f"nsu=test;s=FastUInt{randint(1, 1000)}",
+])
 def test_add_namespace_asset_event_group(
     mocked_cmd,
     mocked_responses: responses,
@@ -132,6 +136,7 @@ def test_add_namespace_asset_event_group(
     destination_params: Dict[str, str],
     has_previous_events: bool,
     replace_event: bool,
+    data_source: Optional[str],
     mocked_check_cluster_connectivity,
     mocked_get_namespace_for_instance
 ):
@@ -139,7 +144,6 @@ def test_add_namespace_asset_event_group(
     instance_name = "testInstance"
     instance_resource_group = "testInstanceResourceGroup"
     group_name = f"testEvent{generate_random_string(5)}"
-    data_source = f"nsu=test;s=FastUInt{randint(1, 1000)}"
 
     # Get the namespace from the mocked function
     namespace_resource = mocked_get_namespace_for_instance.return_value
@@ -280,7 +284,10 @@ def test_add_namespace_asset_event_group(
     # Find our event in the list
     added_group = next((e for e in groups if e["name"] == group_name), None)
     assert added_group is not None, "Added event group not found in the list of event groups"
-    assert added_group["dataSource"] == data_source
+    if data_source:
+        assert added_group["dataSource"] == data_source
+    else:
+        assert "dataSource" not in added_group
     assert added_group["typeRef"] == expected_group["typeRef"]
 
     # Check configuration and destinations using helper functions
@@ -915,6 +922,10 @@ def test_update_namespace_asset_event_group(
     (True, False),   # Has previous points, no replace
     (True, True)     # Has previous points, with replace
 ])
+@pytest.mark.parametrize("data_source", [
+    None,
+    f"nsu=test;s=Point{randint(1, 1000)}",
+])
 def test_add_namespace_asset_event_group_event(
     mocked_cmd,
     mocked_responses: responses,
@@ -923,6 +934,7 @@ def test_add_namespace_asset_event_group_event(
     config_params: dict,
     has_points: bool,
     replace: bool,
+    data_source: Optional[str],
     mocked_check_cluster_connectivity,
     mocked_get_namespace_for_instance
 ):
@@ -932,7 +944,6 @@ def test_add_namespace_asset_event_group_event(
     instance_resource_group = "testInstanceResourceGroup"
     group_name = f"testEvent{generate_random_string(5)}"
     event_name = f"testPoint{generate_random_string(5)}"
-    data_source = f"nsu=test;s=Point{randint(1, 1000)}"
 
     # Get the namespace from the mocked function
     namespace_resource = mocked_get_namespace_for_instance.return_value
@@ -991,8 +1002,9 @@ def test_add_namespace_asset_event_group_event(
     # Create the expected data point
     expected_event = {
         "name": event_name,
-        "dataSource": data_source
     }
+    if data_source:
+        expected_event["dataSource"] = data_source
 
     # Add configuration based on asset type
     if asset_type == "custom" and "custom_configuration" in config_params:
@@ -1079,7 +1091,10 @@ def test_add_namespace_asset_event_group_event(
     # check the added datapoint
     patched_event = next((p for p in patch_group["events"] if p["name"] == event_name), None)
     assert patched_event is not None, f"Data point '{event_name}' not found in PATCH request"
-    assert patched_event["dataSource"] == data_source
+    if data_source:
+        assert patched_event["dataSource"] == data_source
+    else:
+        assert "dataSource" not in patched_event
     assert patched_event.get("typeRef") == expected_event.get("typeRef")
     assert patched_event["eventConfiguration"] == expected_event.get("eventConfiguration", "{}")
 
