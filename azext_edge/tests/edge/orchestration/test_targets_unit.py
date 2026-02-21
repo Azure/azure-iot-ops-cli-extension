@@ -478,7 +478,8 @@ def test_init_targets(target_scenario: dict, mocked_feature_keys: Mock):
     ],
 )
 def test_init_targets_opcua_mode(target_scenario: dict):
-    """Verify opcua.mode feature flows through InitTargets into the ARM template against the real COMPAT_FEAT_KEY_SET."""
+    """Verify opcua.mode feature flows through InitTargets into the
+    ARM template against the real COMPAT_FEAT_KEY_SET."""
     targets = InitTargets(**target_scenario)
 
     expected_features = parse_feature_kvp_nargs(target_scenario["instance_features"])
