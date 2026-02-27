@@ -61,6 +61,17 @@ K8S_EXTENSIONS_API_VERSION = "2023-05-01"
 
 
 # ---------------------------------------------------------------------------
+# Autouse fixture — suppress Rich display for all tests in this module
+# ---------------------------------------------------------------------------
+
+@pytest.fixture(autouse=True)
+def suppress_workflow_display(mocker):
+    """Prevent WorkflowDisplay and render_summary from writing to stderr during tests."""
+    mocker.patch("azext_edge.edge.providers.orchestration.mgmt_actions.WorkflowDisplay")
+    mocker.patch("azext_edge.edge.providers.orchestration.mgmt_actions.render_summary")
+
+
+# ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
@@ -2290,7 +2301,9 @@ class TestEnable:
         """Register HTTP mocks for an enable() call.
 
         Registers 16 calls (or 17 with mi_response) in the exact order
-        the enable() method issues them.
+        the enable() method issues them:
+          Instance GET → EG namespace GET → (UAMI GET) → topic space → permission bindings
+          → ADR namespace GET/PATCH → dataflow endpoint → dataflow graph → response dataflow.
         """
         # 1. GET instance
         mocked_responses.add(
@@ -2341,19 +2354,6 @@ class TestEnable:
                 json=_build_permission_binding_response(name, perm, ts_name),
                 status=200,
             )
-        # Dataflow endpoint: GET 404, PUT 200
-        mocked_responses.add(
-            method=responses.GET,
-            url=_build_iotops_endpoint(instance_name, rg, sub_resource=f"/dataflowEndpoints/{ep_name}"),
-            json={"error": {"code": "ResourceNotFound"}},
-            status=404,
-        )
-        mocked_responses.add(
-            method=responses.PUT,
-            url=_build_iotops_endpoint(instance_name, rg, sub_resource=f"/dataflowEndpoints/{ep_name}"),
-            json={"id": f"/fake/path/dataflowEndpoints/{ep_name}", "name": ep_name},
-            status=200,
-        )
         # ADR namespace: GET, PATCH 200
         mocked_responses.add(
             method=responses.GET,
@@ -2378,6 +2378,19 @@ class TestEnable:
                     },
                 },
             ),
+            status=200,
+        )
+        # Dataflow endpoint: GET 404, PUT 200
+        mocked_responses.add(
+            method=responses.GET,
+            url=_build_iotops_endpoint(instance_name, rg, sub_resource=f"/dataflowEndpoints/{ep_name}"),
+            json={"error": {"code": "ResourceNotFound"}},
+            status=404,
+        )
+        mocked_responses.add(
+            method=responses.PUT,
+            url=_build_iotops_endpoint(instance_name, rg, sub_resource=f"/dataflowEndpoints/{ep_name}"),
+            json={"id": f"/fake/path/dataflowEndpoints/{ep_name}", "name": ep_name},
             status=200,
         )
         # Dataflow graph: GET 404, PUT 200
@@ -2479,6 +2492,10 @@ class TestEnable:
         assert adr["subscriptionId"] == ZEROED_SUBSCRIPTION
         assert adr["identity"]["type"] == "SystemAssigned"
         assert adr["identity"]["principalId"] == f["adr_principal_id"]
+        assert adr["managementEndpoint"]["endpointType"] == MGMT_ACTIONS_ADR_ENDPOINT_TYPE
+        assert adr["managementEndpoint"]["address"] == f["hostname"]
+        assert adr["managementEndpoint"]["scopeId"] == f["instance_name"]
+        assert "managementEndpoints" not in adr
 
         # -- Assert roleAssignments section --
         assert result["roleAssignments"] == mock_role_result
@@ -2564,7 +2581,8 @@ class TestEnable:
         assert result["instance"]["dataflowEndpoint"]["name"] == f["ep_name"]
 
         # Verify the endpoint PUT body contains UserAssignedManagedIdentity auth
-        endpoint_put_call = mocked_responses.calls[10]
+        # Index 12: UAMI GET(2) + topic space(3-4) + bindings(5-8) + ADR(9-10) + ep GET(11) + ep PUT(12)
+        endpoint_put_call = mocked_responses.calls[12]
         endpoint_body = json.loads(endpoint_put_call.request.body)
         auth = endpoint_body["properties"]["mqttSettings"]["authentication"]
         assert auth["method"] == "UserAssignedManagedIdentity"
@@ -3525,7 +3543,13 @@ class TestShow:
         )
         assert result["eventGrid"]["topicSpace"]["scopeId"] == f["instance_name"]
         assert len(result["eventGrid"]["topicSpace"]["topicTemplates"]) == 2
-        assert result["eventGrid"]["permissionBindings"]["clientGroup"] == MGMT_ACTIONS_DEFAULT_EG_CLIENT_GROUP
+        pub_name = get_mgmt_actions_resource_name("pub", f["instance_resource_id"])
+        sub_name = get_mgmt_actions_resource_name("sub", f["instance_resource_id"])
+        pub_bindings = result["eventGrid"]["permissionBindings"]
+        assert pub_bindings["publisher"]["name"] == pub_name
+        assert pub_bindings["publisher"]["clientGroup"] == MGMT_ACTIONS_DEFAULT_EG_CLIENT_GROUP
+        assert pub_bindings["subscriber"]["name"] == sub_name
+        assert pub_bindings["subscriber"]["clientGroup"] == MGMT_ACTIONS_DEFAULT_EG_CLIENT_GROUP
         assert result["deviceRegistryNamespace"]["name"] == f["adr_ns_name"]
         assert result["deviceRegistryNamespace"]["resourceGroup"] == f["rg"]
         assert result["deviceRegistryNamespace"]["subscriptionId"] == ZEROED_SUBSCRIPTION
