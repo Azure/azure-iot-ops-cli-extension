@@ -208,12 +208,11 @@ class TestRendering:
         """Non-transient displays include animated progress bar with elapsed time."""
         mocker.patch("azext_edge.edge.util.workflow_display.Live")
         display = WorkflowDisplay("Test", {"Cat": ["S1"]}, transient=False)
-        display.__enter__()
-        grid = display._render()
-        output = _render_grid_to_text(grid)
-        assert "Working..." in output
-        assert "Elapsed:" in output
-        display.__exit__(None, None, None)
+        with display:
+            grid = display._render()
+            output = _render_grid_to_text(grid)
+            assert "Working..." in output
+            assert "Elapsed:" in output
 
     def test_complete_detail_defaults_to_state_value(self):
         """When no detail is passed, the status word falls back to state.value."""
