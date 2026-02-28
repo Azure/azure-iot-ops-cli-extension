@@ -2122,7 +2122,7 @@ def load_iotops_help():
         type: command
         short-summary: Enable management actions for an IoT Operations instance.
         long-summary: |
-            Bootstraps the outer loop infrastructure enabling cloud-based invocation of management
+            Bootstraps the infrastructure enabling cloud-based invocation of management
             actions on assets through Event Grid MQTT broker integration.
 
             The operation configures resources across three domains:
@@ -2158,7 +2158,7 @@ def load_iotops_help():
         type: command
         short-summary: Disable management actions for an IoT Operations instance.
         long-summary: |
-            Removes the outer loop resources associated with the instance including the dataflow graph,
+            Removes the management actions resources associated with the instance including the dataflow graph,
             response dataflow, EG dataflow endpoint, EG topic space and permission bindings, and the
             ADR namespace management endpoint entry.
 

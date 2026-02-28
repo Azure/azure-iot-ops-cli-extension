@@ -7,8 +7,9 @@
 """Reusable Rich-based workflow progress display for multi-step CLI operations."""
 
 import threading
+from contextlib import contextmanager
 from enum import Enum
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, Iterator, List, Optional, Tuple, Union
 
 from rich.console import Console
 from rich.live import Live
@@ -173,6 +174,22 @@ class WorkflowDisplay:
         if self._live is not None:
             self._live.__exit__(*exc)
             self._live = None
+
+    @contextmanager
+    def step_scope(self, category: str, step: str) -> Iterator[None]:
+        """Context manager that auto-transitions ACTIVE on enter and FAILED on exception.
+
+        Sets the step to ACTIVE immediately, then yields. If the body raises an
+        exception, the step is marked FAILED with a truncated error message (max 40
+        chars) before re-raising. On clean exit the caller is responsible for setting
+        COMPLETE or SKIPPED inside the block.
+        """
+        self.update_step(category, step, StepState.ACTIVE)
+        try:
+            yield
+        except Exception as exc:
+            self.update_step(category, step, StepState.FAILED, str(exc)[:40])
+            raise
 
     def update_step(self, category: str, step: str, state: StepState, detail: str = "") -> None:
         """Transition a step to a new state with an optional caller-supplied status word.

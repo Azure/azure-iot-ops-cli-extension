@@ -9,6 +9,7 @@ from concurrent.futures import ThreadPoolExecutor
 from unittest.mock import MagicMock
 
 import pytest
+from azure.core.exceptions import HttpResponseError
 
 from azext_edge.edge.util.workflow_display import StepState, WorkflowDisplay, format_dot_leader, render_summary
 
@@ -334,6 +335,107 @@ class TestContextManager:
         task = display._progress_bar.tasks[0]
         assert task.description == "Done."
         assert task.stop_time is not None
+
+
+class TestStepScope:
+    """step_scope() context manager behavior."""
+
+    def test_sets_active_on_enter(self):
+        """Entering step_scope sets the step to ACTIVE."""
+        display = WorkflowDisplay("Test", {"Cat": ["Step"]})
+        with display.step_scope("Cat", "Step"):
+            assert display._steps["Cat"]["Step"][0] == StepState.ACTIVE
+
+    def test_clean_exit_preserves_state(self):
+        """Clean exit does not change state — caller is responsible for COMPLETE/SKIPPED."""
+        display = WorkflowDisplay("Test", {"Cat": ["Step"]})
+        with display.step_scope("Cat", "Step"):
+            pass
+        # State stays ACTIVE because caller didn't set COMPLETE/SKIPPED
+        assert display._steps["Cat"]["Step"][0] == StepState.ACTIVE
+
+    def test_exception_sets_failed_and_reraises(self):
+        display = WorkflowDisplay("Test", {"Cat": ["Step"]})
+        with pytest.raises(RuntimeError, match="boom"):
+            with display.step_scope("Cat", "Step"):
+                raise RuntimeError("boom")
+        assert display._steps["Cat"]["Step"][0] == StepState.FAILED
+        assert display._steps["Cat"]["Step"][1] == "boom"
+
+    def test_failed_detail_truncated_to_40_chars(self):
+        display = WorkflowDisplay("Test", {"Cat": ["Step"]})
+        long_msg = "A" * 60
+        with pytest.raises(RuntimeError):
+            with display.step_scope("Cat", "Step"):
+                raise RuntimeError(long_msg)
+        assert display._steps["Cat"]["Step"][1] == "A" * 40
+        assert len(display._steps["Cat"]["Step"][1]) == 40
+
+    def test_caller_sets_complete_inside_scope(self):
+        display = WorkflowDisplay("Test", {"Cat": ["Step"]})
+        with display.step_scope("Cat", "Step"):
+            display.update_step("Cat", "Step", StepState.COMPLETE, "created")
+        assert display._steps["Cat"]["Step"] == [StepState.COMPLETE, "created"]
+
+    def test_caller_sets_skipped_inside_scope(self):
+        display = WorkflowDisplay("Test", {"Cat": ["Step"]})
+        with display.step_scope("Cat", "Step"):
+            display.update_step("Cat", "Step", StepState.SKIPPED, "exists")
+        assert display._steps["Cat"]["Step"] == [StepState.SKIPPED, "exists"]
+
+    def test_exception_overwrites_prior_complete(self):
+        """If caller sets COMPLETE then an exception fires, FAILED wins."""
+        display = WorkflowDisplay("Test", {"Cat": ["Step"]})
+        with pytest.raises(ValueError):
+            with display.step_scope("Cat", "Step"):
+                display.update_step("Cat", "Step", StepState.COMPLETE, "ok")
+                raise ValueError("late failure")
+        assert display._steps["Cat"]["Step"][0] == StepState.FAILED
+        assert display._steps["Cat"]["Step"][1] == "late failure"
+
+    def test_no_progress_mode_still_executes_body(self):
+        display = WorkflowDisplay("Test", {"Cat": ["Step"]}, no_progress=True)
+        executed = False
+        with display.step_scope("Cat", "Step"):
+            executed = True
+        assert executed
+        # State unchanged due to no_progress
+        assert display._steps["Cat"]["Step"][0] == StepState.PENDING
+
+    def test_no_progress_exception_still_reraises(self):
+        display = WorkflowDisplay("Test", {"Cat": ["Step"]}, no_progress=True)
+        with pytest.raises(RuntimeError, match="boom"):
+            with display.step_scope("Cat", "Step"):
+                raise RuntimeError("boom")
+        # State unchanged — update_step is a no-op in no_progress mode
+        assert display._steps["Cat"]["Step"][0] == StepState.PENDING
+
+    def test_unknown_category_raises_on_enter(self):
+        display = WorkflowDisplay("Test", {"Cat": ["Step"]})
+        with pytest.raises(ValueError, match="Unknown category"):
+            with display.step_scope("Bad", "Step"):
+                pass
+
+    def test_unknown_step_raises_on_enter(self):
+        display = WorkflowDisplay("Test", {"Cat": ["Step"]})
+        with pytest.raises(ValueError, match="Unknown step"):
+            with display.step_scope("Cat", "Bad"):
+                pass
+
+    @pytest.mark.parametrize(
+        "exc_type",
+        [RuntimeError, ValueError, HttpResponseError, TypeError],
+        ids=["runtime", "value", "http_response", "type"],
+    )
+    def test_various_exception_types(self, exc_type):
+        """step_scope catches all Exception subclasses, not just specific types."""
+        display = WorkflowDisplay("Test", {"Cat": ["Step"]})
+        with pytest.raises(exc_type):
+            with display.step_scope("Cat", "Step"):
+                if exc_type == HttpResponseError:
+                    raise exc_type("test error", response=MagicMock(status_code=403))
+                raise exc_type("test error")
+        assert display._steps["Cat"]["Step"][0] == StepState.FAILED
 
 
 class TestThreadSafety:
