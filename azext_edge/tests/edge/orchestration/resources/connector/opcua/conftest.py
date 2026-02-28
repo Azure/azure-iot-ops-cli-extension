@@ -34,7 +34,13 @@ def mocked_instance(mocker):
     patched = mocker.patch(
         "azext_edge.edge.providers.orchestration.resources.connector.opcua.certs.Instances",
     )
-    yield patched()
+    mock_inst = patched()
+    mock_inst.show.return_value = {
+        "extendedLocation": {"name": "mock-cl", "type": "CustomLocations"},
+        "location": "eastus",
+        "properties": {},
+    }
+    yield mock_inst
 
 
 @pytest.fixture
