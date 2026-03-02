@@ -1480,7 +1480,7 @@ class MgmtActions(Queryable):
                 "userAssignedManagedIdentitySettings": {
                     "clientId": mi_resource["properties"]["clientId"],
                     "tenantId": mi_resource["properties"]["tenantId"],
-                    "scope": MGMT_ACTIONS_EG_AUDIENCE,
+                    "scope": f"{MGMT_ACTIONS_EG_AUDIENCE}/.default",
                 },
             }
         else:

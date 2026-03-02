@@ -934,7 +934,7 @@ class TestSetupEgDataflowEndpoint:
         uami_settings = auth["userAssignedManagedIdentitySettings"]
         assert uami_settings["clientId"] == uami_client_id
         assert uami_settings["tenantId"] == uami_tenant_id
-        assert uami_settings["scope"] == MGMT_ACTIONS_EG_AUDIENCE
+        assert uami_settings["scope"] == f"{MGMT_ACTIONS_EG_AUDIENCE}/.default"
 
     def test_existing_endpoint(self, mocked_cmd, mocked_responses: responses):
         """When endpoint already exists, returns status 'Exists' without PUT."""
@@ -2589,7 +2589,7 @@ class TestEnable:
         uami_settings = auth["userAssignedManagedIdentitySettings"]
         assert uami_settings["clientId"] == mi_client_id
         assert uami_settings["tenantId"] == mi_tenant_id
-        assert uami_settings["scope"] == MGMT_ACTIONS_EG_AUDIENCE
+        assert uami_settings["scope"] == f"{MGMT_ACTIONS_EG_AUDIENCE}/.default"
 
         assert len(mocked_responses.calls) == 17
 
