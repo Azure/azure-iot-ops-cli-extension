@@ -64,3 +64,24 @@ def mgmt_actions_disable(
         confirm_yes=confirm_yes,
         **kwargs,
     )
+
+
+def mgmt_actions_execute(
+    cmd,
+    instance_name: str,
+    resource_group_name: str,
+    asset_name: str,
+    group_name: str,
+    action_name: str,
+    payload: Optional[str] = None,
+    **kwargs,
+) -> Dict:
+    return MgmtActions(cmd).execute(
+        instance_name=instance_name,
+        resource_group_name=resource_group_name,
+        asset_name=asset_name,
+        group_name=group_name,
+        action_name=action_name,
+        payload=payload,
+        **kwargs,
+    )

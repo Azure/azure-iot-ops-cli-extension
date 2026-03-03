@@ -12,7 +12,7 @@ from typing import List, NamedTuple, Optional, Union
 from pathlib import Path
 
 import pytest
-from azure.cli.core.azclierror import FileOperationError
+from azure.cli.core.azclierror import FileOperationError, InvalidArgumentValueError
 
 from ..generators import generate_random_string
 
@@ -230,3 +230,63 @@ def test_try_loading_as(mocker, error, raise_error, return_value):
         )
         assert result == (None if error else return_value)
     loader.assert_called_once_with(content)
+
+
+class TestDeserializeJsonInput:
+    """Tests for deserialize_json_input — file path or inline JSON → parsed object."""
+
+    def test_inline_json_dict(self, mocker):
+        """Valid inline JSON dict is parsed correctly."""
+        mocker.patch(
+            "azext_edge.edge.util.file_operations.read_file_content",
+            side_effect=FileOperationError("Not a file"),
+        )
+        from azext_edge.edge.util import deserialize_json_input
+
+        result = deserialize_json_input('{"key": "value", "nested": {"a": 1}}')
+        assert result == {"key": "value", "nested": {"a": 1}}
+
+    def test_inline_json_list(self, mocker):
+        """Valid inline JSON list is parsed correctly."""
+        mocker.patch(
+            "azext_edge.edge.util.file_operations.read_file_content",
+            side_effect=FileOperationError("Not a file"),
+        )
+        from azext_edge.edge.util import deserialize_json_input
+
+        result = deserialize_json_input('[1, 2, 3]')
+        assert result == [1, 2, 3]
+
+    def test_file_path(self, mocker):
+        """File path input reads file content and parses JSON."""
+        file_content = '{"fromFile": true}'
+        mocker.patch(
+            "azext_edge.edge.util.file_operations.read_file_content",
+            return_value=file_content,
+        )
+        from azext_edge.edge.util import deserialize_json_input
+
+        result = deserialize_json_input("payload.json")
+        assert result == {"fromFile": True}
+
+    def test_invalid_json(self, mocker):
+        """Invalid JSON raises InvalidArgumentValueError."""
+        mocker.patch(
+            "azext_edge.edge.util.file_operations.read_file_content",
+            side_effect=FileOperationError("Not a file"),
+        )
+        from azext_edge.edge.util import deserialize_json_input
+
+        with pytest.raises(InvalidArgumentValueError, match="Failed to parse JSON input"):
+            deserialize_json_input("not valid json")
+
+    def test_file_with_invalid_json(self, mocker):
+        """File that exists but contains invalid JSON raises InvalidArgumentValueError."""
+        mocker.patch(
+            "azext_edge.edge.util.file_operations.read_file_content",
+            return_value="not valid json in file",
+        )
+        from azext_edge.edge.util import deserialize_json_input
+
+        with pytest.raises(InvalidArgumentValueError, match="Failed to parse JSON input"):
+            deserialize_json_input("somefile.json")

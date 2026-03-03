@@ -1576,6 +1576,28 @@ def load_iotops_arguments(self, _):
             help="Registry endpoint name for the dataflow graph. Default: 'default'.",
         )
 
+    with self.argument_context("iot ops mgmt-actions execute") as context:
+        context.argument(
+            "asset_name",
+            options_list=["--asset"],
+            help="Name of the namespace asset to execute the management action on.",
+        )
+        context.argument(
+            "group_name",
+            options_list=["--group"],
+            help="Management group name under which the action is defined.",
+        )
+        context.argument(
+            "action_name",
+            options_list=["--action"],
+            help="Management action name to execute.",
+        )
+        context.argument(
+            "payload",
+            options_list=["--payload", "-p"],
+            help="JSON payload for the management action. Inline JSON string or file path (e.g., payload.json).",
+        )
+
     with self.argument_context("iot ops schema") as context:
         context.argument(
             "schema_name",

@@ -3658,3 +3658,290 @@ class TestShow:
 
         assert result == {"enabled": False}
         assert len(mocked_responses.calls) == 1
+
+
+class TestExecute:
+    """Tests for MgmtActions.execute()."""
+
+    def _build_execute_action_endpoint(
+        self,
+        namespace_name: str,
+        resource_group_name: str,
+        asset_name: str,
+        subscription_id: Optional[str] = None,
+    ) -> str:
+        """Build the executeAction POST URL."""
+        sub_id = subscription_id or ZEROED_SUBSCRIPTION
+        return (
+            f"{BASE_URL}/subscriptions/{sub_id}/resourceGroups/{resource_group_name}"
+            f"/providers/{DEVICEREGISTRY_RP}/namespaces/{namespace_name}"
+            f"/assets/{asset_name}/executeAction"
+            f"?api-version={DEVICEREGISTRY_API_VERSION}"
+        )
+
+    def _make_execute_fixtures(self) -> dict:
+        """Build common test fixtures for execute tests."""
+        instance_name = generate_random_string()
+        rg = generate_random_string()
+        adr_ns_name = f"{instance_name}-adr-ns"
+        asset_name = generate_random_string()
+        group_name = generate_random_string()
+        action_name = generate_random_string()
+        return {
+            "instance_name": instance_name,
+            "rg": rg,
+            "adr_ns_name": adr_ns_name,
+            "asset_name": asset_name,
+            "group_name": group_name,
+            "action_name": action_name,
+        }
+
+    def _register_execute_mocks(
+        self,
+        mocked_responses: responses,
+        instance_name: str,
+        rg: str,
+        adr_ns_name: str,
+        asset_name: str,
+        execute_response: dict,
+        execute_status: int = 200,
+        instance_response: Optional[dict] = None,
+    ) -> None:
+        """Register HTTP mocks for instance GET and executeAction POST."""
+        if instance_response is None:
+            instance_response = _build_instance_response(instance_name, rg, adr_namespace_name=adr_ns_name)
+
+        # Instance GET
+        mocked_responses.add(
+            method=responses.GET,
+            url=_build_iotops_endpoint(instance_name, rg),
+            json=instance_response,
+            status=200,
+        )
+
+        # executeAction POST
+        mocked_responses.add(
+            method=responses.POST,
+            url=self._build_execute_action_endpoint(adr_ns_name, rg, asset_name),
+            json=execute_response,
+            status=execute_status,
+        )
+
+    def test_happy_path_with_payload(self, mocked_cmd, mocked_responses: responses):
+        """Execute with payload — verify request body and return value."""
+        f = self._make_execute_fixtures()
+        payload_str = '{"On": true}'
+        expected_response = {
+            "assetResourceId": f"/subscriptions/{ZEROED_SUBSCRIPTION}/resourceGroups/{f['rg']}"
+            f"/providers/{DEVICEREGISTRY_RP}/namespaces/{f['adr_ns_name']}/assets/{f['asset_name']}",
+            "managementGroupName": f["group_name"],
+            "managementActionName": f["action_name"],
+            "status": "Succeeded",
+            "response": '{"result": "ok"}',
+        }
+        self._register_execute_mocks(
+            mocked_responses,
+            instance_name=f["instance_name"],
+            rg=f["rg"],
+            adr_ns_name=f["adr_ns_name"],
+            asset_name=f["asset_name"],
+            execute_response=expected_response,
+        )
+
+        provider = MgmtActions(cmd=mocked_cmd)
+        result = provider.execute(
+            instance_name=f["instance_name"],
+            resource_group_name=f["rg"],
+            asset_name=f["asset_name"],
+            group_name=f["group_name"],
+            action_name=f["action_name"],
+            payload=payload_str,
+            wait_sec=0,
+        )
+
+        assert result == expected_response
+        assert len(mocked_responses.calls) == 2
+
+        # Verify the request body sent to executeAction
+        execute_request = mocked_responses.calls[1]
+        body = json.loads(execute_request.request.body)
+        assert body["managementActionName"] == f["action_name"]
+        assert body["managementGroupName"] == f["group_name"]
+        assert body["payload"] == {"On": True}
+
+    def test_without_payload(self, mocked_cmd, mocked_responses: responses):
+        """Execute without payload — verify payload key absent from request body."""
+        f = self._make_execute_fixtures()
+        expected_response = {
+            "assetResourceId": "some-id",
+            "managementGroupName": f["group_name"],
+            "managementActionName": f["action_name"],
+            "status": "Succeeded",
+        }
+        self._register_execute_mocks(
+            mocked_responses,
+            instance_name=f["instance_name"],
+            rg=f["rg"],
+            adr_ns_name=f["adr_ns_name"],
+            asset_name=f["asset_name"],
+            execute_response=expected_response,
+        )
+
+        provider = MgmtActions(cmd=mocked_cmd)
+        result = provider.execute(
+            instance_name=f["instance_name"],
+            resource_group_name=f["rg"],
+            asset_name=f["asset_name"],
+            group_name=f["group_name"],
+            action_name=f["action_name"],
+            wait_sec=0,
+        )
+
+        assert result == expected_response
+
+        # Verify no payload in request body
+        execute_request = mocked_responses.calls[1]
+        body = json.loads(execute_request.request.body)
+        assert "payload" not in body
+
+    def test_no_adr_namespace_ref(self, mocked_cmd, mocked_responses: responses):
+        """Instance without adrNamespaceRef raises ValidationError."""
+        instance_name = generate_random_string()
+        rg = generate_random_string()
+
+        instance_response = {
+            "id": (
+                f"/subscriptions/{ZEROED_SUBSCRIPTION}/resourceGroups/{rg}"
+                f"/providers/{IOTOPS_RP}/instances/{instance_name}"
+            ),
+            "name": instance_name,
+            "location": "eastus",
+            "extendedLocation": _make_extended_location(),
+            "properties": {
+                "provisioningState": "Succeeded",
+            },
+        }
+        mocked_responses.add(
+            method=responses.GET,
+            url=_build_iotops_endpoint(instance_name, rg),
+            json=instance_response,
+            status=200,
+        )
+
+        provider = MgmtActions(cmd=mocked_cmd)
+        with pytest.raises(ValidationError, match="Instance does not have an ADR namespace reference"):
+            provider.execute(
+                instance_name=instance_name,
+                resource_group_name=rg,
+                asset_name="some-asset",
+                group_name="some-group",
+                action_name="some-action",
+                wait_sec=0,
+            )
+
+        # Only instance GET — no executeAction call
+        assert len(mocked_responses.calls) == 1
+
+    def test_action_failed_on_device(self, mocked_cmd, mocked_responses: responses):
+        """LRO completes with status Failed — error details returned, not raised."""
+        f = self._make_execute_fixtures()
+        expected_response = {
+            "assetResourceId": "some-id",
+            "managementGroupName": f["group_name"],
+            "managementActionName": f["action_name"],
+            "status": "Failed",
+            "error": {
+                "code": "DeviceError",
+                "message": "The device rejected the action.",
+            },
+        }
+        self._register_execute_mocks(
+            mocked_responses,
+            instance_name=f["instance_name"],
+            rg=f["rg"],
+            adr_ns_name=f["adr_ns_name"],
+            asset_name=f["asset_name"],
+            execute_response=expected_response,
+        )
+
+        provider = MgmtActions(cmd=mocked_cmd)
+        result = provider.execute(
+            instance_name=f["instance_name"],
+            resource_group_name=f["rg"],
+            asset_name=f["asset_name"],
+            group_name=f["group_name"],
+            action_name=f["action_name"],
+            wait_sec=0,
+        )
+
+        # Failed status is returned as-is — not raised as an exception
+        assert result["status"] == "Failed"
+        assert result["error"]["code"] == "DeviceError"
+
+    def test_invalid_payload(self, mocked_cmd, mocked_responses: responses):
+        """Invalid JSON payload raises InvalidArgumentValueError before any API call."""
+        f = self._make_execute_fixtures()
+
+        # Only register instance GET — executeAction POST should never fire
+        mocked_responses.add(
+            method=responses.GET,
+            url=_build_iotops_endpoint(f["instance_name"], f["rg"]),
+            json=_build_instance_response(f["instance_name"], f["rg"], adr_namespace_name=f["adr_ns_name"]),
+            status=200,
+        )
+
+        provider = MgmtActions(cmd=mocked_cmd)
+        with pytest.raises(InvalidArgumentValueError, match="Failed to parse JSON input"):
+            provider.execute(
+                instance_name=f["instance_name"],
+                resource_group_name=f["rg"],
+                asset_name=f["asset_name"],
+                group_name=f["group_name"],
+                action_name=f["action_name"],
+                payload="not valid json",
+                wait_sec=0,
+            )
+
+        # Instance GET fires, but executeAction should not
+        assert len(mocked_responses.calls) == 1
+
+    def test_payload_from_file(self, mocker, mocked_cmd, mocked_responses: responses):
+        """Payload resolved from file path via deserialize_json_input."""
+        f = self._make_execute_fixtures()
+        file_content = '{"temperature": {"setpoint": 72}}'
+        mocker.patch(
+            "azext_edge.edge.util.file_operations.read_file_content",
+            return_value=file_content,
+        )
+        expected_response = {
+            "assetResourceId": "some-id",
+            "managementGroupName": f["group_name"],
+            "managementActionName": f["action_name"],
+            "status": "Succeeded",
+        }
+        self._register_execute_mocks(
+            mocked_responses,
+            instance_name=f["instance_name"],
+            rg=f["rg"],
+            adr_ns_name=f["adr_ns_name"],
+            asset_name=f["asset_name"],
+            execute_response=expected_response,
+        )
+
+        provider = MgmtActions(cmd=mocked_cmd)
+        result = provider.execute(
+            instance_name=f["instance_name"],
+            resource_group_name=f["rg"],
+            asset_name=f["asset_name"],
+            group_name=f["group_name"],
+            action_name=f["action_name"],
+            payload="somefile.json",
+            wait_sec=0,
+        )
+
+        assert result == expected_response
+
+        # Verify payload was deserialized from file content
+        execute_request = mocked_responses.calls[1]
+        body = json.loads(execute_request.request.body)
+        assert body["payload"] == {"temperature": {"setpoint": 72}}

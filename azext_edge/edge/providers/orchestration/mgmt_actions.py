@@ -5,11 +5,12 @@
 # ----------------------------------------------------------------------------------------------
 
 import json
-from typing import TYPE_CHECKING, Callable, Dict, List, NamedTuple, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, NamedTuple, Optional, Tuple
 
 from azure.cli.core.azclierror import InvalidArgumentValueError, ValidationError
 from azure.core.exceptions import HttpResponseError, ResourceNotFoundError
 from knack.log import get_logger
+from rich.console import Console
 
 from ...util.az_client import (
     get_eventgrid_mgmt_client,
@@ -1993,3 +1994,49 @@ class MgmtActions(Queryable):
             }
 
         return result
+
+    def execute(
+        self,
+        instance_name: str,
+        resource_group_name: str,
+        asset_name: str,
+        group_name: str,
+        action_name: str,
+        payload: Optional[str] = None,
+        **kwargs,
+    ) -> dict:
+        """Execute a management action on a namespace asset.
+
+        Resolves the ADR namespace from the instance, then invokes the executeAction
+        ARM operation as an LRO. Returns the action result (status, response, errors).
+        """
+        from ...util.file_operations import deserialize_json_input
+
+        instance = self.iotops_mgmt_client.instance.get(
+            instance_name=instance_name,
+            resource_group_name=resource_group_name,
+        )
+        adr_namespace_ref = instance.get("properties", {}).get("adrNamespaceRef", {}).get("resourceId")
+        if not adr_namespace_ref:
+            raise ValidationError(
+                "Instance does not have an ADR namespace reference. "
+                "Ensure the instance is properly configured."
+            )
+        parsed_adr = parse_resource_id_dict(adr_namespace_ref)
+
+        body: Dict[str, Any] = {
+            "managementActionName": action_name,
+            "managementGroupName": group_name,
+        }
+        if payload is not None:
+            body["payload"] = deserialize_json_input(payload)
+
+        console = Console()
+        with console.status("Executing management action..."):
+            poller = self.registry_mgmt_client.namespace_assets.begin_execute_action(
+                resource_group_name=parsed_adr["resource_group"],
+                namespace_name=parsed_adr["name"],
+                asset_name=asset_name,
+                body=body,
+            )
+            return wait_for_terminal_state(poller, **kwargs)

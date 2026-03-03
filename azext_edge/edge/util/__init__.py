@@ -24,6 +24,7 @@ from .common import (
 )
 from .file_operations import (
     deserialize_file_content,
+    deserialize_json_input,
     dump_content_to_file,
     normalize_dir,
     read_file_content,
@@ -35,6 +36,7 @@ __all__ = [
     "build_query",
     "chunk_list",
     "deserialize_file_content",
+    "deserialize_json_input",
     "dump_content_to_file",
     "generate_secret",
     "generate_self_signed_cert",

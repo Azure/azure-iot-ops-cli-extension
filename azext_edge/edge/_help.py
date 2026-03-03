@@ -2196,6 +2196,49 @@ def load_iotops_help():
     """
 
     helps[
+        "iot ops mgmt-actions execute"
+    ] = """
+        type: command
+        short-summary: Execute a management action on a namespace asset.
+        long-summary: |
+            Invokes a management action defined on a namespace asset via the Device Registry
+            executeAction operation. The management actions infrastructure must be enabled
+            (`az iot ops mgmt-actions enable`) before actions can be executed.
+
+            The command resolves the ADR namespace from the IoT Operations instance and
+            submits the action as a long-running operation. The result includes the action
+            status, any response from the asset, and error details if the action failed.
+
+        examples:
+        - name: Execute a management action with no payload.
+          text: >
+            az iot ops mgmt-actions execute
+            --instance myinstance
+            -g myresourcegroup
+            --asset myasset
+            --group mygroup
+            --action reboot
+        - name: Execute a management action with inline JSON payload.
+          text: >
+            az iot ops mgmt-actions execute
+            --instance myinstance
+            -g myresourcegroup
+            --asset myasset
+            --group mygroup
+            --action configure
+            -p '{"temperature": {"setpoint": 72}}'
+        - name: Execute a management action with payload from file.
+          text: >
+            az iot ops mgmt-actions execute
+            --instance myinstance
+            -g myresourcegroup
+            --asset myasset
+            --group mygroup
+            --action configure
+            -p payload.json
+    """
+
+    helps[
         "iot ops schema"
     ] = """
         type: group
