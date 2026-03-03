@@ -2028,8 +2028,10 @@ class MgmtActions(Queryable):
             "managementActionName": action_name,
             "managementGroupName": group_name,
         }
-        if payload is not None:
+        if payload:
             body["payload"] = deserialize_json_input(payload)
+
+        logger.debug("Execute action request body: %s", body)
 
         console = Console()
         with console.status("Executing management action..."):
