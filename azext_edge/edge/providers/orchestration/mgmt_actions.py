@@ -329,7 +329,7 @@ class MgmtActions(Queryable):
                     instance_resource_id=instance_resource_id,
                     **kwargs,
                 )
-                if topic_space_result.get("existed"):
+                if topic_space_result.get("exists"):
                     display.update_step(cat_eg, "Topic space", StepState.SKIPPED, "exists")
                 else:
                     display.update_step(cat_eg, "Topic space", StepState.COMPLETE, "created")
@@ -342,7 +342,7 @@ class MgmtActions(Queryable):
                     eg_client_group=eg_client_group,
                     **kwargs,
                 )
-                if permission_bindings_result.get("existed"):
+                if permission_bindings_result.get("exists"):
                     display.update_step(cat_eg, "Permission bindings", StepState.SKIPPED, "exists")
                 else:
                     display.update_step(cat_eg, "Permission bindings", StepState.COMPLETE, "created")
@@ -356,11 +356,11 @@ class MgmtActions(Queryable):
                     eg_ctx=eg_ctx,
                     **kwargs,
                 )
-                if adr_result.get("identity_existed"):
+                if adr_result.get("identity_exists"):
                     display.update_step(cat_adr, "Managed identity", StepState.SKIPPED, "exists")
                 else:
                     display.update_step(cat_adr, "Managed identity", StepState.COMPLETE, "enabled")
-                if adr_result.get("endpoint_existed"):
+                if adr_result.get("endpoint_exists"):
                     display.update_step(cat_adr, "Management endpoint", StepState.SKIPPED, "exists")
                 else:
                     display.update_step(cat_adr, "Management endpoint", StepState.COMPLETE, "created")
@@ -380,7 +380,7 @@ class MgmtActions(Queryable):
                     mi_resource=mi_resource,
                     **kwargs,
                 )
-                if dataflow_endpoint_result.get("existed"):
+                if dataflow_endpoint_result.get("exists"):
                     display.update_step(cat_aio, "EG dataflow endpoint", StepState.SKIPPED, "exists")
                 else:
                     display.update_step(cat_aio, "EG dataflow endpoint", StepState.COMPLETE, "created")
@@ -400,7 +400,7 @@ class MgmtActions(Queryable):
                     registry_endpoint_name=resolved_registry_endpoint,
                     **kwargs,
                 )
-                if dataflow_graph_result.get("existed"):
+                if dataflow_graph_result.get("exists"):
                     display.update_step(cat_aio, "Dataflow graph", StepState.SKIPPED, "exists")
                 else:
                     display.update_step(cat_aio, "Dataflow graph", StepState.COMPLETE, "created")
@@ -416,7 +416,7 @@ class MgmtActions(Queryable):
                     dataflow_profile_name=resolved_profile,
                     **kwargs,
                 )
-                if response_dataflow_result.get("existed"):
+                if response_dataflow_result.get("exists"):
                     display.update_step(cat_aio, "Response dataflow", StepState.SKIPPED, "exists")
                 else:
                     display.update_step(cat_aio, "Response dataflow", StepState.COMPLETE, "created")
@@ -1339,7 +1339,7 @@ class MgmtActions(Queryable):
                 "name": topic_space_name,
                 "topicTemplates": topic_templates,
                 "scopeId": instance_name,
-                "existed": True,
+                "exists": True,
             }
         except ResourceNotFoundError:
             pass
@@ -1365,7 +1365,7 @@ class MgmtActions(Queryable):
             "name": topic_space_name,
             "topicTemplates": topic_templates,
             "scopeId": instance_name,
-            "existed": False,
+            "exists": False,
         }
 
     def _setup_eg_permission_bindings(
@@ -1386,7 +1386,7 @@ class MgmtActions(Queryable):
         sub_name = get_mgmt_actions_resource_name("sub", instance_resource_id)
 
         result: Dict = {}
-        all_existed = True
+        all_exists = True
         for binding_name, permission, key in [
             (pub_name, "Publisher", "publisher"),
             (sub_name, "Subscriber", "subscriber"),
@@ -1406,7 +1406,7 @@ class MgmtActions(Queryable):
                 result[key] = {"name": binding_name, "clientGroup": client_group}
                 continue
             except ResourceNotFoundError:
-                all_existed = False
+                all_exists = False
 
             # Create the permission binding
             binding_payload = {
@@ -1435,7 +1435,7 @@ class MgmtActions(Queryable):
             )
             result[key] = {"name": binding_name, "clientGroup": client_group}
 
-        result["existed"] = all_existed
+        result["exists"] = all_exists
         return result
 
     def _setup_eg_dataflow_endpoint(
@@ -1470,7 +1470,7 @@ class MgmtActions(Queryable):
                 instance_name,
             )
             existing_auth = existing.get("properties", {}).get("mqttSettings", {}).get("authentication", {})
-            return {"name": endpoint_name, "authentication": existing_auth, "existed": True}
+            return {"name": endpoint_name, "authentication": existing_auth, "exists": True}
         except ResourceNotFoundError:
             pass
 
@@ -1519,7 +1519,7 @@ class MgmtActions(Queryable):
             instance_name,
         )
 
-        return {"name": endpoint_name, "authentication": authentication, "existed": False}
+        return {"name": endpoint_name, "authentication": authentication, "exists": False}
 
     def _setup_adr_management_endpoint(
         self,
@@ -1597,8 +1597,8 @@ class MgmtActions(Queryable):
                     "principalId": principal_id,
                 },
                 "managementEndpoints": existing_endpoints,
-                "identity_existed": True,
-                "endpoint_existed": True,
+                "identity_exists": True,
+                "endpoint_exists": True,
             }
 
         # Build the update payload
@@ -1650,8 +1650,8 @@ class MgmtActions(Queryable):
                 "principalId": principal_id,
             },
             "managementEndpoints": updated_endpoints,
-            "identity_existed": identity_already_enabled,
-            "endpoint_existed": endpoint_already_configured,
+            "identity_exists": identity_already_enabled,
+            "endpoint_exists": endpoint_already_configured,
         }
 
     def _setup_dataflow_graph(
@@ -1686,7 +1686,7 @@ class MgmtActions(Queryable):
                 graph_name,
                 instance_name,
             )
-            return {"name": graph_name, "existed": True}
+            return {"name": graph_name, "exists": True}
         except ResourceNotFoundError:
             pass
 
@@ -1754,7 +1754,7 @@ class MgmtActions(Queryable):
             dataflow_profile_name,
         )
 
-        return {"name": graph_name, "existed": False}
+        return {"name": graph_name, "exists": False}
 
     def _setup_response_dataflow(
         self,
@@ -1787,7 +1787,7 @@ class MgmtActions(Queryable):
                 dataflow_name,
                 instance_name,
             )
-            return {"name": dataflow_name, "existed": True}
+            return {"name": dataflow_name, "exists": True}
         except ResourceNotFoundError:
             pass
 
@@ -1831,7 +1831,7 @@ class MgmtActions(Queryable):
             dataflow_profile_name,
         )
 
-        return {"name": dataflow_name, "existed": False}
+        return {"name": dataflow_name, "exists": False}
 
     def _resolve_user_assigned_mi(self, mi_resource_id: str) -> Dict:
         """Fetch a user-assigned managed identity resource to extract clientId and tenantId.
