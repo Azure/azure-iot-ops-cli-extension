@@ -301,7 +301,6 @@ class MgmtActions(Queryable):
                     display.update_step("Analyzing", "UAMI resolution", StepState.SKIPPED, "not needed")
 
         # --- Phase 2: Configuring (persistent — display remains with elapsed time) ---
-        # Derive ADR namespace name for display (zero-cost parse, no API call)
         adr_ns_ref = instance.get("properties", {}).get("adrNamespaceRef", {}).get("resourceId", "")
         adr_ns_display = parse_resource_id_dict(adr_ns_ref).get("name", "") if adr_ns_ref else ""
 
@@ -321,7 +320,6 @@ class MgmtActions(Queryable):
         with WorkflowDisplay(
             "Management Actions Enablement", config_cats, transient=False, no_progress=no_progress,
         ) as display:
-            # Event Grid infrastructure setup
             with display.step_scope(cat_eg, "Topic space"):
                 topic_space_result = self._setup_eg_topic_space(
                     eg_ctx=eg_ctx,
@@ -369,7 +367,6 @@ class MgmtActions(Queryable):
                 display.update_step(cat_adr, "Management endpoint", StepState.FAILED, str(exc)[:40])
                 raise
 
-            # EG dataflow endpoint
             with display.step_scope(cat_aio, "EG dataflow endpoint"):
                 dataflow_endpoint_result = self._setup_eg_dataflow_endpoint(
                     eg_ctx=eg_ctx,
@@ -446,7 +443,9 @@ class MgmtActions(Queryable):
                     raise
 
         # Strip internal `exists` flags before building consumer-facing return (desired-state semantics)
-        for sub_result in [topic_space_result, dataflow_endpoint_result, dataflow_graph_result, response_dataflow_result]:
+        for sub_result in [
+            topic_space_result, dataflow_endpoint_result, dataflow_graph_result, response_dataflow_result,
+        ]:
             sub_result.pop("exists", None)
 
         # Extract our custom location's endpoint for the consumer-facing return
@@ -500,154 +499,271 @@ class MgmtActions(Queryable):
     ) -> Dict:
         """Show management actions configuration for an IoT Operations instance.
 
-        Discovers whether mgmt-actions is configured by probing the ADR namespace
-        management endpoint and Event Grid resources. Returns a concise summary
-        of the integration topology or {"enabled": False} if not configured.
+        Checks ADR namespace, Event Grid, and AIO dataflow resources independently.
+        Returns a consistent 4-key dict (`enabled`, `instance`, `eventGrid`,
+        `deviceRegistryNamespace`) with per-sub-resource `exists` flags.
+
+        `instance` is never null (names are deterministic from instance resource ID).
+        `eventGrid` is null when the management endpoint address is not discoverable.
+        `deviceRegistryNamespace` is null when the instance has no ADR namespace ref.
+        `enabled` is True only when all sub-resources exist across all three areas.
         """
-        # Resolve instance
-        instance = self.iotops_mgmt_client.instance.get(
-            instance_name=name,
-            resource_group_name=resource_group_name,
-        )
-        instance_resource_id: str = instance["id"]
+        no_progress = kwargs.pop("no_progress", None)
 
-        # Resolve ADR namespace from instance
-        adr_namespace_resource_id = instance.get("properties", {}).get("adrNamespaceRef", {}).get("resourceId")
-        if not adr_namespace_resource_id:
-            return {"enabled": False}
-
-        parsed_adr = parse_resource_id_dict(adr_namespace_resource_id)
-        adr_subscription_id = parsed_adr.get("subscription", "")
-        adr_resource_group = parsed_adr.get("resource_group", "")
-        adr_namespace_name = parsed_adr.get("name", "")
-
-        if not all([adr_subscription_id, adr_resource_group, adr_namespace_name]):
-            return {"enabled": False}
-
-        # GET the ADR namespace and check for management endpoint entry
-        try:
-            adr_namespace = self.registry_mgmt_client.namespaces.get(
-                resource_group_name=adr_resource_group,
-                namespace_name=adr_namespace_name,
-            )
-        except ResourceNotFoundError:
-            return {"enabled": False}
-
-        custom_location_id: str = instance.get("extendedLocation", {}).get("name", "")
-        if not custom_location_id:
-            return {"enabled": False}
-
-        existing_endpoints = adr_namespace.get("properties", {}).get("management", {}).get("endpoints", {})
-        mgmt_endpoint = existing_endpoints.get(custom_location_id)
-
-        if not mgmt_endpoint:
-            return {"enabled": False}
-
-        # Extract EG namespace details from the management endpoint entry
-        eg_resource_id = mgmt_endpoint.get("resourceId", "")
-        if not eg_resource_id:
-            return {"enabled": False}
-
-        parsed_eg = parse_resource_id_dict(eg_resource_id)
-        eg_namespace_name = parsed_eg.get("name", "")
-        eg_resource_group = parsed_eg.get("resource_group", "")
-        eg_subscription_id = parsed_eg.get("subscription", "")
-
-        if not all([eg_namespace_name, eg_resource_group, eg_subscription_id]):
-            return {"enabled": False}
-
-        # Handle cross-subscription EG namespace
-        if eg_subscription_id.lower() != self.default_subscription_id.lower():
-            self.eventgrid_mgmt_client = get_eventgrid_mgmt_client(
-                subscription_id=eg_subscription_id,
-            )
-
-        # Probe EG namespace for MQTT hostname
-        mqtt_hostname = ""
-        try:
-            eg_namespace = self.eventgrid_mgmt_client.namespaces.get(
-                resource_group_name=eg_resource_group,
-                namespace_name=eg_namespace_name,
-            )
-            mqtt_hostname = (
-                eg_namespace.get("properties", {})
-                .get("topicSpacesConfiguration", {})
-                .get("hostname", "")
-            )
-        except ResourceNotFoundError:
-            logger.warning("Event Grid namespace '%s' not found.", eg_namespace_name)
-            return {"enabled": False}
-
-        # Reconstruct resource names from instance resource ID
-        topic_space_name = get_mgmt_actions_resource_name("ops", instance_resource_id)
-        pub_binding_name = get_mgmt_actions_resource_name("pub", instance_resource_id)
-        sub_binding_name = get_mgmt_actions_resource_name("sub", instance_resource_id)
-
-        # Probe EG topic space — if missing, mgmt-actions is not configured
-        try:
-            topic_space = self.eventgrid_mgmt_client.topic_spaces.get(
-                resource_group_name=eg_resource_group,
-                namespace_name=eg_namespace_name,
-                topic_space_name=topic_space_name,
-            )
-        except ResourceNotFoundError:
-            return {"enabled": False}
-
-        ts_props = topic_space.get("properties", {})
-        topic_space_result = {
-            "name": topic_space_name,
-            "scopeId": name,
-            "topicTemplates": ts_props.get("topicTemplates", []),
+        analyzing_cats = {
+            "Analyzing": [
+                "Instance & ADR namespace",
+                "Event Grid resources",
+                "Instance dataflow resources",
+            ],
         }
 
-        # Probe EG permission bindings
-        pub_client_group = ""
-        try:
-            pub_binding = self.eventgrid_mgmt_client.permission_bindings.get(
-                resource_group_name=eg_resource_group,
-                namespace_name=eg_namespace_name,
-                permission_binding_name=pub_binding_name,
-            )
-            pub_client_group = pub_binding.get("properties", {}).get("clientGroupName", "")
-        except ResourceNotFoundError:
-            return {"enabled": False}
+        adr_section: Optional[Dict] = None
+        eg_section: Optional[Dict] = None
+        mgmt_endpoint: Optional[Dict] = None
+        mgmt_endpoint_exists = False
+        eg_all_exist = False
 
-        sub_client_group = ""
-        try:
-            sub_binding = self.eventgrid_mgmt_client.permission_bindings.get(
-                resource_group_name=eg_resource_group,
-                namespace_name=eg_namespace_name,
-                permission_binding_name=sub_binding_name,
-            )
-            sub_client_group = sub_binding.get("properties", {}).get("clientGroupName", "")
-        except ResourceNotFoundError:
-            return {"enabled": False}
+        with WorkflowDisplay(
+            title="Management Actions Status",
+            categories=analyzing_cats,
+            transient=True,
+            no_progress=no_progress,
+        ) as display:
+            # --- ADR namespace ---
+            with display.step_scope("Analyzing", "Instance & ADR namespace"):
+                instance = self.iotops_mgmt_client.instance.get(
+                    instance_name=name,
+                    resource_group_name=resource_group_name,
+                )
+                instance_resource_id: str = instance["id"]
+                custom_location_id: str = instance.get("extendedLocation", {}).get("name", "")
+
+                adr_namespace_resource_id = (
+                    instance.get("properties", {}).get("adrNamespaceRef", {}).get("resourceId")
+                )
+
+                if adr_namespace_resource_id:
+                    parsed_adr = parse_resource_id_dict(adr_namespace_resource_id)
+                    adr_subscription_id = parsed_adr.get("subscription", "")
+                    adr_resource_group = parsed_adr.get("resource_group", "")
+                    adr_namespace_name = parsed_adr.get("name", "")
+
+                    if adr_subscription_id and adr_resource_group and adr_namespace_name:
+                        try:
+                            adr_namespace = self.registry_mgmt_client.namespaces.get(
+                                resource_group_name=adr_resource_group,
+                                namespace_name=adr_namespace_name,
+                            )
+                            existing_endpoints = (
+                                adr_namespace.get("properties", {})
+                                .get("management", {})
+                                .get("endpoints", {})
+                            )
+                            mgmt_endpoint = existing_endpoints.get(custom_location_id) if custom_location_id else None
+                            mgmt_endpoint_exists = bool(mgmt_endpoint)
+
+                            adr_section = {
+                                "name": adr_namespace_name,
+                                "resourceGroup": adr_resource_group,
+                                "subscriptionId": adr_subscription_id,
+                                "managementEndpoint": {
+                                    "endpointType": mgmt_endpoint.get("endpointType", ""),
+                                    "address": mgmt_endpoint.get("address", ""),
+                                    "scopeId": mgmt_endpoint.get("scopeId", ""),
+                                } if mgmt_endpoint else None,
+                            }
+                        except ResourceNotFoundError:
+                            logger.warning(
+                                "ADR namespace '%s' not found.", adr_namespace_name,
+                            )
+
+                display.update_step("Analyzing", "Instance & ADR namespace", StepState.COMPLETE, "done")
+
+            # --- Event Grid ---
+            with display.step_scope("Analyzing", "Event Grid resources"):
+                eg_ctx = self._discover_eg_context(mgmt_endpoint)
+
+                if eg_ctx:
+                    # Verify namespace is reachable
+                    try:
+                        eg_namespace = self.eventgrid_mgmt_client.namespaces.get(
+                            resource_group_name=eg_ctx.resource_group_name,
+                            namespace_name=eg_ctx.namespace_name,
+                        )
+                        mqtt_hostname = (
+                            eg_namespace.get("properties", {})
+                            .get("topicSpacesConfiguration", {})
+                            .get("hostname", "")
+                        )
+
+                        # Reconstruct deterministic resource names
+                        ts_name = get_mgmt_actions_resource_name("ops", instance_resource_id)
+                        pub_name = get_mgmt_actions_resource_name("pub", instance_resource_id)
+                        sub_name = get_mgmt_actions_resource_name("sub", instance_resource_id)
+
+                        rg = eg_ctx.resource_group_name
+                        ns = eg_ctx.namespace_name
+
+                        # Probe topic space — single GET captures both existence and content
+                        ts_exists = False
+                        topic_space_section: Dict[str, Any] = {"name": ts_name, "exists": False}
+                        try:
+                            ts_resource = self.eventgrid_mgmt_client.topic_spaces.get(
+                                resource_group_name=rg, namespace_name=ns, topic_space_name=ts_name,
+                            )
+                            ts_exists = True
+                            topic_space_section = {
+                                "name": ts_name,
+                                "scopeId": name,
+                                "topicTemplates": ts_resource.get("properties", {}).get("topicTemplates", []),
+                                "exists": True,
+                            }
+                        except ResourceNotFoundError:
+                            pass
+
+                        # Probe permission bindings — single GET each
+                        pub_exists = False
+                        pub_section: Dict[str, Any] = {"name": pub_name}
+                        try:
+                            pub_resource = self.eventgrid_mgmt_client.permission_bindings.get(
+                                resource_group_name=rg, namespace_name=ns, permission_binding_name=pub_name,
+                            )
+                            pub_exists = True
+                            pub_section["clientGroup"] = (
+                                pub_resource.get("properties", {}).get("clientGroupName", "")
+                            )
+                        except ResourceNotFoundError:
+                            pass
+
+                        sub_exists = False
+                        sub_section: Dict[str, Any] = {"name": sub_name}
+                        try:
+                            sub_resource = self.eventgrid_mgmt_client.permission_bindings.get(
+                                resource_group_name=rg, namespace_name=ns, permission_binding_name=sub_name,
+                            )
+                            sub_exists = True
+                            sub_section["clientGroup"] = (
+                                sub_resource.get("properties", {}).get("clientGroupName", "")
+                            )
+                        except ResourceNotFoundError:
+                            pass
+
+                        bindings_exist = pub_exists and sub_exists
+                        eg_all_exist = ts_exists and bindings_exist
+                        eg_section = {
+                            "namespace": {
+                                "name": eg_ctx.namespace_name,
+                                "resourceGroup": eg_ctx.resource_group_name,
+                                "subscriptionId": eg_ctx.subscription_id,
+                                "mqttHostname": mqtt_hostname,
+                            },
+                            "topicSpace": topic_space_section,
+                            "permissionBindings": {
+                                "publisher": pub_section,
+                                "subscriber": sub_section,
+                                "exists": bindings_exist,
+                            },
+                        }
+                    except ResourceNotFoundError:
+                        logger.warning(
+                            "Event Grid namespace '%s' not found.", eg_ctx.namespace_name,
+                        )
+
+                eg_detail = "done" if eg_section else ("not reachable" if eg_ctx else "skipped")
+                display.update_step("Analyzing", "Event Grid resources", StepState.COMPLETE, eg_detail)
+
+            # --- AIO dataflow resources ---
+            with display.step_scope("Analyzing", "Instance dataflow resources"):
+                ep_name = get_mgmt_actions_resource_name("eg", instance_resource_id)
+                graph_name = get_mgmt_actions_resource_name("req", instance_resource_id)
+                resp_name = get_mgmt_actions_resource_name("resp", instance_resource_id)
+
+                # Probe dataflow endpoint
+                ep_exists = False
+                ep_authentication: Optional[Dict] = None
+                try:
+                    ep_resource = self.iotops_mgmt_client.dataflow_endpoint.get(
+                        resource_group_name=resource_group_name,
+                        instance_name=name,
+                        dataflow_endpoint_name=ep_name,
+                    )
+                    ep_exists = True
+                    ep_authentication = (
+                        ep_resource.get("properties", {})
+                        .get("mqttSettings", {})
+                        .get("authentication")
+                    )
+                except ResourceNotFoundError:
+                    pass
+
+                # Discover dataflow graph profile
+                graph_profile = self._discover_dataflow_profile(
+                    instance_name=name,
+                    resource_group_name=resource_group_name,
+                    get_resource=lambda profile: self.iotops_mgmt_client.dataflow_graph.get(
+                        resource_group_name=resource_group_name,
+                        instance_name=name,
+                        dataflow_profile_name=profile,
+                        dataflow_graph_name=graph_name,
+                    ),
+                )
+                graph_exists = bool(graph_profile)
+
+                # Discover response dataflow profile.
+                # If graph was found under a specific profile, check there first.
+                resp_profile: Optional[str] = None
+                if graph_profile:
+                    try:
+                        self.iotops_mgmt_client.dataflow.get(
+                            resource_group_name=resource_group_name,
+                            instance_name=name,
+                            dataflow_profile_name=graph_profile,
+                            dataflow_name=resp_name,
+                        )
+                        resp_profile = graph_profile
+                    except ResourceNotFoundError:
+                        pass  # Fall through to independent discovery
+
+                if not resp_profile:
+                    resp_profile = self._discover_dataflow_profile(
+                        instance_name=name,
+                        resource_group_name=resource_group_name,
+                        get_resource=lambda profile: self.iotops_mgmt_client.dataflow.get(
+                            resource_group_name=resource_group_name,
+                            instance_name=name,
+                            dataflow_profile_name=profile,
+                            dataflow_name=resp_name,
+                        ),
+                    )
+                resp_exists = bool(resp_profile)
+
+                # Reported profile: graph's profile takes priority
+                reported_profile = graph_profile or resp_profile
+
+                aio_all_exist = ep_exists and graph_exists and resp_exists
+
+                display.update_step("Analyzing", "Instance dataflow resources", StepState.COMPLETE, "done")
+
+        # --- Build result ---
+        instance_section = {
+            "dataflowProfile": reported_profile,
+            "dataflowEndpoint": {
+                "name": ep_name,
+                "authentication": ep_authentication,
+                "exists": ep_exists,
+            },
+            "requestDataflowGraph": {"name": graph_name, "exists": graph_exists},
+            "responseDataflow": {"name": resp_name, "exists": resp_exists},
+        }
+
+        enabled = mgmt_endpoint_exists and eg_all_exist and aio_all_exist
 
         return {
-            "enabled": True,
-            "eventGrid": {
-                "namespace": {
-                    "name": eg_namespace_name,
-                    "resourceGroup": eg_resource_group,
-                    "subscriptionId": eg_subscription_id,
-                    "mqttHostname": mqtt_hostname,
-                },
-                "topicSpace": topic_space_result,
-                "permissionBindings": {
-                    "publisher": {"name": pub_binding_name, "clientGroup": pub_client_group},
-                    "subscriber": {"name": sub_binding_name, "clientGroup": sub_client_group},
-                },
-            },
-            "deviceRegistryNamespace": {
-                "name": adr_namespace_name,
-                "resourceGroup": adr_resource_group,
-                "subscriptionId": adr_subscription_id,
-                "managementEndpoint": {
-                    "endpointType": mgmt_endpoint.get("endpointType", ""),
-                    "address": mgmt_endpoint.get("address", ""),
-                    "scopeId": mgmt_endpoint.get("scopeId", ""),
-                },
-            },
+            "enabled": enabled,
+            "instance": instance_section,
+            "eventGrid": eg_section,
+            "deviceRegistryNamespace": adr_section,
         }
 
     def disable(
@@ -724,7 +840,6 @@ class MgmtActions(Queryable):
                 ).get("endpoints", {})
                 mgmt_endpoint = existing_endpoints.get(custom_location_id)
 
-                # Discover EG namespace context from the management endpoint entry
                 eg_ctx = self._discover_eg_context(mgmt_endpoint)
                 display.update_step("Analyzing", "Instance & ADR namespace", StepState.COMPLETE, "found")
 

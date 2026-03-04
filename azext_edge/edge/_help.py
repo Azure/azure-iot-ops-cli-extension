@@ -2182,12 +2182,12 @@ def load_iotops_help():
         type: command
         short-summary: Show management actions configuration for an IoT Operations instance.
         long-summary: |
-            Displays the current management actions configuration by probing the ADR namespace
-            management endpoint and Event Grid resources.
+            Checks the status of management actions resources across three areas:
+            Device Registry (ADR) namespace, Event Grid resources, and AIO dataflow resources.
 
-            Returns a structured summary showing whether management actions are enabled and,
-            if so, the Event Grid namespace, topic space, permission bindings, and ADR namespace
-            management endpoint details.
+            Returns a structured summary with an overall enabled flag and per-domain detail
+            sections. A domain that cannot be probed (e.g. missing ADR namespace ref) returns
+            null for that section without blocking other domains from being checked.
 
         examples:
         - name: Show management actions configuration for an instance.

@@ -311,10 +311,17 @@ def _build_instance_response(
     resource_group_name: str,
     version: str = MIN_INSTANCE_VERSION_MGMT_ACTIONS,
     adr_namespace_name: Optional[str] = None,
+    include_adr_ref: bool = True,
 ) -> dict:
     extended_location = _make_extended_location()
-    adr_ns_name = adr_namespace_name or f"{instance_name}-adr-ns"
-    adr_ns_rid = _build_adr_namespace_resource_id(adr_ns_name, resource_group_name)
+    properties: dict = {
+        "version": version,
+        "provisioningState": "Succeeded",
+    }
+    if include_adr_ref:
+        adr_ns_name = adr_namespace_name or f"{instance_name}-adr-ns"
+        adr_ns_rid = _build_adr_namespace_resource_id(adr_ns_name, resource_group_name)
+        properties["adrNamespaceRef"] = {"resourceId": adr_ns_rid}
     return {
         "id": (
             f"/subscriptions/{ZEROED_SUBSCRIPTION}/resourceGroups/{resource_group_name}"
@@ -323,11 +330,7 @@ def _build_instance_response(
         "name": instance_name,
         "location": "eastus",
         "extendedLocation": extended_location,
-        "properties": {
-            "version": version,
-            "provisioningState": "Succeeded",
-            "adrNamespaceRef": {"resourceId": adr_ns_rid},
-        },
+        "properties": properties,
     }
 
 
@@ -3322,188 +3325,315 @@ class TestDisable:
 class TestShow:
     """Tests for MgmtActions.show()."""
 
+    def _register_show_aio_mocks(
+        self,
+        mocked_responses: responses,
+        f: dict,
+        include_ep: bool = True,
+        include_graph: bool = True,
+        include_resp: bool = True,
+        graph_profile: str = MGMT_ACTIONS_DEFAULT_DATAFLOW_PROFILE,
+        graph_not_in_default: bool = False,
+    ) -> None:
+        """Register AIO dataflow resource mocks for show() calls.
+
+        Mock insertion order mirrors the AIO probing sequence in show():
+        1. Dataflow endpoint GET
+        2. Graph discovery (via _discover_dataflow_profile)
+        3. Response dataflow discovery
+        """
+        instance_name = f["instance_name"]
+        rg = f["rg"]
+        ep_name = f["ep_name"]
+        graph_name = f["graph_name"]
+        resp_name = f["resp_name"]
+
+        # 1. Dataflow endpoint GET
+        ep_auth = {
+            "method": "SystemAssignedManagedIdentity",
+            "systemAssignedManagedIdentitySettings": {
+                "audience": MGMT_ACTIONS_EG_AUDIENCE,
+            },
+        }
+        mocked_responses.add(
+            method=responses.GET,
+            url=_build_iotops_endpoint(
+                instance_name, rg, sub_resource=f"/dataflowEndpoints/{ep_name}",
+            ),
+            json={
+                "name": ep_name,
+                "properties": {
+                    "endpointType": MQTT_ENDPOINT_TYPE,
+                    "mqttSettings": {"authentication": ep_auth},
+                },
+            } if include_ep else {"error": {"code": "ResourceNotFound"}},
+            status=200 if include_ep else 404,
+        )
+
+        # 2. Graph discovery via _discover_dataflow_profile
+        default_graph_url = _build_iotops_endpoint(
+            instance_name, rg,
+            sub_resource=(
+                f"/dataflowProfiles/{MGMT_ACTIONS_DEFAULT_DATAFLOW_PROFILE}"
+                f"/dataflowGraphs/{graph_name}"
+            ),
+        )
+        profiles_url = _build_iotops_endpoint(instance_name, rg, sub_resource="/dataflowProfiles")
+
+        if include_graph and not graph_not_in_default:
+            # Found in default profile (fast path)
+            mocked_responses.add(
+                method=responses.GET, url=default_graph_url,
+                json={"name": graph_name}, status=200,
+            )
+        elif include_graph and graph_not_in_default:
+            # Not in default, found in custom profile
+            mocked_responses.add(
+                method=responses.GET, url=default_graph_url,
+                json={"error": {"code": "ResourceNotFound"}}, status=404,
+            )
+            mocked_responses.add(
+                method=responses.GET, url=profiles_url,
+                json={"value": [{"name": graph_profile}]}, status=200,
+            )
+            mocked_responses.add(
+                method=responses.GET,
+                url=_build_iotops_endpoint(
+                    instance_name, rg,
+                    sub_resource=f"/dataflowProfiles/{graph_profile}/dataflowGraphs/{graph_name}",
+                ),
+                json={"name": graph_name}, status=200,
+            )
+        else:
+            # Not found anywhere
+            mocked_responses.add(
+                method=responses.GET, url=default_graph_url,
+                json={"error": {"code": "ResourceNotFound"}}, status=404,
+            )
+            mocked_responses.add(
+                method=responses.GET, url=profiles_url,
+                json={"value": []}, status=200,
+            )
+
+        # 3. Response dataflow discovery
+        resolved_profile = (
+            graph_profile if (include_graph and graph_not_in_default)
+            else MGMT_ACTIONS_DEFAULT_DATAFLOW_PROFILE
+        )
+        resp_url = _build_iotops_endpoint(
+            instance_name, rg,
+            sub_resource=f"/dataflowProfiles/{resolved_profile}/dataflows/{resp_name}",
+        )
+
+        if include_graph:
+            # Graph exists — show() tries resp under graph's profile first
+            if include_resp:
+                mocked_responses.add(
+                    method=responses.GET, url=resp_url,
+                    json={"name": resp_name}, status=200,
+                )
+            else:
+                # Resp not found under graph's profile → falls through to independent discovery
+                mocked_responses.add(
+                    method=responses.GET, url=resp_url,
+                    json={"error": {"code": "ResourceNotFound"}}, status=404,
+                )
+                # Independent _discover_dataflow_profile starts with default profile.
+                # If graph was in a custom profile, the default resp URL is a different URL
+                # that needs its own 404 mock.
+                if graph_not_in_default:
+                    default_resp_url = _build_iotops_endpoint(
+                        instance_name, rg,
+                        sub_resource=(
+                            f"/dataflowProfiles/{MGMT_ACTIONS_DEFAULT_DATAFLOW_PROFILE}"
+                            f"/dataflows/{resp_name}"
+                        ),
+                    )
+                    mocked_responses.add(
+                        method=responses.GET, url=default_resp_url,
+                        json={"error": {"code": "ResourceNotFound"}}, status=404,
+                    )
+                # Profile list mock: only needed if not already registered by graph discovery.
+                # Graph fast path (default profile) doesn't list profiles.
+                if not graph_not_in_default:
+                    mocked_responses.add(
+                        method=responses.GET, url=profiles_url,
+                        json={"value": []}, status=200,
+                    )
+        else:
+            # No graph — independent resp discovery via _discover_dataflow_profile
+            if include_resp:
+                mocked_responses.add(
+                    method=responses.GET, url=resp_url,
+                    json={"name": resp_name}, status=200,
+                )
+            else:
+                # Resp not found in default — profile list already registered (from graph discovery)
+                mocked_responses.add(
+                    method=responses.GET, url=resp_url,
+                    json={"error": {"code": "ResourceNotFound"}}, status=404,
+                )
+
     def _register_show_mocks(
         self,
         mocked_responses: responses,
-        instance_name: str,
-        rg: str,
-        adr_ns_name: str,
-        eg_ns_name: str,
-        eg_rg: str,
-        hostname: str,
-        custom_location_id: str,
-        instance_resource_id: str,
-        eg_subscription_id: Optional[str] = None,
+        f: dict,
+        # ADR control
+        no_adr_ref: bool = False,
+        adr_not_found: bool = False,
+        management_endpoints: Optional[dict] = None,
+        # EG control
+        eg_not_found: bool = False,
         include_topic_space: bool = True,
         include_pub_binding: bool = True,
         include_sub_binding: bool = True,
-        adr_not_found: bool = False,
-        eg_not_found: bool = False,
-        management_endpoints: Optional[dict] = None,
         client_group: str = MGMT_ACTIONS_DEFAULT_EG_CLIENT_GROUP,
+        eg_subscription_id: Optional[str] = None,
+        # AIO control (forwarded to _register_show_aio_mocks)
+        include_ep: bool = True,
+        include_graph: bool = True,
+        include_resp: bool = True,
+        graph_profile: str = MGMT_ACTIONS_DEFAULT_DATAFLOW_PROFILE,
+        graph_not_in_default: bool = False,
     ) -> None:
-        """Register all HTTP mocks needed for a show() call."""
+        """Register all HTTP mocks needed for a show() call.
+
+        Mock insertion order mirrors the exact HTTP call sequence of show().
+        show() probes all three domains independently — no early returns.
+        """
         eg_sub = eg_subscription_id or ZEROED_SUBSCRIPTION
 
-        # Instance GET
-        instance_response = _build_instance_response(instance_name, rg, adr_namespace_name=adr_ns_name)
+        # --- 1. Instance GET ---
+        instance_response = _build_instance_response(
+            f["instance_name"], f["rg"],
+            adr_namespace_name=f["adr_ns_name"],
+            include_adr_ref=not no_adr_ref,
+        )
         mocked_responses.add(
             method=responses.GET,
-            url=_build_iotops_endpoint(instance_name, rg),
+            url=_build_iotops_endpoint(f["instance_name"], f["rg"]),
             json=instance_response,
             status=200,
         )
 
-        # ADR namespace GET
-        eg_rid = _build_eg_resource_id(eg_ns_name, eg_rg, subscription_id=eg_sub)
-        if management_endpoints is None:
-            management_endpoints = {
-                custom_location_id: {
-                    "endpointType": MGMT_ACTIONS_ADR_ENDPOINT_TYPE,
-                    "address": hostname,
-                    "scopeId": instance_name,
-                    "resourceId": eg_rid,
-                },
-            }
-
-        if adr_not_found:
-            mocked_responses.add(
-                method=responses.GET,
-                url=_build_adr_endpoint(adr_ns_name, rg),
-                json={"error": {"code": "ResourceNotFound"}},
-                status=404,
-            )
-            return
-        else:
-            mocked_responses.add(
-                method=responses.GET,
-                url=_build_adr_endpoint(adr_ns_name, rg),
-                json=_build_adr_namespace_response(
-                    adr_ns_name, rg,
-                    identity_type="SystemAssigned",
-                    principal_id="00000000-0000-0000-0000-bbbbbbbbbbbb",
-                    management_endpoints=management_endpoints,
-                ),
-                status=200,
-            )
-
-        # Short-circuit: if no management endpoints, show() won't probe EG
-        if not management_endpoints:
-            return
-
-        # EG namespace GET
-        if eg_not_found:
-            mocked_responses.add(
-                method=responses.GET,
-                url=_build_eg_endpoint(eg_ns_name, eg_rg, subscription_id=eg_sub),
-                json={"error": {"code": "ResourceNotFound"}},
-                status=404,
-            )
-            return
-        else:
-            mocked_responses.add(
-                method=responses.GET,
-                url=_build_eg_endpoint(eg_ns_name, eg_rg, subscription_id=eg_sub),
-                json=_build_namespace_response(eg_ns_name, eg_rg, mqtt_hostname=hostname, subscription_id=eg_sub),
-                status=200,
-            )
-
-        # Topic space GET — show() short-circuits on 404, so no binding mocks needed
-        ts_name = get_mgmt_actions_resource_name("ops", instance_resource_id)
-        if include_topic_space:
-            expected_templates = _get_expected_topic_templates(instance_name)
-            mocked_responses.add(
-                method=responses.GET,
-                url=_build_eg_endpoint(
-                    eg_ns_name, eg_rg,
-                    subscription_id=eg_sub,
-                    sub_resource=f"/topicSpaces/{ts_name}",
-                ),
-                json={
-                    "name": ts_name,
-                    "properties": {
-                        "topicTemplates": expected_templates,
+        # --- 2. ADR namespace GET ---
+        has_mgmt_endpoint = False
+        if not no_adr_ref:
+            eg_rid = _build_eg_resource_id(f["eg_ns_name"], f["eg_rg"], subscription_id=eg_sub)
+            if management_endpoints is None:
+                management_endpoints = {
+                    f["custom_location_id"]: {
+                        "endpointType": MGMT_ACTIONS_ADR_ENDPOINT_TYPE,
+                        "address": f["hostname"],
+                        "scopeId": f["instance_name"],
+                        "resourceId": eg_rid,
                     },
-                },
-                status=200,
-            )
-        else:
-            mocked_responses.add(
-                method=responses.GET,
-                url=_build_eg_endpoint(
-                    eg_ns_name, eg_rg,
-                    subscription_id=eg_sub,
-                    sub_resource=f"/topicSpaces/{ts_name}",
-                ),
-                json={"error": {"code": "ResourceNotFound"}},
-                status=404,
-            )
-            return
+                }
 
-        # Publisher permission binding GET — show() short-circuits on 404
-        pub_name = get_mgmt_actions_resource_name("pub", instance_resource_id)
-        if include_pub_binding:
-            mocked_responses.add(
-                method=responses.GET,
-                url=_build_eg_endpoint(
-                    eg_ns_name, eg_rg,
-                    subscription_id=eg_sub,
-                    sub_resource=f"/permissionBindings/{pub_name}",
-                ),
-                json={
-                    "name": pub_name,
-                    "properties": {
-                        "clientGroupName": client_group,
-                        "permission": "Publisher",
-                        "topicSpaceName": ts_name,
-                    },
-                },
-                status=200,
-            )
-        else:
-            mocked_responses.add(
-                method=responses.GET,
-                url=_build_eg_endpoint(
-                    eg_ns_name, eg_rg,
-                    subscription_id=eg_sub,
-                    sub_resource=f"/permissionBindings/{pub_name}",
-                ),
-                json={"error": {"code": "ResourceNotFound"}},
-                status=404,
-            )
-            return
+            if adr_not_found:
+                mocked_responses.add(
+                    method=responses.GET,
+                    url=_build_adr_endpoint(f["adr_ns_name"], f["rg"]),
+                    json={"error": {"code": "ResourceNotFound"}},
+                    status=404,
+                )
+            else:
+                mocked_responses.add(
+                    method=responses.GET,
+                    url=_build_adr_endpoint(f["adr_ns_name"], f["rg"]),
+                    json=_build_adr_namespace_response(
+                        f["adr_ns_name"], f["rg"],
+                        identity_type="SystemAssigned",
+                        principal_id="00000000-0000-0000-0000-bbbbbbbbbbbb",
+                        management_endpoints=management_endpoints,
+                    ),
+                    status=200,
+                )
+                has_mgmt_endpoint = bool(management_endpoints)
 
-        # Subscriber permission binding GET
-        sub_name = get_mgmt_actions_resource_name("sub", instance_resource_id)
-        if include_sub_binding:
-            mocked_responses.add(
-                method=responses.GET,
-                url=_build_eg_endpoint(
-                    eg_ns_name, eg_rg,
-                    subscription_id=eg_sub,
-                    sub_resource=f"/permissionBindings/{sub_name}",
-                ),
-                json={
-                    "name": sub_name,
-                    "properties": {
-                        "clientGroupName": client_group,
-                        "permission": "Subscriber",
-                        "topicSpaceName": ts_name,
-                    },
-                },
-                status=200,
-            )
-        else:
-            mocked_responses.add(
-                method=responses.GET,
-                url=_build_eg_endpoint(
-                    eg_ns_name, eg_rg,
-                    subscription_id=eg_sub,
-                    sub_resource=f"/permissionBindings/{sub_name}",
-                ),
-                json={"error": {"code": "ResourceNotFound"}},
-                status=404,
-            )
+        # --- 3–6. EG namespace + sub-resource GETs ---
+        if has_mgmt_endpoint:
+            if eg_not_found:
+                mocked_responses.add(
+                    method=responses.GET,
+                    url=_build_eg_endpoint(f["eg_ns_name"], f["eg_rg"], subscription_id=eg_sub),
+                    json={"error": {"code": "ResourceNotFound"}},
+                    status=404,
+                )
+            else:
+                mocked_responses.add(
+                    method=responses.GET,
+                    url=_build_eg_endpoint(f["eg_ns_name"], f["eg_rg"], subscription_id=eg_sub),
+                    json=_build_namespace_response(
+                        f["eg_ns_name"], f["eg_rg"],
+                        mqtt_hostname=f["hostname"], subscription_id=eg_sub,
+                    ),
+                    status=200,
+                )
+
+                # Topic space GET
+                ts_name = f["ts_name"]
+                expected_templates = _get_expected_topic_templates(f["instance_name"])
+                mocked_responses.add(
+                    method=responses.GET,
+                    url=_build_eg_endpoint(
+                        f["eg_ns_name"], f["eg_rg"], subscription_id=eg_sub,
+                        sub_resource=f"/topicSpaces/{ts_name}",
+                    ),
+                    json={
+                        "name": ts_name,
+                        "properties": {"topicTemplates": expected_templates},
+                    } if include_topic_space else {"error": {"code": "ResourceNotFound"}},
+                    status=200 if include_topic_space else 404,
+                )
+
+                # Publisher binding GET
+                pub_name = f["pub_name"]
+                mocked_responses.add(
+                    method=responses.GET,
+                    url=_build_eg_endpoint(
+                        f["eg_ns_name"], f["eg_rg"], subscription_id=eg_sub,
+                        sub_resource=f"/permissionBindings/{pub_name}",
+                    ),
+                    json={
+                        "name": pub_name,
+                        "properties": {
+                            "clientGroupName": client_group,
+                            "permission": "Publisher",
+                            "topicSpaceName": ts_name,
+                        },
+                    } if include_pub_binding else {"error": {"code": "ResourceNotFound"}},
+                    status=200 if include_pub_binding else 404,
+                )
+
+                # Subscriber binding GET
+                sub_name = f["sub_name"]
+                mocked_responses.add(
+                    method=responses.GET,
+                    url=_build_eg_endpoint(
+                        f["eg_ns_name"], f["eg_rg"], subscription_id=eg_sub,
+                        sub_resource=f"/permissionBindings/{sub_name}",
+                    ),
+                    json={
+                        "name": sub_name,
+                        "properties": {
+                            "clientGroupName": client_group,
+                            "permission": "Subscriber",
+                            "topicSpaceName": ts_name,
+                        },
+                    } if include_sub_binding else {"error": {"code": "ResourceNotFound"}},
+                    status=200 if include_sub_binding else 404,
+                )
+
+        # --- 7–9. AIO resource mocks (always registered) ---
+        self._register_show_aio_mocks(
+            mocked_responses, f,
+            include_ep=include_ep,
+            include_graph=include_graph,
+            include_resp=include_resp,
+            graph_profile=graph_profile,
+            graph_not_in_default=graph_not_in_default,
+        )
 
     def _make_show_fixtures(self) -> dict:
         """Build common test fixtures for show tests."""
@@ -3528,73 +3658,137 @@ class TestShow:
             "hostname": hostname,
             "custom_location_id": custom_location_id,
             "instance_resource_id": instance_resource_id,
+            # Computed deterministic resource names
+            "ep_name": get_mgmt_actions_resource_name("eg", instance_resource_id),
+            "graph_name": get_mgmt_actions_resource_name("req", instance_resource_id),
+            "resp_name": get_mgmt_actions_resource_name("resp", instance_resource_id),
+            "ts_name": get_mgmt_actions_resource_name("ops", instance_resource_id),
+            "pub_name": get_mgmt_actions_resource_name("pub", instance_resource_id),
+            "sub_name": get_mgmt_actions_resource_name("sub", instance_resource_id),
         }
+
+    def _assert_4_key_shape(self, result: dict) -> None:
+        """Assert the result has the consistent 4-key shape."""
+        assert set(result.keys()) == {"enabled", "instance", "eventGrid", "deviceRegistryNamespace"}
+
+    def _assert_instance_all_exist(self, result: dict, f: dict) -> None:
+        """Assert `instance` section has all resources existing with correct names."""
+        inst = result["instance"]
+        assert inst["dataflowProfile"] == MGMT_ACTIONS_DEFAULT_DATAFLOW_PROFILE
+        assert inst["dataflowEndpoint"]["name"] == f["ep_name"]
+        assert inst["dataflowEndpoint"]["exists"] is True
+        assert inst["dataflowEndpoint"]["authentication"] is not None
+        assert inst["requestDataflowGraph"]["name"] == f["graph_name"]
+        assert inst["requestDataflowGraph"]["exists"] is True
+        assert inst["responseDataflow"]["name"] == f["resp_name"]
+        assert inst["responseDataflow"]["exists"] is True
+
+    def _assert_instance_all_missing(self, result: dict, f: dict) -> None:
+        """Assert `instance` section has all resources missing."""
+        inst = result["instance"]
+        assert inst["dataflowProfile"] is None
+        assert inst["dataflowEndpoint"]["name"] == f["ep_name"]
+        assert inst["dataflowEndpoint"]["exists"] is False
+        assert inst["dataflowEndpoint"]["authentication"] is None
+        assert inst["requestDataflowGraph"]["name"] == f["graph_name"]
+        assert inst["requestDataflowGraph"]["exists"] is False
+        assert inst["responseDataflow"]["name"] == f["resp_name"]
+        assert inst["responseDataflow"]["exists"] is False
 
     def test_fully_enabled(self, mocked_cmd, mocked_responses: responses):
         """Fully configured instance returns enabled=True with complete topology."""
         f = self._make_show_fixtures()
-        self._register_show_mocks(mocked_responses, **f)
+        self._register_show_mocks(mocked_responses, f)
 
         provider = MgmtActions(cmd=mocked_cmd)
         result = provider.show(name=f["instance_name"], resource_group_name=f["rg"])
 
+        self._assert_4_key_shape(result)
         assert result["enabled"] is True
-        assert result["eventGrid"]["namespace"]["name"] == f["eg_ns_name"]
-        assert result["eventGrid"]["namespace"]["resourceGroup"] == f["eg_rg"]
-        assert result["eventGrid"]["namespace"]["subscriptionId"] == ZEROED_SUBSCRIPTION
-        assert result["eventGrid"]["namespace"]["mqttHostname"] == f["hostname"]
-        assert result["eventGrid"]["topicSpace"]["name"] == get_mgmt_actions_resource_name(
-            "ops", f["instance_resource_id"]
-        )
-        assert result["eventGrid"]["topicSpace"]["scopeId"] == f["instance_name"]
-        assert len(result["eventGrid"]["topicSpace"]["topicTemplates"]) == 2
-        pub_name = get_mgmt_actions_resource_name("pub", f["instance_resource_id"])
-        sub_name = get_mgmt_actions_resource_name("sub", f["instance_resource_id"])
-        pub_bindings = result["eventGrid"]["permissionBindings"]
-        assert pub_bindings["publisher"]["name"] == pub_name
-        assert pub_bindings["publisher"]["clientGroup"] == MGMT_ACTIONS_DEFAULT_EG_CLIENT_GROUP
-        assert pub_bindings["subscriber"]["name"] == sub_name
-        assert pub_bindings["subscriber"]["clientGroup"] == MGMT_ACTIONS_DEFAULT_EG_CLIENT_GROUP
-        assert result["deviceRegistryNamespace"]["name"] == f["adr_ns_name"]
-        assert result["deviceRegistryNamespace"]["resourceGroup"] == f["rg"]
-        assert result["deviceRegistryNamespace"]["subscriptionId"] == ZEROED_SUBSCRIPTION
-        assert result["deviceRegistryNamespace"]["managementEndpoint"]["endpointType"] == MGMT_ACTIONS_ADR_ENDPOINT_TYPE
-        assert result["deviceRegistryNamespace"]["managementEndpoint"]["address"] == f["hostname"]
-        assert result["deviceRegistryNamespace"]["managementEndpoint"]["scopeId"] == f["instance_name"]
-        # instance GET + ADR GET + EG namespace GET + topic space GET + pub binding GET + sub binding GET
-        assert len(mocked_responses.calls) == 6
+
+        # -- instance section --
+        self._assert_instance_all_exist(result, f)
+
+        # -- eventGrid section --
+        eg = result["eventGrid"]
+        assert eg["namespace"]["name"] == f["eg_ns_name"]
+        assert eg["namespace"]["resourceGroup"] == f["eg_rg"]
+        assert eg["namespace"]["subscriptionId"] == ZEROED_SUBSCRIPTION
+        assert eg["namespace"]["mqttHostname"] == f["hostname"]
+        assert eg["topicSpace"]["name"] == f["ts_name"]
+        assert eg["topicSpace"]["scopeId"] == f["instance_name"]
+        assert eg["topicSpace"]["exists"] is True
+        assert len(eg["topicSpace"]["topicTemplates"]) == 2
+        assert eg["permissionBindings"]["publisher"]["name"] == f["pub_name"]
+        assert eg["permissionBindings"]["publisher"]["clientGroup"] == MGMT_ACTIONS_DEFAULT_EG_CLIENT_GROUP
+        assert eg["permissionBindings"]["subscriber"]["name"] == f["sub_name"]
+        assert eg["permissionBindings"]["subscriber"]["clientGroup"] == MGMT_ACTIONS_DEFAULT_EG_CLIENT_GROUP
+        assert eg["permissionBindings"]["exists"] is True
+
+        # -- deviceRegistryNamespace section --
+        adr = result["deviceRegistryNamespace"]
+        assert adr["name"] == f["adr_ns_name"]
+        assert adr["resourceGroup"] == f["rg"]
+        assert adr["subscriptionId"] == ZEROED_SUBSCRIPTION
+        assert adr["managementEndpoint"]["endpointType"] == MGMT_ACTIONS_ADR_ENDPOINT_TYPE
+        assert adr["managementEndpoint"]["address"] == f["hostname"]
+        assert adr["managementEndpoint"]["scopeId"] == f["instance_name"]
+
+        # instance GET + ADR GET + EG NS GET + TS GET + Pub GET + Sub GET + EP GET + Graph GET + Resp GET
+        assert len(mocked_responses.calls) == 9
 
     def test_no_management_endpoint(self, mocked_cmd, mocked_responses: responses):
-        """Instance with no ADR management endpoint entry returns enabled=False."""
+        """ADR namespace exists but no management endpoint entry → enabled=False, ADR populated, no EG."""
         f = self._make_show_fixtures()
-        self._register_show_mocks(mocked_responses, **f, management_endpoints={})
+        self._register_show_mocks(mocked_responses, f, management_endpoints={})
 
         provider = MgmtActions(cmd=mocked_cmd)
         result = provider.show(name=f["instance_name"], resource_group_name=f["rg"])
 
-        assert result == {"enabled": False}
-        # instance GET + ADR GET only, no EG calls
-        assert len(mocked_responses.calls) == 2
+        self._assert_4_key_shape(result)
+        assert result["enabled"] is False
+        self._assert_instance_all_exist(result, f)
+        assert result["eventGrid"] is None
+        # ADR section populated with managementEndpoint: None
+        adr = result["deviceRegistryNamespace"]
+        assert adr["name"] == f["adr_ns_name"]
+        assert adr["managementEndpoint"] is None
+        # instance GET + ADR GET + 3 AIO GETs
+        assert len(mocked_responses.calls) == 5
 
     def test_adr_namespace_not_found(self, mocked_cmd, mocked_responses: responses):
-        """ADR namespace 404 returns enabled=False."""
+        """ADR namespace 404 → enabled=False, ADR null, EG null, instance probed."""
         f = self._make_show_fixtures()
-        self._register_show_mocks(mocked_responses, **f, adr_not_found=True)
+        self._register_show_mocks(mocked_responses, f, adr_not_found=True)
 
         provider = MgmtActions(cmd=mocked_cmd)
         result = provider.show(name=f["instance_name"], resource_group_name=f["rg"])
 
-        assert result == {"enabled": False}
+        self._assert_4_key_shape(result)
+        assert result["enabled"] is False
+        self._assert_instance_all_exist(result, f)
+        assert result["eventGrid"] is None
+        assert result["deviceRegistryNamespace"] is None
+        # instance GET + ADR GET (404) + 3 AIO GETs
+        assert len(mocked_responses.calls) == 5
 
     def test_eg_namespace_not_found(self, mocked_cmd, mocked_responses: responses):
-        """EG namespace 404 returns enabled=False."""
+        """EG namespace 404 → enabled=False, EG null, instance and ADR probed."""
         f = self._make_show_fixtures()
-        self._register_show_mocks(mocked_responses, **f, eg_not_found=True)
+        self._register_show_mocks(mocked_responses, f, eg_not_found=True)
 
         provider = MgmtActions(cmd=mocked_cmd)
         result = provider.show(name=f["instance_name"], resource_group_name=f["rg"])
 
-        assert result == {"enabled": False}
+        self._assert_4_key_shape(result)
+        assert result["enabled"] is False
+        # AIO probed independently — all exist
+        self._assert_instance_all_exist(result, f)
+        assert result["eventGrid"] is None
+        assert result["deviceRegistryNamespace"] is not None
+        assert result["deviceRegistryNamespace"]["managementEndpoint"] is not None
+        # instance GET + ADR GET + EG NS GET (404) + 3 AIO GETs
+        assert len(mocked_responses.calls) == 6
 
     @pytest.mark.parametrize(
         "missing_resource",
@@ -3606,63 +3800,145 @@ class TestShow:
         mocked_responses: responses,
         missing_resource: str,
     ):
-        """Missing EG resource returns enabled=False."""
+        """Missing EG sub-resource → enabled=False with exists flags showing which is missing."""
         f = self._make_show_fixtures()
         kwargs = {
             "include_topic_space": missing_resource != "topic_space",
             "include_pub_binding": missing_resource != "pub_binding",
             "include_sub_binding": missing_resource != "sub_binding",
         }
-        self._register_show_mocks(mocked_responses, **f, **kwargs)
+        self._register_show_mocks(mocked_responses, f, **kwargs)
 
         provider = MgmtActions(cmd=mocked_cmd)
         result = provider.show(name=f["instance_name"], resource_group_name=f["rg"])
 
-        assert result == {"enabled": False}
+        self._assert_4_key_shape(result)
+        assert result["enabled"] is False
+        self._assert_instance_all_exist(result, f)
+        # EG section populated with exists flags
+        eg = result["eventGrid"]
+        assert eg is not None
+        assert eg["namespace"]["name"] == f["eg_ns_name"]
+        ts_exists = missing_resource != "topic_space"
+        assert eg["topicSpace"]["exists"] is ts_exists
+        assert eg["topicSpace"]["name"] == f["ts_name"]
+        if ts_exists:
+            assert "topicTemplates" in eg["topicSpace"]
+            assert "scopeId" in eg["topicSpace"]
+        else:
+            assert "topicTemplates" not in eg["topicSpace"]
+            assert "scopeId" not in eg["topicSpace"]
+        # Bindings exist only when both pub and sub exist
+        pub_missing = missing_resource == "pub_binding"
+        sub_missing = missing_resource == "sub_binding"
+        bindings_exist = not pub_missing and not sub_missing
+        assert eg["permissionBindings"]["exists"] is bindings_exist
+        if not pub_missing:
+            assert "clientGroup" in eg["permissionBindings"]["publisher"]
+        else:
+            assert "clientGroup" not in eg["permissionBindings"]["publisher"]
+        if not sub_missing:
+            assert "clientGroup" in eg["permissionBindings"]["subscriber"]
+        else:
+            assert "clientGroup" not in eg["permissionBindings"]["subscriber"]
 
     def test_cross_subscription_eg(self, mocked_cmd, mocked_responses: responses):
         """EG namespace in a different subscription is handled correctly."""
         f = self._make_show_fixtures()
         cross_sub = "11111111-1111-1111-1111-111111111111"
-        self._register_show_mocks(mocked_responses, **f, eg_subscription_id=cross_sub)
+        self._register_show_mocks(mocked_responses, f, eg_subscription_id=cross_sub)
 
         provider = MgmtActions(cmd=mocked_cmd)
         result = provider.show(name=f["instance_name"], resource_group_name=f["rg"])
 
+        self._assert_4_key_shape(result)
         assert result["enabled"] is True
         assert result["eventGrid"]["namespace"]["subscriptionId"] == cross_sub
 
     def test_no_adr_namespace_ref(self, mocked_cmd, mocked_responses: responses):
-        """Instance without adrNamespaceRef returns enabled=False."""
-        instance_name = generate_random_string()
-        rg = generate_random_string()
-
-        # Build instance without adrNamespaceRef
-        instance_response = {
-            "id": (
-                f"/subscriptions/{ZEROED_SUBSCRIPTION}/resourceGroups/{rg}"
-                f"/providers/{IOTOPS_RP}/instances/{instance_name}"
-            ),
-            "name": instance_name,
-            "location": "eastus",
-            "extendedLocation": _make_extended_location(),
-            "properties": {
-                "version": MIN_INSTANCE_VERSION_MGMT_ACTIONS,
-                "provisioningState": "Succeeded",
-            },
-        }
-        mocked_responses.add(
-            method=responses.GET,
-            url=_build_iotops_endpoint(instance_name, rg),
-            json=instance_response,
-            status=200,
+        """Instance without adrNamespaceRef → enabled=False, ADR null, EG null, AIO probed."""
+        f = self._make_show_fixtures()
+        self._register_show_mocks(
+            mocked_responses, f,
+            no_adr_ref=True, include_ep=False, include_graph=False, include_resp=False,
         )
 
         provider = MgmtActions(cmd=mocked_cmd)
-        result = provider.show(name=instance_name, resource_group_name=rg)
+        result = provider.show(name=f["instance_name"], resource_group_name=f["rg"])
 
-        assert result == {"enabled": False}
-        assert len(mocked_responses.calls) == 1
+        self._assert_4_key_shape(result)
+        assert result["enabled"] is False
+        self._assert_instance_all_missing(result, f)
+        assert result["eventGrid"] is None
+        assert result["deviceRegistryNamespace"] is None
+
+    def test_aio_all_missing(self, mocked_cmd, mocked_responses: responses):
+        """All AIO resources 404 → enabled=False, instance section all exists=False."""
+        f = self._make_show_fixtures()
+        self._register_show_mocks(
+            mocked_responses, f,
+            include_ep=False, include_graph=False, include_resp=False,
+        )
+
+        provider = MgmtActions(cmd=mocked_cmd)
+        result = provider.show(name=f["instance_name"], resource_group_name=f["rg"])
+
+        self._assert_4_key_shape(result)
+        assert result["enabled"] is False
+        self._assert_instance_all_missing(result, f)
+        # EG and ADR still fully populated
+        assert result["eventGrid"] is not None
+        assert result["eventGrid"]["topicSpace"]["exists"] is True
+        assert result["eventGrid"]["permissionBindings"]["exists"] is True
+        assert result["deviceRegistryNamespace"] is not None
+
+    @pytest.mark.parametrize(
+        "missing",
+        ["endpoint", "graph", "response"],
+    )
+    def test_aio_partially_missing(
+        self,
+        mocked_cmd,
+        mocked_responses: responses,
+        missing: str,
+    ):
+        """Single AIO resource missing → enabled=False, correct exists flags."""
+        f = self._make_show_fixtures()
+        self._register_show_mocks(
+            mocked_responses, f,
+            include_ep=missing != "endpoint",
+            include_graph=missing != "graph",
+            include_resp=missing != "response",
+        )
+
+        provider = MgmtActions(cmd=mocked_cmd)
+        result = provider.show(name=f["instance_name"], resource_group_name=f["rg"])
+
+        self._assert_4_key_shape(result)
+        assert result["enabled"] is False
+        inst = result["instance"]
+        assert inst["dataflowEndpoint"]["exists"] is (missing != "endpoint")
+        assert inst["requestDataflowGraph"]["exists"] is (missing != "graph")
+        assert inst["responseDataflow"]["exists"] is (missing != "response")
+
+    def test_aio_custom_profile(self, mocked_cmd, mocked_responses: responses):
+        """Graph and response under non-default profile → correct profile name reported."""
+        f = self._make_show_fixtures()
+        custom_profile = "custom-perf-profile"
+        self._register_show_mocks(
+            mocked_responses, f,
+            graph_profile=custom_profile,
+            graph_not_in_default=True,
+        )
+
+        provider = MgmtActions(cmd=mocked_cmd)
+        result = provider.show(name=f["instance_name"], resource_group_name=f["rg"])
+
+        self._assert_4_key_shape(result)
+        assert result["enabled"] is True
+        assert result["instance"]["dataflowProfile"] == custom_profile
+        assert result["instance"]["requestDataflowGraph"]["exists"] is True
+        assert result["instance"]["responseDataflow"]["exists"] is True
 
 
 class TestExecute:
