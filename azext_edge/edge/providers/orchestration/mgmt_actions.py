@@ -445,6 +445,10 @@ class MgmtActions(Queryable):
                     display.update_step(cat_roles, "Dataflow identity roles", StepState.FAILED, str(exc)[:40])
                     raise
 
+        # Strip internal `exists` flags before building consumer-facing return (desired-state semantics)
+        for sub_result in [topic_space_result, dataflow_endpoint_result, dataflow_graph_result, response_dataflow_result]:
+            sub_result.pop("exists", None)
+
         # Extract our custom location's endpoint for the consumer-facing return
         our_endpoint = adr_result.get("managementEndpoints", {}).get(
             instance["extendedLocation"]["name"], {}

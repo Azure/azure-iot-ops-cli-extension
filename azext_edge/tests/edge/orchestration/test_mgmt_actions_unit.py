@@ -2467,6 +2467,10 @@ class TestEnable:
         assert inst["dataflowEndpoint"]["name"] == f["ep_name"]
         assert inst["requestDataflowGraph"]["name"] == f["graph_name"]
         assert inst["responseDataflow"]["name"] == f["resp_name"]
+        # Internal `exists` flags must be stripped from consumer-facing return (desired-state semantics)
+        assert "exists" not in inst["dataflowEndpoint"]
+        assert "exists" not in inst["requestDataflowGraph"]
+        assert "exists" not in inst["responseDataflow"]
 
         # -- Assert eventGrid section --
         eg = result["eventGrid"]
@@ -2479,6 +2483,7 @@ class TestEnable:
 
         assert eg["topicSpace"]["name"] == f["ts_name"]
         assert eg["topicSpace"]["scopeId"] == f["instance_name"]
+        assert "exists" not in eg["topicSpace"]  # internal flag stripped
 
         assert eg["permissionBindings"]["publisher"]["name"] == f["pub_name"]
         assert eg["permissionBindings"]["publisher"]["clientGroup"] == MGMT_ACTIONS_DEFAULT_EG_CLIENT_GROUP
