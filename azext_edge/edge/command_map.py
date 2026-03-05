@@ -262,6 +262,12 @@ def load_iotops_commands(self, _):
         cmd_group.command("update", "update_namespace")
 
     with self.command_group(
+        "iot ops ns mgmt-endpoint",
+        command_type=mgmt_actions_resource_ops,
+    ) as cmd_group:
+        cmd_group.command("remove", "mgmt_actions_remove_ns_mgmt_endpoint")
+
+    with self.command_group(
         "iot ops ns device",
         command_type=namespace_resource_ops,
     ) as cmd_group:

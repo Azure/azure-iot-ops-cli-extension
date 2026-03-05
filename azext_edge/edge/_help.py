@@ -2127,15 +2127,16 @@ def load_iotops_help():
 
             The operation configures resources across three domains:
             - Event Grid Namespace: topic space, topic templates, and permission bindings.
-            - Device Registry Namespace: managed identity enablement and management endpoint configuration.
+            - Device Registry Namespace: managed identity enablement and management endpoint config.
             - IoT Operations Instance: EG dataflow endpoint, dataflow graph, and response dataflow.
 
             The command is idempotent. If a resource already exists, it is skipped. On partial failure,
             re-run the command to reach the desired state.
 
-            By default, role assignments (Event Grid TopicSpaces Publisher and Subscriber) are created for
-            both the ADR namespace MI and the AIO extension MI against the EG namespace. Use --skip-ra to
-            skip role assignment creation, or --adr-role-ids / --ops-role-ids to provide custom role Ids.
+            By default, role assignments (Event Grid TopicSpaces Publisher and Subscriber) are created
+            for both the ADR namespace MI and the AIO extension MI against the EG namespace.
+            Use --skip-ra to skip role assignment creation, or --adr-role-ids / --ops-role-ids to
+            provide custom role Ids.
 
         examples:
         - name: Enable management actions for an instance using system managed identity.
@@ -2158,14 +2159,15 @@ def load_iotops_help():
         type: command
         short-summary: Disable management actions for an IoT Operations instance.
         long-summary: |
-            Removes the management actions resources associated with the instance including the dataflow graph,
-            response dataflow, EG dataflow endpoint, EG topic space and permission bindings, and the
-            ADR namespace management endpoint entry.
+            Removes management actions resources associated with the instance including
+            the dataflow graph, response dataflow, EG dataflow endpoint, EG topic space,
+            permission bindings, and the ADR namespace management endpoint entry.
 
             Role assignments are not removed as they may be shared with other resources.
 
-            The Event Grid namespace is discovered from the ADR namespace management endpoint configuration.
-            If the management endpoint entry has already been removed, Event Grid cleanup is skipped gracefully.
+            The Event Grid namespace is discovered from the ADR namespace management
+            endpoint config. If the management endpoint entry has already been removed,
+            Event Grid cleanup is skipped gracefully.
 
         examples:
         - name: Disable management actions for an instance.

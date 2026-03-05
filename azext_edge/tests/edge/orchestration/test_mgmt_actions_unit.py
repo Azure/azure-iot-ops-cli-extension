@@ -4456,3 +4456,310 @@ class TestExecute:
         execute_request = mocked_responses.calls[1]
         body = json.loads(execute_request.request.body)
         assert body["payload"] == {"temperature": {"setpoint": 72}}
+
+
+# ---------------------------------------------------------------------------
+# remove_management_endpoint tests
+# ---------------------------------------------------------------------------
+
+
+class TestRemoveManagementEndpoint:
+    """Tests for MgmtActions.remove_management_endpoint().
+
+    Surgical removal of a single management endpoint entry from an ADR namespace
+    via GET + PUT (not PATCH — ARM PATCH deep-merges dicts, can't remove keys).
+    """
+
+    PROMPT_TARGET = "azext_edge.edge.providers.orchestration.mgmt_actions.should_continue_prompt"
+
+    def _make_fixtures(self, num_endpoints: int = 1) -> dict:
+        """Build test fixtures for remove_management_endpoint tests."""
+        ns_name = generate_random_string()
+        rg = generate_random_string()
+        target_key = (
+            f"/subscriptions/{ZEROED_SUBSCRIPTION}/resourceGroups/{rg}"
+            f"/providers/Microsoft.ExtendedLocation/customLocations/my-cl"
+        )
+        endpoints = {}
+        if num_endpoints >= 1:
+            endpoints[target_key] = {
+                "endpointType": MGMT_ACTIONS_ADR_ENDPOINT_TYPE,
+                "address": "test-ns.eastus-1.ts.eventgrid.azure.net",
+                "scopeId": "test-instance",
+            }
+        if num_endpoints >= 2:
+            other_key = (
+                f"/subscriptions/{ZEROED_SUBSCRIPTION}/resourceGroups/{rg}"
+                f"/providers/Microsoft.ExtendedLocation/customLocations/other-cl"
+            )
+            endpoints[other_key] = {
+                "endpointType": MGMT_ACTIONS_ADR_ENDPOINT_TYPE,
+                "address": "other-ns.eastus-1.ts.eventgrid.azure.net",
+                "scopeId": "other-instance",
+            }
+        else:
+            other_key = None
+
+        return {
+            "ns_name": ns_name,
+            "rg": rg,
+            "target_key": target_key,
+            "other_key": other_key,
+            "endpoints": endpoints,
+        }
+
+    def _build_ns_response(self, f: dict, management_endpoints: dict = None) -> dict:
+        """Build ADR namespace response with optional management endpoints and extra fields."""
+        eps = management_endpoints if management_endpoints is not None else f["endpoints"]
+        resp = _build_adr_namespace_response(
+            f["ns_name"], f["rg"],
+            identity_type="SystemAssigned",
+            principal_id="00000000-0000-0000-0000-bbbbbbbbbbbb",
+            management_endpoints=eps,
+        )
+        # Add tags and messaging to verify preservation in PUT payload
+        resp["tags"] = {"env": "test"}
+        resp["properties"]["messaging"] = {
+            "endpoints": {
+                "myEgEndpoint": {
+                    "address": "https://eg.westeurope-1.eventgrid.azure.net",
+                    "endpointType": "Microsoft.EventGrid",
+                }
+            }
+        }
+        return resp
+
+    def test_happy_path(self, mocked_cmd, mocked_responses: responses, mocker):
+        """Single endpoint entry is removed via PUT."""
+        f = self._make_fixtures(num_endpoints=1)
+        mocker.patch(self.PROMPT_TARGET, return_value=True)
+
+        ns_response = self._build_ns_response(f)
+        # GET namespace
+        mocked_responses.add(
+            method=responses.GET,
+            url=_build_adr_endpoint(f["ns_name"], f["rg"]),
+            json=ns_response,
+            status=200,
+        )
+        # PUT namespace (with endpoint removed)
+        mocked_responses.add(
+            method=responses.PUT,
+            url=_build_adr_endpoint(f["ns_name"], f["rg"]),
+            json=self._build_ns_response(f, management_endpoints={}),
+            status=200,
+        )
+
+        provider = MgmtActions(cmd=mocked_cmd)
+        result = provider.remove_management_endpoint(
+            namespace_name=f["ns_name"],
+            resource_group_name=f["rg"],
+            endpoint_key=f["target_key"],
+            confirm_yes=True,
+            wait_sec=0,
+        )
+
+        assert result is None
+        assert len(mocked_responses.calls) == 2
+        assert mocked_responses.calls[0].request.method == "GET"
+        assert mocked_responses.calls[1].request.method == "PUT"
+
+        # Verify PUT payload has empty management.endpoints
+        put_body = json.loads(mocked_responses.calls[1].request.body)
+        assert put_body["properties"]["management"]["endpoints"] == {}
+        # Verify identity, tags, messaging preserved
+        assert put_body["identity"] == ns_response["identity"]
+        assert put_body["tags"] == ns_response["tags"]
+        assert put_body["properties"]["messaging"] == ns_response["properties"]["messaging"]
+        assert put_body["location"] == ns_response["location"]
+
+    def test_preserves_other_endpoints(self, mocked_cmd, mocked_responses: responses, mocker):
+        """Only target key removed; sibling entries, identity, tags, messaging survive."""
+        f = self._make_fixtures(num_endpoints=2)
+        mocker.patch(self.PROMPT_TARGET, return_value=True)
+
+        ns_response = self._build_ns_response(f)
+        mocked_responses.add(
+            method=responses.GET,
+            url=_build_adr_endpoint(f["ns_name"], f["rg"]),
+            json=ns_response,
+            status=200,
+        )
+        expected_remaining = {f["other_key"]: f["endpoints"][f["other_key"]]}
+        mocked_responses.add(
+            method=responses.PUT,
+            url=_build_adr_endpoint(f["ns_name"], f["rg"]),
+            json=self._build_ns_response(f, management_endpoints=expected_remaining),
+            status=200,
+        )
+
+        provider = MgmtActions(cmd=mocked_cmd)
+        provider.remove_management_endpoint(
+            namespace_name=f["ns_name"],
+            resource_group_name=f["rg"],
+            endpoint_key=f["target_key"],
+            confirm_yes=True,
+            wait_sec=0,
+        )
+
+        assert len(mocked_responses.calls) == 2
+        put_body = json.loads(mocked_responses.calls[1].request.body)
+        remaining_endpoints = put_body["properties"]["management"]["endpoints"]
+        assert f["target_key"] not in remaining_endpoints
+        assert f["other_key"] in remaining_endpoints
+        assert remaining_endpoints[f["other_key"]] == f["endpoints"][f["other_key"]]
+        # Verify identity, tags, messaging preserved
+        assert put_body["identity"] == ns_response["identity"]
+        assert put_body["tags"] == ns_response["tags"]
+        assert put_body["properties"]["messaging"] == ns_response["properties"]["messaging"]
+
+    def test_endpoint_key_not_found(self, mocked_cmd, mocked_responses: responses):
+        """Specified key not in management.endpoints — early return, no PUT."""
+        f = self._make_fixtures(num_endpoints=1)
+        ns_response = self._build_ns_response(f)
+        mocked_responses.add(
+            method=responses.GET,
+            url=_build_adr_endpoint(f["ns_name"], f["rg"]),
+            json=ns_response,
+            status=200,
+        )
+
+        provider = MgmtActions(cmd=mocked_cmd)
+        result = provider.remove_management_endpoint(
+            namespace_name=f["ns_name"],
+            resource_group_name=f["rg"],
+            endpoint_key="/nonexistent/key",
+            confirm_yes=True,
+            wait_sec=0,
+        )
+
+        assert result is None
+        # Only the GET call, no PUT
+        assert len(mocked_responses.calls) == 1
+
+    def test_empty_management_endpoints(self, mocked_cmd, mocked_responses: responses):
+        """Namespace has no management endpoints — early return, no PUT."""
+        f = self._make_fixtures(num_endpoints=0)
+        ns_response = self._build_ns_response(f, management_endpoints={})
+        mocked_responses.add(
+            method=responses.GET,
+            url=_build_adr_endpoint(f["ns_name"], f["rg"]),
+            json=ns_response,
+            status=200,
+        )
+
+        provider = MgmtActions(cmd=mocked_cmd)
+        result = provider.remove_management_endpoint(
+            namespace_name=f["ns_name"],
+            resource_group_name=f["rg"],
+            endpoint_key=f["target_key"],
+            confirm_yes=True,
+            wait_sec=0,
+        )
+
+        assert result is None
+        assert len(mocked_responses.calls) == 1
+
+    def test_no_management_property(self, mocked_cmd, mocked_responses: responses):
+        """Namespace has no management property at all — early return, no PUT."""
+        f = self._make_fixtures(num_endpoints=0)
+        ns_response = _build_adr_namespace_response(
+            f["ns_name"], f["rg"],
+            identity_type="SystemAssigned",
+            management_endpoints=None,  # No management property in response
+        )
+        mocked_responses.add(
+            method=responses.GET,
+            url=_build_adr_endpoint(f["ns_name"], f["rg"]),
+            json=ns_response,
+            status=200,
+        )
+
+        provider = MgmtActions(cmd=mocked_cmd)
+        result = provider.remove_management_endpoint(
+            namespace_name=f["ns_name"],
+            resource_group_name=f["rg"],
+            endpoint_key=f["target_key"],
+            confirm_yes=True,
+            wait_sec=0,
+        )
+
+        assert result is None
+        assert len(mocked_responses.calls) == 1
+
+    def test_confirmation_cancel(self, mocked_cmd, mocked_responses: responses, mocker):
+        """User cancels at prompt — no PUT executed."""
+        f = self._make_fixtures(num_endpoints=1)
+        mock_prompt = mocker.patch(self.PROMPT_TARGET, return_value=False)
+
+        ns_response = self._build_ns_response(f)
+        mocked_responses.add(
+            method=responses.GET,
+            url=_build_adr_endpoint(f["ns_name"], f["rg"]),
+            json=ns_response,
+            status=200,
+        )
+
+        provider = MgmtActions(cmd=mocked_cmd)
+        provider.remove_management_endpoint(
+            namespace_name=f["ns_name"],
+            resource_group_name=f["rg"],
+            endpoint_key=f["target_key"],
+            confirm_yes=None,
+            wait_sec=0,
+        )
+
+        mock_prompt.assert_called_once_with(None)
+        # Only the GET call, no PUT
+        assert len(mocked_responses.calls) == 1
+
+    def test_yes_flag(self, mocked_cmd, mocked_responses: responses, mocker):
+        """confirm_yes=True skips prompt, direct PUT."""
+        f = self._make_fixtures(num_endpoints=1)
+        mock_prompt = mocker.patch(self.PROMPT_TARGET, return_value=True)
+
+        ns_response = self._build_ns_response(f)
+        mocked_responses.add(
+            method=responses.GET,
+            url=_build_adr_endpoint(f["ns_name"], f["rg"]),
+            json=ns_response,
+            status=200,
+        )
+        mocked_responses.add(
+            method=responses.PUT,
+            url=_build_adr_endpoint(f["ns_name"], f["rg"]),
+            json=self._build_ns_response(f, management_endpoints={}),
+            status=200,
+        )
+
+        provider = MgmtActions(cmd=mocked_cmd)
+        provider.remove_management_endpoint(
+            namespace_name=f["ns_name"],
+            resource_group_name=f["rg"],
+            endpoint_key=f["target_key"],
+            confirm_yes=True,
+            wait_sec=0,
+        )
+
+        mock_prompt.assert_called_once_with(True)
+        assert len(mocked_responses.calls) == 2
+
+    def test_namespace_not_found(self, mocked_cmd, mocked_responses: responses, mocker):
+        """ADR namespace returns 404 — HttpResponseError propagated."""
+        f = self._make_fixtures(num_endpoints=1)
+        mocked_responses.add(
+            method=responses.GET,
+            url=_build_adr_endpoint(f["ns_name"], f["rg"]),
+            json={"error": {"code": "ResourceNotFound"}},
+            status=404,
+        )
+
+        provider = MgmtActions(cmd=mocked_cmd)
+        with pytest.raises(HttpResponseError):
+            provider.remove_management_endpoint(
+                namespace_name=f["ns_name"],
+                resource_group_name=f["rg"],
+                endpoint_key=f["target_key"],
+                confirm_yes=True,
+                wait_sec=0,
+            )

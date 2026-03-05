@@ -615,6 +615,20 @@ def load_adr_arguments(self, _):
             help="The resource group of the Azure IoT Operations instance.",
         )
 
+    with self.argument_context("iot ops ns mgmt-endpoint remove") as context:
+        context.argument(
+            "resource_group_name",
+            options_list=["--resource-group", "-g"],
+            help="Resource group containing the ADR namespace.",
+        )
+        context.argument(
+            "endpoint_key",
+            options_list=["--endpoint-key"],
+            help="The management endpoint key to remove (custom location resource ID). "
+                 "Use `az iot ops ns show` to inspect available endpoint keys under "
+                 "properties.management.endpoints.",
+        )
+
     with self.argument_context("iot ops ns device") as context:
         context.argument(
             "namespace_name",

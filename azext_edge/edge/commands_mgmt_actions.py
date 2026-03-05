@@ -13,11 +13,13 @@ def mgmt_actions_show(
     cmd,
     instance_name: str,
     resource_group_name: str,
+    no_progress: Optional[bool] = None,
     **kwargs,
 ) -> Dict:
     return MgmtActions(cmd).show(
         name=instance_name,
         resource_group_name=resource_group_name,
+        no_progress=no_progress,
         **kwargs,
     )
 
@@ -34,6 +36,7 @@ def mgmt_actions_enable(
     skip_role_assignments: Optional[bool] = None,
     dataflow_profile: Optional[str] = None,
     registry_endpoint: Optional[str] = None,
+    no_progress: Optional[bool] = None,
     **kwargs,
 ) -> Dict:
     return MgmtActions(cmd).enable(
@@ -47,6 +50,7 @@ def mgmt_actions_enable(
         skip_role_assignments=skip_role_assignments,
         dataflow_profile=dataflow_profile,
         registry_endpoint=registry_endpoint,
+        no_progress=no_progress,
         **kwargs,
     )
 
@@ -56,12 +60,14 @@ def mgmt_actions_disable(
     instance_name: str,
     resource_group_name: str,
     confirm_yes: Optional[bool] = None,
+    no_progress: Optional[bool] = None,
     **kwargs,
 ) -> None:
     return MgmtActions(cmd).disable(
         name=instance_name,
         resource_group_name=resource_group_name,
         confirm_yes=confirm_yes,
+        no_progress=no_progress,
         **kwargs,
     )
 
@@ -83,5 +89,22 @@ def mgmt_actions_execute(
         group_name=group_name,
         action_name=action_name,
         payload=payload,
+        **kwargs,
+    )
+
+
+def mgmt_actions_remove_ns_mgmt_endpoint(
+    cmd,
+    namespace_name: str,
+    resource_group_name: str,
+    endpoint_key: str,
+    confirm_yes: Optional[bool] = None,
+    **kwargs,
+) -> None:
+    return MgmtActions(cmd).remove_management_endpoint(
+        namespace_name=namespace_name,
+        resource_group_name=resource_group_name,
+        endpoint_key=endpoint_key,
+        confirm_yes=confirm_yes,
         **kwargs,
     )

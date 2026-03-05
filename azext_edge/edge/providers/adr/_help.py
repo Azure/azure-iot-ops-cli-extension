@@ -515,6 +515,45 @@ def load_iotops_adr_help():
     """
 
     helps[
+        "iot ops ns mgmt-endpoint"
+    ] = """
+        type: group
+        short-summary: Manage management endpoints on Device Registry namespaces.
+        long-summary: |
+          Management endpoints are configured by `az iot ops mgmt-actions enable` and
+          associate an Event Grid namespace with a custom location scope.
+    """
+
+    helps[
+        "iot ops ns mgmt-endpoint remove"
+    ] = """
+        type: command
+        short-summary: Remove a management endpoint entry from a Device Registry namespace.
+        long-summary: |
+          Removes a single management endpoint entry from the ADR namespace.
+          This is useful for targeted cleanup when full `mgmt-actions disable` teardown
+          is not appropriate — for example, when switching Event Grid namespaces,
+          cleaning up after an externally deleted Event Grid namespace, or removing
+          management actions configuration for a specific custom location scope without
+          tearing down the full infrastructure.
+
+          Use `az iot ops ns show` to inspect available endpoint keys under
+          properties.management.endpoints.
+
+        examples:
+        - name: Remove a management endpoint entry by key.
+          text: >
+            az iot ops ns mgmt-endpoint remove -n mynamespace -g myResourceGroup
+            --endpoint-key $CUSTOM_LOCATION_RESOURCE_ID
+
+        - name: Remove a management endpoint entry without confirmation prompt.
+          text: >
+            az iot ops ns mgmt-endpoint remove -n mynamespace -g myResourceGroup
+            --endpoint-key $CUSTOM_LOCATION_RESOURCE_ID
+            -y
+    """
+
+    helps[
         "iot ops ns device"
     ] = """
         type: group

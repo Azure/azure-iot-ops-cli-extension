@@ -53,6 +53,7 @@ if TYPE_CHECKING:
     from ...vendor.clients.eventgridmgmt import EventGridManagementClient
 
 logger = get_logger(__name__)
+console = Console()
 
 
 def get_mgmt_actions_resource_name(purpose: str, instance_resource_id: str) -> str:
@@ -249,6 +250,7 @@ class MgmtActions(Queryable):
         skip_role_assignments: Optional[bool] = None,
         dataflow_profile: Optional[str] = None,
         registry_endpoint: Optional[str] = None,
+        no_progress: Optional[bool] = None,
         **kwargs,
     ) -> Dict:
         """Enable management actions for an IoT Operations instance.
@@ -258,7 +260,6 @@ class MgmtActions(Queryable):
         from ...util.machinery import scoped_semver_import
 
         semver = scoped_semver_import()
-        no_progress = kwargs.pop("no_progress", None)
 
         # --- Phase 1: Analyzing (transient — vanishes before configuring phase) ---
         analyzing_cats = {"Analyzing": ["Instance & version check", "EG namespace validation", "UAMI resolution"]}
@@ -498,6 +499,7 @@ class MgmtActions(Queryable):
         self,
         name: str,
         resource_group_name: str,
+        no_progress: Optional[bool] = None,
         **kwargs,
     ) -> Dict:
         """Show management actions configuration for an IoT Operations instance.
@@ -511,7 +513,6 @@ class MgmtActions(Queryable):
         `deviceRegistryNamespace` is null when the instance has no ADR namespace ref.
         `enabled` is True only when all sub-resources exist across all three areas.
         """
-        no_progress = kwargs.pop("no_progress", None)
 
         analyzing_cats = {
             "Analyzing": [
@@ -774,6 +775,7 @@ class MgmtActions(Queryable):
         name: str,
         resource_group_name: str,
         confirm_yes: Optional[bool] = None,
+        no_progress: Optional[bool] = None,
         **kwargs,
     ) -> None:
         """Disable management actions for an IoT Operations instance.
@@ -782,7 +784,6 @@ class MgmtActions(Queryable):
         EG topic space/permission bindings, and ADR namespace management endpoint entry.
         Role assignments are NOT removed — they may be shared with other resources.
         """
-        no_progress = kwargs.pop("no_progress", None)
 
         # --- Phase 1: Discovery (transient — vanishes before prompt) ---
         analyzing_cats = {
@@ -2185,7 +2186,6 @@ class MgmtActions(Queryable):
 
         logger.debug("Execute action request body: %s", body)
 
-        console = Console()
         with console.status("Executing management action..."):
             poller = self.registry_mgmt_client.namespace_assets.begin_execute_action(
                 resource_group_name=parsed_adr["resource_group"],
@@ -2194,3 +2194,57 @@ class MgmtActions(Queryable):
                 body=body,
             )
             return wait_for_terminal_state(poller, **kwargs)
+
+    def remove_management_endpoint(
+        self,
+        namespace_name: str,
+        resource_group_name: str,
+        endpoint_key: str,
+        confirm_yes: Optional[bool] = None,
+        **kwargs,
+    ) -> None:
+        """Remove a management endpoint entry from an ADR namespace.
+
+        Uses PUT to replace the namespace resource with the target entry removed,
+        because ARM PATCH deep-merges dicts (can't remove keys by omission) and
+        the ADR API rejects null endpoint values.
+        """
+        adr_namespace = self.registry_mgmt_client.namespaces.get(
+            resource_group_name=resource_group_name,
+            namespace_name=namespace_name,
+        )
+
+        existing_endpoints = adr_namespace.get("properties", {}).get("management", {}).get("endpoints", {})
+        if endpoint_key not in existing_endpoints:
+            logger.warning(
+                "No management endpoint entry found for key '%s' on namespace '%s' — nothing to remove.",
+                endpoint_key,
+                namespace_name,
+            )
+            return
+
+        endpoint_info = existing_endpoints[endpoint_key]
+        endpoint_type = endpoint_info.get("endpointType", "unknown")
+        logger.warning(
+            "Management endpoint to remove from namespace '%s':\n  Key: %s\n  Type: %s",
+            namespace_name,
+            endpoint_key,
+            endpoint_type,
+        )
+
+        if not should_continue_prompt(confirm_yes):
+            return
+
+        put_payload = _build_adr_put_payload(adr_namespace, endpoint_key_to_remove=endpoint_key)
+        with console.status("Removing management endpoint..."):
+            poller = self.registry_mgmt_client.namespaces.begin_create_or_replace(
+                resource_group_name=resource_group_name,
+                namespace_name=namespace_name,
+                resource=put_payload,
+            )
+            wait_for_terminal_state(poller, **kwargs)
+        logger.info(
+            "Removed management endpoint entry '%s' from namespace '%s'.",
+            endpoint_key,
+            namespace_name,
+        )
