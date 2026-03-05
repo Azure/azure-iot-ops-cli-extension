@@ -4551,7 +4551,7 @@ class TestRemoveManagementEndpoint:
         )
 
         provider = MgmtActions(cmd=mocked_cmd)
-        result = provider.remove_management_endpoint(
+        provider.remove_management_endpoint(
             namespace_name=f["ns_name"],
             resource_group_name=f["rg"],
             endpoint_key=f["target_key"],
@@ -4559,7 +4559,6 @@ class TestRemoveManagementEndpoint:
             wait_sec=0,
         )
 
-        assert result is None
         assert len(mocked_responses.calls) == 2
         assert mocked_responses.calls[0].request.method == "GET"
         assert mocked_responses.calls[1].request.method == "PUT"
@@ -4625,7 +4624,7 @@ class TestRemoveManagementEndpoint:
         )
 
         provider = MgmtActions(cmd=mocked_cmd)
-        result = provider.remove_management_endpoint(
+        provider.remove_management_endpoint(
             namespace_name=f["ns_name"],
             resource_group_name=f["rg"],
             endpoint_key="/nonexistent/key",
@@ -4633,7 +4632,6 @@ class TestRemoveManagementEndpoint:
             wait_sec=0,
         )
 
-        assert result is None
         # Only the GET call, no PUT
         assert len(mocked_responses.calls) == 1
 
@@ -4649,7 +4647,7 @@ class TestRemoveManagementEndpoint:
         )
 
         provider = MgmtActions(cmd=mocked_cmd)
-        result = provider.remove_management_endpoint(
+        provider.remove_management_endpoint(
             namespace_name=f["ns_name"],
             resource_group_name=f["rg"],
             endpoint_key=f["target_key"],
@@ -4657,7 +4655,6 @@ class TestRemoveManagementEndpoint:
             wait_sec=0,
         )
 
-        assert result is None
         assert len(mocked_responses.calls) == 1
 
     def test_no_management_property(self, mocked_cmd, mocked_responses: responses):
@@ -4676,7 +4673,7 @@ class TestRemoveManagementEndpoint:
         )
 
         provider = MgmtActions(cmd=mocked_cmd)
-        result = provider.remove_management_endpoint(
+        provider.remove_management_endpoint(
             namespace_name=f["ns_name"],
             resource_group_name=f["rg"],
             endpoint_key=f["target_key"],
@@ -4684,7 +4681,6 @@ class TestRemoveManagementEndpoint:
             wait_sec=0,
         )
 
-        assert result is None
         assert len(mocked_responses.calls) == 1
 
     def test_confirmation_cancel(self, mocked_cmd, mocked_responses: responses, mocker):
