@@ -963,8 +963,8 @@ class TestSetupEgDataflowEndpoint:
         assert uami_settings["tenantId"] == uami_tenant_id
         assert uami_settings["scope"] == f"{MGMT_ACTIONS_EG_AUDIENCE}/.default"
 
-    def test_existing_endpoint(self, mocked_cmd, mocked_responses: responses):
-        """When endpoint already exists, returns status 'Exists' without PUT."""
+    def test_existing_endpoint_same_config(self, mocked_cmd, mocked_responses: responses):
+        """When endpoint already exists with matching host and auth, returns without PUT."""
         ns_name = generate_random_string()
         rg = generate_random_string()
         instance_name = generate_random_string()
@@ -978,14 +978,19 @@ class TestSetupEgDataflowEndpoint:
             "method": "SystemAssignedManagedIdentity",
             "systemAssignedManagedIdentitySettings": {"audience": MGMT_ACTIONS_EG_AUDIENCE},
         }
-        # GET returns 200 (already exists)
+        # GET returns 200 with matching host and auth
         mocked_responses.add(
             method=responses.GET,
             url=_build_iotops_endpoint(instance_name, rg, sub_resource=f"/dataflowEndpoints/{ep_name}"),
             json={
                 "id": f"/fake/path/dataflowEndpoints/{ep_name}",
                 "name": ep_name,
-                "properties": {"mqttSettings": {"authentication": existing_auth}},
+                "properties": {
+                    "mqttSettings": {
+                        "host": eg_ctx.mqtt_hostname,
+                        "authentication": existing_auth,
+                    },
+                },
             },
             status=200,
         )
@@ -1002,8 +1007,258 @@ class TestSetupEgDataflowEndpoint:
 
         assert result["name"] == ep_name
         assert result["authentication"] == existing_auth
+        assert result["exists"] is True
+        assert "updated" not in result
         # Only the GET call, no PUT
         assert len(mocked_responses.calls) == 1
+
+    def test_existing_endpoint_different_host(self, mocked_cmd, mocked_responses: responses):
+        """When endpoint exists with a different host, updates via PUT."""
+        rg = generate_random_string()
+        instance_name = generate_random_string()
+        instance_rid = _build_eg_resource_id(instance_name, rg)
+        new_hostname = "new-ns.westus2-1.ts.eventgrid.azure.net"
+        eg_ctx = _make_eg_ctx(resource_group_name=rg, mqtt_hostname=new_hostname)
+        extended_location = MOCK_EXTENDED_LOCATION
+
+        ep_name = get_mgmt_actions_resource_name("eg", instance_rid)
+
+        existing_auth = {
+            "method": "SystemAssignedManagedIdentity",
+            "systemAssignedManagedIdentitySettings": {"audience": MGMT_ACTIONS_EG_AUDIENCE},
+        }
+        # GET returns 200 with OLD host but matching auth
+        mocked_responses.add(
+            method=responses.GET,
+            url=_build_iotops_endpoint(instance_name, rg, sub_resource=f"/dataflowEndpoints/{ep_name}"),
+            json={
+                "id": f"/fake/path/dataflowEndpoints/{ep_name}",
+                "name": ep_name,
+                "properties": {
+                    "mqttSettings": {
+                        "host": "old-ns.eastus-1.ts.eventgrid.azure.net",
+                        "authentication": existing_auth,
+                    },
+                },
+            },
+            status=200,
+        )
+        # PUT updates it
+        mocked_responses.add(
+            method=responses.PUT,
+            url=_build_iotops_endpoint(instance_name, rg, sub_resource=f"/dataflowEndpoints/{ep_name}"),
+            json={"id": f"/fake/path/dataflowEndpoints/{ep_name}", "name": ep_name},
+            status=200,
+        )
+
+        provider = MgmtActions(cmd=mocked_cmd)
+        result = provider._setup_eg_dataflow_endpoint(
+            eg_ctx=eg_ctx,
+            instance_name=instance_name,
+            instance_resource_id=instance_rid,
+            resource_group_name=rg,
+            extended_location=extended_location,
+            wait_sec=0,
+        )
+
+        assert result["name"] == ep_name
+        assert result["exists"] is True
+        assert result["updated"] is True
+        assert result["authentication"]["method"] == "SystemAssignedManagedIdentity"
+        assert len(mocked_responses.calls) == 2
+
+        # Verify the PUT payload has the new host
+        put_body = json.loads(mocked_responses.calls[1].request.body)
+        assert put_body["properties"]["mqttSettings"]["host"] == new_hostname
+
+    def test_existing_endpoint_sami_to_uami(self, mocked_cmd, mocked_responses: responses):
+        """When endpoint exists with SAMI but UAMI is now provided, updates auth via PUT."""
+        rg = generate_random_string()
+        instance_name = generate_random_string()
+        instance_rid = _build_eg_resource_id(instance_name, rg)
+        eg_ctx = _make_eg_ctx(resource_group_name=rg)
+        extended_location = MOCK_EXTENDED_LOCATION
+
+        ep_name = get_mgmt_actions_resource_name("eg", instance_rid)
+
+        uami_client_id = "cccccccc-cccc-cccc-cccc-cccccccccccc"
+        uami_tenant_id = "tttttttt-tttt-tttt-tttt-tttttttttttt"
+        uami_resource = _build_uami_response(
+            _build_uami_resource_id("my-uami", rg), uami_client_id, uami_tenant_id
+        )
+
+        existing_auth = {
+            "method": "SystemAssignedManagedIdentity",
+            "systemAssignedManagedIdentitySettings": {"audience": MGMT_ACTIONS_EG_AUDIENCE},
+        }
+        # GET returns 200 with matching host but SAMI auth
+        mocked_responses.add(
+            method=responses.GET,
+            url=_build_iotops_endpoint(instance_name, rg, sub_resource=f"/dataflowEndpoints/{ep_name}"),
+            json={
+                "id": f"/fake/path/dataflowEndpoints/{ep_name}",
+                "name": ep_name,
+                "properties": {
+                    "mqttSettings": {
+                        "host": eg_ctx.mqtt_hostname,
+                        "authentication": existing_auth,
+                    },
+                },
+            },
+            status=200,
+        )
+        # PUT updates it
+        mocked_responses.add(
+            method=responses.PUT,
+            url=_build_iotops_endpoint(instance_name, rg, sub_resource=f"/dataflowEndpoints/{ep_name}"),
+            json={"id": f"/fake/path/dataflowEndpoints/{ep_name}", "name": ep_name},
+            status=200,
+        )
+
+        provider = MgmtActions(cmd=mocked_cmd)
+        result = provider._setup_eg_dataflow_endpoint(
+            eg_ctx=eg_ctx,
+            instance_name=instance_name,
+            instance_resource_id=instance_rid,
+            resource_group_name=rg,
+            extended_location=extended_location,
+            mi_resource=uami_resource,
+            wait_sec=0,
+        )
+
+        assert result["exists"] is True
+        assert result["updated"] is True
+        assert result["authentication"]["method"] == "UserAssignedManagedIdentity"
+        assert result["authentication"]["userAssignedManagedIdentitySettings"]["clientId"] == uami_client_id
+        assert len(mocked_responses.calls) == 2
+
+    def test_existing_endpoint_uami_to_sami(self, mocked_cmd, mocked_responses: responses):
+        """When endpoint exists with UAMI but no mi_resource provided, updates to SAMI via PUT."""
+        rg = generate_random_string()
+        instance_name = generate_random_string()
+        instance_rid = _build_eg_resource_id(instance_name, rg)
+        eg_ctx = _make_eg_ctx(resource_group_name=rg)
+        extended_location = MOCK_EXTENDED_LOCATION
+
+        ep_name = get_mgmt_actions_resource_name("eg", instance_rid)
+
+        existing_auth = {
+            "method": "UserAssignedManagedIdentity",
+            "userAssignedManagedIdentitySettings": {
+                "clientId": "old-client-id",
+                "tenantId": "old-tenant-id",
+                "scope": f"{MGMT_ACTIONS_EG_AUDIENCE}/.default",
+            },
+        }
+        # GET returns 200 with matching host but UAMI auth
+        mocked_responses.add(
+            method=responses.GET,
+            url=_build_iotops_endpoint(instance_name, rg, sub_resource=f"/dataflowEndpoints/{ep_name}"),
+            json={
+                "id": f"/fake/path/dataflowEndpoints/{ep_name}",
+                "name": ep_name,
+                "properties": {
+                    "mqttSettings": {
+                        "host": eg_ctx.mqtt_hostname,
+                        "authentication": existing_auth,
+                    },
+                },
+            },
+            status=200,
+        )
+        # PUT updates it
+        mocked_responses.add(
+            method=responses.PUT,
+            url=_build_iotops_endpoint(instance_name, rg, sub_resource=f"/dataflowEndpoints/{ep_name}"),
+            json={"id": f"/fake/path/dataflowEndpoints/{ep_name}", "name": ep_name},
+            status=200,
+        )
+
+        provider = MgmtActions(cmd=mocked_cmd)
+        result = provider._setup_eg_dataflow_endpoint(
+            eg_ctx=eg_ctx,
+            instance_name=instance_name,
+            instance_resource_id=instance_rid,
+            resource_group_name=rg,
+            extended_location=extended_location,
+            wait_sec=0,
+        )
+
+        assert result["exists"] is True
+        assert result["updated"] is True
+        assert result["authentication"]["method"] == "SystemAssignedManagedIdentity"
+        assert len(mocked_responses.calls) == 2
+
+        # Verify the PUT payload has SAMI auth
+        put_body = json.loads(mocked_responses.calls[1].request.body)
+        auth = put_body["properties"]["mqttSettings"]["authentication"]
+        assert auth["method"] == "SystemAssignedManagedIdentity"
+
+    def test_existing_endpoint_host_and_auth_mismatch(self, mocked_cmd, mocked_responses: responses):
+        """When both host and auth differ, updates both via PUT."""
+        rg = generate_random_string()
+        instance_name = generate_random_string()
+        instance_rid = _build_eg_resource_id(instance_name, rg)
+        new_hostname = "new-ns.westus2-1.ts.eventgrid.azure.net"
+        eg_ctx = _make_eg_ctx(resource_group_name=rg, mqtt_hostname=new_hostname)
+        extended_location = MOCK_EXTENDED_LOCATION
+
+        ep_name = get_mgmt_actions_resource_name("eg", instance_rid)
+
+        uami_client_id = "cccccccc-cccc-cccc-cccc-cccccccccccc"
+        uami_tenant_id = "tttttttt-tttt-tttt-tttt-tttttttttttt"
+        uami_resource = _build_uami_response(
+            _build_uami_resource_id("my-uami", rg), uami_client_id, uami_tenant_id
+        )
+
+        # Existing has OLD host + SAMI auth
+        existing_auth = {
+            "method": "SystemAssignedManagedIdentity",
+            "systemAssignedManagedIdentitySettings": {"audience": MGMT_ACTIONS_EG_AUDIENCE},
+        }
+        mocked_responses.add(
+            method=responses.GET,
+            url=_build_iotops_endpoint(instance_name, rg, sub_resource=f"/dataflowEndpoints/{ep_name}"),
+            json={
+                "id": f"/fake/path/dataflowEndpoints/{ep_name}",
+                "name": ep_name,
+                "properties": {
+                    "mqttSettings": {
+                        "host": "old-ns.eastus-1.ts.eventgrid.azure.net",
+                        "authentication": existing_auth,
+                    },
+                },
+            },
+            status=200,
+        )
+        # PUT updates it
+        mocked_responses.add(
+            method=responses.PUT,
+            url=_build_iotops_endpoint(instance_name, rg, sub_resource=f"/dataflowEndpoints/{ep_name}"),
+            json={"id": f"/fake/path/dataflowEndpoints/{ep_name}", "name": ep_name},
+            status=200,
+        )
+
+        provider = MgmtActions(cmd=mocked_cmd)
+        result = provider._setup_eg_dataflow_endpoint(
+            eg_ctx=eg_ctx,
+            instance_name=instance_name,
+            instance_resource_id=instance_rid,
+            resource_group_name=rg,
+            extended_location=extended_location,
+            mi_resource=uami_resource,
+            wait_sec=0,
+        )
+
+        assert result["exists"] is True
+        assert result["updated"] is True
+        assert result["authentication"]["method"] == "UserAssignedManagedIdentity"
+        assert len(mocked_responses.calls) == 2
+
+        # Verify the PUT payload has both new host and new auth
+        put_body = json.loads(mocked_responses.calls[1].request.body)
+        assert put_body["properties"]["mqttSettings"]["host"] == new_hostname
+        assert put_body["properties"]["mqttSettings"]["authentication"]["method"] == "UserAssignedManagedIdentity"
 
     def _create_endpoint_and_get_put_body(
         self,
@@ -2475,8 +2730,9 @@ class TestEnable:
         assert inst["dataflowEndpoint"]["name"] == f["ep_name"]
         assert inst["requestDataflowGraph"]["name"] == f["graph_name"]
         assert inst["responseDataflow"]["name"] == f["resp_name"]
-        # Internal `exists` flags must be stripped from consumer-facing return (desired-state semantics)
+        # Internal `exists` and `updated` flags must be stripped from consumer-facing return (desired-state semantics)
         assert "exists" not in inst["dataflowEndpoint"]
+        assert "updated" not in inst["dataflowEndpoint"]
         assert "exists" not in inst["requestDataflowGraph"]
         assert "exists" not in inst["responseDataflow"]
 

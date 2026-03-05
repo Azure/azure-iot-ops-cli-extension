@@ -1557,6 +1557,7 @@ def load_iotops_arguments(self, _):
             nargs="+",
             help="Custom role Ids for ADR namespace managed identity role assignments against the EG namespace. "
             "Default: 'Event Grid TopicSpaces Publisher' and 'Event Grid TopicSpaces Subscriber'.",
+            arg_group="Role Assignment",
         )
         context.argument(
             "ops_role_ids",
@@ -1564,6 +1565,7 @@ def load_iotops_arguments(self, _):
             nargs="+",
             help="Custom role Ids for AIO extension managed identity role assignments against the EG namespace. "
             "Default: 'Event Grid TopicSpaces Publisher' and 'Event Grid TopicSpaces Subscriber'.",
+            arg_group="Role Assignment",
         )
         context.argument(
             "dataflow_profile",

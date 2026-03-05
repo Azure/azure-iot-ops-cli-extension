@@ -377,7 +377,9 @@ class MgmtActions(Queryable):
                     mi_resource=mi_resource,
                     **kwargs,
                 )
-                if dataflow_endpoint_result.get("exists"):
+                if dataflow_endpoint_result.get("updated"):
+                    display.update_step(cat_aio, "EG dataflow endpoint", StepState.COMPLETE, "updated")
+                elif dataflow_endpoint_result.get("exists"):
                     display.update_step(cat_aio, "EG dataflow endpoint", StepState.SKIPPED, "exists")
                 else:
                     display.update_step(cat_aio, "EG dataflow endpoint", StepState.COMPLETE, "created")
@@ -442,11 +444,12 @@ class MgmtActions(Queryable):
                     display.update_step(cat_roles, "Dataflow identity roles", StepState.FAILED, str(exc)[:40])
                     raise
 
-        # Strip internal `exists` flags before building consumer-facing return (desired-state semantics)
+        # Strip internal `exists` and `updated` flags before building consumer-facing return (desired-state semantics)
         for sub_result in [
             topic_space_result, dataflow_endpoint_result, dataflow_graph_result, response_dataflow_result,
         ]:
             sub_result.pop("exists", None)
+            sub_result.pop("updated", None)
 
         # Extract our custom location's endpoint for the consumer-facing return
         our_endpoint = adr_result.get("managementEndpoints", {}).get(
@@ -1567,14 +1570,21 @@ class MgmtActions(Queryable):
         mi_resource: Optional[Dict] = None,
         **kwargs,
     ) -> Dict:
-        """Create or confirm the EG MQTT dataflow endpoint on the AIO instance.
+        """Create or update the EG MQTT dataflow endpoint on the AIO instance.
 
         Uses GET-then-PUT to report accurate status. The endpoint connects to the EG
         namespace's MQTT broker using managed identity authentication. Defaults to
         SystemAssigned MI; when mi_resource is provided, a UserAssigned MI is
         configured instead using clientId and tenantId from the resolved UAMI resource.
+
+        When the endpoint already exists, compares host and authentication against the
+        desired state. If either differs (e.g., re-enabling with a different EG namespace
+        or switching between SAMI/UAMI), the endpoint is updated via PUT.
         """
         endpoint_name = get_mgmt_actions_resource_name("eg", instance_resource_id)
+
+        # Build desired authentication block
+        desired_authentication = self._build_eg_endpoint_auth(mi_resource)
 
         # Check if endpoint already exists
         try:
@@ -1583,33 +1593,29 @@ class MgmtActions(Queryable):
                 instance_name=instance_name,
                 dataflow_endpoint_name=endpoint_name,
             )
-            logger.info(
-                "Dataflow endpoint '%s' already exists on instance '%s'.",
-                endpoint_name,
-                instance_name,
-            )
-            existing_auth = existing.get("properties", {}).get("mqttSettings", {}).get("authentication", {})
-            return {"name": endpoint_name, "authentication": existing_auth, "exists": True}
-        except ResourceNotFoundError:
-            pass
+            existing_mqtt = existing.get("properties", {}).get("mqttSettings", {})
+            existing_host = existing_mqtt.get("host", "")
+            existing_auth = existing_mqtt.get("authentication", {})
 
-        # Build authentication block
-        if mi_resource:
-            authentication = {
-                "method": "UserAssignedManagedIdentity",
-                "userAssignedManagedIdentitySettings": {
-                    "clientId": mi_resource["properties"]["clientId"],
-                    "tenantId": mi_resource["properties"]["tenantId"],
-                    "scope": f"{MGMT_ACTIONS_EG_AUDIENCE}/.default",
-                },
-            }
-        else:
-            authentication = {
-                "method": "SystemAssignedManagedIdentity",
-                "systemAssignedManagedIdentitySettings": {
-                    "audience": MGMT_ACTIONS_EG_AUDIENCE,
-                },
-            }
+            # Compare host and auth — update if either differs
+            host_matches = existing_host == eg_ctx.mqtt_hostname
+            auth_matches = existing_auth == desired_authentication
+            if host_matches and auth_matches:
+                logger.info(
+                    "Dataflow endpoint '%s' already exists on instance '%s' with matching configuration.",
+                    endpoint_name,
+                    instance_name,
+                )
+                return {"name": endpoint_name, "authentication": existing_auth, "exists": True}
+
+            logger.info(
+                "Dataflow endpoint '%s' exists but configuration differs (host_match=%s, auth_match=%s). Updating.",
+                endpoint_name,
+                host_matches,
+                auth_matches,
+            )
+        except ResourceNotFoundError:
+            existing = None
 
         resource = {
             "extendedLocation": extended_location,
@@ -1617,7 +1623,7 @@ class MgmtActions(Queryable):
                 "endpointType": MQTT_ENDPOINT_TYPE,
                 "mqttSettings": {
                     "host": eg_ctx.mqtt_hostname,
-                    "authentication": authentication,
+                    "authentication": desired_authentication,
                     "tls": {
                         "mode": "Enabled",
                     },
@@ -1632,13 +1638,40 @@ class MgmtActions(Queryable):
             resource=resource,
         )
         wait_for_terminal_state(poller, **kwargs)
+
+        if existing:
+            logger.info(
+                "Updated dataflow endpoint '%s' on instance '%s'.",
+                endpoint_name,
+                instance_name,
+            )
+            return {"name": endpoint_name, "authentication": desired_authentication, "exists": True, "updated": True}
+
         logger.info(
             "Created dataflow endpoint '%s' on instance '%s'.",
             endpoint_name,
             instance_name,
         )
+        return {"name": endpoint_name, "authentication": desired_authentication, "exists": False}
 
-        return {"name": endpoint_name, "authentication": authentication, "exists": False}
+    @staticmethod
+    def _build_eg_endpoint_auth(mi_resource: Optional[Dict] = None) -> Dict:
+        """Build the authentication block for the EG MQTT dataflow endpoint."""
+        if mi_resource:
+            return {
+                "method": "UserAssignedManagedIdentity",
+                "userAssignedManagedIdentitySettings": {
+                    "clientId": mi_resource["properties"]["clientId"],
+                    "tenantId": mi_resource["properties"]["tenantId"],
+                    "scope": f"{MGMT_ACTIONS_EG_AUDIENCE}/.default",
+                },
+            }
+        return {
+            "method": "SystemAssignedManagedIdentity",
+            "systemAssignedManagedIdentitySettings": {
+                "audience": MGMT_ACTIONS_EG_AUDIENCE,
+            },
+        }
 
     def _setup_adr_management_endpoint(
         self,
