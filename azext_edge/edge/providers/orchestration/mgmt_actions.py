@@ -2186,14 +2186,17 @@ class MgmtActions(Queryable):
 
         logger.debug("Execute action request body: %s", body)
 
-        with console.status("Executing management action..."):
+        with console.status("Sending request...") as status:
             poller = self.registry_mgmt_client.namespace_assets.begin_execute_action(
                 resource_group_name=parsed_adr["resource_group"],
                 namespace_name=parsed_adr["name"],
                 asset_name=asset_name,
                 body=body,
             )
-            return wait_for_terminal_state(poller, **kwargs)
+            if not poller.done():
+                status.update("Waiting for response...")
+                return wait_for_terminal_state(poller, **kwargs)
+            return poller.result()
 
     def remove_management_endpoint(
         self,
