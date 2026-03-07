@@ -4,6 +4,7 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
+import re
 from enum import IntEnum
 from json import dumps
 from time import sleep
@@ -35,6 +36,8 @@ from ...util.az_client import (
 from ...util.common import insert_newlines
 from .common import (
     CONTRIBUTOR_ROLE_ID,
+    DEFAULT_HEALTH_CHECKS_INTERVAL,
+    DEFAULT_HEALTH_CHECKS_MAX,
     EXTENSION_MONIKER_CM,
     EXTENSION_TYPE_CM,
     EXTENSION_TYPE_OPS,
@@ -351,6 +354,8 @@ class WorkManager:
         self._ops_ext_dependencies = None
         self._ops_ext = None
         self._skip_sr_ra = kwargs.pop("skip_sr_ra", False)
+        self._health_checks_max = kwargs.pop("health_checks_max", DEFAULT_HEALTH_CHECKS_MAX)
+        self._health_checks_interval = kwargs.pop("health_checks_interval", DEFAULT_HEALTH_CHECKS_INTERVAL)
 
         self._build_display()
 
@@ -383,8 +388,8 @@ class WorkManager:
                 )
 
                 # WorkStepKey.ENUMERATE_PRE_FLIGHT
-                # Skip health check if ResourceHealth RP registration failed
-                if HEALTH_PROVIDER not in failed_optional_rps:
+                # Skip health check if ResourceHealth RP registration failed or user opted out
+                if HEALTH_PROVIDER not in failed_optional_rps and self._health_checks_max > 0:
                     self._eval_cluster_health()
                 if self._check_cluster:
                     cluster_check_kwargs = self._build_cluster_check_kwargs()
@@ -696,24 +701,66 @@ class WorkManager:
                 "to uninstall the existing deployment prior to running ops create."
             )
 
-    def _eval_cluster_health(self):
-        import re
+    def _eval_cluster_health(self) -> None:
+        """Evaluate cluster health with a rolling retry window.
 
+        Checks cluster availability up to ``self._health_checks_max`` times,
+        sleeping ``self._health_checks_interval`` seconds between retries.
+        If the cluster remains unavailable after all attempts, raises a
+        ``ValidationError`` with diagnostic details and recommended actions.
+        """
         connected_cluster = self._resource_map.connected_cluster
-        availability_status = connected_cluster.get_availability_status(
-            headers=self._headers,
-            expand="recommendedactions",
-        )
+        last_properties: Optional[dict] = None
 
-        if not availability_status:
-            return
+        for attempt in range(1, self._health_checks_max + 1):
+            if attempt > 1:
+                logger.warning(
+                    "Cluster health check %s/%s: retrying in %s seconds...",
+                    attempt,
+                    self._health_checks_max,
+                    self._health_checks_interval,
+                )
+                sleep(self._health_checks_interval)
 
-        properties: dict = availability_status.get("properties", {})
-        availability_state: str = properties.get("availabilityState", "Unknown")
+            availability_status = connected_cluster.get_availability_status(
+                headers=self._headers,
+                expand="recommendedactions",
+            )
 
-        if availability_state.lower() != "unavailable":
-            return
+            if not availability_status:
+                # API call failed — already logged at debug level in connected_cluster
+                return
 
+            properties: dict = availability_status.get("properties", {})
+            availability_state: str = properties.get("availabilityState", "Unknown")
+
+            # Log chronicity for observability when present
+            reason_chronicity = properties.get("reasonChronicity")
+            if reason_chronicity:
+                logger.info(
+                    "Cluster health check %s/%s: availabilityState=%s, reasonChronicity=%s",
+                    attempt,
+                    self._health_checks_max,
+                    availability_state,
+                    reason_chronicity,
+                )
+
+            if availability_state.lower() != "unavailable":
+                return
+
+            last_properties = properties
+            logger.warning(
+                "Cluster health check %s/%s: cluster '%s' reported as unavailable.",
+                attempt,
+                self._health_checks_max,
+                self._targets.cluster_name,
+            )
+
+        # All attempts exhausted — raise with the last observed properties
+        self._raise_health_error(last_properties or {})
+
+    def _raise_health_error(self, properties: dict) -> None:
+        """Build a diagnostic error message from Resource Health properties and raise."""
         title = properties.get("title", "")
         summary = properties.get("summary", "No additional details available.")
         reason_type = properties.get("reasonType", "")

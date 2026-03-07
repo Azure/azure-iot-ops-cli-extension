@@ -43,14 +43,15 @@ from azext_edge.edge.providers.base import DEFAULT_NAMESPACE
 from azext_edge.edge.providers.orchestration.common import (
     ARM_ENDPOINT,
     CONTRIBUTOR_ROLE_ID,
+    DEFAULT_HEALTH_CHECKS_INTERVAL,
     EXTENSION_TYPE_CM,
     EXTENSION_TYPE_OPS,
     EXTENSION_TYPE_SSC,
     OPS_EXTENSION_DEPS,
 )
-from azext_edge.edge.util.az_client import DEFAULT_DEVICEREGISTRY_MGMT_API_VERSION
 from azext_edge.edge.providers.orchestration.permissions import ROLE_DEF_FORMAT_STR
 from azext_edge.edge.providers.orchestration.rp_namespace import (
+    HEALTH_PROVIDER,
     RP_NAMESPACE_OPTIONAL_SET,
     RP_NAMESPACE_SET,
 )
@@ -63,6 +64,7 @@ from azext_edge.edge.providers.orchestration.work import (
     ClusterConnectStatus,
 )
 from azext_edge.edge.util import assemble_nargs_to_dict
+from azext_edge.edge.util.az_client import DEFAULT_DEVICEREGISTRY_MGMT_API_VERSION
 
 from ...generators import (
     generate_random_string,
@@ -100,6 +102,18 @@ HEALTH_AVAILABLE = {
 HEALTH_UNKNOWN = {
     "code": 200,
     "body": {"properties": {"availabilityState": "Unknown"}},
+}
+
+HEALTH_UNAVAILABLE_WITH_CHRONICITY = {
+    "code": 200,
+    "body": {
+        "properties": {
+            "availabilityState": "Unavailable",
+            "summary": "Transient issue detected.",
+            "reasonType": "PlatformInitiated",
+            "reasonChronicity": "Transient",
+        }
+    },
 }
 
 AUTHZ_FAILURE = {
@@ -193,7 +207,9 @@ class ServiceGenerator:
             responses.PUT,
         ]:
             if method not in omit_methods:
-                self.mocked_responses.add_callback(method=method, url=re.compile(r".*"), callback=self._handle_requests)
+                self.mocked_responses.add_callback(
+                    method=method, url=re.compile(r".*"), callback=self._handle_requests
+                )
         self._reset_call_map()
 
     def _reset_call_map(self):
@@ -239,6 +255,13 @@ class ServiceGenerator:
                 self._assert_correlation_headers(request_kpis)
                 self.call_map[CallKey.GET_RESOURCE_HEALTH].append(request_kpis)
                 api_control = self.scenario["apiControl"][CallKey.GET_RESOURCE_HEALTH]
+                # Support sequence responses for retry testing
+                if isinstance(api_control, list):
+                    call_index = min(
+                        len(self.call_map[CallKey.GET_RESOURCE_HEALTH]) - 1,
+                        len(api_control) - 1,
+                    )
+                    api_control = api_control[call_index]
                 return (api_control["code"], STANDARD_HEADERS, json.dumps(api_control["body"]))
 
     def _handle_init(self, request_kpis: RequestKPIs):
@@ -550,6 +573,18 @@ def assert_call_map(expected_call_count_map: dict, call_map: dict):
         assert len(call_map[key]) == expected_count, f"{key} has unexpected call(s)."
 
 
+def assert_health_sleep(mocked_sleep: dict, target_scenario: dict, expected_health_calls: int) -> None:
+    expected_health_retries = max(0, expected_health_calls - 1)
+    health_sleep_calls = [
+        c
+        for c in mocked_sleep["work.sleep"].call_args_list
+        if c.args == (target_scenario.get("health_checks_interval", DEFAULT_HEALTH_CHECKS_INTERVAL),)
+    ]
+    assert (
+        len(health_sleep_calls) == expected_health_retries
+    ), f"Expected {expected_health_retries} health retry sleep(s), got {len(health_sleep_calls)}"
+
+
 def assert_exception(
     expected_exc_meta: ExceptionMeta,
     call_func: Callable,
@@ -601,6 +636,7 @@ def assert_exception(
         ),
         # Basic unavailable scenario
         build_target_scenario(
+            health_checks_max=1,
             apiControl={CallKey.GET_RESOURCE_HEALTH: HEALTH_UNAVAILABLE_BASIC},
             raises=ExceptionMeta(
                 exc_type=ValidationError,
@@ -614,6 +650,7 @@ def assert_exception(
         ),
         # Unavailable with full details: title, resolutionETA (platform context), and recommendedActions
         build_target_scenario(
+            health_checks_max=1,
             apiControl={
                 CallKey.GET_RESOURCE_HEALTH: {
                     "code": 200,
@@ -659,6 +696,7 @@ def assert_exception(
         ),
         # Unavailable with non-platform context - resolutionETA should NOT appear in error
         build_target_scenario(
+            health_checks_max=1,
             apiControl={
                 CallKey.GET_RESOURCE_HEALTH: {
                     "code": 200,
@@ -688,21 +726,11 @@ def assert_exception(
         ),
         # Cluster health unknown - should pass through
         build_target_scenario(
-            apiControl={
-                CallKey.GET_RESOURCE_HEALTH: {
-                    "code": 200,
-                    "body": {"properties": {"availabilityState": "Unknown"}},
-                }
-            },
+            apiControl={CallKey.GET_RESOURCE_HEALTH: HEALTH_UNKNOWN},
         ),
         # Cluster health Available - should pass through
         build_target_scenario(
-            apiControl={
-                CallKey.GET_RESOURCE_HEALTH: {
-                    "code": 200,
-                    "body": {"properties": {"availabilityState": "Available"}},
-                }
-            },
+            apiControl={CallKey.GET_RESOURCE_HEALTH: HEALTH_AVAILABLE},
         ),
         # Resource Health API failure (403) - should pass through gracefully
         build_target_scenario(
@@ -713,6 +741,7 @@ def assert_exception(
         ),
         # Unavailable with minimal info - only summary
         build_target_scenario(
+            health_checks_max=1,
             apiControl={
                 CallKey.GET_RESOURCE_HEALTH: {
                     "code": 200,
@@ -742,6 +771,112 @@ def assert_exception(
             ),
             omit_http_methods=OMIT_WRITE_METHODS,
         ),
+        # Retry recovery: unavailable then available - should succeed after retry
+        build_target_scenario(
+            apiControl={
+                CallKey.GET_RESOURCE_HEALTH: [
+                    HEALTH_UNAVAILABLE_BASIC,
+                    HEALTH_AVAILABLE,
+                ],
+            },
+            expected_health_calls=2,
+        ),
+        # health_checks_max=0 skips health check entirely
+        build_target_scenario(
+            health_checks_max=0,
+            expected_health_calls=0,
+        ),
+        # ResourceHealth RP registration failure - health check skipped gracefully
+        build_target_scenario(
+            providerNamespace={
+                "value": [
+                    {"namespace": ns, "registrationState": "Registered"} for ns in RP_NAMESPACE_SET
+                ] + [{"namespace": HEALTH_PROVIDER, "registrationState": "NotRegistered"}]
+            },
+            expected_health_calls=0,
+        ),
+        # health_checks_max=1 with unavailable - fail immediately, no retry
+        build_target_scenario(
+            health_checks_max=1,
+            apiControl={
+                CallKey.GET_RESOURCE_HEALTH: HEALTH_UNAVAILABLE_BASIC,
+            },
+            raises=ExceptionMeta(
+                exc_type=ValidationError,
+                exc_msg="is currently unavailable",
+            ),
+            omit_http_methods=OMIT_WRITE_METHODS,
+        ),
+        # Unavailable with reasonChronicity - observability logging, still exhausts retries
+        build_target_scenario(
+            health_checks_max=2,
+            apiControl={
+                CallKey.GET_RESOURCE_HEALTH: HEALTH_UNAVAILABLE_WITH_CHRONICITY,
+            },
+            raises=ExceptionMeta(
+                exc_type=ValidationError,
+                exc_msg=[
+                    "is currently unavailable",
+                    "Transient issue detected.",
+                ],
+            ),
+            omit_http_methods=OMIT_WRITE_METHODS,
+        ),
+        # API error mid-retry: unavailable then 403 - should proceed
+        build_target_scenario(
+            apiControl={
+                CallKey.GET_RESOURCE_HEALTH: [
+                    HEALTH_UNAVAILABLE_BASIC,
+                    AUTHZ_FAILURE,
+                ],
+            },
+            expected_health_calls=2,
+        ),
+        # All retries exhausted at default max (4) - blocks deployment
+        build_target_scenario(
+            apiControl={
+                CallKey.GET_RESOURCE_HEALTH: HEALTH_UNAVAILABLE_BASIC,
+            },
+            raises=ExceptionMeta(
+                exc_type=ValidationError,
+                exc_msg=[
+                    "is currently unavailable",
+                    "The cluster is experiencing issues.",
+                    "PlatformInitiated",
+                ],
+            ),
+            omit_http_methods=OMIT_WRITE_METHODS,
+        ),
+        # Custom health_checks_interval with retry recovery
+        build_target_scenario(
+            health_checks_interval=10,
+            apiControl={
+                CallKey.GET_RESOURCE_HEALTH: [
+                    HEALTH_UNAVAILABLE_BASIC,
+                    HEALTH_UNAVAILABLE_BASIC,
+                    HEALTH_AVAILABLE,
+                ],
+            },
+            expected_health_calls=3,
+        ),
+        # Negative health_checks_max raises InvalidArgumentValueError
+        build_target_scenario(
+            health_checks_max=-1,
+            raises=ExceptionMeta(
+                exc_type=InvalidArgumentValueError,
+                exc_msg="--health-checks-max must be >= 0",
+            ),
+            omit_http_methods=OMIT_ALL_METHODS,
+        ),
+        # Negative health_checks_interval raises InvalidArgumentValueError
+        build_target_scenario(
+            health_checks_interval=-1,
+            raises=ExceptionMeta(
+                exc_type=InvalidArgumentValueError,
+                exc_msg="--health-checks-int must be >= 0",
+            ),
+            omit_http_methods=OMIT_ALL_METHODS,
+        ),
     ],
 )
 def test_iot_ops_init(
@@ -770,32 +905,36 @@ def test_iot_ops_init(
         if target_scenario.get(key):
             init_call_kwargs[key] = target_scenario[key]
 
+    for key in ["health_checks_max", "health_checks_interval"]:
+        if key in target_scenario:
+            init_call_kwargs[key] = target_scenario[key]
+
     preflight_calls = int(not bool(target_scenario.get("no_preflight")))
 
     exc_meta: Optional[ExceptionMeta] = target_scenario.get("raises")
     if exc_meta:
-        exc_meta: ExceptionMeta
-        exclude_from_exc_msg = target_scenario.get("exclude_from_exc_msg")
         assert_exception(
             expected_exc_meta=exc_meta,
             call_func=init,
             call_kwargs=init_call_kwargs,
-            exclude_from_exc_msg=exclude_from_exc_msg,
+            exclude_from_exc_msg=target_scenario.get("exclude_from_exc_msg"),
         )
         return
 
     init_result = init(**init_call_kwargs)  # pylint: disable=assignment-from-no-return
+    expected_health_calls = target_scenario.get("expected_health_calls", preflight_calls)
     expected_call_count_map = {
         CallKey.CONNECT_RESOURCE_MANAGER: 1,
         CallKey.GET_RESOURCE_PROVIDERS: preflight_calls,
         CallKey.GET_CLUSTER: 1,
-        CallKey.GET_RESOURCE_HEALTH: preflight_calls,
+        CallKey.GET_RESOURCE_HEALTH: expected_health_calls,
         CallKey.DEPLOY_INIT_WHATIF: 1,
         CallKey.DEPLOY_INIT: 1,
     }
     assert_call_map(expected_call_count_map, servgen.call_map)
     assert_init_displays(spy_work_displays, target_scenario)
     assert_cluster_prechecks(mock_prechecks, target_scenario)
+    assert_health_sleep(mocked_sleep, target_scenario, expected_health_calls)
 
     # TODO - @digimaun
     if target_scenario["no_progress"]:
@@ -1013,18 +1152,8 @@ def assert_cluster_prechecks(mock_prechecks: Dict[str, Mock], target_scenario: d
         ),
         # Basic unavailable scenario for create flow
         build_target_scenario(
-            apiControl={
-                CallKey.GET_RESOURCE_HEALTH: {
-                    "code": 200,
-                    "body": {
-                        "properties": {
-                            "availabilityState": "Unavailable",
-                            "summary": "The cluster is experiencing issues.",
-                            "reasonType": "PlatformInitiated",
-                        }
-                    },
-                }
-            },
+            health_checks_max=1,
+            apiControl={CallKey.GET_RESOURCE_HEALTH: HEALTH_UNAVAILABLE_BASIC},
             raises=ExceptionMeta(
                 exc_type=ValidationError,
                 exc_msg="is currently unavailable",
@@ -1033,6 +1162,7 @@ def assert_cluster_prechecks(mock_prechecks: Dict[str, Mock], target_scenario: d
         ),
         # Unavailable with full details in create flow
         build_target_scenario(
+            health_checks_max=1,
             apiControl={
                 CallKey.GET_RESOURCE_HEALTH: {
                     "code": 200,
@@ -1068,6 +1198,7 @@ def assert_cluster_prechecks(mock_prechecks: Dict[str, Mock], target_scenario: d
         ),
         # Unavailable with non-platform context in create flow - no resolutionETA
         build_target_scenario(
+            health_checks_max=1,
             apiControl={
                 CallKey.GET_RESOURCE_HEALTH: {
                     "code": 200,
@@ -1097,6 +1228,7 @@ def assert_cluster_prechecks(mock_prechecks: Dict[str, Mock], target_scenario: d
         ),
         # Unavailable with minimal info - only summary
         build_target_scenario(
+            health_checks_max=1,
             apiControl={
                 CallKey.GET_RESOURCE_HEALTH: {
                     "code": 200,
@@ -1119,6 +1251,7 @@ def assert_cluster_prechecks(mock_prechecks: Dict[str, Mock], target_scenario: d
         ),
         # Unavailable with empty recommendedActions array - should not show "Recommended Actions:" section
         build_target_scenario(
+            health_checks_max=1,
             apiControl={
                 CallKey.GET_RESOURCE_HEALTH: {
                     "code": 200,
@@ -1148,6 +1281,68 @@ def assert_cluster_prechecks(mock_prechecks: Dict[str, Mock], target_scenario: d
                 exc_msg="provisioningState is not Succeeded.",
             ),
             omit_http_methods=OMIT_WRITE_METHODS,
+        ),
+        # Retry recovery in create flow: unavailable then available
+        build_target_scenario(
+            apiControl={
+                CallKey.GET_RESOURCE_HEALTH: [
+                    HEALTH_UNAVAILABLE_BASIC,
+                    HEALTH_UNAVAILABLE_BASIC,
+                    HEALTH_AVAILABLE,
+                ],
+            },
+            expected_health_calls=3,
+        ),
+        # health_checks_max=0 skips health check in create flow
+        build_target_scenario(
+            health_checks_max=0,
+            expected_health_calls=0,
+        ),
+        # ResourceHealth RP registration failure - health check skipped gracefully in create flow
+        build_target_scenario(
+            providerNamespace={
+                "value": [
+                    {"namespace": ns, "registrationState": "Registered"} for ns in RP_NAMESPACE_SET
+                ] + [{"namespace": HEALTH_PROVIDER, "registrationState": "NotRegistered"}]
+            },
+            expected_health_calls=0,
+        ),
+        # API error mid-retry in create flow: unavailable then 403 - should proceed
+        build_target_scenario(
+            apiControl={
+                CallKey.GET_RESOURCE_HEALTH: [
+                    HEALTH_UNAVAILABLE_BASIC,
+                    AUTHZ_FAILURE,
+                ],
+            },
+            expected_health_calls=2,
+        ),
+        # All retries exhausted at default max (4) in create flow - blocks deployment
+        build_target_scenario(
+            apiControl={
+                CallKey.GET_RESOURCE_HEALTH: HEALTH_UNAVAILABLE_BASIC,
+            },
+            raises=ExceptionMeta(
+                exc_type=ValidationError,
+                exc_msg=[
+                    "is currently unavailable",
+                    "The cluster is experiencing issues.",
+                    "PlatformInitiated",
+                ],
+            ),
+            omit_http_methods=OMIT_WRITE_METHODS,
+        ),
+        # Custom health_checks_interval with retry recovery in create flow
+        build_target_scenario(
+            health_checks_interval=10,
+            apiControl={
+                CallKey.GET_RESOURCE_HEALTH: [
+                    HEALTH_UNAVAILABLE_BASIC,
+                    HEALTH_UNAVAILABLE_BASIC,
+                    HEALTH_AVAILABLE,
+                ],
+            },
+            expected_health_calls=3,
         ),
         build_target_scenario(
             extension_config_settings={
@@ -1225,6 +1420,10 @@ def test_iot_ops_create(
         if target_scenario.get(key):
             create_call_kwargs[key] = target_scenario[key]
 
+    for key in ["health_checks_max", "health_checks_interval"]:
+        if key in target_scenario:
+            create_call_kwargs[key] = target_scenario[key]
+
     preflight_calls = int(not bool(target_scenario.get("no_preflight")))
 
     # TODO: Simplify existing arg plumbing to this style for simplification
@@ -1238,23 +1437,22 @@ def test_iot_ops_create(
 
     exc_meta: Optional[ExceptionMeta] = target_scenario.get("raises")
     if exc_meta:
-        exc_meta: ExceptionMeta
-        exclude_from_exc_msg = target_scenario.get("exclude_from_exc_msg")
         assert_exception(
             expected_exc_meta=exc_meta,
             call_func=create_instance,
             call_kwargs=create_call_kwargs,
-            exclude_from_exc_msg=exclude_from_exc_msg,
+            exclude_from_exc_msg=target_scenario.get("exclude_from_exc_msg"),
         )
         return
 
     create_result = create_instance(**create_call_kwargs)  # pylint: disable=assignment-from-no-return
 
+    expected_health_calls = target_scenario.get("expected_health_calls", preflight_calls)
     expected_call_count_map = {
         CallKey.CONNECT_RESOURCE_MANAGER: 1,
         CallKey.GET_RESOURCE_PROVIDERS: preflight_calls,
         CallKey.GET_CLUSTER: 1,
-        CallKey.GET_RESOURCE_HEALTH: preflight_calls,
+        CallKey.GET_RESOURCE_HEALTH: expected_health_calls,
         CallKey.GET_SCHEMA_REGISTRY: 1,
         CallKey.GET_ADR_NAMESPACE: 1,
         CallKey.GET_CLUSTER_EXTENSIONS: 2,
@@ -1269,6 +1467,7 @@ def test_iot_ops_create(
     assert_call_map(expected_call_count_map, servgen.call_map)
     assert_create_displays(spy_work_displays, target_scenario)
     assert_logger(mocked_logger, target_scenario)
+    assert_health_sleep(mocked_sleep, target_scenario, expected_health_calls)
 
     # TODO - @digimaun
     if target_scenario["no_progress"]:
@@ -1443,9 +1642,8 @@ def assert_instance_deployment_body(body_str: str, target_scenario: dict, phase:
     if phase in [InstancePhase.RESOURCES]:
         assert resources["broker"]["name"] == f"{instance_name_lowered}/{DEFAULT_BROKER}"
         assert resources["brokerAuthn"]["name"] == f"{instance_name_lowered}/{DEFAULT_BROKER}/{DEFAULT_BROKER_AUTHN}"
-        assert (
-            resources["brokerListener"]["name"] == f"{instance_name_lowered}/{DEFAULT_BROKER}/{DEFAULT_BROKER_LISTENER}"
-        )
+        expected_listener = f"{instance_name_lowered}/{DEFAULT_BROKER}/{DEFAULT_BROKER_LISTENER}"
+        assert resources["brokerListener"]["name"] == expected_listener
         assert resources["dataflowProfile"]["name"] == f"{instance_name_lowered}/{DEFAULT_DATAFLOW_PROFILE}"
         assert resources["dataflowEndpoint"]["name"] == f"{instance_name_lowered}/{DEFAULT_DATAFLOW_ENDPOINT}"
         assert resources["artifactRegistryEndpoint"]["name"] == f"{instance_name_lowered}/{DEFAULT_ARTIFACT_REGISTRY}"

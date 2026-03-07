@@ -4,13 +4,17 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from typing import List, Optional, Union
+from functools import cached_property
+from typing import TYPE_CHECKING, List, Optional, Union
 
 from azure.core.exceptions import HttpResponseError
 from knack.log import get_logger
 
 from ...util.az_client import get_health_mgmt_client
 from ...util.resource_graph import ResourceGraph
+
+if TYPE_CHECKING:
+    from ...vendor.clients.resourcehealthmgmt import MicrosoftResourceHealth
 
 logger = get_logger(__name__)
 
@@ -78,7 +82,6 @@ class ConnectedCluster:
         self.resource_group_name = resource_group_name
         self.resource_graph = ResourceGraph(cmd=cmd, subscriptions=[self.subscription_id])
         self._resource_state: Optional[dict] = None
-        self._health_state: Optional[dict] = None
 
         # TODO - @digimaun - temp necessary due to circular import
         from ..orchestration.resources import ConnectedClusters
@@ -98,19 +101,19 @@ class ConnectedCluster:
         return self._resource_state
 
     def get_availability_status(self, headers: Optional[dict] = None, expand: Optional[str] = None) -> Optional[dict]:
-        if not self._health_state:
-            try:
-                # Consider if health_client should be cached
-                health_client = get_health_mgmt_client(subscription_id=self.subscription_id)
-                self._health_state = health_client.availability_statuses.get_by_resource(
-                    self.resource_id,
-                    headers=headers,
-                    expand=expand,
-                )
-            except HttpResponseError as e:
-                logger.debug(f"Failed to retrieve availability status: {e}")
-                return None
-        return self._health_state
+        try:
+            return self._health_client.availability_statuses.get_by_resource(
+                self.resource_id,
+                headers=headers,
+                expand=expand,
+            )
+        except HttpResponseError as e:
+            logger.debug(f"Failed to retrieve availability status: {e}")
+            return None
+
+    @cached_property
+    def _health_client(self) -> "MicrosoftResourceHealth":
+        return get_health_mgmt_client(subscription_id=self.subscription_id)
 
     @property
     def location(self) -> str:

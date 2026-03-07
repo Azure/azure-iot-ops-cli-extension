@@ -1423,6 +1423,21 @@ def load_iotops_arguments(self, _):
                 arg_type=get_three_state_flag(),
                 help="Disable pre-flight checks such as resource provider registration and cluster health validation.",
             )
+            context.argument(
+                "health_checks_max",
+                options_list=["--health-checks-max"],
+                type=int,
+                help="Maximum number of cluster health checks to perform before blocking deployment. "
+                "If the cluster is reported as unavailable, it will be rechecked up to this many times "
+                "with a wait between each check. Set to 0 to skip the health check entirely.",
+            )
+            context.argument(
+                "health_checks_interval",
+                options_list=["--health-checks-int"],
+                type=int,
+                help="Seconds to wait between consecutive cluster health checks when the cluster "
+                "is reported as unavailable.",
+            )
 
     for cmd_space in ["iot ops create", "iot ops update"]:
         with self.argument_context(cmd_space) as context:
