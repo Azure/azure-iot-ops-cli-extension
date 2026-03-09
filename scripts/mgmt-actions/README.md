@@ -145,7 +145,7 @@ only the inbound endpoint command and management groups payload differ by protoc
 | `device_name` | `$deviceName` | `test-device` | Device resource name |
 | `add_insecure_listener` | `$addInsecureListener` | `false` | Add a no-auth MQTT listener on port 1883 (see [Debugging with MQTT](#debugging-with-mqtt)) |
 | `registry_host` | `$registryHost` | *(empty)* | Non-default container registry hostname |
-| `adr_api_version` | `$adrApiVersion` | `2026-02-01-preview` | ADR API version for asset creation |
+| `adr_api_version` | `$adrApiVersion` | `2026-04-01` | ADR API version for asset creation |
 
 ## Debugging with MQTT
 

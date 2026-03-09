@@ -18,7 +18,9 @@
 #
 # Usage:
 #   Review the CONFIGURATION section below, adjust values, then run:
-#     ./quickstart.ps1
+#     ./quickstart.ps1          # or: pwsh quickstart.ps1
+#
+#   For bash, use quickstart.sh instead.
 # =============================================================================
 
 set-strictmode -version latest
@@ -97,13 +99,29 @@ $registryHost         = ""
 $registryEndpointName = "stagingregistry"
 
 # --- ADR API version ---
-$adrApiVersion = "2026-02-01-preview"
+$adrApiVersion = "2026-04-01"
 
 # --- Override defaults from personal env file ---
 $envFile = Join-Path $PSScriptRoot ".env.ps1"
 if (Test-Path $envFile) {
     Write-Host ">> Loading overrides from .env.ps1"
     . $envFile
+}
+
+# =============================================================================
+# HELPERS
+# =============================================================================
+
+# Write JSON to a temp file and return the path. Call sites use az's @filepath
+# syntax to pass JSON from disk, bypassing PowerShell 5.1's argument mangling
+# which strips embedded double quotes from native command arguments.
+function Write-TempJson {
+    param([Parameter(Mandatory)][string]$Content)
+    $path = [System.IO.Path]::GetTempFileName()
+    # WriteAllText without an Encoding parameter writes UTF-8 with no BOM,
+    # which prevents az (Python) from choking on a BOM prefix.
+    [System.IO.File]::WriteAllText($path, $Content)
+    return $path
 }
 
 # =============================================================================
@@ -114,12 +132,17 @@ if (Test-Path $envFile) {
 if (-not $eventGridResourceId) {
     az extension add --upgrade -n eventgrid -y
     Write-Host "`n>> Creating Event Grid namespace '$egNamespaceName'..."
+    $topicSpacesFile = Write-TempJson '{"state":"Enabled","maximumClientSessionsPerAuthenticationName":8}'
+    $skuFile = Write-TempJson '{"name":"Standard","capacity":1}'
+
     az eventgrid namespace create `
         -n $egNamespaceName `
         -g $egResourceGroup `
         -l $egLocation `
-        --topic-spaces-configuration "{`"state`":`"Enabled`",`"maximumClientSessionsPerAuthenticationName`":8}" `
-        --sku "{`"name`":`"Standard`",`"capacity`":1}"
+        --topic-spaces-configuration "@$topicSpacesFile" `
+        --sku "@$skuFile"
+
+    Remove-Item $topicSpacesFile, $skuFile -ErrorAction SilentlyContinue
 
     $eventGridResourceId = (az eventgrid namespace show `
         -n $egNamespaceName `
@@ -242,11 +265,15 @@ $assetBody = @"
 }
 "@
 
+$assetBodyFile = Write-TempJson $assetBody
+
 az resource create `
     --id "$nsId/assets/$assetName" `
     --api-version $adrApiVersion `
     --is-full-object `
-    --properties $assetBody
+    --properties "@$assetBodyFile"
+
+Remove-Item $assetBodyFile -ErrorAction SilentlyContinue
 
 # ---------- Identity federation (UAMI only) ----------
 if ($userAssignedMI) {
@@ -281,11 +308,10 @@ if ($skipRoleAssignments) {
 az iot ops mgmt-actions enable @enableArgs
 
 # ---------- Next steps ----------
-Write-Host "`n>> Management actions enabled! Try these commands:"
+Write-Host "`n>> Management actions enabled! Try these commands (PowerShell):"
 Write-Host ""
 Write-Host "   # Execute a management action"
-Write-Host "   `$payload = '{`"On`": true}'"
-Write-Host "   az iot ops mgmt-actions execute -i $instance -g $resourceGroup --asset $assetName --group $mgmtGroupName --action $actionName -p `$payload"
+Write-Host "   az iot ops mgmt-actions execute -i $instance -g $resourceGroup --asset $assetName --group $mgmtGroupName --action $actionName -p '{`\`"On`\`": true}'"
 Write-Host ""
 Write-Host "   # Show management actions configuration"
 Write-Host "   az iot ops mgmt-actions show -i $instance -g $resourceGroup"

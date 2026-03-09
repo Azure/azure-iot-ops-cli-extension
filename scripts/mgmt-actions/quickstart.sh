@@ -100,7 +100,7 @@ registry_host="${registry_host:-}"
 registry_endpoint_name="${registry_endpoint_name:-stagingregistry}"
 
 # --- ADR API version ---
-adr_api_version="${adr_api_version:-2026-02-01-preview}"
+adr_api_version="${adr_api_version:-2026-04-01}"
 
 # =============================================================================
 # EXECUTION — No changes needed below this line
