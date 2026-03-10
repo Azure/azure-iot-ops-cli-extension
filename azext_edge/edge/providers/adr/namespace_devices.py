@@ -71,10 +71,10 @@ class NamespaceDevices(Queryable):
     def __init__(self, cmd):
         super().__init__(cmd=cmd)
         self.deviceregistry_mgmt_client = get_registry_mgmt_client(
-            subscription_id=self.default_subscription_id
+            **self._get_client_kwargs()
         )
         self.resource_mgmt_client = get_resource_client(
-            subscription_id=self.default_subscription_id
+            **self._get_client_kwargs()
         )
         self.ops: "NamespaceDevicesOperations" = self.deviceregistry_mgmt_client.namespace_devices
         self.namespace_ops: "NamespacesOperations" = self.deviceregistry_mgmt_client.namespaces

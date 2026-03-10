@@ -11,6 +11,8 @@ import pytest
 
 MODULE_PATH = "azext_edge.edge.util.queryable"
 
+MOCK_ARM_ENDPOINT = "https://custom-arm-endpoint.example.com"
+
 
 @pytest.fixture
 def mock_get_subscription_id(mocker):
@@ -35,9 +37,10 @@ def mock_get_resource_client(mocker):
 
 @pytest.fixture
 def mock_cmd():
-    """Minimal mock cmd object with cli_ctx."""
+    """Minimal mock cmd object with cli_ctx and cloud endpoints."""
     cmd = MagicMock()
     cmd.cli_ctx = MagicMock()
+    cmd.cli_ctx.cloud.endpoints.resource_manager = MOCK_ARM_ENDPOINT
     return cmd
 
 
@@ -116,7 +119,7 @@ class TestQueryableResourceClientLazy:
         queryable_deps["get_resource_client"].assert_not_called()
 
     def test_resource_client_created_on_first_access(self, queryable_deps):
-        """get_resource_client is called on first property access."""
+        """get_resource_client is called with subscription_id and endpoint."""
         from azext_edge.edge.util.queryable import Queryable
 
         q = Queryable(cmd=queryable_deps["cmd"])
@@ -124,6 +127,7 @@ class TestQueryableResourceClientLazy:
 
         queryable_deps["get_resource_client"].assert_called_once_with(
             subscription_id="default-sub-id",
+            endpoint=MOCK_ARM_ENDPOINT,
         )
 
     def test_resource_client_cached(self, queryable_deps):
@@ -210,6 +214,71 @@ class TestQueryableGetResourceGroup:
         queryable_deps["get_resource_client"].return_value.resource_groups.get.assert_called_once_with(
             resource_group_name="my-rg",
         )
+
+
+class TestQueryableArmEndpoint:
+    """Tests for _arm_endpoint sourced from cloud config."""
+
+    def test_arm_endpoint_stored_from_cloud(self, queryable_deps):
+        """_arm_endpoint is set from cmd.cli_ctx.cloud.endpoints.resource_manager."""
+        from azext_edge.edge.util.queryable import Queryable
+
+        q = Queryable(cmd=queryable_deps["cmd"])
+        assert q._arm_endpoint == MOCK_ARM_ENDPOINT
+
+
+class TestQueryableGetClientKwargs:
+    """Tests for _get_client_kwargs helper."""
+
+    def test_default_kwargs(self, queryable_deps):
+        """Returns default_subscription_id and arm endpoint."""
+        from azext_edge.edge.util.queryable import Queryable
+
+        q = Queryable(cmd=queryable_deps["cmd"])
+        result = q._get_client_kwargs()
+
+        assert result == {
+            "subscription_id": "default-sub-id",
+            "endpoint": MOCK_ARM_ENDPOINT,
+        }
+
+    def test_subscription_override(self, queryable_deps):
+        """subscription_id kwarg overrides default."""
+        from azext_edge.edge.util.queryable import Queryable
+
+        q = Queryable(cmd=queryable_deps["cmd"])
+        result = q._get_client_kwargs(subscription_id="override-sub")
+
+        assert result == {
+            "subscription_id": "override-sub",
+            "endpoint": MOCK_ARM_ENDPOINT,
+        }
+
+    def test_extra_overrides_passed_through(self, queryable_deps):
+        """Additional kwargs (e.g., api_version) are included."""
+        from azext_edge.edge.util.queryable import Queryable
+
+        q = Queryable(cmd=queryable_deps["cmd"])
+        result = q._get_client_kwargs(api_version="2025-01-01")
+
+        assert result == {
+            "subscription_id": "default-sub-id",
+            "endpoint": MOCK_ARM_ENDPOINT,
+            "api_version": "2025-01-01",
+        }
+
+    def test_subscription_and_extra_overrides(self, queryable_deps):
+        """subscription_id override + extra kwargs both work together."""
+        from azext_edge.edge.util.queryable import Queryable
+
+        q = Queryable(cmd=queryable_deps["cmd"])
+        result = q._get_client_kwargs(subscription_id="other-sub", api_version="2025-01-01")
+
+        assert result == {
+            "subscription_id": "other-sub",
+            "endpoint": MOCK_ARM_ENDPOINT,
+            "api_version": "2025-01-01",
+        }
 
 
 class TestQueryableBackwardCompat:

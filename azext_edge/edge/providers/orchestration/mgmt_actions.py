@@ -227,14 +227,14 @@ class MgmtActions(Queryable):
     def __init__(self, cmd, subscription_id: Optional[str] = None):
         super().__init__(cmd=cmd, subscription_id=subscription_id)
         self.iotops_mgmt_client = get_iotops_mgmt_client(
-            subscription_id=self.default_subscription_id,
+            **self._get_client_kwargs()
         )
         self.registry_mgmt_client: "MicrosoftDeviceRegistryManagementService" = get_registry_mgmt_client(
-            subscription_id=self.default_subscription_id,
+            **self._get_client_kwargs()
         )
         # May be replaced with a cross-subscription client by _validate_eg_namespace
         self.eventgrid_mgmt_client: "EventGridManagementClient" = get_eventgrid_mgmt_client(
-            subscription_id=self.default_subscription_id,
+            **self._get_client_kwargs()
         )
         self.permission_manager = PermissionManager(self.default_subscription_id)
 
@@ -1335,7 +1335,7 @@ class MgmtActions(Queryable):
         # Handle cross-subscription EG namespace
         if eg_subscription_id.lower() != self.default_subscription_id.lower():
             self.eventgrid_mgmt_client = get_eventgrid_mgmt_client(
-                subscription_id=eg_subscription_id,
+                **self._get_client_kwargs(subscription_id=eg_subscription_id)
             )
 
         return eg_ctx
@@ -1379,7 +1379,9 @@ class MgmtActions(Queryable):
                 eg_subscription_id,
                 self.default_subscription_id,
             )
-            self.eventgrid_mgmt_client = get_eventgrid_mgmt_client(subscription_id=eg_subscription_id)
+            self.eventgrid_mgmt_client = get_eventgrid_mgmt_client(
+                **self._get_client_kwargs(subscription_id=eg_subscription_id)
+            )
 
         # Fetch the namespace
         try:
@@ -1998,7 +2000,7 @@ class MgmtActions(Queryable):
         if mi_subscription.lower() != self.default_subscription_id.lower():
             from ...util.az_client import get_resource_client
 
-            client = get_resource_client(subscription_id=mi_subscription)
+            client = get_resource_client(**self._get_client_kwargs(subscription_id=mi_subscription))
         else:
             client = self.resource_client
 

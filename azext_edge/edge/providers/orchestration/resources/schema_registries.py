@@ -55,7 +55,7 @@ class SchemaRegistries(Queryable):
     def __init__(self, cmd):
         super().__init__(cmd=cmd)
         self.registry_mgmt_client = get_registry_mgmt_client(
-            subscription_id=self.default_subscription_id
+            **self._get_client_kwargs()
         )
         self.ops: "SchemaRegistriesOperations" = self.registry_mgmt_client.schema_registries
 
@@ -86,7 +86,7 @@ class SchemaRegistries(Queryable):
             storage_id_container = parse_resource_id(storage_account_resource_id)
 
             self.storage_mgmt_client = get_storage_mgmt_client(
-                subscription_id=storage_id_container.subscription_id,
+                **self._get_client_kwargs(subscription_id=storage_id_container.subscription_id)
             )
             storage_account: dict = self.storage_mgmt_client.storage_accounts.get_properties(
                 resource_group_name=storage_id_container.resource_group_name,
@@ -184,7 +184,7 @@ class Schemas(Queryable):
     def __init__(self, cmd):
         super().__init__(cmd=cmd)
         self.registry_mgmt_client = get_registry_mgmt_client(
-            subscription_id=self.default_subscription_id
+            **self._get_client_kwargs()
         )
         self.ops: "SchemasOperations" = self.registry_mgmt_client.schemas
         self.version_ops: "SchemaVersionsOperations" = self.registry_mgmt_client.schema_versions

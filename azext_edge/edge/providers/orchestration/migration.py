@@ -55,7 +55,7 @@ class AssetMigrationManager(Queryable):
         super().__init__(cmd=cmd)
         from ...util.machinery import scoped_semver_import
 
-        self.deviceregistry_mgmt_client = get_registry_mgmt_client(subscription_id=self.default_subscription_id)
+        self.deviceregistry_mgmt_client = get_registry_mgmt_client(**self._get_client_kwargs())
         self.ops: "NamespacesOperations" = self.deviceregistry_mgmt_client.namespaces
         self.instances = Instances(self.cmd)
         self.permission_manager = PermissionManager(self.default_subscription_id)
@@ -192,7 +192,7 @@ class SecretSyncMigrationManager(Queryable):
         secretsync_resources: dict[str, list[dict]],
     ):
         super().__init__(cmd=cmd)
-        self.ssc_mgmt_client = get_ssc_mgmt_client(subscription_id=self.default_subscription_id)
+        self.ssc_mgmt_client = get_ssc_mgmt_client(**self._get_client_kwargs())
         self.instance_record = instance_record
         self.resource_map = resource_map
         self.secretsync_resources = secretsync_resources

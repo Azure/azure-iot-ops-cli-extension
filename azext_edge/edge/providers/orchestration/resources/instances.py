@@ -101,13 +101,13 @@ class Instances(Queryable):
         # TODO: longer term pattern?
         super().__init__(cmd=cmd, subscriptions=[subscription_id] if subscription_id else None)
         self.iotops_mgmt_client = get_iotops_mgmt_client(
-            subscription_id=self.subscriptions[0],
+            **self._get_client_kwargs(subscription_id=self.subscriptions[0])
         )
         self.msi_mgmt_client = get_msi_mgmt_client(
-            subscription_id=self.default_subscription_id,
+            **self._get_client_kwargs()
         )
         self.ssc_mgmt_client = get_ssc_mgmt_client(
-            subscription_id=self.default_subscription_id,
+            **self._get_client_kwargs()
         )
         self.permission_manager = PermissionManager(self.default_subscription_id)
 

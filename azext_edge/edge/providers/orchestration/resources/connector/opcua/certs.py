@@ -56,7 +56,7 @@ class OpcUACerts(Queryable):
         super().__init__(cmd=cmd)
         self.instances = Instances(self.cmd)
         self.ssc_mgmt_client = get_ssc_mgmt_client(
-            subscription_id=self.default_subscription_id,
+            **self._get_client_kwargs()
         )
         self.keyvault_client = get_keyvault_client(
             subscription_id=self.default_subscription_id,

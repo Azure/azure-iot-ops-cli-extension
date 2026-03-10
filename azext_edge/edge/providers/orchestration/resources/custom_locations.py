@@ -22,7 +22,7 @@ class CustomLocations(Queryable):
     def __init__(self, cmd):
         super().__init__(cmd=cmd)
         self.extloc_mgmt_client = get_extloc_mgmt_client(
-            subscription_id=self.default_subscription_id,
+            **self._get_client_kwargs()
         )
         self.ops: "CustomLocationsOperations" = self.extloc_mgmt_client.custom_locations
 

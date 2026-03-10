@@ -40,7 +40,7 @@ class SyncRules(Queryable):
         self.custom_location = self.instances.get_associated_cl(
             self.instances.show(name=self.instance_name, resource_group_name=self.resource_group_name)
         )
-        self.extloc_mgmt_client = get_extloc_mgmt_client(self.default_subscription_id)
+        self.extloc_mgmt_client = get_extloc_mgmt_client(**self._get_client_kwargs())
 
     def enable(
         self,

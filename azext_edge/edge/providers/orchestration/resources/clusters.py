@@ -23,7 +23,7 @@ class ConnectedClusters(Queryable):
     def __init__(self, cmd, subscription_id: Optional[str] = None):
         super().__init__(cmd=cmd, subscriptions=[subscription_id] if subscription_id else None)
         self.connectedk8s_mgmt_client = get_connectedk8s_mgmt_client(
-            subscription_id=self.subscriptions[0],
+            **self._get_client_kwargs(subscription_id=self.subscriptions[0])
         )
         self.ops: "ConnectedClusterOperations" = self.connectedk8s_mgmt_client.connected_cluster
         self.extensions: ClusterExtensions = ClusterExtensions(cmd)
@@ -39,7 +39,7 @@ class ClusterExtensions(Queryable):
     def __init__(self, cmd):
         super().__init__(cmd=cmd)
         self.clusterconfig_mgmt_client = get_clusterconfig_mgmt_client(
-            subscription_id=self.default_subscription_id,
+            **self._get_client_kwargs()
         )
         self.ops: "ExtensionsOperations" = self.clusterconfig_mgmt_client.extensions
 
