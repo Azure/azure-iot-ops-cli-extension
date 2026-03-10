@@ -177,7 +177,7 @@ class DeviceRegistryMgmtApiVersion(Enum):
     V20240901_preview = "2024-09-01-preview"
 
 
-DEFAULT_DEVICEREGISTRY_MGMT_API_VERSION = DeviceRegistryMgmtApiVersion.V20260201_preview
+DEFAULT_DEVICEREGISTRY_MGMT_API_VERSION = DeviceRegistryMgmtApiVersion.V20260401
 
 
 def get_registry_mgmt_client(
