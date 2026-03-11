@@ -88,7 +88,6 @@ action_name="${action_name:-Switch}"             # Used in next-steps hints
 # protocol="${protocol:-onvif}"
 # endpoint_name="${endpoint_name:-onvif-endpoint}"
 # endpoint_address="${endpoint_address:-http://onvif-simulator:8080}"
-# deploy_opc_plc="${deploy_opc_plc:-false}"
 # asset_name="${asset_name:-onvif-mgmt-asset}"
 # mgmt_group_name="${mgmt_group_name:-managementGroup}"
 # action_name="${action_name:-TBD}"

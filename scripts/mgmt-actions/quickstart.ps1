@@ -87,7 +87,6 @@ $actionName      = "Switch"  # Used in next-steps hints
 # $protocol        = "onvif"
 # $endpointName    = "onvif-endpoint"
 # $endpointAddress = "http://onvif-simulator:8080"
-# $deployOpcPlc    = $false
 # $assetName       = "onvif-mgmt-asset"
 # $mgmtGroupName   = "managementGroup"
 # $actionName      = "TBD"
