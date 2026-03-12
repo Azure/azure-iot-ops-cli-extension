@@ -47,7 +47,7 @@ env:
   SCHEMAREG_NAME: "init-registry${{ github.run_number }}"
   ADR_NAMESPACE_NAME: "init-adr-ns${{ github.run_number }}"
   CUSTOM_LOCATIONS_OID: ${{ inputs.custom-locations-oid }}
-  K3S_VERSION: "v1.28.5+k3s1"
+  K3S_VERSION: "v1.31.1+k3s1"
 
 jobs:
   test:

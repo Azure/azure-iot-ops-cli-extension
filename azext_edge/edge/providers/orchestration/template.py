@@ -49,14 +49,12 @@ class TemplateBlueprint(NamedTuple):
 
 
 TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
-    commit_id="ad7733d81df9337dcc40785444b8f85229d5983d",
+    commit_id="9f437c3be5ee43144a14633427004b487dadda82",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "languageVersion": "2.0",
         "contentVersion": "1.0.0.0",
-        "metadata": {
-            "_generator": {"name": "bicep", "version": "0.39.26.7824", "templateHash": "15101221845416558399"}
-        },
+        "metadata": {"_generator": {"name": "bicep", "version": "0.41.2.15936", "templateHash": "8518564816807798756"}},
         "definitions": {
             "_1.AdvancedConfig": {
                 "type": "object",
@@ -186,13 +184,115 @@ TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
                         "nullable": True,
                         "metadata": {"description": "The persistence settings of the Broker."},
                     },
-                    "logsLevel": {
-                        "type": "string",
+                    "diagnostics": {
+                        "$ref": "#/definitions/_1.BrokerDiagnostics",
                         "nullable": True,
-                        "metadata": {"description": 'The AIO Broker logging level. The default is "info".'},
+                        "metadata": {"description": "The AIO Broker diagnostics settings."},
                     },
                 },
                 "metadata": {"__bicep_imported_from!": {"sourceTemplate": "types.bicep"}},
+            },
+            "_1.BrokerDiagnostics": {
+                "type": "object",
+                "properties": {
+                    "logs": {
+                        "type": "object",
+                        "properties": {
+                            "level": {
+                                "type": "string",
+                                "nullable": True,
+                                "metadata": {
+                                    "description": 'The log level. Examples - "debug", "info", "warn", "error", "trace".'
+                                },
+                            }
+                        },
+                        "nullable": True,
+                        "metadata": {"description": "The log settings of the broker."},
+                    },
+                    "metrics": {
+                        "type": "object",
+                        "properties": {
+                            "prometheusPort": {
+                                "type": "int",
+                                "nullable": True,
+                                "metadata": {"description": "The prometheus port to expose the metrics."},
+                            }
+                        },
+                        "nullable": True,
+                        "metadata": {"description": "The metrics properties."},
+                    },
+                    "selfCheck": {
+                        "type": "object",
+                        "properties": {
+                            "mode": {
+                                "$ref": "#/definitions/_1.OperationalMode",
+                                "nullable": True,
+                                "metadata": {
+                                    "description": 'The toggle to enable/disable self check. Allowed values: "Enabled", "enabled", "Disabled", "disabled".'
+                                },
+                            },
+                            "intervalSeconds": {
+                                "type": "int",
+                                "nullable": True,
+                                "metadata": {"description": "The self check interval in seconds."},
+                            },
+                            "timeoutSeconds": {
+                                "type": "int",
+                                "nullable": True,
+                                "metadata": {"description": "The timeout for self check in seconds."},
+                            },
+                        },
+                        "nullable": True,
+                        "metadata": {"description": "The self check properties."},
+                    },
+                    "traces": {
+                        "type": "object",
+                        "properties": {
+                            "mode": {
+                                "$ref": "#/definitions/_1.OperationalMode",
+                                "nullable": True,
+                                "metadata": {
+                                    "description": 'The toggle to enable/disable traces. Allowed values: "Enabled", "enabled", "Disabled", "disabled".'
+                                },
+                            },
+                            "cacheSizeMegabytes": {
+                                "type": "int",
+                                "nullable": True,
+                                "metadata": {"description": "The cache size in megabytes."},
+                            },
+                            "selfTracing": {
+                                "type": "object",
+                                "properties": {
+                                    "mode": {
+                                        "$ref": "#/definitions/_1.OperationalMode",
+                                        "nullable": True,
+                                        "metadata": {
+                                            "description": 'The toggle to enable/disable self tracing. Allowed values: "Enabled", "enabled", "Disabled", "disabled".'
+                                        },
+                                    },
+                                    "intervalSeconds": {
+                                        "type": "int",
+                                        "nullable": True,
+                                        "metadata": {"description": "The self tracing interval in seconds."},
+                                    },
+                                },
+                                "nullable": True,
+                                "metadata": {"description": "The self tracing properties."},
+                            },
+                            "spanChannelCapacity": {
+                                "type": "int",
+                                "nullable": True,
+                                "metadata": {"description": "The span channel capacity."},
+                            },
+                        },
+                        "nullable": True,
+                        "metadata": {"description": "The trace properties."},
+                    },
+                },
+                "metadata": {
+                    "description": "Defines the diagnostics settings for the Broker CRD.",
+                    "__bicep_imported_from!": {"sourceTemplate": "types.bicep"},
+                },
             },
             "_1.BrokerPersistence": {
                 "type": "object",
@@ -576,7 +676,7 @@ TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
             "advancedConfig": {"$ref": "#/definitions/_1.AdvancedConfig", "defaultValue": {}},
         },
         "variables": {
-            "VERSIONS": {"certManager": "0.7.0", "secretStore": "1.1.5"},
+            "VERSIONS": {"certManager": "0.10.2", "secretStore": "1.3.0"},
             "TRAINS": {"certManager": "stable", "secretStore": "stable"},
         },
         "resources": {
@@ -590,7 +690,7 @@ TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
                 "condition": "[equals(parameters('trustConfig').source, 'SelfSigned')]",
                 "type": "Microsoft.KubernetesConfiguration/extensions",
                 "apiVersion": "2023-05-01",
-                "scope": "[format('Microsoft.Kubernetes/connectedClusters/{0}', parameters('clusterName'))]",
+                "scope": "[resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName'))]",
                 "name": "cert-manager",
                 "identity": {"type": "SystemAssigned"},
                 "properties": {
@@ -608,7 +708,7 @@ TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
             "secretStoreExtension": {
                 "type": "Microsoft.KubernetesConfiguration/extensions",
                 "apiVersion": "2023-05-01",
-                "scope": "[format('Microsoft.Kubernetes/connectedClusters/{0}', parameters('clusterName'))]",
+                "scope": "[resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName'))]",
                 "name": "azure-secret-store",
                 "identity": {"type": "SystemAssigned"},
                 "properties": {
@@ -654,14 +754,12 @@ TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
 )
 
 TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
-    commit_id="12f98b921d27116d8939bb9adb6bedc5668580f0",
+    commit_id="1c436e1a3ca67735532d3f0401851cbd7758292d",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "languageVersion": "2.0",
         "contentVersion": "1.0.0.0",
-        "metadata": {
-            "_generator": {"name": "bicep", "version": "0.39.26.7824", "templateHash": "13036458787995748304"}
-        },
+        "metadata": {"_generator": {"name": "bicep", "version": "0.41.2.15936", "templateHash": "908297458388122452"}},
         "definitions": {
             "_1.AdvancedConfig": {
                 "type": "object",
@@ -791,13 +889,115 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
                         "nullable": True,
                         "metadata": {"description": "The persistence settings of the Broker."},
                     },
-                    "logsLevel": {
-                        "type": "string",
+                    "diagnostics": {
+                        "$ref": "#/definitions/_1.BrokerDiagnostics",
                         "nullable": True,
-                        "metadata": {"description": 'The AIO Broker logging level. The default is "info".'},
+                        "metadata": {"description": "The AIO Broker diagnostics settings."},
                     },
                 },
                 "metadata": {"__bicep_imported_from!": {"sourceTemplate": "types.bicep"}},
+            },
+            "_1.BrokerDiagnostics": {
+                "type": "object",
+                "properties": {
+                    "logs": {
+                        "type": "object",
+                        "properties": {
+                            "level": {
+                                "type": "string",
+                                "nullable": True,
+                                "metadata": {
+                                    "description": 'The log level. Examples - "debug", "info", "warn", "error", "trace".'
+                                },
+                            }
+                        },
+                        "nullable": True,
+                        "metadata": {"description": "The log settings of the broker."},
+                    },
+                    "metrics": {
+                        "type": "object",
+                        "properties": {
+                            "prometheusPort": {
+                                "type": "int",
+                                "nullable": True,
+                                "metadata": {"description": "The prometheus port to expose the metrics."},
+                            }
+                        },
+                        "nullable": True,
+                        "metadata": {"description": "The metrics properties."},
+                    },
+                    "selfCheck": {
+                        "type": "object",
+                        "properties": {
+                            "mode": {
+                                "$ref": "#/definitions/_1.OperationalMode",
+                                "nullable": True,
+                                "metadata": {
+                                    "description": 'The toggle to enable/disable self check. Allowed values: "Enabled", "enabled", "Disabled", "disabled".'
+                                },
+                            },
+                            "intervalSeconds": {
+                                "type": "int",
+                                "nullable": True,
+                                "metadata": {"description": "The self check interval in seconds."},
+                            },
+                            "timeoutSeconds": {
+                                "type": "int",
+                                "nullable": True,
+                                "metadata": {"description": "The timeout for self check in seconds."},
+                            },
+                        },
+                        "nullable": True,
+                        "metadata": {"description": "The self check properties."},
+                    },
+                    "traces": {
+                        "type": "object",
+                        "properties": {
+                            "mode": {
+                                "$ref": "#/definitions/_1.OperationalMode",
+                                "nullable": True,
+                                "metadata": {
+                                    "description": 'The toggle to enable/disable traces. Allowed values: "Enabled", "enabled", "Disabled", "disabled".'
+                                },
+                            },
+                            "cacheSizeMegabytes": {
+                                "type": "int",
+                                "nullable": True,
+                                "metadata": {"description": "The cache size in megabytes."},
+                            },
+                            "selfTracing": {
+                                "type": "object",
+                                "properties": {
+                                    "mode": {
+                                        "$ref": "#/definitions/_1.OperationalMode",
+                                        "nullable": True,
+                                        "metadata": {
+                                            "description": 'The toggle to enable/disable self tracing. Allowed values: "Enabled", "enabled", "Disabled", "disabled".'
+                                        },
+                                    },
+                                    "intervalSeconds": {
+                                        "type": "int",
+                                        "nullable": True,
+                                        "metadata": {"description": "The self tracing interval in seconds."},
+                                    },
+                                },
+                                "nullable": True,
+                                "metadata": {"description": "The self tracing properties."},
+                            },
+                            "spanChannelCapacity": {
+                                "type": "int",
+                                "nullable": True,
+                                "metadata": {"description": "The span channel capacity."},
+                            },
+                        },
+                        "nullable": True,
+                        "metadata": {"description": "The trace properties."},
+                    },
+                },
+                "metadata": {
+                    "description": "Defines the diagnostics settings for the Broker CRD.",
+                    "__bicep_imported_from!": {"sourceTemplate": "types.bicep"},
+                },
             },
             "_1.BrokerPersistence": {
                 "type": "object",
@@ -1245,7 +1445,7 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
             "advancedConfig": {"$ref": "#/definitions/_1.AdvancedConfig", "defaultValue": {}},
         },
         "variables": {
-            "VERSIONS": {"iotOperations": "1.2.188"},
+            "VERSIONS": {"iotOperations": "1.3.33"},
             "TRAINS": {"iotOperations": "integration"},
             "HASH": "[coalesce(tryGet(parameters('advancedConfig'), 'resourceSuffix'), take(uniqueString(resourceGroup().id, parameters('clusterName'), parameters('clusterNamespace')), 5))]",
             "AIO_EXTENSION_SUFFIX": "[take(uniqueString(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName'))), 5)]",
@@ -1269,12 +1469,13 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
                 "memoryProfile": "[coalesce(tryGet(parameters('brokerConfig'), 'memoryProfile'), 'Medium')]",
                 "serviceType": "[coalesce(tryGet(parameters('brokerConfig'), 'serviceType'), 'ClusterIp')]",
                 "persistence": "[tryGet(parameters('brokerConfig'), 'persistence')]",
-                "logsLevel": "[coalesce(tryGet(parameters('brokerConfig'), 'logsLevel'), 'info')]",
+                "diagnostics": "[tryGet(parameters('brokerConfig'), 'diagnostics')]",
             },
             "defaultAioConfigurationSettings": {
                 "AgentOperationTimeoutInMinutes": "120",
                 "connectors.values.mqttBroker.address": "[format('mqtts://{0}:{1}', variables('MQTT_SETTINGS').brokerListenerHost, variables('MQTT_SETTINGS').brokerListenerPort)]",
                 "connectors.values.mqttBroker.serviceAccountTokenAudience": "[variables('MQTT_SETTINGS').serviceAccountAudience]",
+                "connectors.values.securityPki.applicationUri": "[format('urn:microsoft.com:aio:opc:ua:broker:{0}', variables('AIO_EXTENSION_SUFFIX'))]",
                 "dataFlows.values.tinyKube.mqttBroker.hostName": "[variables('MQTT_SETTINGS').brokerListenerHost]",
                 "dataFlows.values.tinyKube.mqttBroker.port": "[variables('MQTT_SETTINGS').brokerListenerPort]",
                 "dataFlows.values.tinyKube.mqttBroker.authentication.serviceAccountTokenAudience": "[variables('MQTT_SETTINGS').serviceAccountAudience]",
@@ -1303,7 +1504,7 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
             "aioExtension": {
                 "type": "Microsoft.KubernetesConfiguration/extensions",
                 "apiVersion": "2023-05-01",
-                "scope": "[format('Microsoft.Kubernetes/connectedClusters/{0}', parameters('clusterName'))]",
+                "scope": "[resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName'))]",
                 "name": "[format('azure-iot-operations-{0}', variables('AIO_EXTENSION_SUFFIX'))]",
                 "identity": {"type": "SystemAssigned"},
                 "properties": {
@@ -1330,7 +1531,7 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
             },
             "aioInstance": {
                 "type": "Microsoft.IoTOperations/instances",
-                "apiVersion": "2025-10-01",
+                "apiVersion": "2026-03-01",
                 "name": "[coalesce(parameters('aioInstanceName'), format('aio-{0}', variables('HASH')))]",
                 "location": "[parameters('clusterLocation')]",
                 "extendedLocation": "[variables('extendedLocation')]",
@@ -1345,7 +1546,7 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
             },
             "broker": {
                 "type": "Microsoft.IoTOperations/instances/brokers",
-                "apiVersion": "2025-10-01",
+                "apiVersion": "2026-03-01",
                 "name": "[format('{0}/{1}', coalesce(parameters('aioInstanceName'), format('aio-{0}', variables('HASH'))), 'default')]",
                 "extendedLocation": "[variables('extendedLocation')]",
                 "properties": {
@@ -1363,13 +1564,13 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
                         },
                     },
                     "persistence": "[tryGet(variables('BROKER_CONFIG'), 'persistence')]",
-                    "diagnostics": {"logs": {"level": "[variables('BROKER_CONFIG').logsLevel]"}},
+                    "diagnostics": "[tryGet(variables('BROKER_CONFIG'), 'diagnostics')]",
                 },
                 "dependsOn": ["aioInstance", "customLocation"],
             },
             "brokerAuthn": {
                 "type": "Microsoft.IoTOperations/instances/brokers/authentications",
-                "apiVersion": "2025-10-01",
+                "apiVersion": "2026-03-01",
                 "name": "[format('{0}/{1}/{2}', coalesce(parameters('aioInstanceName'), format('aio-{0}', variables('HASH'))), 'default', 'default')]",
                 "extendedLocation": "[variables('extendedLocation')]",
                 "properties": {
@@ -1386,7 +1587,7 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
             },
             "brokerListener": {
                 "type": "Microsoft.IoTOperations/instances/brokers/listeners",
-                "apiVersion": "2025-10-01",
+                "apiVersion": "2026-03-01",
                 "name": "[format('{0}/{1}/{2}', coalesce(parameters('aioInstanceName'), format('aio-{0}', variables('HASH'))), 'default', 'default')]",
                 "extendedLocation": "[variables('extendedLocation')]",
                 "properties": {
@@ -1413,15 +1614,15 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
             },
             "dataflowProfile": {
                 "type": "Microsoft.IoTOperations/instances/dataflowProfiles",
-                "apiVersion": "2025-10-01",
+                "apiVersion": "2026-03-01",
                 "name": "[format('{0}/{1}', coalesce(parameters('aioInstanceName'), format('aio-{0}', variables('HASH'))), 'default')]",
                 "extendedLocation": "[variables('extendedLocation')]",
                 "properties": {"instanceCount": "[parameters('defaultDataflowInstanceCount')]"},
-                "dependsOn": ["aioInstance", "customLocation"],
+                "dependsOn": ["aioInstance", "broker", "customLocation"],
             },
             "dataflowEndpoint": {
                 "type": "Microsoft.IoTOperations/instances/dataflowEndpoints",
-                "apiVersion": "2025-10-01",
+                "apiVersion": "2026-03-01",
                 "name": "[format('{0}/{1}', coalesce(parameters('aioInstanceName'), format('aio-{0}', variables('HASH'))), 'default')]",
                 "extendedLocation": "[variables('extendedLocation')]",
                 "properties": {
@@ -1444,7 +1645,7 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
             },
             "artifactRegistryEndpoint": {
                 "type": "Microsoft.IoTOperations/instances/registryEndpoints",
-                "apiVersion": "2025-10-01",
+                "apiVersion": "2026-03-01",
                 "name": "[format('{0}/{1}', coalesce(parameters('aioInstanceName'), format('aio-{0}', variables('HASH'))), 'default')]",
                 "extendedLocation": "[variables('extendedLocation')]",
                 "properties": {

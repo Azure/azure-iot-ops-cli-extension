@@ -4,6 +4,7 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
+from functools import cached_property
 from typing import List, Optional, Union
 
 from .az_client import get_resource_client
@@ -19,18 +20,39 @@ logger = get_logger(__name__)
 
 
 class Queryable:
-    def __init__(self, cmd, subscriptions: Optional[List] = None):
+    def __init__(
+        self,
+        cmd,
+        subscription_id: Optional[str] = None,
+        subscriptions: Optional[List[str]] = None,
+    ):
         from azure.cli.core.commands.client_factory import get_subscription_id
 
         self.cmd = cmd
-        self.default_subscription_id: str = get_subscription_id(cli_ctx=cmd.cli_ctx)
+        self._arm_endpoint: str = cmd.cli_ctx.cloud.endpoints.resource_manager
+        self.default_subscription_id: str = subscription_id or get_subscription_id(cli_ctx=cmd.cli_ctx)
 
         if not subscriptions:
             subscriptions = [self.default_subscription_id]
 
-        self.subscriptions = subscriptions
+        self.subscriptions: List[str] = subscriptions
         self.resource_graph = ResourceGraph(cmd=cmd, subscriptions=self.subscriptions)
-        self.resource_client = get_resource_client(subscription_id=self.default_subscription_id)
+
+    def _get_client_kwargs(self, *, subscription_id: Optional[str] = None, **overrides) -> dict:
+        """Build common kwargs for az_client factory functions.
+
+        Bundles subscription_id and ARM endpoint so providers don't repeat them at every call site.
+        Accepts overrides for cross-subscription or non-default api_version scenarios.
+        """
+        return {
+            "subscription_id": subscription_id or self.default_subscription_id,
+            "endpoint": self._arm_endpoint,
+            **overrides,
+        }
+
+    @cached_property
+    def resource_client(self):
+        return get_resource_client(**self._get_client_kwargs())
 
     def _process_query_result(self, result: dict, first: bool = False) -> Optional[Union[dict, List[dict]]]:
         if "data" in result:

@@ -39,6 +39,7 @@ from ..common import (
     CUSTOM_LOCATIONS_API_VERSION,
     KEYVAULT_CLOUD_API_VERSION,
     IdentityUsageType,
+    MANAGED_IDENTITY_API_VERSION,
 )
 from ..permissions import (
     ROLE_DEF_FORMAT_STR,
@@ -61,9 +62,8 @@ SERVICE_ACCOUNT_SCHEMA = "adr-schema-registry"
 SERVICE_ACCOUNT_WASM = "aio-wasm-graph-controller"
 KEYVAULT_ROLE_ID_SECRETS_USER = "4633458b-17de-408a-b874-0445c86b69e6"
 KEYVAULT_ROLE_ID_READER = "21090545-7ca7-4776-b22c-e363652d74d2"
-MANAGED_IDENTITY_API_VERSION = "2023-01-31"
 
-COMPAT_FEAT_KEY_SET = {}
+COMPAT_FEAT_KEY_SET = {"opcua.mode"}
 
 
 def get_user_msg_warn_ra(prefix: str, principal_id: str, scope: str) -> str:
@@ -101,13 +101,13 @@ class Instances(Queryable):
         # TODO: longer term pattern?
         super().__init__(cmd=cmd, subscriptions=[subscription_id] if subscription_id else None)
         self.iotops_mgmt_client = get_iotops_mgmt_client(
-            subscription_id=self.subscriptions[0],
+            **self._get_client_kwargs(subscription_id=self.subscriptions[0])
         )
         self.msi_mgmt_client = get_msi_mgmt_client(
-            subscription_id=self.default_subscription_id,
+            **self._get_client_kwargs()
         )
         self.ssc_mgmt_client = get_ssc_mgmt_client(
-            subscription_id=self.default_subscription_id,
+            **self._get_client_kwargs()
         )
         self.permission_manager = PermissionManager(self.default_subscription_id)
 

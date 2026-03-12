@@ -46,7 +46,7 @@ def build_operations_list_request(**kwargs: Any) -> HttpRequest:
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-03-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -67,7 +67,7 @@ def build_instance_list_by_subscription_request(  # pylint: disable=name-too-lon
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-03-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -93,7 +93,7 @@ def build_instance_list_by_resource_group_request(  # pylint: disable=name-too-l
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-03-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -124,7 +124,7 @@ def build_instance_get_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-03-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -157,7 +157,7 @@ def build_instance_create_or_update_request(
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-03-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -192,7 +192,7 @@ def build_instance_update_request(
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-03-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -226,7 +226,7 @@ def build_instance_delete_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-03-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -258,7 +258,7 @@ def build_akri_connector_template_list_by_instance_resource_request(  # pylint: 
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-03-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -290,7 +290,7 @@ def build_akri_connector_template_get_request(  # pylint: disable=name-too-long
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-03-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -331,7 +331,7 @@ def build_akri_connector_template_create_or_update_request(  # pylint: disable=n
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-03-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -373,7 +373,7 @@ def build_akri_connector_template_delete_request(  # pylint: disable=name-too-lo
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-03-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -413,7 +413,7 @@ def build_akri_connector_list_by_template_request(  # pylint: disable=name-too-l
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-03-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -458,7 +458,7 @@ def build_akri_connector_get_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-03-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -512,7 +512,7 @@ def build_akri_connector_create_or_update_request(  # pylint: disable=name-too-l
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-03-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -567,7 +567,7 @@ def build_akri_connector_delete_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-03-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -609,13 +609,168 @@ def build_akri_connector_delete_request(
     return HttpRequest(method="DELETE", url=_url, params=_params, headers=_headers, **kwargs)
 
 
+def build_akri_service_list_by_instance_resource_request(  # pylint: disable=name-too-long
+    resource_group_name: str, instance_name: str, subscription_id: str, **kwargs: Any
+) -> HttpRequest:
+    _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
+    _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
+
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-03-01"))
+    accept = _headers.pop("Accept", "application/json")
+
+    # Construct URL
+    _url = "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.IoTOperations/instances/{instanceName}/akriServices"  # pylint: disable=line-too-long
+    path_format_arguments = {
+        "subscriptionId": _SERIALIZER.url("subscription_id", subscription_id, "str"),
+        "resourceGroupName": _SERIALIZER.url(
+            "resource_group_name", resource_group_name, "str", max_length=90, min_length=1
+        ),
+        "instanceName": _SERIALIZER.url(
+            "instance_name", instance_name, "str", max_length=63, min_length=3, pattern=r"^[a-z0-9][a-z0-9-]*[a-z0-9]$"
+        ),
+    }
+
+    _url: str = _url.format(**path_format_arguments)  # type: ignore
+
+    # Construct parameters
+    _params["api-version"] = _SERIALIZER.query("api_version", api_version, "str")
+
+    # Construct headers
+    _headers["Accept"] = _SERIALIZER.header("accept", accept, "str")
+
+    return HttpRequest(method="GET", url=_url, params=_params, headers=_headers, **kwargs)
+
+
+def build_akri_service_get_request(
+    resource_group_name: str, instance_name: str, akri_service_name: str, subscription_id: str, **kwargs: Any
+) -> HttpRequest:
+    _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
+    _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
+
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-03-01"))
+    accept = _headers.pop("Accept", "application/json")
+
+    # Construct URL
+    _url = "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.IoTOperations/instances/{instanceName}/akriServices/{akriServiceName}"  # pylint: disable=line-too-long
+    path_format_arguments = {
+        "subscriptionId": _SERIALIZER.url("subscription_id", subscription_id, "str"),
+        "resourceGroupName": _SERIALIZER.url(
+            "resource_group_name", resource_group_name, "str", max_length=90, min_length=1
+        ),
+        "instanceName": _SERIALIZER.url(
+            "instance_name", instance_name, "str", max_length=63, min_length=3, pattern=r"^[a-z0-9][a-z0-9-]*[a-z0-9]$"
+        ),
+        "akriServiceName": _SERIALIZER.url(
+            "akri_service_name",
+            akri_service_name,
+            "str",
+            max_length=63,
+            min_length=3,
+            pattern=r"^[a-z0-9][a-z0-9-]*[a-z0-9]$",
+        ),
+    }
+
+    _url: str = _url.format(**path_format_arguments)  # type: ignore
+
+    # Construct parameters
+    _params["api-version"] = _SERIALIZER.query("api_version", api_version, "str")
+
+    # Construct headers
+    _headers["Accept"] = _SERIALIZER.header("accept", accept, "str")
+
+    return HttpRequest(method="GET", url=_url, params=_params, headers=_headers, **kwargs)
+
+
+def build_akri_service_create_or_update_request(  # pylint: disable=name-too-long
+    resource_group_name: str, instance_name: str, akri_service_name: str, subscription_id: str, **kwargs: Any
+) -> HttpRequest:
+    _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
+    _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
+
+    content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-03-01"))
+    accept = _headers.pop("Accept", "application/json")
+
+    # Construct URL
+    _url = "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.IoTOperations/instances/{instanceName}/akriServices/{akriServiceName}"  # pylint: disable=line-too-long
+    path_format_arguments = {
+        "subscriptionId": _SERIALIZER.url("subscription_id", subscription_id, "str"),
+        "resourceGroupName": _SERIALIZER.url(
+            "resource_group_name", resource_group_name, "str", max_length=90, min_length=1
+        ),
+        "instanceName": _SERIALIZER.url(
+            "instance_name", instance_name, "str", max_length=63, min_length=3, pattern=r"^[a-z0-9][a-z0-9-]*[a-z0-9]$"
+        ),
+        "akriServiceName": _SERIALIZER.url(
+            "akri_service_name",
+            akri_service_name,
+            "str",
+            max_length=63,
+            min_length=3,
+            pattern=r"^[a-z0-9][a-z0-9-]*[a-z0-9]$",
+        ),
+    }
+
+    _url: str = _url.format(**path_format_arguments)  # type: ignore
+
+    # Construct parameters
+    _params["api-version"] = _SERIALIZER.query("api_version", api_version, "str")
+
+    # Construct headers
+    if content_type is not None:
+        _headers["Content-Type"] = _SERIALIZER.header("content_type", content_type, "str")
+    _headers["Accept"] = _SERIALIZER.header("accept", accept, "str")
+
+    return HttpRequest(method="PUT", url=_url, params=_params, headers=_headers, **kwargs)
+
+
+def build_akri_service_delete_request(
+    resource_group_name: str, instance_name: str, akri_service_name: str, subscription_id: str, **kwargs: Any
+) -> HttpRequest:
+    _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
+    _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
+
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-03-01"))
+    accept = _headers.pop("Accept", "application/json")
+
+    # Construct URL
+    _url = "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.IoTOperations/instances/{instanceName}/akriServices/{akriServiceName}"  # pylint: disable=line-too-long
+    path_format_arguments = {
+        "subscriptionId": _SERIALIZER.url("subscription_id", subscription_id, "str"),
+        "resourceGroupName": _SERIALIZER.url(
+            "resource_group_name", resource_group_name, "str", max_length=90, min_length=1
+        ),
+        "instanceName": _SERIALIZER.url(
+            "instance_name", instance_name, "str", max_length=63, min_length=3, pattern=r"^[a-z0-9][a-z0-9-]*[a-z0-9]$"
+        ),
+        "akriServiceName": _SERIALIZER.url(
+            "akri_service_name",
+            akri_service_name,
+            "str",
+            max_length=63,
+            min_length=3,
+            pattern=r"^[a-z0-9][a-z0-9-]*[a-z0-9]$",
+        ),
+    }
+
+    _url: str = _url.format(**path_format_arguments)  # type: ignore
+
+    # Construct parameters
+    _params["api-version"] = _SERIALIZER.query("api_version", api_version, "str")
+
+    # Construct headers
+    _headers["Accept"] = _SERIALIZER.header("accept", accept, "str")
+
+    return HttpRequest(method="DELETE", url=_url, params=_params, headers=_headers, **kwargs)
+
+
 def build_broker_list_by_resource_group_request(  # pylint: disable=name-too-long
     resource_group_name: str, instance_name: str, subscription_id: str, **kwargs: Any
 ) -> HttpRequest:
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-03-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -647,7 +802,7 @@ def build_broker_get_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-03-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -683,7 +838,7 @@ def build_broker_create_or_update_request(
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-03-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -720,7 +875,7 @@ def build_broker_delete_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-03-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -755,7 +910,7 @@ def build_broker_authentication_list_by_resource_group_request(  # pylint: disab
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-03-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -795,7 +950,7 @@ def build_broker_authentication_get_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-03-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -844,7 +999,7 @@ def build_broker_authentication_create_or_update_request(  # pylint: disable=nam
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-03-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -894,7 +1049,7 @@ def build_broker_authentication_delete_request(  # pylint: disable=name-too-long
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-03-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -937,7 +1092,7 @@ def build_broker_authorization_list_by_resource_group_request(  # pylint: disabl
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-03-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -977,7 +1132,7 @@ def build_broker_authorization_get_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-03-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1026,7 +1181,7 @@ def build_broker_authorization_create_or_update_request(  # pylint: disable=name
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-03-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1076,7 +1231,7 @@ def build_broker_authorization_delete_request(  # pylint: disable=name-too-long
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-03-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1119,7 +1274,7 @@ def build_broker_listener_list_by_resource_group_request(  # pylint: disable=nam
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-03-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1159,7 +1314,7 @@ def build_broker_listener_get_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-03-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1203,7 +1358,7 @@ def build_broker_listener_create_or_update_request(  # pylint: disable=name-too-
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-03-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1248,7 +1403,7 @@ def build_broker_listener_delete_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-03-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1286,7 +1441,7 @@ def build_dataflow_endpoint_list_by_resource_group_request(  # pylint: disable=n
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-03-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1318,7 +1473,7 @@ def build_dataflow_endpoint_get_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-03-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1359,7 +1514,7 @@ def build_dataflow_endpoint_create_or_update_request(  # pylint: disable=name-to
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-03-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1401,7 +1556,7 @@ def build_dataflow_endpoint_delete_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-03-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1441,7 +1596,7 @@ def build_dataflow_profile_list_by_resource_group_request(  # pylint: disable=na
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-03-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1473,7 +1628,7 @@ def build_dataflow_profile_get_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-03-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1514,7 +1669,7 @@ def build_dataflow_profile_create_or_update_request(  # pylint: disable=name-too
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-03-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1556,7 +1711,7 @@ def build_dataflow_profile_delete_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-03-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1596,7 +1751,7 @@ def build_dataflow_graph_list_by_dataflow_profile_request(  # pylint: disable=na
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-03-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1641,7 +1796,7 @@ def build_dataflow_graph_get_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-03-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1695,7 +1850,7 @@ def build_dataflow_graph_create_or_update_request(  # pylint: disable=name-too-l
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-03-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1750,7 +1905,7 @@ def build_dataflow_graph_delete_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-03-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1798,7 +1953,7 @@ def build_dataflow_list_by_profile_resource_request(  # pylint: disable=name-too
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-03-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1843,7 +1998,7 @@ def build_dataflow_get_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-03-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1892,7 +2047,7 @@ def build_dataflow_create_or_update_request(
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-03-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1942,7 +2097,7 @@ def build_dataflow_delete_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-03-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1985,7 +2140,7 @@ def build_registry_endpoint_list_by_instance_resource_request(  # pylint: disabl
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-03-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -2017,7 +2172,7 @@ def build_registry_endpoint_get_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-03-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -2058,7 +2213,7 @@ def build_registry_endpoint_create_or_update_request(  # pylint: disable=name-to
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-03-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -2100,7 +2255,7 @@ def build_registry_endpoint_delete_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-03-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -2140,7 +2295,7 @@ class Operations:
         **DO NOT** instantiate this class directly.
 
         Instead, you should access the following operations through
-        :class:`~iotopsmgmt.20251001.MicrosoftIoTOperationsManagementService`'s
+        :class:`~iotopsmgmt.20260301.MicrosoftIoTOperationsManagementService`'s
         :attr:`operations` attribute.
     """
 
@@ -2264,7 +2419,7 @@ class InstanceOperations:
         **DO NOT** instantiate this class directly.
 
         Instead, you should access the following operations through
-        :class:`~iotopsmgmt.20251001.MicrosoftIoTOperationsManagementService`'s
+        :class:`~iotopsmgmt.20260301.MicrosoftIoTOperationsManagementService`'s
         :attr:`instance` attribute.
     """
 
@@ -3930,7 +4085,7 @@ class AkriConnectorTemplateOperations:
         **DO NOT** instantiate this class directly.
 
         Instead, you should access the following operations through
-        :class:`~iotopsmgmt.20251001.MicrosoftIoTOperationsManagementService`'s
+        :class:`~iotopsmgmt.20260301.MicrosoftIoTOperationsManagementService`'s
         :attr:`akri_connector_template` attribute.
     """
 
@@ -5874,7 +6029,7 @@ class AkriConnectorOperations:
         **DO NOT** instantiate this class directly.
 
         Instead, you should access the following operations through
-        :class:`~iotopsmgmt.20251001.MicrosoftIoTOperationsManagementService`'s
+        :class:`~iotopsmgmt.20260301.MicrosoftIoTOperationsManagementService`'s
         :attr:`akri_connector` attribute.
     """
 
@@ -5926,9 +6081,25 @@ class AkriConnectorOperations:
                         ],
                         "healthState": "str",  # Optional. The health state of the resource.
                           Known values are: "Available", "Degraded", "Unavailable", and "Unknown".
-                        "provisioningState": "str"  # Optional. The status of the last
+                        "provisioningState": "str",  # Optional. The status of the last
                           operation. Known values are: "Succeeded", "Failed", "Canceled",
                           "Provisioning", "Updating", "Deleting", and "Accepted".
+                        "status": {
+                            "healthState": {
+                                "lastTransitionTime": "str",  # Optional. The
+                                  timestamp (RFC3339) when the health status last changed.
+                                "lastUpdateTime": "str",  # Optional. The timestamp
+                                  (RFC3339) when the health status was last updated, even if the status
+                                  did not change.
+                                "message": "str",  # Optional. A human-readable
+                                  message describing the last transition.
+                                "reasonCode": "str",  # Optional. Unique, CamelCase
+                                  reason code describing the cause of the last health state transition.
+                                "status": "str"  # Optional. The high-level health
+                                  status of the resource. Known values are: "Available", "Degraded",
+                                  "Unavailable", and "Unknown".
+                            }
+                        }
                     },
                     "systemData": {
                         "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
@@ -6068,9 +6239,25 @@ class AkriConnectorOperations:
                         ],
                         "healthState": "str",  # Optional. The health state of the resource.
                           Known values are: "Available", "Degraded", "Unavailable", and "Unknown".
-                        "provisioningState": "str"  # Optional. The status of the last
+                        "provisioningState": "str",  # Optional. The status of the last
                           operation. Known values are: "Succeeded", "Failed", "Canceled",
                           "Provisioning", "Updating", "Deleting", and "Accepted".
+                        "status": {
+                            "healthState": {
+                                "lastTransitionTime": "str",  # Optional. The
+                                  timestamp (RFC3339) when the health status last changed.
+                                "lastUpdateTime": "str",  # Optional. The timestamp
+                                  (RFC3339) when the health status was last updated, even if the status
+                                  did not change.
+                                "message": "str",  # Optional. A human-readable
+                                  message describing the last transition.
+                                "reasonCode": "str",  # Optional. Unique, CamelCase
+                                  reason code describing the cause of the last health state transition.
+                                "status": "str"  # Optional. The high-level health
+                                  status of the resource. Known values are: "Available", "Degraded",
+                                  "Unavailable", and "Unknown".
+                            }
+                        }
                     },
                     "systemData": {
                         "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
@@ -6278,9 +6465,25 @@ class AkriConnectorOperations:
                         ],
                         "healthState": "str",  # Optional. The health state of the resource.
                           Known values are: "Available", "Degraded", "Unavailable", and "Unknown".
-                        "provisioningState": "str"  # Optional. The status of the last
+                        "provisioningState": "str",  # Optional. The status of the last
                           operation. Known values are: "Succeeded", "Failed", "Canceled",
                           "Provisioning", "Updating", "Deleting", and "Accepted".
+                        "status": {
+                            "healthState": {
+                                "lastTransitionTime": "str",  # Optional. The
+                                  timestamp (RFC3339) when the health status last changed.
+                                "lastUpdateTime": "str",  # Optional. The timestamp
+                                  (RFC3339) when the health status was last updated, even if the status
+                                  did not change.
+                                "message": "str",  # Optional. A human-readable
+                                  message describing the last transition.
+                                "reasonCode": "str",  # Optional. Unique, CamelCase
+                                  reason code describing the cause of the last health state transition.
+                                "status": "str"  # Optional. The high-level health
+                                  status of the resource. Known values are: "Available", "Degraded",
+                                  "Unavailable", and "Unknown".
+                            }
+                        }
                     },
                     "systemData": {
                         "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
@@ -6322,9 +6525,25 @@ class AkriConnectorOperations:
                         ],
                         "healthState": "str",  # Optional. The health state of the resource.
                           Known values are: "Available", "Degraded", "Unavailable", and "Unknown".
-                        "provisioningState": "str"  # Optional. The status of the last
+                        "provisioningState": "str",  # Optional. The status of the last
                           operation. Known values are: "Succeeded", "Failed", "Canceled",
                           "Provisioning", "Updating", "Deleting", and "Accepted".
+                        "status": {
+                            "healthState": {
+                                "lastTransitionTime": "str",  # Optional. The
+                                  timestamp (RFC3339) when the health status last changed.
+                                "lastUpdateTime": "str",  # Optional. The timestamp
+                                  (RFC3339) when the health status was last updated, even if the status
+                                  did not change.
+                                "message": "str",  # Optional. A human-readable
+                                  message describing the last transition.
+                                "reasonCode": "str",  # Optional. Unique, CamelCase
+                                  reason code describing the cause of the last health state transition.
+                                "status": "str"  # Optional. The high-level health
+                                  status of the resource. Known values are: "Available", "Degraded",
+                                  "Unavailable", and "Unknown".
+                            }
+                        }
                     },
                     "systemData": {
                         "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
@@ -6403,9 +6622,25 @@ class AkriConnectorOperations:
                         ],
                         "healthState": "str",  # Optional. The health state of the resource.
                           Known values are: "Available", "Degraded", "Unavailable", and "Unknown".
-                        "provisioningState": "str"  # Optional. The status of the last
+                        "provisioningState": "str",  # Optional. The status of the last
                           operation. Known values are: "Succeeded", "Failed", "Canceled",
                           "Provisioning", "Updating", "Deleting", and "Accepted".
+                        "status": {
+                            "healthState": {
+                                "lastTransitionTime": "str",  # Optional. The
+                                  timestamp (RFC3339) when the health status last changed.
+                                "lastUpdateTime": "str",  # Optional. The timestamp
+                                  (RFC3339) when the health status was last updated, even if the status
+                                  did not change.
+                                "message": "str",  # Optional. A human-readable
+                                  message describing the last transition.
+                                "reasonCode": "str",  # Optional. Unique, CamelCase
+                                  reason code describing the cause of the last health state transition.
+                                "status": "str"  # Optional. The high-level health
+                                  status of the resource. Known values are: "Available", "Degraded",
+                                  "Unavailable", and "Unknown".
+                            }
+                        }
                     },
                     "systemData": {
                         "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
@@ -6480,9 +6715,25 @@ class AkriConnectorOperations:
                         ],
                         "healthState": "str",  # Optional. The health state of the resource.
                           Known values are: "Available", "Degraded", "Unavailable", and "Unknown".
-                        "provisioningState": "str"  # Optional. The status of the last
+                        "provisioningState": "str",  # Optional. The status of the last
                           operation. Known values are: "Succeeded", "Failed", "Canceled",
                           "Provisioning", "Updating", "Deleting", and "Accepted".
+                        "status": {
+                            "healthState": {
+                                "lastTransitionTime": "str",  # Optional. The
+                                  timestamp (RFC3339) when the health status last changed.
+                                "lastUpdateTime": "str",  # Optional. The timestamp
+                                  (RFC3339) when the health status was last updated, even if the status
+                                  did not change.
+                                "message": "str",  # Optional. A human-readable
+                                  message describing the last transition.
+                                "reasonCode": "str",  # Optional. Unique, CamelCase
+                                  reason code describing the cause of the last health state transition.
+                                "status": "str"  # Optional. The high-level health
+                                  status of the resource. Known values are: "Available", "Degraded",
+                                  "Unavailable", and "Unknown".
+                            }
+                        }
                     },
                     "systemData": {
                         "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
@@ -6524,9 +6775,25 @@ class AkriConnectorOperations:
                         ],
                         "healthState": "str",  # Optional. The health state of the resource.
                           Known values are: "Available", "Degraded", "Unavailable", and "Unknown".
-                        "provisioningState": "str"  # Optional. The status of the last
+                        "provisioningState": "str",  # Optional. The status of the last
                           operation. Known values are: "Succeeded", "Failed", "Canceled",
                           "Provisioning", "Updating", "Deleting", and "Accepted".
+                        "status": {
+                            "healthState": {
+                                "lastTransitionTime": "str",  # Optional. The
+                                  timestamp (RFC3339) when the health status last changed.
+                                "lastUpdateTime": "str",  # Optional. The timestamp
+                                  (RFC3339) when the health status was last updated, even if the status
+                                  did not change.
+                                "message": "str",  # Optional. A human-readable
+                                  message describing the last transition.
+                                "reasonCode": "str",  # Optional. Unique, CamelCase
+                                  reason code describing the cause of the last health state transition.
+                                "status": "str"  # Optional. The high-level health
+                                  status of the resource. Known values are: "Available", "Degraded",
+                                  "Unavailable", and "Unknown".
+                            }
+                        }
                     },
                     "systemData": {
                         "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
@@ -6718,13 +6985,864 @@ class AkriConnectorOperations:
         return LROPoller[None](self._client, raw_result, get_long_running_output, polling_method)  # type: ignore
 
 
+class AkriServiceOperations:
+    """
+    .. warning::
+        **DO NOT** instantiate this class directly.
+
+        Instead, you should access the following operations through
+        :class:`~iotopsmgmt.20260301.MicrosoftIoTOperationsManagementService`'s
+        :attr:`akri_service` attribute.
+    """
+
+    def __init__(self, *args, **kwargs):
+        input_args = list(args)
+        self._client = input_args.pop(0) if input_args else kwargs.pop("client")
+        self._config = input_args.pop(0) if input_args else kwargs.pop("config")
+        self._serialize = input_args.pop(0) if input_args else kwargs.pop("serializer")
+        self._deserialize = input_args.pop(0) if input_args else kwargs.pop("deserializer")
+
+    @distributed_trace
+    def list_by_instance_resource(self, resource_group_name: str, instance_name: str, **kwargs: Any) -> Iterable[JSON]:
+        # pylint: disable=line-too-long
+        """List AkriServiceResource resources by InstanceResource.
+
+        :param resource_group_name: The name of the resource group. The name is case insensitive.
+         Required.
+        :type resource_group_name: str
+        :param instance_name: Name of instance. Required.
+        :type instance_name: str
+        :return: An iterator like instance of JSON object
+        :rtype: ~azure.core.paging.ItemPaged[JSON]
+        :raises ~azure.core.exceptions.HttpResponseError:
+
+        Example:
+            .. code-block:: python
+
+                # response body for status code(s): 200
+                response == {
+                    "extendedLocation": {
+                        "name": "str",  # The name of the extended location. Required.
+                        "type": "str"  # Type of ExtendedLocation. Required. "CustomLocation"
+                    },
+                    "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
+                      "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
+                    "name": "str",  # Optional. The name of the resource.
+                    "properties": {
+                        "provisioningState": "str",  # Optional. The status of the last
+                          operation. Known values are: "Succeeded", "Failed", "Canceled",
+                          "Provisioning", "Updating", "Deleting", and "Accepted".
+                        "status": {
+                            "healthState": {
+                                "lastTransitionTime": "str",  # Optional. The
+                                  timestamp (RFC3339) when the health status last changed.
+                                "lastUpdateTime": "str",  # Optional. The timestamp
+                                  (RFC3339) when the health status was last updated, even if the status
+                                  did not change.
+                                "message": "str",  # Optional. A human-readable
+                                  message describing the last transition.
+                                "reasonCode": "str",  # Optional. Unique, CamelCase
+                                  reason code describing the cause of the last health state transition.
+                                "status": "str"  # Optional. The high-level health
+                                  status of the resource. Known values are: "Available", "Degraded",
+                                  "Unavailable", and "Unknown".
+                            }
+                        }
+                    },
+                    "systemData": {
+                        "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
+                          resource creation (UTC).
+                        "createdBy": "str",  # Optional. The identity that created the
+                          resource.
+                        "createdByType": "str",  # Optional. The type of identity that
+                          created the resource. Known values are: "User", "Application",
+                          "ManagedIdentity", and "Key".
+                        "lastModifiedAt": "2020-02-20 00:00:00",  # Optional. The timestamp
+                          of resource last modification (UTC).
+                        "lastModifiedBy": "str",  # Optional. The identity that last modified
+                          the resource.
+                        "lastModifiedByType": "str"  # Optional. The type of identity that
+                          last modified the resource. Known values are: "User", "Application",
+                          "ManagedIdentity", and "Key".
+                    },
+                    "type": "str"  # Optional. The type of the resource. E.g.
+                      "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
+                }
+        """
+        _headers = kwargs.pop("headers", {}) or {}
+        _params = kwargs.pop("params", {}) or {}
+
+        cls: ClsType[JSON] = kwargs.pop("cls", None)
+
+        error_map: MutableMapping[int, Type[HttpResponseError]] = {
+            401: ClientAuthenticationError,
+            404: ResourceNotFoundError,
+            409: ResourceExistsError,
+            304: ResourceNotModifiedError,
+        }
+        error_map.update(kwargs.pop("error_map", {}) or {})
+
+        def prepare_request(next_link=None):
+            if not next_link:
+
+                _request = build_akri_service_list_by_instance_resource_request(
+                    resource_group_name=resource_group_name,
+                    instance_name=instance_name,
+                    subscription_id=self._config.subscription_id,
+                    api_version=self._config.api_version,
+                    headers=_headers,
+                    params=_params,
+                )
+                _request.url = self._client.format_url(_request.url)
+
+            else:
+                # make call to next link with the client's api-version
+                _parsed_next_link = urllib.parse.urlparse(next_link)
+                _next_request_params = case_insensitive_dict(
+                    {
+                        key: [urllib.parse.quote(v) for v in value]
+                        for key, value in urllib.parse.parse_qs(_parsed_next_link.query).items()
+                    }
+                )
+                _next_request_params["api-version"] = self._config.api_version
+                _request = HttpRequest(
+                    "GET", urllib.parse.urljoin(next_link, _parsed_next_link.path), params=_next_request_params
+                )
+                _request.url = self._client.format_url(_request.url)
+
+            return _request
+
+        def extract_data(pipeline_response):
+            deserialized = pipeline_response.http_response.json()
+            list_of_elem = deserialized["value"]
+            if cls:
+                list_of_elem = cls(list_of_elem)  # type: ignore
+            return deserialized.get("nextLink") or None, iter(list_of_elem)
+
+        def get_next(next_link=None):
+            _request = prepare_request(next_link)
+
+            _stream = False
+            pipeline_response: PipelineResponse = self._client._pipeline.run(  # pylint: disable=protected-access
+                _request, stream=_stream, **kwargs
+            )
+            response = pipeline_response.http_response
+
+            if response.status_code not in [200]:
+                if _stream:
+                    response.read()  # Load the body in memory and close the socket
+                map_error(status_code=response.status_code, response=response, error_map=error_map)
+                raise HttpResponseError(response=response, error_format=ARMErrorFormat)
+
+            return pipeline_response
+
+        return ItemPaged(get_next, extract_data)
+
+    @distributed_trace
+    def get(self, resource_group_name: str, instance_name: str, akri_service_name: str, **kwargs: Any) -> JSON:
+        # pylint: disable=line-too-long
+        """Get a AkriServiceResource.
+
+        :param resource_group_name: The name of the resource group. The name is case insensitive.
+         Required.
+        :type resource_group_name: str
+        :param instance_name: Name of instance. Required.
+        :type instance_name: str
+        :param akri_service_name: Name of AkriService resource. Required.
+        :type akri_service_name: str
+        :return: JSON object
+        :rtype: JSON
+        :raises ~azure.core.exceptions.HttpResponseError:
+
+        Example:
+            .. code-block:: python
+
+                # response body for status code(s): 200
+                response == {
+                    "extendedLocation": {
+                        "name": "str",  # The name of the extended location. Required.
+                        "type": "str"  # Type of ExtendedLocation. Required. "CustomLocation"
+                    },
+                    "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
+                      "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
+                    "name": "str",  # Optional. The name of the resource.
+                    "properties": {
+                        "provisioningState": "str",  # Optional. The status of the last
+                          operation. Known values are: "Succeeded", "Failed", "Canceled",
+                          "Provisioning", "Updating", "Deleting", and "Accepted".
+                        "status": {
+                            "healthState": {
+                                "lastTransitionTime": "str",  # Optional. The
+                                  timestamp (RFC3339) when the health status last changed.
+                                "lastUpdateTime": "str",  # Optional. The timestamp
+                                  (RFC3339) when the health status was last updated, even if the status
+                                  did not change.
+                                "message": "str",  # Optional. A human-readable
+                                  message describing the last transition.
+                                "reasonCode": "str",  # Optional. Unique, CamelCase
+                                  reason code describing the cause of the last health state transition.
+                                "status": "str"  # Optional. The high-level health
+                                  status of the resource. Known values are: "Available", "Degraded",
+                                  "Unavailable", and "Unknown".
+                            }
+                        }
+                    },
+                    "systemData": {
+                        "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
+                          resource creation (UTC).
+                        "createdBy": "str",  # Optional. The identity that created the
+                          resource.
+                        "createdByType": "str",  # Optional. The type of identity that
+                          created the resource. Known values are: "User", "Application",
+                          "ManagedIdentity", and "Key".
+                        "lastModifiedAt": "2020-02-20 00:00:00",  # Optional. The timestamp
+                          of resource last modification (UTC).
+                        "lastModifiedBy": "str",  # Optional. The identity that last modified
+                          the resource.
+                        "lastModifiedByType": "str"  # Optional. The type of identity that
+                          last modified the resource. Known values are: "User", "Application",
+                          "ManagedIdentity", and "Key".
+                    },
+                    "type": "str"  # Optional. The type of the resource. E.g.
+                      "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
+                }
+        """
+        error_map: MutableMapping[int, Type[HttpResponseError]] = {
+            401: ClientAuthenticationError,
+            404: ResourceNotFoundError,
+            409: ResourceExistsError,
+            304: ResourceNotModifiedError,
+        }
+        error_map.update(kwargs.pop("error_map", {}) or {})
+
+        _headers = kwargs.pop("headers", {}) or {}
+        _params = kwargs.pop("params", {}) or {}
+
+        cls: ClsType[JSON] = kwargs.pop("cls", None)
+
+        _request = build_akri_service_get_request(
+            resource_group_name=resource_group_name,
+            instance_name=instance_name,
+            akri_service_name=akri_service_name,
+            subscription_id=self._config.subscription_id,
+            api_version=self._config.api_version,
+            headers=_headers,
+            params=_params,
+        )
+        _request.url = self._client.format_url(_request.url)
+
+        _stream = False
+        pipeline_response: PipelineResponse = self._client._pipeline.run(  # pylint: disable=protected-access
+            _request, stream=_stream, **kwargs
+        )
+
+        response = pipeline_response.http_response
+
+        if response.status_code not in [200]:
+            if _stream:
+                response.read()  # Load the body in memory and close the socket
+            map_error(status_code=response.status_code, response=response, error_map=error_map)
+            raise HttpResponseError(response=response, error_format=ARMErrorFormat)
+
+        if response.content:
+            deserialized = response.json()
+        else:
+            deserialized = None
+
+        if cls:
+            return cls(pipeline_response, cast(JSON, deserialized), {})  # type: ignore
+
+        return cast(JSON, deserialized)  # type: ignore
+
+    def _create_or_update_initial(
+        self,
+        resource_group_name: str,
+        instance_name: str,
+        akri_service_name: str,
+        resource: Union[JSON, IO[bytes]],
+        **kwargs: Any
+    ) -> JSON:
+        error_map: MutableMapping[int, Type[HttpResponseError]] = {
+            401: ClientAuthenticationError,
+            404: ResourceNotFoundError,
+            409: ResourceExistsError,
+            304: ResourceNotModifiedError,
+        }
+        error_map.update(kwargs.pop("error_map", {}) or {})
+
+        _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
+        _params = kwargs.pop("params", {}) or {}
+
+        content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
+        cls: ClsType[JSON] = kwargs.pop("cls", None)
+
+        content_type = content_type or "application/json"
+        _json = None
+        _content = None
+        if isinstance(resource, (IOBase, bytes)):
+            _content = resource
+        else:
+            _json = resource
+
+        _request = build_akri_service_create_or_update_request(
+            resource_group_name=resource_group_name,
+            instance_name=instance_name,
+            akri_service_name=akri_service_name,
+            subscription_id=self._config.subscription_id,
+            content_type=content_type,
+            api_version=self._config.api_version,
+            json=_json,
+            content=_content,
+            headers=_headers,
+            params=_params,
+        )
+        _request.url = self._client.format_url(_request.url)
+
+        _stream = False
+        pipeline_response: PipelineResponse = self._client._pipeline.run(  # pylint: disable=protected-access
+            _request, stream=_stream, **kwargs
+        )
+
+        response = pipeline_response.http_response
+
+        if response.status_code not in [200, 201]:
+            if _stream:
+                response.read()  # Load the body in memory and close the socket
+            map_error(status_code=response.status_code, response=response, error_map=error_map)
+            raise HttpResponseError(response=response, error_format=ARMErrorFormat)
+
+        response_headers = {}
+        if response.status_code == 200:
+            if response.content:
+                deserialized = response.json()
+            else:
+                deserialized = None
+
+        if response.status_code == 201:
+            response_headers["Azure-AsyncOperation"] = self._deserialize(
+                "str", response.headers.get("Azure-AsyncOperation")
+            )
+            response_headers["Retry-After"] = self._deserialize("int", response.headers.get("Retry-After"))
+
+            if response.content:
+                deserialized = response.json()
+            else:
+                deserialized = None
+
+        if cls:
+            return cls(pipeline_response, cast(JSON, deserialized), response_headers)  # type: ignore
+
+        return cast(JSON, deserialized)  # type: ignore
+
+    @overload
+    def begin_create_or_update(
+        self,
+        resource_group_name: str,
+        instance_name: str,
+        akri_service_name: str,
+        resource: JSON,
+        *,
+        content_type: str = "application/json",
+        **kwargs: Any
+    ) -> LROPoller[JSON]:
+        # pylint: disable=line-too-long
+        """Create a AkriServiceResource.
+
+        :param resource_group_name: The name of the resource group. The name is case insensitive.
+         Required.
+        :type resource_group_name: str
+        :param instance_name: Name of instance. Required.
+        :type instance_name: str
+        :param akri_service_name: Name of AkriService resource. Required.
+        :type akri_service_name: str
+        :param resource: Resource create parameters. Required.
+        :type resource: JSON
+        :keyword content_type: Body Parameter content-type. Content type parameter for JSON body.
+         Default value is "application/json".
+        :paramtype content_type: str
+        :return: An instance of LROPoller that returns JSON object
+        :rtype: ~azure.core.polling.LROPoller[JSON]
+        :raises ~azure.core.exceptions.HttpResponseError:
+
+        Example:
+            .. code-block:: python
+
+                # JSON input template you can fill out and use as your body input.
+                resource = {
+                    "extendedLocation": {
+                        "name": "str",  # The name of the extended location. Required.
+                        "type": "str"  # Type of ExtendedLocation. Required. "CustomLocation"
+                    },
+                    "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
+                      "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
+                    "name": "str",  # Optional. The name of the resource.
+                    "properties": {
+                        "provisioningState": "str",  # Optional. The status of the last
+                          operation. Known values are: "Succeeded", "Failed", "Canceled",
+                          "Provisioning", "Updating", "Deleting", and "Accepted".
+                        "status": {
+                            "healthState": {
+                                "lastTransitionTime": "str",  # Optional. The
+                                  timestamp (RFC3339) when the health status last changed.
+                                "lastUpdateTime": "str",  # Optional. The timestamp
+                                  (RFC3339) when the health status was last updated, even if the status
+                                  did not change.
+                                "message": "str",  # Optional. A human-readable
+                                  message describing the last transition.
+                                "reasonCode": "str",  # Optional. Unique, CamelCase
+                                  reason code describing the cause of the last health state transition.
+                                "status": "str"  # Optional. The high-level health
+                                  status of the resource. Known values are: "Available", "Degraded",
+                                  "Unavailable", and "Unknown".
+                            }
+                        }
+                    },
+                    "systemData": {
+                        "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
+                          resource creation (UTC).
+                        "createdBy": "str",  # Optional. The identity that created the
+                          resource.
+                        "createdByType": "str",  # Optional. The type of identity that
+                          created the resource. Known values are: "User", "Application",
+                          "ManagedIdentity", and "Key".
+                        "lastModifiedAt": "2020-02-20 00:00:00",  # Optional. The timestamp
+                          of resource last modification (UTC).
+                        "lastModifiedBy": "str",  # Optional. The identity that last modified
+                          the resource.
+                        "lastModifiedByType": "str"  # Optional. The type of identity that
+                          last modified the resource. Known values are: "User", "Application",
+                          "ManagedIdentity", and "Key".
+                    },
+                    "type": "str"  # Optional. The type of the resource. E.g.
+                      "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
+                }
+
+                # response body for status code(s): 200, 201
+                response == {
+                    "extendedLocation": {
+                        "name": "str",  # The name of the extended location. Required.
+                        "type": "str"  # Type of ExtendedLocation. Required. "CustomLocation"
+                    },
+                    "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
+                      "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
+                    "name": "str",  # Optional. The name of the resource.
+                    "properties": {
+                        "provisioningState": "str",  # Optional. The status of the last
+                          operation. Known values are: "Succeeded", "Failed", "Canceled",
+                          "Provisioning", "Updating", "Deleting", and "Accepted".
+                        "status": {
+                            "healthState": {
+                                "lastTransitionTime": "str",  # Optional. The
+                                  timestamp (RFC3339) when the health status last changed.
+                                "lastUpdateTime": "str",  # Optional. The timestamp
+                                  (RFC3339) when the health status was last updated, even if the status
+                                  did not change.
+                                "message": "str",  # Optional. A human-readable
+                                  message describing the last transition.
+                                "reasonCode": "str",  # Optional. Unique, CamelCase
+                                  reason code describing the cause of the last health state transition.
+                                "status": "str"  # Optional. The high-level health
+                                  status of the resource. Known values are: "Available", "Degraded",
+                                  "Unavailable", and "Unknown".
+                            }
+                        }
+                    },
+                    "systemData": {
+                        "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
+                          resource creation (UTC).
+                        "createdBy": "str",  # Optional. The identity that created the
+                          resource.
+                        "createdByType": "str",  # Optional. The type of identity that
+                          created the resource. Known values are: "User", "Application",
+                          "ManagedIdentity", and "Key".
+                        "lastModifiedAt": "2020-02-20 00:00:00",  # Optional. The timestamp
+                          of resource last modification (UTC).
+                        "lastModifiedBy": "str",  # Optional. The identity that last modified
+                          the resource.
+                        "lastModifiedByType": "str"  # Optional. The type of identity that
+                          last modified the resource. Known values are: "User", "Application",
+                          "ManagedIdentity", and "Key".
+                    },
+                    "type": "str"  # Optional. The type of the resource. E.g.
+                      "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
+                }
+        """
+
+    @overload
+    def begin_create_or_update(
+        self,
+        resource_group_name: str,
+        instance_name: str,
+        akri_service_name: str,
+        resource: IO[bytes],
+        *,
+        content_type: str = "application/json",
+        **kwargs: Any
+    ) -> LROPoller[JSON]:
+        # pylint: disable=line-too-long
+        """Create a AkriServiceResource.
+
+        :param resource_group_name: The name of the resource group. The name is case insensitive.
+         Required.
+        :type resource_group_name: str
+        :param instance_name: Name of instance. Required.
+        :type instance_name: str
+        :param akri_service_name: Name of AkriService resource. Required.
+        :type akri_service_name: str
+        :param resource: Resource create parameters. Required.
+        :type resource: IO[bytes]
+        :keyword content_type: Body Parameter content-type. Content type parameter for binary body.
+         Default value is "application/json".
+        :paramtype content_type: str
+        :return: An instance of LROPoller that returns JSON object
+        :rtype: ~azure.core.polling.LROPoller[JSON]
+        :raises ~azure.core.exceptions.HttpResponseError:
+
+        Example:
+            .. code-block:: python
+
+                # response body for status code(s): 200, 201
+                response == {
+                    "extendedLocation": {
+                        "name": "str",  # The name of the extended location. Required.
+                        "type": "str"  # Type of ExtendedLocation. Required. "CustomLocation"
+                    },
+                    "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
+                      "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
+                    "name": "str",  # Optional. The name of the resource.
+                    "properties": {
+                        "provisioningState": "str",  # Optional. The status of the last
+                          operation. Known values are: "Succeeded", "Failed", "Canceled",
+                          "Provisioning", "Updating", "Deleting", and "Accepted".
+                        "status": {
+                            "healthState": {
+                                "lastTransitionTime": "str",  # Optional. The
+                                  timestamp (RFC3339) when the health status last changed.
+                                "lastUpdateTime": "str",  # Optional. The timestamp
+                                  (RFC3339) when the health status was last updated, even if the status
+                                  did not change.
+                                "message": "str",  # Optional. A human-readable
+                                  message describing the last transition.
+                                "reasonCode": "str",  # Optional. Unique, CamelCase
+                                  reason code describing the cause of the last health state transition.
+                                "status": "str"  # Optional. The high-level health
+                                  status of the resource. Known values are: "Available", "Degraded",
+                                  "Unavailable", and "Unknown".
+                            }
+                        }
+                    },
+                    "systemData": {
+                        "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
+                          resource creation (UTC).
+                        "createdBy": "str",  # Optional. The identity that created the
+                          resource.
+                        "createdByType": "str",  # Optional. The type of identity that
+                          created the resource. Known values are: "User", "Application",
+                          "ManagedIdentity", and "Key".
+                        "lastModifiedAt": "2020-02-20 00:00:00",  # Optional. The timestamp
+                          of resource last modification (UTC).
+                        "lastModifiedBy": "str",  # Optional. The identity that last modified
+                          the resource.
+                        "lastModifiedByType": "str"  # Optional. The type of identity that
+                          last modified the resource. Known values are: "User", "Application",
+                          "ManagedIdentity", and "Key".
+                    },
+                    "type": "str"  # Optional. The type of the resource. E.g.
+                      "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
+                }
+        """
+
+    @distributed_trace
+    def begin_create_or_update(
+        self,
+        resource_group_name: str,
+        instance_name: str,
+        akri_service_name: str,
+        resource: Union[JSON, IO[bytes]],
+        **kwargs: Any
+    ) -> LROPoller[JSON]:
+        # pylint: disable=line-too-long
+        """Create a AkriServiceResource.
+
+        :param resource_group_name: The name of the resource group. The name is case insensitive.
+         Required.
+        :type resource_group_name: str
+        :param instance_name: Name of instance. Required.
+        :type instance_name: str
+        :param akri_service_name: Name of AkriService resource. Required.
+        :type akri_service_name: str
+        :param resource: Resource create parameters. Is either a JSON type or a IO[bytes] type.
+         Required.
+        :type resource: JSON or IO[bytes]
+        :return: An instance of LROPoller that returns JSON object
+        :rtype: ~azure.core.polling.LROPoller[JSON]
+        :raises ~azure.core.exceptions.HttpResponseError:
+
+        Example:
+            .. code-block:: python
+
+                # JSON input template you can fill out and use as your body input.
+                resource = {
+                    "extendedLocation": {
+                        "name": "str",  # The name of the extended location. Required.
+                        "type": "str"  # Type of ExtendedLocation. Required. "CustomLocation"
+                    },
+                    "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
+                      "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
+                    "name": "str",  # Optional. The name of the resource.
+                    "properties": {
+                        "provisioningState": "str",  # Optional. The status of the last
+                          operation. Known values are: "Succeeded", "Failed", "Canceled",
+                          "Provisioning", "Updating", "Deleting", and "Accepted".
+                        "status": {
+                            "healthState": {
+                                "lastTransitionTime": "str",  # Optional. The
+                                  timestamp (RFC3339) when the health status last changed.
+                                "lastUpdateTime": "str",  # Optional. The timestamp
+                                  (RFC3339) when the health status was last updated, even if the status
+                                  did not change.
+                                "message": "str",  # Optional. A human-readable
+                                  message describing the last transition.
+                                "reasonCode": "str",  # Optional. Unique, CamelCase
+                                  reason code describing the cause of the last health state transition.
+                                "status": "str"  # Optional. The high-level health
+                                  status of the resource. Known values are: "Available", "Degraded",
+                                  "Unavailable", and "Unknown".
+                            }
+                        }
+                    },
+                    "systemData": {
+                        "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
+                          resource creation (UTC).
+                        "createdBy": "str",  # Optional. The identity that created the
+                          resource.
+                        "createdByType": "str",  # Optional. The type of identity that
+                          created the resource. Known values are: "User", "Application",
+                          "ManagedIdentity", and "Key".
+                        "lastModifiedAt": "2020-02-20 00:00:00",  # Optional. The timestamp
+                          of resource last modification (UTC).
+                        "lastModifiedBy": "str",  # Optional. The identity that last modified
+                          the resource.
+                        "lastModifiedByType": "str"  # Optional. The type of identity that
+                          last modified the resource. Known values are: "User", "Application",
+                          "ManagedIdentity", and "Key".
+                    },
+                    "type": "str"  # Optional. The type of the resource. E.g.
+                      "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
+                }
+
+                # response body for status code(s): 200, 201
+                response == {
+                    "extendedLocation": {
+                        "name": "str",  # The name of the extended location. Required.
+                        "type": "str"  # Type of ExtendedLocation. Required. "CustomLocation"
+                    },
+                    "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
+                      "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
+                    "name": "str",  # Optional. The name of the resource.
+                    "properties": {
+                        "provisioningState": "str",  # Optional. The status of the last
+                          operation. Known values are: "Succeeded", "Failed", "Canceled",
+                          "Provisioning", "Updating", "Deleting", and "Accepted".
+                        "status": {
+                            "healthState": {
+                                "lastTransitionTime": "str",  # Optional. The
+                                  timestamp (RFC3339) when the health status last changed.
+                                "lastUpdateTime": "str",  # Optional. The timestamp
+                                  (RFC3339) when the health status was last updated, even if the status
+                                  did not change.
+                                "message": "str",  # Optional. A human-readable
+                                  message describing the last transition.
+                                "reasonCode": "str",  # Optional. Unique, CamelCase
+                                  reason code describing the cause of the last health state transition.
+                                "status": "str"  # Optional. The high-level health
+                                  status of the resource. Known values are: "Available", "Degraded",
+                                  "Unavailable", and "Unknown".
+                            }
+                        }
+                    },
+                    "systemData": {
+                        "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
+                          resource creation (UTC).
+                        "createdBy": "str",  # Optional. The identity that created the
+                          resource.
+                        "createdByType": "str",  # Optional. The type of identity that
+                          created the resource. Known values are: "User", "Application",
+                          "ManagedIdentity", and "Key".
+                        "lastModifiedAt": "2020-02-20 00:00:00",  # Optional. The timestamp
+                          of resource last modification (UTC).
+                        "lastModifiedBy": "str",  # Optional. The identity that last modified
+                          the resource.
+                        "lastModifiedByType": "str"  # Optional. The type of identity that
+                          last modified the resource. Known values are: "User", "Application",
+                          "ManagedIdentity", and "Key".
+                    },
+                    "type": "str"  # Optional. The type of the resource. E.g.
+                      "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
+                }
+        """
+        _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
+        _params = kwargs.pop("params", {}) or {}
+
+        content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
+        cls: ClsType[JSON] = kwargs.pop("cls", None)
+        polling: Union[bool, PollingMethod] = kwargs.pop("polling", True)
+        lro_delay = kwargs.pop("polling_interval", self._config.polling_interval)
+        cont_token: Optional[str] = kwargs.pop("continuation_token", None)
+        if cont_token is None:
+            raw_result = self._create_or_update_initial(
+                resource_group_name=resource_group_name,
+                instance_name=instance_name,
+                akri_service_name=akri_service_name,
+                resource=resource,
+                content_type=content_type,
+                cls=lambda x, y, z: x,
+                headers=_headers,
+                params=_params,
+                **kwargs
+            )
+        kwargs.pop("error_map", None)
+
+        def get_long_running_output(pipeline_response):
+            response = pipeline_response.http_response
+            if response.content:
+                deserialized = response.json()
+            else:
+                deserialized = None
+            if cls:
+                return cls(pipeline_response, deserialized, {})  # type: ignore
+            return deserialized
+
+        if polling is True:
+            polling_method: PollingMethod = cast(
+                PollingMethod, ARMPolling(lro_delay, lro_options={"final-state-via": "azure-async-operation"}, **kwargs)
+            )
+        elif polling is False:
+            polling_method = cast(PollingMethod, NoPolling())
+        else:
+            polling_method = polling
+        if cont_token:
+            return LROPoller[JSON].from_continuation_token(
+                polling_method=polling_method,
+                continuation_token=cont_token,
+                client=self._client,
+                deserialization_callback=get_long_running_output,
+            )
+        return LROPoller[JSON](self._client, raw_result, get_long_running_output, polling_method)  # type: ignore
+
+    def _delete_initial(  # pylint: disable=inconsistent-return-statements
+        self, resource_group_name: str, instance_name: str, akri_service_name: str, **kwargs: Any
+    ) -> None:
+        error_map: MutableMapping[int, Type[HttpResponseError]] = {
+            401: ClientAuthenticationError,
+            404: ResourceNotFoundError,
+            409: ResourceExistsError,
+            304: ResourceNotModifiedError,
+        }
+        error_map.update(kwargs.pop("error_map", {}) or {})
+
+        _headers = kwargs.pop("headers", {}) or {}
+        _params = kwargs.pop("params", {}) or {}
+
+        cls: ClsType[None] = kwargs.pop("cls", None)
+
+        _request = build_akri_service_delete_request(
+            resource_group_name=resource_group_name,
+            instance_name=instance_name,
+            akri_service_name=akri_service_name,
+            subscription_id=self._config.subscription_id,
+            api_version=self._config.api_version,
+            headers=_headers,
+            params=_params,
+        )
+        _request.url = self._client.format_url(_request.url)
+
+        _stream = False
+        pipeline_response: PipelineResponse = self._client._pipeline.run(  # pylint: disable=protected-access
+            _request, stream=_stream, **kwargs
+        )
+
+        response = pipeline_response.http_response
+
+        if response.status_code not in [202, 204]:
+            if _stream:
+                response.read()  # Load the body in memory and close the socket
+            map_error(status_code=response.status_code, response=response, error_map=error_map)
+            raise HttpResponseError(response=response, error_format=ARMErrorFormat)
+
+        response_headers = {}
+        if response.status_code == 202:
+            response_headers["Location"] = self._deserialize("str", response.headers.get("Location"))
+            response_headers["Retry-After"] = self._deserialize("int", response.headers.get("Retry-After"))
+
+        if cls:
+            return cls(pipeline_response, None, response_headers)  # type: ignore
+
+    @distributed_trace
+    def begin_delete(
+        self, resource_group_name: str, instance_name: str, akri_service_name: str, **kwargs: Any
+    ) -> LROPoller[None]:
+        """Delete a AkriServiceResource.
+
+        :param resource_group_name: The name of the resource group. The name is case insensitive.
+         Required.
+        :type resource_group_name: str
+        :param instance_name: Name of instance. Required.
+        :type instance_name: str
+        :param akri_service_name: Name of AkriService resource. Required.
+        :type akri_service_name: str
+        :return: An instance of LROPoller that returns None
+        :rtype: ~azure.core.polling.LROPoller[None]
+        :raises ~azure.core.exceptions.HttpResponseError:
+        """
+        _headers = kwargs.pop("headers", {}) or {}
+        _params = kwargs.pop("params", {}) or {}
+
+        cls: ClsType[None] = kwargs.pop("cls", None)
+        polling: Union[bool, PollingMethod] = kwargs.pop("polling", True)
+        lro_delay = kwargs.pop("polling_interval", self._config.polling_interval)
+        cont_token: Optional[str] = kwargs.pop("continuation_token", None)
+        if cont_token is None:
+            raw_result = self._delete_initial(  # type: ignore
+                resource_group_name=resource_group_name,
+                instance_name=instance_name,
+                akri_service_name=akri_service_name,
+                cls=lambda x, y, z: x,
+                headers=_headers,
+                params=_params,
+                **kwargs
+            )
+        kwargs.pop("error_map", None)
+
+        def get_long_running_output(pipeline_response):  # pylint: disable=inconsistent-return-statements
+            if cls:
+                return cls(pipeline_response, None, {})  # type: ignore
+
+        if polling is True:
+            polling_method: PollingMethod = cast(
+                PollingMethod, ARMPolling(lro_delay, lro_options={"final-state-via": "location"}, **kwargs)
+            )
+        elif polling is False:
+            polling_method = cast(PollingMethod, NoPolling())
+        else:
+            polling_method = polling
+        if cont_token:
+            return LROPoller[None].from_continuation_token(
+                polling_method=polling_method,
+                continuation_token=cont_token,
+                client=self._client,
+                deserialization_callback=get_long_running_output,
+            )
+        return LROPoller[None](self._client, raw_result, get_long_running_output, polling_method)  # type: ignore
+
+
 class BrokerOperations:
     """
     .. warning::
         **DO NOT** instantiate this class directly.
 
         Instead, you should access the following operations through
-        :class:`~iotopsmgmt.20251001.MicrosoftIoTOperationsManagementService`'s
+        :class:`~iotopsmgmt.20260301.MicrosoftIoTOperationsManagementService`'s
         :attr:`broker` attribute.
     """
 
@@ -7210,9 +8328,25 @@ class BrokerOperations:
                             "stateStore": broker_state_store_policy,
                             "subscriberQueue": broker_subscriber_queue_policy
                         },
-                        "provisioningState": "str"  # Optional. The status of the last
+                        "provisioningState": "str",  # Optional. The status of the last
                           operation. Known values are: "Succeeded", "Failed", "Canceled",
                           "Provisioning", "Updating", "Deleting", and "Accepted".
+                        "status": {
+                            "healthState": {
+                                "lastTransitionTime": "str",  # Optional. The
+                                  timestamp (RFC3339) when the health status last changed.
+                                "lastUpdateTime": "str",  # Optional. The timestamp
+                                  (RFC3339) when the health status was last updated, even if the status
+                                  did not change.
+                                "message": "str",  # Optional. A human-readable
+                                  message describing the last transition.
+                                "reasonCode": "str",  # Optional. Unique, CamelCase
+                                  reason code describing the cause of the last health state transition.
+                                "status": "str"  # Optional. The high-level health
+                                  status of the resource. Known values are: "Available", "Degraded",
+                                  "Unavailable", and "Unknown".
+                            }
+                        }
                     },
                     "systemData": {
                         "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
@@ -7780,9 +8914,25 @@ class BrokerOperations:
                             "stateStore": broker_state_store_policy,
                             "subscriberQueue": broker_subscriber_queue_policy
                         },
-                        "provisioningState": "str"  # Optional. The status of the last
+                        "provisioningState": "str",  # Optional. The status of the last
                           operation. Known values are: "Succeeded", "Failed", "Canceled",
                           "Provisioning", "Updating", "Deleting", and "Accepted".
+                        "status": {
+                            "healthState": {
+                                "lastTransitionTime": "str",  # Optional. The
+                                  timestamp (RFC3339) when the health status last changed.
+                                "lastUpdateTime": "str",  # Optional. The timestamp
+                                  (RFC3339) when the health status was last updated, even if the status
+                                  did not change.
+                                "message": "str",  # Optional. A human-readable
+                                  message describing the last transition.
+                                "reasonCode": "str",  # Optional. Unique, CamelCase
+                                  reason code describing the cause of the last health state transition.
+                                "status": "str"  # Optional. The high-level health
+                                  status of the resource. Known values are: "Available", "Degraded",
+                                  "Unavailable", and "Unknown".
+                            }
+                        }
                     },
                     "systemData": {
                         "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
@@ -8422,9 +9572,25 @@ class BrokerOperations:
                             "stateStore": broker_state_store_policy,
                             "subscriberQueue": broker_subscriber_queue_policy
                         },
-                        "provisioningState": "str"  # Optional. The status of the last
+                        "provisioningState": "str",  # Optional. The status of the last
                           operation. Known values are: "Succeeded", "Failed", "Canceled",
                           "Provisioning", "Updating", "Deleting", and "Accepted".
+                        "status": {
+                            "healthState": {
+                                "lastTransitionTime": "str",  # Optional. The
+                                  timestamp (RFC3339) when the health status last changed.
+                                "lastUpdateTime": "str",  # Optional. The timestamp
+                                  (RFC3339) when the health status was last updated, even if the status
+                                  did not change.
+                                "message": "str",  # Optional. A human-readable
+                                  message describing the last transition.
+                                "reasonCode": "str",  # Optional. Unique, CamelCase
+                                  reason code describing the cause of the last health state transition.
+                                "status": "str"  # Optional. The high-level health
+                                  status of the resource. Known values are: "Available", "Degraded",
+                                  "Unavailable", and "Unknown".
+                            }
+                        }
                     },
                     "systemData": {
                         "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
@@ -8960,9 +10126,25 @@ class BrokerOperations:
                             "stateStore": broker_state_store_policy,
                             "subscriberQueue": broker_subscriber_queue_policy
                         },
-                        "provisioningState": "str"  # Optional. The status of the last
+                        "provisioningState": "str",  # Optional. The status of the last
                           operation. Known values are: "Succeeded", "Failed", "Canceled",
                           "Provisioning", "Updating", "Deleting", and "Accepted".
+                        "status": {
+                            "healthState": {
+                                "lastTransitionTime": "str",  # Optional. The
+                                  timestamp (RFC3339) when the health status last changed.
+                                "lastUpdateTime": "str",  # Optional. The timestamp
+                                  (RFC3339) when the health status was last updated, even if the status
+                                  did not change.
+                                "message": "str",  # Optional. A human-readable
+                                  message describing the last transition.
+                                "reasonCode": "str",  # Optional. Unique, CamelCase
+                                  reason code describing the cause of the last health state transition.
+                                "status": "str"  # Optional. The high-level health
+                                  status of the resource. Known values are: "Available", "Degraded",
+                                  "Unavailable", and "Unknown".
+                            }
+                        }
                     },
                     "systemData": {
                         "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
@@ -9532,9 +10714,25 @@ class BrokerOperations:
                             "stateStore": broker_state_store_policy,
                             "subscriberQueue": broker_subscriber_queue_policy
                         },
-                        "provisioningState": "str"  # Optional. The status of the last
+                        "provisioningState": "str",  # Optional. The status of the last
                           operation. Known values are: "Succeeded", "Failed", "Canceled",
                           "Provisioning", "Updating", "Deleting", and "Accepted".
+                        "status": {
+                            "healthState": {
+                                "lastTransitionTime": "str",  # Optional. The
+                                  timestamp (RFC3339) when the health status last changed.
+                                "lastUpdateTime": "str",  # Optional. The timestamp
+                                  (RFC3339) when the health status was last updated, even if the status
+                                  did not change.
+                                "message": "str",  # Optional. A human-readable
+                                  message describing the last transition.
+                                "reasonCode": "str",  # Optional. Unique, CamelCase
+                                  reason code describing the cause of the last health state transition.
+                                "status": "str"  # Optional. The high-level health
+                                  status of the resource. Known values are: "Available", "Degraded",
+                                  "Unavailable", and "Unknown".
+                            }
+                        }
                     },
                     "systemData": {
                         "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
@@ -10044,9 +11242,25 @@ class BrokerOperations:
                             "stateStore": broker_state_store_policy,
                             "subscriberQueue": broker_subscriber_queue_policy
                         },
-                        "provisioningState": "str"  # Optional. The status of the last
+                        "provisioningState": "str",  # Optional. The status of the last
                           operation. Known values are: "Succeeded", "Failed", "Canceled",
                           "Provisioning", "Updating", "Deleting", and "Accepted".
+                        "status": {
+                            "healthState": {
+                                "lastTransitionTime": "str",  # Optional. The
+                                  timestamp (RFC3339) when the health status last changed.
+                                "lastUpdateTime": "str",  # Optional. The timestamp
+                                  (RFC3339) when the health status was last updated, even if the status
+                                  did not change.
+                                "message": "str",  # Optional. A human-readable
+                                  message describing the last transition.
+                                "reasonCode": "str",  # Optional. Unique, CamelCase
+                                  reason code describing the cause of the last health state transition.
+                                "status": "str"  # Optional. The high-level health
+                                  status of the resource. Known values are: "Available", "Degraded",
+                                  "Unavailable", and "Unknown".
+                            }
+                        }
                     },
                     "systemData": {
                         "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
@@ -10582,9 +11796,25 @@ class BrokerOperations:
                             "stateStore": broker_state_store_policy,
                             "subscriberQueue": broker_subscriber_queue_policy
                         },
-                        "provisioningState": "str"  # Optional. The status of the last
+                        "provisioningState": "str",  # Optional. The status of the last
                           operation. Known values are: "Succeeded", "Failed", "Canceled",
                           "Provisioning", "Updating", "Deleting", and "Accepted".
+                        "status": {
+                            "healthState": {
+                                "lastTransitionTime": "str",  # Optional. The
+                                  timestamp (RFC3339) when the health status last changed.
+                                "lastUpdateTime": "str",  # Optional. The timestamp
+                                  (RFC3339) when the health status was last updated, even if the status
+                                  did not change.
+                                "message": "str",  # Optional. A human-readable
+                                  message describing the last transition.
+                                "reasonCode": "str",  # Optional. Unique, CamelCase
+                                  reason code describing the cause of the last health state transition.
+                                "status": "str"  # Optional. The high-level health
+                                  status of the resource. Known values are: "Available", "Degraded",
+                                  "Unavailable", and "Unknown".
+                            }
+                        }
                     },
                     "systemData": {
                         "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
@@ -10767,7 +11997,7 @@ class BrokerAuthenticationOperations:
         **DO NOT** instantiate this class directly.
 
         Instead, you should access the following operations through
-        :class:`~iotopsmgmt.20251001.MicrosoftIoTOperationsManagementService`'s
+        :class:`~iotopsmgmt.20260301.MicrosoftIoTOperationsManagementService`'s
         :attr:`broker_authentication` attribute.
     """
 
@@ -11896,7 +13126,7 @@ class BrokerAuthorizationOperations:
         **DO NOT** instantiate this class directly.
 
         Instead, you should access the following operations through
-        :class:`~iotopsmgmt.20251001.MicrosoftIoTOperationsManagementService`'s
+        :class:`~iotopsmgmt.20260301.MicrosoftIoTOperationsManagementService`'s
         :attr:`broker_authorization` attribute.
     """
 
@@ -13186,7 +14416,7 @@ class BrokerListenerOperations:
         **DO NOT** instantiate this class directly.
 
         Instead, you should access the following operations through
-        :class:`~iotopsmgmt.20251001.MicrosoftIoTOperationsManagementService`'s
+        :class:`~iotopsmgmt.20260301.MicrosoftIoTOperationsManagementService`'s
         :attr:`broker_listener` attribute.
     """
 
@@ -14469,7 +15699,7 @@ class DataflowEndpointOperations:
         **DO NOT** instantiate this class directly.
 
         Instead, you should access the following operations through
-        :class:`~iotopsmgmt.20251001.MicrosoftIoTOperationsManagementService`'s
+        :class:`~iotopsmgmt.20260301.MicrosoftIoTOperationsManagementService`'s
         :attr:`dataflow_endpoint` attribute.
     """
 
@@ -17221,7 +18451,7 @@ class DataflowProfileOperations:
         **DO NOT** instantiate this class directly.
 
         Instead, you should access the following operations through
-        :class:`~iotopsmgmt.20251001.MicrosoftIoTOperationsManagementService`'s
+        :class:`~iotopsmgmt.20260301.MicrosoftIoTOperationsManagementService`'s
         :attr:`dataflow_profile` attribute.
     """
 
@@ -17274,9 +18504,25 @@ class DataflowProfileOperations:
                         "instanceCount": 1,  # Optional. Default value is 1. To manually
                           scale the dataflow profile, specify the maximum number of instances you want
                           to run.
-                        "provisioningState": "str"  # Optional. The status of the last
+                        "provisioningState": "str",  # Optional. The status of the last
                           operation. Known values are: "Succeeded", "Failed", "Canceled",
                           "Provisioning", "Updating", "Deleting", and "Accepted".
+                        "status": {
+                            "healthState": {
+                                "lastTransitionTime": "str",  # Optional. The
+                                  timestamp (RFC3339) when the health status last changed.
+                                "lastUpdateTime": "str",  # Optional. The timestamp
+                                  (RFC3339) when the health status was last updated, even if the status
+                                  did not change.
+                                "message": "str",  # Optional. A human-readable
+                                  message describing the last transition.
+                                "reasonCode": "str",  # Optional. Unique, CamelCase
+                                  reason code describing the cause of the last health state transition.
+                                "status": "str"  # Optional. The high-level health
+                                  status of the resource. Known values are: "Available", "Degraded",
+                                  "Unavailable", and "Unknown".
+                            }
+                        }
                     },
                     "systemData": {
                         "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
@@ -17411,9 +18657,25 @@ class DataflowProfileOperations:
                         "instanceCount": 1,  # Optional. Default value is 1. To manually
                           scale the dataflow profile, specify the maximum number of instances you want
                           to run.
-                        "provisioningState": "str"  # Optional. The status of the last
+                        "provisioningState": "str",  # Optional. The status of the last
                           operation. Known values are: "Succeeded", "Failed", "Canceled",
                           "Provisioning", "Updating", "Deleting", and "Accepted".
+                        "status": {
+                            "healthState": {
+                                "lastTransitionTime": "str",  # Optional. The
+                                  timestamp (RFC3339) when the health status last changed.
+                                "lastUpdateTime": "str",  # Optional. The timestamp
+                                  (RFC3339) when the health status was last updated, even if the status
+                                  did not change.
+                                "message": "str",  # Optional. A human-readable
+                                  message describing the last transition.
+                                "reasonCode": "str",  # Optional. Unique, CamelCase
+                                  reason code describing the cause of the last health state transition.
+                                "status": "str"  # Optional. The high-level health
+                                  status of the resource. Known values are: "Available", "Degraded",
+                                  "Unavailable", and "Unknown".
+                            }
+                        }
                     },
                     "systemData": {
                         "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
@@ -17620,9 +18882,25 @@ class DataflowProfileOperations:
                         "instanceCount": 1,  # Optional. Default value is 1. To manually
                           scale the dataflow profile, specify the maximum number of instances you want
                           to run.
-                        "provisioningState": "str"  # Optional. The status of the last
+                        "provisioningState": "str",  # Optional. The status of the last
                           operation. Known values are: "Succeeded", "Failed", "Canceled",
                           "Provisioning", "Updating", "Deleting", and "Accepted".
+                        "status": {
+                            "healthState": {
+                                "lastTransitionTime": "str",  # Optional. The
+                                  timestamp (RFC3339) when the health status last changed.
+                                "lastUpdateTime": "str",  # Optional. The timestamp
+                                  (RFC3339) when the health status was last updated, even if the status
+                                  did not change.
+                                "message": "str",  # Optional. A human-readable
+                                  message describing the last transition.
+                                "reasonCode": "str",  # Optional. Unique, CamelCase
+                                  reason code describing the cause of the last health state transition.
+                                "status": "str"  # Optional. The high-level health
+                                  status of the resource. Known values are: "Available", "Degraded",
+                                  "Unavailable", and "Unknown".
+                            }
+                        }
                     },
                     "systemData": {
                         "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
@@ -17669,9 +18947,25 @@ class DataflowProfileOperations:
                         "instanceCount": 1,  # Optional. Default value is 1. To manually
                           scale the dataflow profile, specify the maximum number of instances you want
                           to run.
-                        "provisioningState": "str"  # Optional. The status of the last
+                        "provisioningState": "str",  # Optional. The status of the last
                           operation. Known values are: "Succeeded", "Failed", "Canceled",
                           "Provisioning", "Updating", "Deleting", and "Accepted".
+                        "status": {
+                            "healthState": {
+                                "lastTransitionTime": "str",  # Optional. The
+                                  timestamp (RFC3339) when the health status last changed.
+                                "lastUpdateTime": "str",  # Optional. The timestamp
+                                  (RFC3339) when the health status was last updated, even if the status
+                                  did not change.
+                                "message": "str",  # Optional. A human-readable
+                                  message describing the last transition.
+                                "reasonCode": "str",  # Optional. Unique, CamelCase
+                                  reason code describing the cause of the last health state transition.
+                                "status": "str"  # Optional. The high-level health
+                                  status of the resource. Known values are: "Available", "Degraded",
+                                  "Unavailable", and "Unknown".
+                            }
+                        }
                     },
                     "systemData": {
                         "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
@@ -17752,9 +19046,25 @@ class DataflowProfileOperations:
                         "instanceCount": 1,  # Optional. Default value is 1. To manually
                           scale the dataflow profile, specify the maximum number of instances you want
                           to run.
-                        "provisioningState": "str"  # Optional. The status of the last
+                        "provisioningState": "str",  # Optional. The status of the last
                           operation. Known values are: "Succeeded", "Failed", "Canceled",
                           "Provisioning", "Updating", "Deleting", and "Accepted".
+                        "status": {
+                            "healthState": {
+                                "lastTransitionTime": "str",  # Optional. The
+                                  timestamp (RFC3339) when the health status last changed.
+                                "lastUpdateTime": "str",  # Optional. The timestamp
+                                  (RFC3339) when the health status was last updated, even if the status
+                                  did not change.
+                                "message": "str",  # Optional. A human-readable
+                                  message describing the last transition.
+                                "reasonCode": "str",  # Optional. Unique, CamelCase
+                                  reason code describing the cause of the last health state transition.
+                                "status": "str"  # Optional. The high-level health
+                                  status of the resource. Known values are: "Available", "Degraded",
+                                  "Unavailable", and "Unknown".
+                            }
+                        }
                     },
                     "systemData": {
                         "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
@@ -17831,9 +19141,25 @@ class DataflowProfileOperations:
                         "instanceCount": 1,  # Optional. Default value is 1. To manually
                           scale the dataflow profile, specify the maximum number of instances you want
                           to run.
-                        "provisioningState": "str"  # Optional. The status of the last
+                        "provisioningState": "str",  # Optional. The status of the last
                           operation. Known values are: "Succeeded", "Failed", "Canceled",
                           "Provisioning", "Updating", "Deleting", and "Accepted".
+                        "status": {
+                            "healthState": {
+                                "lastTransitionTime": "str",  # Optional. The
+                                  timestamp (RFC3339) when the health status last changed.
+                                "lastUpdateTime": "str",  # Optional. The timestamp
+                                  (RFC3339) when the health status was last updated, even if the status
+                                  did not change.
+                                "message": "str",  # Optional. A human-readable
+                                  message describing the last transition.
+                                "reasonCode": "str",  # Optional. Unique, CamelCase
+                                  reason code describing the cause of the last health state transition.
+                                "status": "str"  # Optional. The high-level health
+                                  status of the resource. Known values are: "Available", "Degraded",
+                                  "Unavailable", and "Unknown".
+                            }
+                        }
                     },
                     "systemData": {
                         "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
@@ -17880,9 +19206,25 @@ class DataflowProfileOperations:
                         "instanceCount": 1,  # Optional. Default value is 1. To manually
                           scale the dataflow profile, specify the maximum number of instances you want
                           to run.
-                        "provisioningState": "str"  # Optional. The status of the last
+                        "provisioningState": "str",  # Optional. The status of the last
                           operation. Known values are: "Succeeded", "Failed", "Canceled",
                           "Provisioning", "Updating", "Deleting", and "Accepted".
+                        "status": {
+                            "healthState": {
+                                "lastTransitionTime": "str",  # Optional. The
+                                  timestamp (RFC3339) when the health status last changed.
+                                "lastUpdateTime": "str",  # Optional. The timestamp
+                                  (RFC3339) when the health status was last updated, even if the status
+                                  did not change.
+                                "message": "str",  # Optional. A human-readable
+                                  message describing the last transition.
+                                "reasonCode": "str",  # Optional. Unique, CamelCase
+                                  reason code describing the cause of the last health state transition.
+                                "status": "str"  # Optional. The high-level health
+                                  status of the resource. Known values are: "Available", "Degraded",
+                                  "Unavailable", and "Unknown".
+                            }
+                        }
                     },
                     "systemData": {
                         "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
@@ -18065,7 +19407,7 @@ class DataflowGraphOperations:
         **DO NOT** instantiate this class directly.
 
         Instead, you should access the following operations through
-        :class:`~iotopsmgmt.20251001.MicrosoftIoTOperationsManagementService`'s
+        :class:`~iotopsmgmt.20260301.MicrosoftIoTOperationsManagementService`'s
         :attr:`dataflow_graph` attribute.
     """
 
@@ -18137,8 +19479,24 @@ class DataflowGraphOperations:
                         "provisioningState": "str",  # Optional. The provisioning state of
                           the dataflow graph. Known values are: "Succeeded", "Failed", "Canceled",
                           "Provisioning", "Updating", "Deleting", and "Accepted".
-                        "requestDiskPersistence": "str"  # Optional. Disk persistence mode.
+                        "requestDiskPersistence": "str",  # Optional. Disk persistence mode.
                           Known values are: "Enabled" and "Disabled".
+                        "status": {
+                            "healthState": {
+                                "lastTransitionTime": "str",  # Optional. The
+                                  timestamp (RFC3339) when the health status last changed.
+                                "lastUpdateTime": "str",  # Optional. The timestamp
+                                  (RFC3339) when the health status was last updated, even if the status
+                                  did not change.
+                                "message": "str",  # Optional. A human-readable
+                                  message describing the last transition.
+                                "reasonCode": "str",  # Optional. Unique, CamelCase
+                                  reason code describing the cause of the last health state transition.
+                                "status": "str"  # Optional. The high-level health
+                                  status of the resource. Known values are: "Available", "Degraded",
+                                  "Unavailable", and "Unknown".
+                            }
+                        }
                     },
                     "systemData": {
                         "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
@@ -18298,8 +19656,24 @@ class DataflowGraphOperations:
                         "provisioningState": "str",  # Optional. The provisioning state of
                           the dataflow graph. Known values are: "Succeeded", "Failed", "Canceled",
                           "Provisioning", "Updating", "Deleting", and "Accepted".
-                        "requestDiskPersistence": "str"  # Optional. Disk persistence mode.
+                        "requestDiskPersistence": "str",  # Optional. Disk persistence mode.
                           Known values are: "Enabled" and "Disabled".
+                        "status": {
+                            "healthState": {
+                                "lastTransitionTime": "str",  # Optional. The
+                                  timestamp (RFC3339) when the health status last changed.
+                                "lastUpdateTime": "str",  # Optional. The timestamp
+                                  (RFC3339) when the health status was last updated, even if the status
+                                  did not change.
+                                "message": "str",  # Optional. A human-readable
+                                  message describing the last transition.
+                                "reasonCode": "str",  # Optional. Unique, CamelCase
+                                  reason code describing the cause of the last health state transition.
+                                "status": "str"  # Optional. The high-level health
+                                  status of the resource. Known values are: "Available", "Degraded",
+                                  "Unavailable", and "Unknown".
+                            }
+                        }
                     },
                     "systemData": {
                         "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
@@ -18527,8 +19901,24 @@ class DataflowGraphOperations:
                         "provisioningState": "str",  # Optional. The provisioning state of
                           the dataflow graph. Known values are: "Succeeded", "Failed", "Canceled",
                           "Provisioning", "Updating", "Deleting", and "Accepted".
-                        "requestDiskPersistence": "str"  # Optional. Disk persistence mode.
+                        "requestDiskPersistence": "str",  # Optional. Disk persistence mode.
                           Known values are: "Enabled" and "Disabled".
+                        "status": {
+                            "healthState": {
+                                "lastTransitionTime": "str",  # Optional. The
+                                  timestamp (RFC3339) when the health status last changed.
+                                "lastUpdateTime": "str",  # Optional. The timestamp
+                                  (RFC3339) when the health status was last updated, even if the status
+                                  did not change.
+                                "message": "str",  # Optional. A human-readable
+                                  message describing the last transition.
+                                "reasonCode": "str",  # Optional. Unique, CamelCase
+                                  reason code describing the cause of the last health state transition.
+                                "status": "str"  # Optional. The high-level health
+                                  status of the resource. Known values are: "Available", "Degraded",
+                                  "Unavailable", and "Unknown".
+                            }
+                        }
                     },
                     "systemData": {
                         "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
@@ -18590,8 +19980,24 @@ class DataflowGraphOperations:
                         "provisioningState": "str",  # Optional. The provisioning state of
                           the dataflow graph. Known values are: "Succeeded", "Failed", "Canceled",
                           "Provisioning", "Updating", "Deleting", and "Accepted".
-                        "requestDiskPersistence": "str"  # Optional. Disk persistence mode.
+                        "requestDiskPersistence": "str",  # Optional. Disk persistence mode.
                           Known values are: "Enabled" and "Disabled".
+                        "status": {
+                            "healthState": {
+                                "lastTransitionTime": "str",  # Optional. The
+                                  timestamp (RFC3339) when the health status last changed.
+                                "lastUpdateTime": "str",  # Optional. The timestamp
+                                  (RFC3339) when the health status was last updated, even if the status
+                                  did not change.
+                                "message": "str",  # Optional. A human-readable
+                                  message describing the last transition.
+                                "reasonCode": "str",  # Optional. Unique, CamelCase
+                                  reason code describing the cause of the last health state transition.
+                                "status": "str"  # Optional. The high-level health
+                                  status of the resource. Known values are: "Available", "Degraded",
+                                  "Unavailable", and "Unknown".
+                            }
+                        }
                     },
                     "systemData": {
                         "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
@@ -18690,8 +20096,24 @@ class DataflowGraphOperations:
                         "provisioningState": "str",  # Optional. The provisioning state of
                           the dataflow graph. Known values are: "Succeeded", "Failed", "Canceled",
                           "Provisioning", "Updating", "Deleting", and "Accepted".
-                        "requestDiskPersistence": "str"  # Optional. Disk persistence mode.
+                        "requestDiskPersistence": "str",  # Optional. Disk persistence mode.
                           Known values are: "Enabled" and "Disabled".
+                        "status": {
+                            "healthState": {
+                                "lastTransitionTime": "str",  # Optional. The
+                                  timestamp (RFC3339) when the health status last changed.
+                                "lastUpdateTime": "str",  # Optional. The timestamp
+                                  (RFC3339) when the health status was last updated, even if the status
+                                  did not change.
+                                "message": "str",  # Optional. A human-readable
+                                  message describing the last transition.
+                                "reasonCode": "str",  # Optional. Unique, CamelCase
+                                  reason code describing the cause of the last health state transition.
+                                "status": "str"  # Optional. The high-level health
+                                  status of the resource. Known values are: "Available", "Degraded",
+                                  "Unavailable", and "Unknown".
+                            }
+                        }
                     },
                     "systemData": {
                         "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
@@ -18786,8 +20208,24 @@ class DataflowGraphOperations:
                         "provisioningState": "str",  # Optional. The provisioning state of
                           the dataflow graph. Known values are: "Succeeded", "Failed", "Canceled",
                           "Provisioning", "Updating", "Deleting", and "Accepted".
-                        "requestDiskPersistence": "str"  # Optional. Disk persistence mode.
+                        "requestDiskPersistence": "str",  # Optional. Disk persistence mode.
                           Known values are: "Enabled" and "Disabled".
+                        "status": {
+                            "healthState": {
+                                "lastTransitionTime": "str",  # Optional. The
+                                  timestamp (RFC3339) when the health status last changed.
+                                "lastUpdateTime": "str",  # Optional. The timestamp
+                                  (RFC3339) when the health status was last updated, even if the status
+                                  did not change.
+                                "message": "str",  # Optional. A human-readable
+                                  message describing the last transition.
+                                "reasonCode": "str",  # Optional. Unique, CamelCase
+                                  reason code describing the cause of the last health state transition.
+                                "status": "str"  # Optional. The high-level health
+                                  status of the resource. Known values are: "Available", "Degraded",
+                                  "Unavailable", and "Unknown".
+                            }
+                        }
                     },
                     "systemData": {
                         "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
@@ -18849,8 +20287,24 @@ class DataflowGraphOperations:
                         "provisioningState": "str",  # Optional. The provisioning state of
                           the dataflow graph. Known values are: "Succeeded", "Failed", "Canceled",
                           "Provisioning", "Updating", "Deleting", and "Accepted".
-                        "requestDiskPersistence": "str"  # Optional. Disk persistence mode.
+                        "requestDiskPersistence": "str",  # Optional. Disk persistence mode.
                           Known values are: "Enabled" and "Disabled".
+                        "status": {
+                            "healthState": {
+                                "lastTransitionTime": "str",  # Optional. The
+                                  timestamp (RFC3339) when the health status last changed.
+                                "lastUpdateTime": "str",  # Optional. The timestamp
+                                  (RFC3339) when the health status was last updated, even if the status
+                                  did not change.
+                                "message": "str",  # Optional. A human-readable
+                                  message describing the last transition.
+                                "reasonCode": "str",  # Optional. Unique, CamelCase
+                                  reason code describing the cause of the last health state transition.
+                                "status": "str"  # Optional. The high-level health
+                                  status of the resource. Known values are: "Available", "Degraded",
+                                  "Unavailable", and "Unknown".
+                            }
+                        }
                     },
                     "systemData": {
                         "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
@@ -19048,7 +20502,7 @@ class DataflowOperations:
         **DO NOT** instantiate this class directly.
 
         Instead, you should access the following operations through
-        :class:`~iotopsmgmt.20251001.MicrosoftIoTOperationsManagementService`'s
+        :class:`~iotopsmgmt.20260301.MicrosoftIoTOperationsManagementService`'s
         :attr:`dataflow` attribute.
     """
 
@@ -19206,8 +20660,24 @@ class DataflowOperations:
                         "provisioningState": "str",  # Optional. The status of the last
                           operation. Known values are: "Succeeded", "Failed", "Canceled",
                           "Provisioning", "Updating", "Deleting", and "Accepted".
-                        "requestDiskPersistence": "str"  # Optional. Disk persistence mode.
+                        "requestDiskPersistence": "str",  # Optional. Disk persistence mode.
                           Known values are: "Enabled" and "Disabled".
+                        "status": {
+                            "healthState": {
+                                "lastTransitionTime": "str",  # Optional. The
+                                  timestamp (RFC3339) when the health status last changed.
+                                "lastUpdateTime": "str",  # Optional. The timestamp
+                                  (RFC3339) when the health status was last updated, even if the status
+                                  did not change.
+                                "message": "str",  # Optional. A human-readable
+                                  message describing the last transition.
+                                "reasonCode": "str",  # Optional. Unique, CamelCase
+                                  reason code describing the cause of the last health state transition.
+                                "status": "str"  # Optional. The high-level health
+                                  status of the resource. Known values are: "Available", "Degraded",
+                                  "Unavailable", and "Unknown".
+                            }
+                        }
                     },
                     "systemData": {
                         "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
@@ -19453,8 +20923,24 @@ class DataflowOperations:
                         "provisioningState": "str",  # Optional. The status of the last
                           operation. Known values are: "Succeeded", "Failed", "Canceled",
                           "Provisioning", "Updating", "Deleting", and "Accepted".
-                        "requestDiskPersistence": "str"  # Optional. Disk persistence mode.
+                        "requestDiskPersistence": "str",  # Optional. Disk persistence mode.
                           Known values are: "Enabled" and "Disabled".
+                        "status": {
+                            "healthState": {
+                                "lastTransitionTime": "str",  # Optional. The
+                                  timestamp (RFC3339) when the health status last changed.
+                                "lastUpdateTime": "str",  # Optional. The timestamp
+                                  (RFC3339) when the health status was last updated, even if the status
+                                  did not change.
+                                "message": "str",  # Optional. A human-readable
+                                  message describing the last transition.
+                                "reasonCode": "str",  # Optional. Unique, CamelCase
+                                  reason code describing the cause of the last health state transition.
+                                "status": "str"  # Optional. The high-level health
+                                  status of the resource. Known values are: "Available", "Degraded",
+                                  "Unavailable", and "Unknown".
+                            }
+                        }
                     },
                     "systemData": {
                         "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
@@ -19768,8 +21254,24 @@ class DataflowOperations:
                         "provisioningState": "str",  # Optional. The status of the last
                           operation. Known values are: "Succeeded", "Failed", "Canceled",
                           "Provisioning", "Updating", "Deleting", and "Accepted".
-                        "requestDiskPersistence": "str"  # Optional. Disk persistence mode.
+                        "requestDiskPersistence": "str",  # Optional. Disk persistence mode.
                           Known values are: "Enabled" and "Disabled".
+                        "status": {
+                            "healthState": {
+                                "lastTransitionTime": "str",  # Optional. The
+                                  timestamp (RFC3339) when the health status last changed.
+                                "lastUpdateTime": "str",  # Optional. The timestamp
+                                  (RFC3339) when the health status was last updated, even if the status
+                                  did not change.
+                                "message": "str",  # Optional. A human-readable
+                                  message describing the last transition.
+                                "reasonCode": "str",  # Optional. Unique, CamelCase
+                                  reason code describing the cause of the last health state transition.
+                                "status": "str"  # Optional. The high-level health
+                                  status of the resource. Known values are: "Available", "Degraded",
+                                  "Unavailable", and "Unknown".
+                            }
+                        }
                     },
                     "systemData": {
                         "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
@@ -19917,8 +21419,24 @@ class DataflowOperations:
                         "provisioningState": "str",  # Optional. The status of the last
                           operation. Known values are: "Succeeded", "Failed", "Canceled",
                           "Provisioning", "Updating", "Deleting", and "Accepted".
-                        "requestDiskPersistence": "str"  # Optional. Disk persistence mode.
+                        "requestDiskPersistence": "str",  # Optional. Disk persistence mode.
                           Known values are: "Enabled" and "Disabled".
+                        "status": {
+                            "healthState": {
+                                "lastTransitionTime": "str",  # Optional. The
+                                  timestamp (RFC3339) when the health status last changed.
+                                "lastUpdateTime": "str",  # Optional. The timestamp
+                                  (RFC3339) when the health status was last updated, even if the status
+                                  did not change.
+                                "message": "str",  # Optional. A human-readable
+                                  message describing the last transition.
+                                "reasonCode": "str",  # Optional. Unique, CamelCase
+                                  reason code describing the cause of the last health state transition.
+                                "status": "str"  # Optional. The high-level health
+                                  status of the resource. Known values are: "Available", "Degraded",
+                                  "Unavailable", and "Unknown".
+                            }
+                        }
                     },
                     "systemData": {
                         "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
@@ -20103,8 +21621,24 @@ class DataflowOperations:
                         "provisioningState": "str",  # Optional. The status of the last
                           operation. Known values are: "Succeeded", "Failed", "Canceled",
                           "Provisioning", "Updating", "Deleting", and "Accepted".
-                        "requestDiskPersistence": "str"  # Optional. Disk persistence mode.
+                        "requestDiskPersistence": "str",  # Optional. Disk persistence mode.
                           Known values are: "Enabled" and "Disabled".
+                        "status": {
+                            "healthState": {
+                                "lastTransitionTime": "str",  # Optional. The
+                                  timestamp (RFC3339) when the health status last changed.
+                                "lastUpdateTime": "str",  # Optional. The timestamp
+                                  (RFC3339) when the health status was last updated, even if the status
+                                  did not change.
+                                "message": "str",  # Optional. A human-readable
+                                  message describing the last transition.
+                                "reasonCode": "str",  # Optional. Unique, CamelCase
+                                  reason code describing the cause of the last health state transition.
+                                "status": "str"  # Optional. The high-level health
+                                  status of the resource. Known values are: "Available", "Degraded",
+                                  "Unavailable", and "Unknown".
+                            }
+                        }
                     },
                     "systemData": {
                         "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
@@ -20285,8 +21819,24 @@ class DataflowOperations:
                         "provisioningState": "str",  # Optional. The status of the last
                           operation. Known values are: "Succeeded", "Failed", "Canceled",
                           "Provisioning", "Updating", "Deleting", and "Accepted".
-                        "requestDiskPersistence": "str"  # Optional. Disk persistence mode.
+                        "requestDiskPersistence": "str",  # Optional. Disk persistence mode.
                           Known values are: "Enabled" and "Disabled".
+                        "status": {
+                            "healthState": {
+                                "lastTransitionTime": "str",  # Optional. The
+                                  timestamp (RFC3339) when the health status last changed.
+                                "lastUpdateTime": "str",  # Optional. The timestamp
+                                  (RFC3339) when the health status was last updated, even if the status
+                                  did not change.
+                                "message": "str",  # Optional. A human-readable
+                                  message describing the last transition.
+                                "reasonCode": "str",  # Optional. Unique, CamelCase
+                                  reason code describing the cause of the last health state transition.
+                                "status": "str"  # Optional. The high-level health
+                                  status of the resource. Known values are: "Available", "Degraded",
+                                  "Unavailable", and "Unknown".
+                            }
+                        }
                     },
                     "systemData": {
                         "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
@@ -20434,8 +21984,24 @@ class DataflowOperations:
                         "provisioningState": "str",  # Optional. The status of the last
                           operation. Known values are: "Succeeded", "Failed", "Canceled",
                           "Provisioning", "Updating", "Deleting", and "Accepted".
-                        "requestDiskPersistence": "str"  # Optional. Disk persistence mode.
+                        "requestDiskPersistence": "str",  # Optional. Disk persistence mode.
                           Known values are: "Enabled" and "Disabled".
+                        "status": {
+                            "healthState": {
+                                "lastTransitionTime": "str",  # Optional. The
+                                  timestamp (RFC3339) when the health status last changed.
+                                "lastUpdateTime": "str",  # Optional. The timestamp
+                                  (RFC3339) when the health status was last updated, even if the status
+                                  did not change.
+                                "message": "str",  # Optional. A human-readable
+                                  message describing the last transition.
+                                "reasonCode": "str",  # Optional. Unique, CamelCase
+                                  reason code describing the cause of the last health state transition.
+                                "status": "str"  # Optional. The high-level health
+                                  status of the resource. Known values are: "Available", "Degraded",
+                                  "Unavailable", and "Unknown".
+                            }
+                        }
                     },
                     "systemData": {
                         "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
@@ -20633,7 +22199,7 @@ class RegistryEndpointOperations:
         **DO NOT** instantiate this class directly.
 
         Instead, you should access the following operations through
-        :class:`~iotopsmgmt.20251001.MicrosoftIoTOperationsManagementService`'s
+        :class:`~iotopsmgmt.20260301.MicrosoftIoTOperationsManagementService`'s
         :attr:`registry_endpoint` attribute.
     """
 

@@ -466,6 +466,32 @@ def test_init_targets(target_scenario: dict, mocked_feature_keys: Mock):
         assert enablement_versions.get("secretStore")
 
 
+@pytest.mark.parametrize(
+    "target_scenario",
+    [
+        build_target_scenario(
+            cluster_name=generate_random_string(),
+            resource_group_name=generate_random_string(),
+            schema_registry_resource_id=get_schema_registry_id(),
+            instance_features=["opcua.mode=Stable"],
+        ),
+    ],
+)
+def test_init_targets_opcua_mode(target_scenario: dict):
+    """Verify opcua.mode feature flows through InitTargets into the
+    ARM template against the real COMPAT_FEAT_KEY_SET."""
+    targets = InitTargets(**target_scenario)
+
+    expected_features = parse_feature_kvp_nargs(target_scenario["instance_features"])
+    assert targets.instance_features == expected_features
+
+    extension_ids = [generate_random_string(), generate_random_string()]
+    instance_template, _instance_parameters = targets.get_ops_instance_template(extension_ids)
+
+    aio_instance = instance_template["resources"]["aioInstance"]
+    assert aio_instance["properties"]["features"] == expected_features
+
+
 def test_extension_config_manager():
     """Test ExtensionConfigManager functionality comprehensively."""
     manager = ExtensionConfigManager()

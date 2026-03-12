@@ -33,7 +33,7 @@ from azext_edge.edge.commands_namespaces import (
 from azext_edge.edge.providers.adr.namespace_assets import _process_configs
 from azext_edge.edge.providers.adr.namespace_devices import DeviceEndpointType
 from azext_edge.edge.util.common import parse_kvp_nargs
-from azext_edge.edge.util.az_client import DeviceRegistryMgmtApiVersion
+from azext_edge.edge.util.az_client import DEFAULT_DEVICEREGISTRY_MGMT_API_VERSION
 
 from .test_namespace_devices_unit import get_namespace_device_record, get_namespace_device_mgmt_uri
 from .test_namespaces_unit import get_namespace_mgmt_uri
@@ -53,7 +53,7 @@ def get_namespace_asset_mgmt_uri(
         namespace_name=namespace_name, resource_group_name=resource_group_name, include_api=False
     )
     base_uri += "/assets" + (f"/{asset_name}" if asset_name else "")
-    return f"{base_uri}?api-version={DeviceRegistryMgmtApiVersion.V20251001.value}"
+    return f"{base_uri}?api-version={DEFAULT_DEVICEREGISTRY_MGMT_API_VERSION.value}"
 
 
 def get_namespace_asset_record(

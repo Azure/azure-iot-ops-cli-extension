@@ -68,6 +68,8 @@ def assert_management_group_action_properties(result, **expected):
         assert result["timeoutInSeconds"] == expected["timeout"]
     if "topic" in expected:
         assert result["topic"] == expected["topic"]
+    if "type_ref" in expected:
+        assert result["typeRef"] == expected["type_ref"]
     if "custom_configuration" in expected:
         assert result["actionConfiguration"] == expected["custom_configuration"]
 

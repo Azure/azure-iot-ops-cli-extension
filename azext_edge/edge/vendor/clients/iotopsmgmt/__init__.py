@@ -4,8 +4,7 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-
-from .v20251001 import MicrosoftIoTOperationsManagementService
+from .v20260301 import MicrosoftIoTOperationsManagementService
 
 __all__ = [
     "MicrosoftIoTOperationsManagementService",

@@ -17,7 +17,7 @@ from azext_edge.edge.commands_namespaces import (
     show_namespace,
     update_namespace,
 )
-from azext_edge.edge.util.az_client import DeviceRegistryMgmtApiVersion
+from azext_edge.edge.util.az_client import DEFAULT_DEVICEREGISTRY_MGMT_API_VERSION
 from ..orchestration.resources.conftest import get_base_endpoint
 
 from ...generators import generate_random_string, BASE_URL, get_zeroed_subscription
@@ -37,7 +37,7 @@ def get_namespace_mgmt_uri(
     namespace_name: Optional[str] = None,
     resource_group_name: Optional[str] = None,
     subscription: Optional[str] = None,
-    include_api: bool = True
+    include_api: bool = True,
 ) -> str:
     resource_group_name = f"/resourceGroups/{resource_group_name}" if resource_group_name else ""
     namespace_name = f"/{namespace_name}" if namespace_name else ""
@@ -47,7 +47,7 @@ def get_namespace_mgmt_uri(
         f"Microsoft.DeviceRegistry/namespaces{namespace_name}"
     )
     if include_api:
-        namespace_id += f"?api-version={DeviceRegistryMgmtApiVersion.V20251001.value}"
+        namespace_id += f"?api-version={DEFAULT_DEVICEREGISTRY_MGMT_API_VERSION.value}"
     return f"{BASE_URL}{namespace_id}"
 
 
@@ -57,9 +57,9 @@ def get_namespace_record(
     subscription: Optional[str] = None,
 ) -> dict:
     namespace = {
-        "id": get_namespace_mgmt_uri(
-            namespace_name, resource_group_name, subscription, include_api=False
-        )[len(BASE_URL) :],
+        "id": get_namespace_mgmt_uri(namespace_name, resource_group_name, subscription, include_api=False)[
+            len(BASE_URL) :
+        ],
         "name": namespace_name,
         "resourceGroup": resource_group_name,
         "type": "Microsoft.DeviceRegistry/namespaces",
@@ -67,7 +67,7 @@ def get_namespace_record(
         "identity": {
             "principalId": generate_random_string(),
             "tenantId": generate_random_string(),
-            "type": "SystemAssigned"
+            "type": "SystemAssigned",
         },
         "properties": {
             "uuid": generate_random_string(),
@@ -75,16 +75,16 @@ def get_namespace_record(
                 "endpoints": {
                     "myPrimaryEventGridEndpoint": {
                         "address": "https://myeventgridtopic1.westeurope-1.eventgrid.azure.net",
-                        "endpointType": "Microsoft.EventGrid"
+                        "endpointType": "Microsoft.EventGrid",
                     },
                     "mySecondaryEventGridEndpoint": {
                         "address": "https://myeventgridtopic2.westeurope-1.eventgrid.azure.net",
-                        "endpointType": "Microsoft.EventGrid"
-                    }
+                        "endpointType": "Microsoft.EventGrid",
+                    },
                 }
             },
-            "provisioningState": "Succeeded"
-        }
+            "provisioningState": "Succeeded",
+        },
     }
     return namespace
 
@@ -95,19 +95,18 @@ def mocked_logger(mocker):
 
 
 @pytest.mark.parametrize("response_status", [200, 400])
-@pytest.mark.parametrize("req", [
-    {},
-    {
-        "location": "westus",
-        "tags": {"tag1": "value1", "tag2": "value2"},
-    },
-])
+@pytest.mark.parametrize(
+    "req",
+    [
+        {},
+        {
+            "location": "westus",
+            "tags": {"tag1": "value1", "tag2": "value2"},
+        },
+    ],
+)
 def test_namespace_create(
-    mocked_logger,
-    mocked_cmd,
-    mocked_responses: responses,
-    req: Dict[str, str],
-    response_status: int
+    mocked_logger, mocked_cmd, mocked_responses: responses, req: Dict[str, str], response_status: int
 ):
     namespace_name = generate_random_string()
     resource_group_name = generate_random_string()
@@ -125,9 +124,7 @@ def test_namespace_create(
         )
 
     # Create mock response
-    mock_namespace_record = get_namespace_record(
-        namespace_name=namespace_name, resource_group_name=resource_group_name
-    )
+    mock_namespace_record = get_namespace_record(namespace_name=namespace_name, resource_group_name=resource_group_name)
 
     # Add mock response
     mocked_responses.add(
@@ -146,17 +143,13 @@ def test_namespace_create(
                 namespace_name=namespace_name,
                 resource_group_name=resource_group_name,
                 wait_sec=0,
-                **req
+                **req,
             )
         return
 
     # Test create_namespace for success case
     result = create_namespace(
-        cmd=mocked_cmd,
-        namespace_name=namespace_name,
-        resource_group_name=resource_group_name,
-        wait_sec=0,
-        **req
+        cmd=mocked_cmd, namespace_name=namespace_name, resource_group_name=resource_group_name, wait_sec=0, **req
     )
 
     # Verify result matches mock response and the number of API calls
@@ -169,6 +162,9 @@ def test_namespace_create(
     # Check location
     expected_location = req.get("location", mock_resource_group["location"])
     assert call_body.get("location") == expected_location
+
+    # Check identity — always SystemAssigned by default
+    assert call_body.get("identity") == {"type": "SystemAssigned"}
 
     # Check tags
     assert call_body.get("tags") == req.get("tags")
@@ -195,7 +191,7 @@ def test_namespace_delete(mocked_cmd, mocked_responses: responses, response_stat
                 namespace_name=namespace_name,
                 resource_group_name=resource_group_name,
                 wait_sec=0,
-                confirm_yes=True
+                confirm_yes=True,
             )
     else:
         # Test the delete_namespace function for success case
@@ -204,7 +200,7 @@ def test_namespace_delete(mocked_cmd, mocked_responses: responses, response_stat
             namespace_name=namespace_name,
             resource_group_name=resource_group_name,
             wait_sec=0,
-            confirm_yes=True
+            confirm_yes=True,
         )
 
         # Verify only the DELETE API call was made
@@ -237,10 +233,12 @@ def test_namespace_list(
 
     if response_status != 200:
         with pytest.raises(Exception):
-            list(list_namespaces(
-                cmd=mocked_cmd,
-                resource_group_name=resource_group_name,
-            ))
+            list(
+                list_namespaces(
+                    cmd=mocked_cmd,
+                    resource_group_name=resource_group_name,
+                )
+            )
         return
 
     result = list(list_namespaces(cmd=mocked_cmd, resource_group_name=resource_group_name))
@@ -255,10 +253,7 @@ def test_namespace_show(mocked_cmd, mocked_responses: responses, response_status
     resource_group_name = generate_random_string()
 
     # Create a mock namespace record for successful response
-    mock_namespace_record = get_namespace_record(
-        namespace_name=namespace_name,
-        resource_group_name=resource_group_name
-    )
+    mock_namespace_record = get_namespace_record(namespace_name=namespace_name, resource_group_name=resource_group_name)
 
     # Configure mock response for GET request
     mocked_responses.add(
@@ -293,29 +288,25 @@ def test_namespace_show(mocked_cmd, mocked_responses: responses, response_status
 
 
 @pytest.mark.parametrize("response_status", [200, 443])
-@pytest.mark.parametrize("req", [
-    # Test with minimal parameters
-    {},
-    # Test with all parameters
-    {
-        "tags": {"tag1": "value1", "tag2": "value2"},
-    }
-])
-def test_namespace_update(
-    mocked_logger,
-    mocked_cmd,
-    mocked_responses: responses,
-    req: dict,
-    response_status: int
-):
+@pytest.mark.parametrize(
+    "req",
+    [
+        # Test with minimal parameters
+        {},
+        # Test with all parameters
+        {
+            "tags": {"tag1": "value1", "tag2": "value2"},
+        },
+    ],
+)
+def test_namespace_update(mocked_logger, mocked_cmd, mocked_responses: responses, req: dict, response_status: int):
     # Setup test data
     namespace_name = generate_random_string()
     resource_group_name = generate_random_string()
 
     # Create mock namespace records for PATCH responses
     mock_original_namespace = get_namespace_record(
-        namespace_name=namespace_name,
-        resource_group_name=resource_group_name
+        namespace_name=namespace_name, resource_group_name=resource_group_name
     )
     # Add identity and tags to original namespace for testing update logic
     mock_original_namespace["tags"] = {"original": "tag"}
@@ -342,17 +333,13 @@ def test_namespace_update(
                 namespace_name=namespace_name,
                 resource_group_name=resource_group_name,
                 wait_sec=0,
-                **req
+                **req,
             )
         return
 
     # Test update_namespace for success case
     result = update_namespace(
-        cmd=mocked_cmd,
-        namespace_name=namespace_name,
-        resource_group_name=resource_group_name,
-        wait_sec=0,
-        **req
+        cmd=mocked_cmd, namespace_name=namespace_name, resource_group_name=resource_group_name, wait_sec=0, **req
     )
 
     # Verify result matches the mock updated namespace

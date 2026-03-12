@@ -408,10 +408,10 @@ def test_instance_update(
 )
 def test_instance_update_block_feature_config(
     mocked_cmd,
-    mocker,
     mocked_responses: responses,
     features_scenario: Optional[dict],
 ):
+    """Verify that feature keys not in COMPAT_FEAT_KEY_SET are blocked during update."""
     instance_name = generate_random_string()
     resource_group_name = generate_random_string()
 
@@ -428,7 +428,7 @@ def test_instance_update_block_feature_config(
         content_type="application/json",
     )
 
-    with pytest.raises(ValidationError) as exc:
+    with pytest.raises(InvalidArgumentValueError) as exc:
         update_instance(
             cmd=mocked_cmd,
             instance_name=instance_name,
@@ -436,7 +436,8 @@ def test_instance_update_block_feature_config(
             instance_features=features_scenario.get("inputs"),
         )
     exc_str = str(exc.value)
-    assert "No feature keys are supported in this version of IoT Operations." == exc_str
+    assert "Supported feature keys:" in exc_str
+    assert "opcua.mode" in exc_str
 
 
 @pytest.mark.parametrize(
@@ -536,6 +537,101 @@ def test_parse_feature_kvp_nargs(feature_scenario: Optional[dict], mocked_featur
 
     result = parse_feature_kvp_nargs(features=feature_scenario.get("inputs"), **kwargs)
     assert result == feature_scenario.get("expected", {}), f"Expectation failure for: {feature_scenario.get('case')}"
+
+
+@pytest.mark.parametrize(
+    "features_scenario",
+    [
+        {
+            "inputs": ["opcua.mode=Stable"],
+            "expected": {"opcua": {"mode": "Stable"}},
+        },
+        {
+            "inputs": ["opcua.mode=Disabled"],
+            "expected": {"opcua": {"mode": "Disabled"}},
+        },
+        {
+            "inputs": ["opcua.mode=Stable"],
+            "expected": {
+                "opcua": {"mode": "Stable"},
+                "mqttBroker": {"settings": {"preview": "Enabled"}},
+            },
+            "initialState": {"mqttBroker": {"settings": {"preview": "Enabled"}}},
+        },
+        {
+            "inputs": ["opcua.mode=Stable"],
+            "expected": {"opcua": {"mode": "Stable"}},
+            "initialState": {"opcua": {"mode": "Disabled"}},
+        },
+        {
+            "inputs": ["opcua.mode=Enabled"],
+            "errors": ["opcua.mode has an invalid value."],
+        },
+    ],
+)
+def test_instance_update_opcua_mode(
+    mocked_cmd,
+    mocked_responses: responses,
+    features_scenario: dict,
+):
+    """Verify opcua.mode feature works through the update path against the real COMPAT_FEAT_KEY_SET."""
+    instance_name = generate_random_string()
+    resource_group_name = generate_random_string()
+    instance_endpoint = get_instance_endpoint(resource_group_name=resource_group_name, instance_name=instance_name)
+
+    initial_feat_state = features_scenario.get("initialState")
+    initial_record = get_mock_instance_record(
+        name=instance_name,
+        resource_group_name=resource_group_name,
+        features=initial_feat_state,
+    )
+    mocked_responses.add(
+        method=responses.GET,
+        url=instance_endpoint,
+        json=initial_record,
+        status=200,
+        content_type="application/json",
+    )
+
+    errors = features_scenario.get("errors", [])
+    if errors:
+        with pytest.raises(InvalidArgumentValueError) as exc:
+            update_instance(
+                cmd=mocked_cmd,
+                instance_name=instance_name,
+                resource_group_name=resource_group_name,
+                instance_features=features_scenario["inputs"],
+            )
+        exc_str = str(exc.value)
+        for e in errors:
+            assert e in exc_str
+        return
+
+    updated_record = get_mock_instance_record(
+        name=instance_name,
+        resource_group_name=resource_group_name,
+        features=features_scenario["expected"],
+    )
+    mocked_responses.add(
+        method=responses.PUT,
+        url=instance_endpoint,
+        json=updated_record,
+        status=200,
+        content_type="application/json",
+    )
+
+    result = update_instance(
+        cmd=mocked_cmd,
+        instance_name=instance_name,
+        resource_group_name=resource_group_name,
+        instance_features=features_scenario["inputs"],
+        wait_sec=0,
+    )
+    assert len(mocked_responses.calls) == 2
+
+    update_request = json.loads(mocked_responses.calls[1].request.body)
+    assert update_request["properties"]["features"] == features_scenario["expected"]
+    assert result == updated_record
 
 
 @pytest.mark.parametrize(

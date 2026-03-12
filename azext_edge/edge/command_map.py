@@ -15,6 +15,7 @@ dataflow_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands
 registry_endpoint_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_registry_endpoints#{}")
 edge_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_edge#{}")
 secretsync_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_secretsync#{}")
+mgmt_actions_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_mgmt_actions#{}")
 asset_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_assets#{}")
 aep_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_asset_endpoint_profiles#{}")
 namespace_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_namespaces#{}")
@@ -57,6 +58,15 @@ def load_iotops_commands(self, _):
         cmd_group.command("enable", "secretsync_enable")
         cmd_group.command("disable", "secretsync_disable")
         cmd_group.show_command("list", "secretsync_list")
+
+    with self.command_group(
+        "iot ops mgmt-actions",
+        command_type=mgmt_actions_resource_ops,
+    ) as cmd_group:
+        cmd_group.command("enable", "mgmt_actions_enable")
+        cmd_group.command("disable", "mgmt_actions_disable")
+        cmd_group.show_command("show", "mgmt_actions_show")
+        cmd_group.command("execute", "mgmt_actions_execute")
 
     with self.command_group(
         "iot ops support",
@@ -244,13 +254,18 @@ def load_iotops_commands(self, _):
     with self.command_group(
         "iot ops ns",
         command_type=namespace_resource_ops,
-        is_preview=True,
     ) as cmd_group:
         cmd_group.command("create", "create_namespace")
         cmd_group.command("delete", "delete_namespace")
         cmd_group.command("list", "list_namespaces")
         cmd_group.show_command("show", "show_namespace")
         cmd_group.command("update", "update_namespace")
+
+    with self.command_group(
+        "iot ops ns mgmt-endpoint",
+        command_type=mgmt_actions_resource_ops,
+    ) as cmd_group:
+        cmd_group.command("remove", "mgmt_actions_remove_ns_mgmt_endpoint")
 
     with self.command_group(
         "iot ops ns device",
@@ -429,6 +444,16 @@ def load_iotops_commands(self, _):
         command_type=connector_resource_ops,
     ) as cmd_group:
         pass
+
+    with self.command_group(
+        "iot ops connector template",
+        command_type=connector_resource_ops,
+    ) as cmd_group:
+        cmd_group.command("create", "create_connector_template")
+        cmd_group.command("update", "update_connector_template")
+        cmd_group.show_command("show", "show_connector_template")
+        cmd_group.command("delete", "delete_connector_template")
+        cmd_group.command("list", "list_connector_templates")
 
     with self.command_group(
         "iot ops connector opcua trust",

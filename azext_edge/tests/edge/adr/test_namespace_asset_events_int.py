@@ -54,20 +54,18 @@ def test_namespace_custom_asset_event_lifecycle_operations(
     tracked_resources.append(asset_custom["id"])
 
     # 1. CREATE EVENT GROUP
-    data_source = "temperature.alarm"
     custom_config_path, custom_config = create_config_file(tracked_files)
     event_destinations = "topic=factory/custom/events qos=Qos1 retain=Never ttl=3600"
 
     event_result = run(
         f"az iot ops ns asset custom event-group add --asset {asset_name} --instance {instance_name} "
-        f"-g {resource_group} --name {event_group_name} --data-source {data_source} "
+        f"-g {resource_group} --name {event_group_name} "
         f"--config {custom_config_path} --destination {event_destinations}"
     )
 
     assert_event_properties(
         event_result,
         name=event_group_name,
-        data_source=data_source,
         custom_configuration=custom_config,
     )
 
@@ -90,7 +88,6 @@ def test_namespace_custom_asset_event_lifecycle_operations(
     assert_event_properties(
         event_show,
         name=event_group_name,
-        data_source=data_source
     )
 
     # 4. UPDATE EVENT GROUP
@@ -125,19 +122,17 @@ def test_namespace_custom_asset_event_lifecycle_operations(
     )
 
     # 6. ADD EVENT DATAPOINT
-    datapoint_data_source = "temperature.severity"
     custom_config_path, custom_config = create_config_file(tracked_files)
 
     datapoint_result = run(
         f"az iot ops ns asset custom event add --asset {asset_name} --instance {instance_name} "
         f"-g {resource_group} --event-group {event_group_name} --name {datapoint_name_1} "
-        f"--data-source {datapoint_data_source} --config {custom_config_path}"
+        f"--config {custom_config_path}"
     )
 
     assert_point_properties(
         datapoint_result,
         name=datapoint_name_1,
-        data_source=datapoint_data_source,
         custom_configuration=custom_config
     )
 
@@ -249,14 +244,13 @@ def test_namespace_opcua_asset_event_lifecycle_operations(require_init, tracked_
     tracked_resources.append(asset_opcua["id"])
 
     # 1. CREATE EVENT WITH FULL OPCUA CONFIGURATION
-    data_source = "ns=2;i=1000"
     event_destinations = "topic=factory/opcua/events qos=Qos0 retain=Keep ttl=7200"
     publishing_interval = 500
     queue_size = 10
 
     event_result = run(
         f"az iot ops ns asset opcua event-group add --asset {asset_name} --instance {instance_name} "
-        f"-g {resource_group} --name {event_group_name} --data-source \"{data_source}\" "
+        f"-g {resource_group} --name {event_group_name} "
         f"--destination {event_destinations} --publish-int {publishing_interval} "
         f"--queue-size {queue_size}"
     )
@@ -264,7 +258,6 @@ def test_namespace_opcua_asset_event_lifecycle_operations(require_init, tracked_
     assert_event_properties(
         event_result,
         name=event_group_name,
-        data_source=data_source,
     )
 
     # 2. LIST EVENT GROUPS
@@ -286,7 +279,6 @@ def test_namespace_opcua_asset_event_lifecycle_operations(require_init, tracked_
     assert_event_properties(
         event_show,
         name=event_group_name,
-        data_source=data_source
     )
 
     # 4. UPDATE EVENT GROUP
@@ -370,19 +362,17 @@ def test_namespace_onvif_asset_event_lifecycle_operations(require_init, tracked_
     tracked_resources.append(asset_onvif["id"])
 
     # 1. CREATE EVENT GROUP
-    data_source = "motion.detection"
     event_destinations = "topic=factory/onvif/events qos=Qos1 retain=Never ttl=1800"
 
     event_result = run(
         f"az iot ops ns asset onvif event-group add --asset {asset_name} --instance {instance_name} "
-        f"-g {resource_group} --name {event_group_name} --data-source {data_source} "
+        f"-g {resource_group} --name {event_group_name} "
         f"--destination {event_destinations}"
     )
 
     assert_event_properties(
         event_result,
         name=event_group_name,
-        data_source=data_source,
     )
 
     # 2. LIST EVENT GROUPS
@@ -404,7 +394,6 @@ def test_namespace_onvif_asset_event_lifecycle_operations(require_init, tracked_
     assert_event_properties(
         event_show,
         name=event_group_name,
-        data_source=data_source
     )
 
     # 4. UPDATE EVENT GROUP
@@ -487,19 +476,17 @@ def test_namespace_sse_asset_event_lifecycle_operations(require_init, tracked_re
     tracked_resources.append(asset_sse["id"])
 
     # 1. CREATE EVENT GROUP
-    data_source = "/events/alerts"
     event_destinations = "topic=factory/sse/events qos=Qos1 retain=Never ttl=1800"
 
     event_result = run(
         f"az iot ops ns asset sse event-group add --asset {asset_name} --instance {instance_name} "
-        f"-g {resource_group} --name {event_group_name} --data-source {data_source} "
+        f"-g {resource_group} --name {event_group_name} "
         f"--destination {event_destinations}"
     )
 
     assert_event_properties(
         event_result,
         name=event_group_name,
-        data_source=data_source,
     )
 
     # 2. LIST EVENT GROUPS
@@ -521,7 +508,6 @@ def test_namespace_sse_asset_event_lifecycle_operations(require_init, tracked_re
     assert_event_properties(
         event_show,
         name=event_group_name,
-        data_source=data_source
     )
 
     # 4. UPDATE EVENT GROUP
@@ -564,13 +550,12 @@ def test_namespace_sse_asset_event_lifecycle_operations(require_init, tracked_re
     datapoint_result = run(
         f"az iot ops ns asset sse event add --asset {asset_name} --instance {instance_name} "
         f"-g {resource_group} --event-group {event_group_name} --name {datapoint_name_1} "
-        f"--data-source {datapoint_data_source} --destination {event_destinations}"
+        f"--destination {event_destinations}"
     )
 
     assert_point_properties(
         datapoint_result,
         name=datapoint_name_1,
-        data_source=datapoint_data_source,
     )
 
     # 7. ADD SECOND INDIVIDUAL EVENT

@@ -13,6 +13,19 @@ from ..helpers import run
 logger = get_logger(__name__)
 
 
+@pytest.fixture()
+def require_init(init_setup):
+    # get the custom location used for tests.
+    if not all([init_setup.get("instanceName"), init_setup.get("resourceGroup")]):
+        pytest.skip("Cannot run this test without knowing the instance information.")
+
+    cluster_result = run(
+        f"az iot ops show -n {init_setup['instanceName']} -g {init_setup['resourceGroup']} "
+    )
+    init_setup["customLocationId"] = cluster_result["extendedLocation"]["name"]
+    yield init_setup
+
+
 #  Unit testing
 @pytest.fixture
 def mocked_client(mocker):

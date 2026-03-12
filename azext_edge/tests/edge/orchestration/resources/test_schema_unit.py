@@ -22,13 +22,13 @@ from azext_edge.edge.commands_schema import (
     show_version,
 )
 from azext_edge.edge.providers.orchestration.common import SchemaFormat, SchemaType
-from azext_edge.edge.util.az_client import DeviceRegistryMgmtApiVersion
+from azext_edge.edge.util.az_client import DEFAULT_DEVICEREGISTRY_MGMT_API_VERSION
 
 from ....generators import generate_random_string
 from .conftest import get_base_endpoint, get_mock_resource
 
 SCHEMA_RP = "Microsoft.DeviceRegistry"
-SCHEMA_REGISTRY_RP_API_VERSION = DeviceRegistryMgmtApiVersion.V20251001.value
+SCHEMA_REGISTRY_RP_API_VERSION = DEFAULT_DEVICEREGISTRY_MGMT_API_VERSION.value
 
 
 def get_schema_endpoint(

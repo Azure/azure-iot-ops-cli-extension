@@ -364,10 +364,18 @@ class OciRegistryClient:
             logger.warning(f"Failed to obtain ARM token for ACR: {ex}")
             return None
 
+        # Try to get tenant_id from CLI context first, then fall back to subscription profile
         tenant_id = (cmd.cli_ctx.data or {}).get("tenant_id")
         if not tenant_id:
-            logger.warning("Tenant ID not found in CLI context; cannot acquire ACR token.")
-            return None
+            from azext_edge.edge.util.az_client import get_tenant_id
+
+            try:
+                tenant_id = get_tenant_id()
+            except Exception:  # pragma: no cover - profile access failures
+                logger.warning(
+                    "Tenant ID not found in CLI context or subscription profile; cannot acquire ACR token."
+                )
+                return None
 
         exchange_url = f"https://{registry}/oauth2/exchange"
         exchange_payload = {

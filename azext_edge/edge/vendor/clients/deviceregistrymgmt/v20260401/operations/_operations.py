@@ -46,7 +46,7 @@ def build_operations_list_request(**kwargs: Any) -> HttpRequest:
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-04-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -67,7 +67,7 @@ def build_asset_endpoint_profiles_list_by_subscription_request(  # pylint: disab
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-04-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -93,7 +93,7 @@ def build_asset_endpoint_profiles_list_by_resource_group_request(  # pylint: dis
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-04-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -122,7 +122,7 @@ def build_asset_endpoint_profiles_get_request(  # pylint: disable=name-too-long
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-04-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -160,7 +160,7 @@ def build_asset_endpoint_profiles_create_or_replace_request(  # pylint: disable=
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-04-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -200,7 +200,7 @@ def build_asset_endpoint_profiles_update_request(  # pylint: disable=name-too-lo
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-04-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -239,7 +239,7 @@ def build_asset_endpoint_profiles_delete_request(  # pylint: disable=name-too-lo
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-04-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -276,7 +276,7 @@ def build_assets_list_by_subscription_request(  # pylint: disable=name-too-long
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-04-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -302,7 +302,7 @@ def build_assets_list_by_resource_group_request(  # pylint: disable=name-too-lon
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-04-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -333,7 +333,7 @@ def build_assets_get_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-04-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -366,7 +366,7 @@ def build_assets_create_or_replace_request(
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-04-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -401,7 +401,7 @@ def build_assets_update_request(
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-04-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -435,7 +435,7 @@ def build_assets_delete_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-04-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -467,7 +467,7 @@ def build_billing_containers_list_by_subscription_request(  # pylint: disable=na
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-04-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -493,7 +493,7 @@ def build_billing_containers_get_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-04-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -527,7 +527,7 @@ def build_operation_status_get_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-04-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -555,7 +555,7 @@ def build_namespaces_list_by_subscription_request(  # pylint: disable=name-too-l
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-04-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -581,7 +581,7 @@ def build_namespaces_list_by_resource_group_request(  # pylint: disable=name-too
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-04-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -610,7 +610,7 @@ def build_namespaces_get_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-04-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -648,7 +648,7 @@ def build_namespaces_create_or_replace_request(  # pylint: disable=name-too-long
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-04-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -688,7 +688,7 @@ def build_namespaces_update_request(
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-04-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -727,7 +727,7 @@ def build_namespaces_delete_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-04-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -765,7 +765,7 @@ def build_namespaces_migrate_request(
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-04-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -804,7 +804,7 @@ def build_schema_registries_list_by_subscription_request(  # pylint: disable=nam
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-04-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -830,7 +830,7 @@ def build_schema_registries_list_by_resource_group_request(  # pylint: disable=n
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-04-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -859,7 +859,7 @@ def build_schema_registries_get_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-04-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -897,7 +897,7 @@ def build_schema_registries_create_or_replace_request(  # pylint: disable=name-t
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-04-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -937,7 +937,7 @@ def build_schema_registries_update_request(
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-04-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -976,7 +976,7 @@ def build_schema_registries_delete_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-04-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1013,7 +1013,7 @@ def build_namespace_assets_list_by_resource_group_request(  # pylint: disable=na
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-04-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1050,7 +1050,7 @@ def build_namespace_assets_get_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-04-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1091,7 +1091,7 @@ def build_namespace_assets_create_or_replace_request(  # pylint: disable=name-to
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-04-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1134,7 +1134,7 @@ def build_namespace_assets_update_request(
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-04-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1176,7 +1176,7 @@ def build_namespace_assets_delete_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-04-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1210,13 +1210,56 @@ def build_namespace_assets_delete_request(
     return HttpRequest(method="DELETE", url=_url, params=_params, headers=_headers, **kwargs)
 
 
+def build_namespace_assets_execute_action_request(  # pylint: disable=name-too-long
+    resource_group_name: str, namespace_name: str, asset_name: str, subscription_id: str, **kwargs: Any
+) -> HttpRequest:
+    _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
+    _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
+
+    content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-04-01"))
+    accept = _headers.pop("Accept", "application/json")
+
+    # Construct URL
+    _url = "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.DeviceRegistry/namespaces/{namespaceName}/assets/{assetName}/executeAction"  # pylint: disable=line-too-long
+    path_format_arguments = {
+        "subscriptionId": _SERIALIZER.url("subscription_id", subscription_id, "str"),
+        "resourceGroupName": _SERIALIZER.url(
+            "resource_group_name", resource_group_name, "str", max_length=90, min_length=1
+        ),
+        "namespaceName": _SERIALIZER.url(
+            "namespace_name",
+            namespace_name,
+            "str",
+            max_length=64,
+            min_length=3,
+            pattern=r"^[a-z0-9][a-z0-9-]*[a-z0-9]$",
+        ),
+        "assetName": _SERIALIZER.url(
+            "asset_name", asset_name, "str", max_length=63, min_length=3, pattern=r"^[a-z0-9][a-z0-9-]*[a-z0-9]$"
+        ),
+    }
+
+    _url: str = _url.format(**path_format_arguments)  # type: ignore
+
+    # Construct parameters
+    _params["api-version"] = _SERIALIZER.query("api_version", api_version, "str")
+
+    # Construct headers
+    if content_type is not None:
+        _headers["Content-Type"] = _SERIALIZER.header("content_type", content_type, "str")
+    _headers["Accept"] = _SERIALIZER.header("accept", accept, "str")
+
+    return HttpRequest(method="POST", url=_url, params=_params, headers=_headers, **kwargs)
+
+
 def build_namespace_devices_list_by_resource_group_request(  # pylint: disable=name-too-long
     resource_group_name: str, namespace_name: str, subscription_id: str, **kwargs: Any
 ) -> HttpRequest:
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-04-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1253,7 +1296,7 @@ def build_namespace_devices_get_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-04-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1294,7 +1337,7 @@ def build_namespace_devices_create_or_replace_request(  # pylint: disable=name-t
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-04-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1337,7 +1380,7 @@ def build_namespace_devices_update_request(
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-04-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1379,7 +1422,7 @@ def build_namespace_devices_delete_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-04-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1419,7 +1462,7 @@ def build_namespace_discovered_assets_list_by_resource_group_request(  # pylint:
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-04-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1456,7 +1499,7 @@ def build_namespace_discovered_assets_get_request(  # pylint: disable=name-too-l
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-04-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1502,7 +1545,7 @@ def build_namespace_discovered_assets_create_or_replace_request(  # pylint: disa
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-04-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1550,7 +1593,7 @@ def build_namespace_discovered_assets_update_request(  # pylint: disable=name-to
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-04-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1597,7 +1640,7 @@ def build_namespace_discovered_assets_delete_request(  # pylint: disable=name-to
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-04-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1642,7 +1685,7 @@ def build_namespace_discovered_devices_list_by_resource_group_request(  # pylint
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-04-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1679,7 +1722,7 @@ def build_namespace_discovered_devices_get_request(  # pylint: disable=name-too-
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-04-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1725,7 +1768,7 @@ def build_namespace_discovered_devices_create_or_replace_request(  # pylint: dis
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-04-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1773,7 +1816,7 @@ def build_namespace_discovered_devices_update_request(  # pylint: disable=name-t
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-04-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1820,7 +1863,7 @@ def build_namespace_discovered_devices_delete_request(  # pylint: disable=name-t
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-04-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1865,7 +1908,7 @@ def build_schemas_list_by_schema_registry_request(  # pylint: disable=name-too-l
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-04-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1902,7 +1945,7 @@ def build_schemas_get_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-04-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1943,7 +1986,7 @@ def build_schemas_create_or_replace_request(
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-04-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1985,7 +2028,7 @@ def build_schemas_delete_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-04-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -2025,7 +2068,7 @@ def build_schema_versions_list_by_schema_request(  # pylint: disable=name-too-lo
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-04-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -2070,7 +2113,7 @@ def build_schema_versions_get_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-04-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -2119,7 +2162,7 @@ def build_schema_versions_create_or_replace_request(  # pylint: disable=name-too
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-04-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -2169,7 +2212,7 @@ def build_schema_versions_delete_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2026-04-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -7454,6 +7497,20 @@ class NamespacesOperations:
                     },
                     "name": "str",  # Optional. The name of the resource.
                     "properties": {
+                        "management": {
+                            "endpoints": {
+                                "str": {
+                                    "address": "str",  # The endpoint address to
+                                      connect to. Required.
+                                    "endpointType": "str",  # Type of connection
+                                      used for management endpoint. Required.
+                                    "resourceId": "str",  # The messaging
+                                      endpoint Azure resource Id. Required.
+                                    "scopeId": "str"  # The scope ID for the
+                                      management endpoint. Required.
+                                }
+                            }
+                        },
                         "messaging": {
                             "endpoints": {
                                 "str": {
@@ -7593,6 +7650,20 @@ class NamespacesOperations:
                     },
                     "name": "str",  # Optional. The name of the resource.
                     "properties": {
+                        "management": {
+                            "endpoints": {
+                                "str": {
+                                    "address": "str",  # The endpoint address to
+                                      connect to. Required.
+                                    "endpointType": "str",  # Type of connection
+                                      used for management endpoint. Required.
+                                    "resourceId": "str",  # The messaging
+                                      endpoint Azure resource Id. Required.
+                                    "scopeId": "str"  # The scope ID for the
+                                      management endpoint. Required.
+                                }
+                            }
+                        },
                         "messaging": {
                             "endpoints": {
                                 "str": {
@@ -7735,6 +7806,20 @@ class NamespacesOperations:
                     },
                     "name": "str",  # Optional. The name of the resource.
                     "properties": {
+                        "management": {
+                            "endpoints": {
+                                "str": {
+                                    "address": "str",  # The endpoint address to
+                                      connect to. Required.
+                                    "endpointType": "str",  # Type of connection
+                                      used for management endpoint. Required.
+                                    "resourceId": "str",  # The messaging
+                                      endpoint Azure resource Id. Required.
+                                    "scopeId": "str"  # The scope ID for the
+                                      management endpoint. Required.
+                                }
+                            }
+                        },
                         "messaging": {
                             "endpoints": {
                                 "str": {
@@ -7942,6 +8027,20 @@ class NamespacesOperations:
                     },
                     "name": "str",  # Optional. The name of the resource.
                     "properties": {
+                        "management": {
+                            "endpoints": {
+                                "str": {
+                                    "address": "str",  # The endpoint address to
+                                      connect to. Required.
+                                    "endpointType": "str",  # Type of connection
+                                      used for management endpoint. Required.
+                                    "resourceId": "str",  # The messaging
+                                      endpoint Azure resource Id. Required.
+                                    "scopeId": "str"  # The scope ID for the
+                                      management endpoint. Required.
+                                }
+                            }
+                        },
                         "messaging": {
                             "endpoints": {
                                 "str": {
@@ -7999,6 +8098,20 @@ class NamespacesOperations:
                     },
                     "name": "str",  # Optional. The name of the resource.
                     "properties": {
+                        "management": {
+                            "endpoints": {
+                                "str": {
+                                    "address": "str",  # The endpoint address to
+                                      connect to. Required.
+                                    "endpointType": "str",  # Type of connection
+                                      used for management endpoint. Required.
+                                    "resourceId": "str",  # The messaging
+                                      endpoint Azure resource Id. Required.
+                                    "scopeId": "str"  # The scope ID for the
+                                      management endpoint. Required.
+                                }
+                            }
+                        },
                         "messaging": {
                             "endpoints": {
                                 "str": {
@@ -8087,6 +8200,20 @@ class NamespacesOperations:
                     },
                     "name": "str",  # Optional. The name of the resource.
                     "properties": {
+                        "management": {
+                            "endpoints": {
+                                "str": {
+                                    "address": "str",  # The endpoint address to
+                                      connect to. Required.
+                                    "endpointType": "str",  # Type of connection
+                                      used for management endpoint. Required.
+                                    "resourceId": "str",  # The messaging
+                                      endpoint Azure resource Id. Required.
+                                    "scopeId": "str"  # The scope ID for the
+                                      management endpoint. Required.
+                                }
+                            }
+                        },
                         "messaging": {
                             "endpoints": {
                                 "str": {
@@ -8167,6 +8294,20 @@ class NamespacesOperations:
                     },
                     "name": "str",  # Optional. The name of the resource.
                     "properties": {
+                        "management": {
+                            "endpoints": {
+                                "str": {
+                                    "address": "str",  # The endpoint address to
+                                      connect to. Required.
+                                    "endpointType": "str",  # Type of connection
+                                      used for management endpoint. Required.
+                                    "resourceId": "str",  # The messaging
+                                      endpoint Azure resource Id. Required.
+                                    "scopeId": "str"  # The scope ID for the
+                                      management endpoint. Required.
+                                }
+                            }
+                        },
                         "messaging": {
                             "endpoints": {
                                 "str": {
@@ -8224,6 +8365,20 @@ class NamespacesOperations:
                     },
                     "name": "str",  # Optional. The name of the resource.
                     "properties": {
+                        "management": {
+                            "endpoints": {
+                                "str": {
+                                    "address": "str",  # The endpoint address to
+                                      connect to. Required.
+                                    "endpointType": "str",  # Type of connection
+                                      used for management endpoint. Required.
+                                    "resourceId": "str",  # The messaging
+                                      endpoint Azure resource Id. Required.
+                                    "scopeId": "str"  # The scope ID for the
+                                      management endpoint. Required.
+                                }
+                            }
+                        },
                         "messaging": {
                             "endpoints": {
                                 "str": {
@@ -8423,6 +8578,20 @@ class NamespacesOperations:
                           identity. This property will only be provided for a system assigned identity.
                     },
                     "properties": {
+                        "management": {
+                            "endpoints": {
+                                "str": {
+                                    "address": "str",  # The endpoint address to
+                                      connect to. Required.
+                                    "endpointType": "str",  # Type of connection
+                                      used for management endpoint. Required.
+                                    "resourceId": "str",  # The messaging
+                                      endpoint Azure resource Id. Required.
+                                    "scopeId": "str"  # The scope ID for the
+                                      management endpoint. Required.
+                                }
+                            }
+                        },
                         "messaging": {
                             "endpoints": {
                                 "str": {
@@ -8457,6 +8626,20 @@ class NamespacesOperations:
                     },
                     "name": "str",  # Optional. The name of the resource.
                     "properties": {
+                        "management": {
+                            "endpoints": {
+                                "str": {
+                                    "address": "str",  # The endpoint address to
+                                      connect to. Required.
+                                    "endpointType": "str",  # Type of connection
+                                      used for management endpoint. Required.
+                                    "resourceId": "str",  # The messaging
+                                      endpoint Azure resource Id. Required.
+                                    "scopeId": "str"  # The scope ID for the
+                                      management endpoint. Required.
+                                }
+                            }
+                        },
                         "messaging": {
                             "endpoints": {
                                 "str": {
@@ -8545,6 +8728,20 @@ class NamespacesOperations:
                     },
                     "name": "str",  # Optional. The name of the resource.
                     "properties": {
+                        "management": {
+                            "endpoints": {
+                                "str": {
+                                    "address": "str",  # The endpoint address to
+                                      connect to. Required.
+                                    "endpointType": "str",  # Type of connection
+                                      used for management endpoint. Required.
+                                    "resourceId": "str",  # The messaging
+                                      endpoint Azure resource Id. Required.
+                                    "scopeId": "str"  # The scope ID for the
+                                      management endpoint. Required.
+                                }
+                            }
+                        },
                         "messaging": {
                             "endpoints": {
                                 "str": {
@@ -8621,6 +8818,20 @@ class NamespacesOperations:
                           identity. This property will only be provided for a system assigned identity.
                     },
                     "properties": {
+                        "management": {
+                            "endpoints": {
+                                "str": {
+                                    "address": "str",  # The endpoint address to
+                                      connect to. Required.
+                                    "endpointType": "str",  # Type of connection
+                                      used for management endpoint. Required.
+                                    "resourceId": "str",  # The messaging
+                                      endpoint Azure resource Id. Required.
+                                    "scopeId": "str"  # The scope ID for the
+                                      management endpoint. Required.
+                                }
+                            }
+                        },
                         "messaging": {
                             "endpoints": {
                                 "str": {
@@ -8655,6 +8866,20 @@ class NamespacesOperations:
                     },
                     "name": "str",  # Optional. The name of the resource.
                     "properties": {
+                        "management": {
+                            "endpoints": {
+                                "str": {
+                                    "address": "str",  # The endpoint address to
+                                      connect to. Required.
+                                    "endpointType": "str",  # Type of connection
+                                      used for management endpoint. Required.
+                                    "resourceId": "str",  # The messaging
+                                      endpoint Azure resource Id. Required.
+                                    "scopeId": "str"  # The scope ID for the
+                                      management endpoint. Required.
+                                }
+                            }
+                        },
                         "messaging": {
                             "endpoints": {
                                 "str": {
@@ -10830,47 +11055,55 @@ class NamespaceAssetsOperations:
                                     }
                                 }
                             ],
-                            "events": [
+                            "eventGroups": [
                                 {
-                                    "name": "str",  # The name of the event. Must
-                                      be unique within the status.events array. This name is used to
-                                      correlate between the spec and status event information.
-                                      Required.
-                                    "error": {
-                                        "code": "str",  # Optional. Error
-                                          code for classification of errors (ex: '400', '404', '500',
-                                          etc.).
-                                        "details": [
-                                            {
+                                    "name": "str",  # The name of the event
+                                      group. Must be unique within the status.eventGroups array. This
+                                      name is used to correlate between the spec and status event group
+                                      information. Required.
+                                    "events": [
+                                        {
+                                            "name": "str",  # The name of
+                                              the event. Must be unique within the status.events array.
+                                              This name is used to correlate between the spec and
+                                              status event information. Required.
+                                            "error": {
                                                 "code": "str",  #
-                                                  Optional. Multi-part error code for classification
-                                                  and root causing of errors (ex: 400.200.100.432).
-                                                "correlationId":
-                                                  "str",  # Optional. Unique identifier for the
-                                                  transaction to aid in debugging.
-                                                "info": "str",  #
-                                                  Optional. Human-readable helpful detailed text
-                                                  context for debugging (ex: "u201cThe following
-                                                  mechanisms are supported..."u201d).
+                                                  Optional. Error code for classification of errors
+                                                  (ex: '400', '404', '500', etc.).
+                                                "details": [
+                                                    {
+                "code": "str",  # Optional. Multi-part error
+                                                          code for classification and root causing of
+                                                          errors (ex: 400.200.100.432).
+                "correlationId": "str",  # Optional. Unique
+                                                          identifier for the transaction to aid in
+                                                          debugging.
+                "info": "str",  # Optional. Human-readable
+                                                          helpful detailed text context for debugging
+                                                          (ex: "u201cThe following mechanisms are
+                                                          supported..."u201d).
+                "message": "str"  # Optional. Human-readable
+                                                          helpful error message to provide additional
+                                                          context for error (ex: "u201cAuthentication
+                                                          method not supported"u201d).
+                                                    }
+                                                ],
                                                 "message": "str"  #
                                                   Optional. Human-readable helpful error message to
-                                                  provide additional context for error (ex:
-                                                  "u201cAuthentication method not supported"u201d).
+                                                  provide additional context for error (e.g.,:
+                                                  "u201cCapability ID 'foo' does not exist"u201d).
+                                            },
+                                            "messageSchemaReference": {
+                                                "schemaName": "str",
+                                                  # The message schema name. Required.
+                "schemaRegistryNamespace": "str",  # The message
+                                                  schema registry namespace. Required.
+                                                "schemaVersion":
+                                                  "str"  # The message schema version. Required.
                                             }
-                                        ],
-                                        "message": "str"  # Optional.
-                                          Human-readable helpful error message to provide additional
-                                          context for error (e.g.,: "u201cCapability ID 'foo' does not
-                                          exist"u201d).
-                                    },
-                                    "messageSchemaReference": {
-                                        "schemaName": "str",  # The message
-                                          schema name. Required.
-                                        "schemaRegistryNamespace": "str",  #
-                                          The message schema registry namespace. Required.
-                                        "schemaVersion": "str"  # The message
-                                          schema version. Required.
-                                    }
+                                        }
+                                    ]
                                 }
                             ],
                             "managementGroups": [
@@ -11370,47 +11603,55 @@ class NamespaceAssetsOperations:
                                     }
                                 }
                             ],
-                            "events": [
+                            "eventGroups": [
                                 {
-                                    "name": "str",  # The name of the event. Must
-                                      be unique within the status.events array. This name is used to
-                                      correlate between the spec and status event information.
-                                      Required.
-                                    "error": {
-                                        "code": "str",  # Optional. Error
-                                          code for classification of errors (ex: '400', '404', '500',
-                                          etc.).
-                                        "details": [
-                                            {
+                                    "name": "str",  # The name of the event
+                                      group. Must be unique within the status.eventGroups array. This
+                                      name is used to correlate between the spec and status event group
+                                      information. Required.
+                                    "events": [
+                                        {
+                                            "name": "str",  # The name of
+                                              the event. Must be unique within the status.events array.
+                                              This name is used to correlate between the spec and
+                                              status event information. Required.
+                                            "error": {
                                                 "code": "str",  #
-                                                  Optional. Multi-part error code for classification
-                                                  and root causing of errors (ex: 400.200.100.432).
-                                                "correlationId":
-                                                  "str",  # Optional. Unique identifier for the
-                                                  transaction to aid in debugging.
-                                                "info": "str",  #
-                                                  Optional. Human-readable helpful detailed text
-                                                  context for debugging (ex: "u201cThe following
-                                                  mechanisms are supported..."u201d).
+                                                  Optional. Error code for classification of errors
+                                                  (ex: '400', '404', '500', etc.).
+                                                "details": [
+                                                    {
+                "code": "str",  # Optional. Multi-part error
+                                                          code for classification and root causing of
+                                                          errors (ex: 400.200.100.432).
+                "correlationId": "str",  # Optional. Unique
+                                                          identifier for the transaction to aid in
+                                                          debugging.
+                "info": "str",  # Optional. Human-readable
+                                                          helpful detailed text context for debugging
+                                                          (ex: "u201cThe following mechanisms are
+                                                          supported..."u201d).
+                "message": "str"  # Optional. Human-readable
+                                                          helpful error message to provide additional
+                                                          context for error (ex: "u201cAuthentication
+                                                          method not supported"u201d).
+                                                    }
+                                                ],
                                                 "message": "str"  #
                                                   Optional. Human-readable helpful error message to
-                                                  provide additional context for error (ex:
-                                                  "u201cAuthentication method not supported"u201d).
+                                                  provide additional context for error (e.g.,:
+                                                  "u201cCapability ID 'foo' does not exist"u201d).
+                                            },
+                                            "messageSchemaReference": {
+                                                "schemaName": "str",
+                                                  # The message schema name. Required.
+                "schemaRegistryNamespace": "str",  # The message
+                                                  schema registry namespace. Required.
+                                                "schemaVersion":
+                                                  "str"  # The message schema version. Required.
                                             }
-                                        ],
-                                        "message": "str"  # Optional.
-                                          Human-readable helpful error message to provide additional
-                                          context for error (e.g.,: "u201cCapability ID 'foo' does not
-                                          exist"u201d).
-                                    },
-                                    "messageSchemaReference": {
-                                        "schemaName": "str",  # The message
-                                          schema name. Required.
-                                        "schemaRegistryNamespace": "str",  #
-                                          The message schema registry namespace. Required.
-                                        "schemaVersion": "str"  # The message
-                                          schema version. Required.
-                                    }
+                                        }
+                                    ]
                                 }
                             ],
                             "managementGroups": [
@@ -11982,47 +12223,55 @@ class NamespaceAssetsOperations:
                                     }
                                 }
                             ],
-                            "events": [
+                            "eventGroups": [
                                 {
-                                    "name": "str",  # The name of the event. Must
-                                      be unique within the status.events array. This name is used to
-                                      correlate between the spec and status event information.
-                                      Required.
-                                    "error": {
-                                        "code": "str",  # Optional. Error
-                                          code for classification of errors (ex: '400', '404', '500',
-                                          etc.).
-                                        "details": [
-                                            {
+                                    "name": "str",  # The name of the event
+                                      group. Must be unique within the status.eventGroups array. This
+                                      name is used to correlate between the spec and status event group
+                                      information. Required.
+                                    "events": [
+                                        {
+                                            "name": "str",  # The name of
+                                              the event. Must be unique within the status.events array.
+                                              This name is used to correlate between the spec and
+                                              status event information. Required.
+                                            "error": {
                                                 "code": "str",  #
-                                                  Optional. Multi-part error code for classification
-                                                  and root causing of errors (ex: 400.200.100.432).
-                                                "correlationId":
-                                                  "str",  # Optional. Unique identifier for the
-                                                  transaction to aid in debugging.
-                                                "info": "str",  #
-                                                  Optional. Human-readable helpful detailed text
-                                                  context for debugging (ex: "u201cThe following
-                                                  mechanisms are supported..."u201d).
+                                                  Optional. Error code for classification of errors
+                                                  (ex: '400', '404', '500', etc.).
+                                                "details": [
+                                                    {
+                "code": "str",  # Optional. Multi-part error
+                                                          code for classification and root causing of
+                                                          errors (ex: 400.200.100.432).
+                "correlationId": "str",  # Optional. Unique
+                                                          identifier for the transaction to aid in
+                                                          debugging.
+                "info": "str",  # Optional. Human-readable
+                                                          helpful detailed text context for debugging
+                                                          (ex: "u201cThe following mechanisms are
+                                                          supported..."u201d).
+                "message": "str"  # Optional. Human-readable
+                                                          helpful error message to provide additional
+                                                          context for error (ex: "u201cAuthentication
+                                                          method not supported"u201d).
+                                                    }
+                                                ],
                                                 "message": "str"  #
                                                   Optional. Human-readable helpful error message to
-                                                  provide additional context for error (ex:
-                                                  "u201cAuthentication method not supported"u201d).
+                                                  provide additional context for error (e.g.,:
+                                                  "u201cCapability ID 'foo' does not exist"u201d).
+                                            },
+                                            "messageSchemaReference": {
+                                                "schemaName": "str",
+                                                  # The message schema name. Required.
+                "schemaRegistryNamespace": "str",  # The message
+                                                  schema registry namespace. Required.
+                                                "schemaVersion":
+                                                  "str"  # The message schema version. Required.
                                             }
-                                        ],
-                                        "message": "str"  # Optional.
-                                          Human-readable helpful error message to provide additional
-                                          context for error (e.g.,: "u201cCapability ID 'foo' does not
-                                          exist"u201d).
-                                    },
-                                    "messageSchemaReference": {
-                                        "schemaName": "str",  # The message
-                                          schema name. Required.
-                                        "schemaRegistryNamespace": "str",  #
-                                          The message schema registry namespace. Required.
-                                        "schemaVersion": "str"  # The message
-                                          schema version. Required.
-                                    }
+                                        }
+                                    ]
                                 }
                             ],
                             "managementGroups": [
@@ -12434,47 +12683,55 @@ class NamespaceAssetsOperations:
                                     }
                                 }
                             ],
-                            "events": [
+                            "eventGroups": [
                                 {
-                                    "name": "str",  # The name of the event. Must
-                                      be unique within the status.events array. This name is used to
-                                      correlate between the spec and status event information.
-                                      Required.
-                                    "error": {
-                                        "code": "str",  # Optional. Error
-                                          code for classification of errors (ex: '400', '404', '500',
-                                          etc.).
-                                        "details": [
-                                            {
+                                    "name": "str",  # The name of the event
+                                      group. Must be unique within the status.eventGroups array. This
+                                      name is used to correlate between the spec and status event group
+                                      information. Required.
+                                    "events": [
+                                        {
+                                            "name": "str",  # The name of
+                                              the event. Must be unique within the status.events array.
+                                              This name is used to correlate between the spec and
+                                              status event information. Required.
+                                            "error": {
                                                 "code": "str",  #
-                                                  Optional. Multi-part error code for classification
-                                                  and root causing of errors (ex: 400.200.100.432).
-                                                "correlationId":
-                                                  "str",  # Optional. Unique identifier for the
-                                                  transaction to aid in debugging.
-                                                "info": "str",  #
-                                                  Optional. Human-readable helpful detailed text
-                                                  context for debugging (ex: "u201cThe following
-                                                  mechanisms are supported..."u201d).
+                                                  Optional. Error code for classification of errors
+                                                  (ex: '400', '404', '500', etc.).
+                                                "details": [
+                                                    {
+                "code": "str",  # Optional. Multi-part error
+                                                          code for classification and root causing of
+                                                          errors (ex: 400.200.100.432).
+                "correlationId": "str",  # Optional. Unique
+                                                          identifier for the transaction to aid in
+                                                          debugging.
+                "info": "str",  # Optional. Human-readable
+                                                          helpful detailed text context for debugging
+                                                          (ex: "u201cThe following mechanisms are
+                                                          supported..."u201d).
+                "message": "str"  # Optional. Human-readable
+                                                          helpful error message to provide additional
+                                                          context for error (ex: "u201cAuthentication
+                                                          method not supported"u201d).
+                                                    }
+                                                ],
                                                 "message": "str"  #
                                                   Optional. Human-readable helpful error message to
-                                                  provide additional context for error (ex:
-                                                  "u201cAuthentication method not supported"u201d).
+                                                  provide additional context for error (e.g.,:
+                                                  "u201cCapability ID 'foo' does not exist"u201d).
+                                            },
+                                            "messageSchemaReference": {
+                                                "schemaName": "str",
+                                                  # The message schema name. Required.
+                "schemaRegistryNamespace": "str",  # The message
+                                                  schema registry namespace. Required.
+                                                "schemaVersion":
+                                                  "str"  # The message schema version. Required.
                                             }
-                                        ],
-                                        "message": "str"  # Optional.
-                                          Human-readable helpful error message to provide additional
-                                          context for error (e.g.,: "u201cCapability ID 'foo' does not
-                                          exist"u201d).
-                                    },
-                                    "messageSchemaReference": {
-                                        "schemaName": "str",  # The message
-                                          schema name. Required.
-                                        "schemaRegistryNamespace": "str",  #
-                                          The message schema registry namespace. Required.
-                                        "schemaVersion": "str"  # The message
-                                          schema version. Required.
-                                    }
+                                        }
+                                    ]
                                 }
                             ],
                             "managementGroups": [
@@ -12920,47 +13177,55 @@ class NamespaceAssetsOperations:
                                     }
                                 }
                             ],
-                            "events": [
+                            "eventGroups": [
                                 {
-                                    "name": "str",  # The name of the event. Must
-                                      be unique within the status.events array. This name is used to
-                                      correlate between the spec and status event information.
-                                      Required.
-                                    "error": {
-                                        "code": "str",  # Optional. Error
-                                          code for classification of errors (ex: '400', '404', '500',
-                                          etc.).
-                                        "details": [
-                                            {
+                                    "name": "str",  # The name of the event
+                                      group. Must be unique within the status.eventGroups array. This
+                                      name is used to correlate between the spec and status event group
+                                      information. Required.
+                                    "events": [
+                                        {
+                                            "name": "str",  # The name of
+                                              the event. Must be unique within the status.events array.
+                                              This name is used to correlate between the spec and
+                                              status event information. Required.
+                                            "error": {
                                                 "code": "str",  #
-                                                  Optional. Multi-part error code for classification
-                                                  and root causing of errors (ex: 400.200.100.432).
-                                                "correlationId":
-                                                  "str",  # Optional. Unique identifier for the
-                                                  transaction to aid in debugging.
-                                                "info": "str",  #
-                                                  Optional. Human-readable helpful detailed text
-                                                  context for debugging (ex: "u201cThe following
-                                                  mechanisms are supported..."u201d).
+                                                  Optional. Error code for classification of errors
+                                                  (ex: '400', '404', '500', etc.).
+                                                "details": [
+                                                    {
+                "code": "str",  # Optional. Multi-part error
+                                                          code for classification and root causing of
+                                                          errors (ex: 400.200.100.432).
+                "correlationId": "str",  # Optional. Unique
+                                                          identifier for the transaction to aid in
+                                                          debugging.
+                "info": "str",  # Optional. Human-readable
+                                                          helpful detailed text context for debugging
+                                                          (ex: "u201cThe following mechanisms are
+                                                          supported..."u201d).
+                "message": "str"  # Optional. Human-readable
+                                                          helpful error message to provide additional
+                                                          context for error (ex: "u201cAuthentication
+                                                          method not supported"u201d).
+                                                    }
+                                                ],
                                                 "message": "str"  #
                                                   Optional. Human-readable helpful error message to
-                                                  provide additional context for error (ex:
-                                                  "u201cAuthentication method not supported"u201d).
+                                                  provide additional context for error (e.g.,:
+                                                  "u201cCapability ID 'foo' does not exist"u201d).
+                                            },
+                                            "messageSchemaReference": {
+                                                "schemaName": "str",
+                                                  # The message schema name. Required.
+                "schemaRegistryNamespace": "str",  # The message
+                                                  schema registry namespace. Required.
+                                                "schemaVersion":
+                                                  "str"  # The message schema version. Required.
                                             }
-                                        ],
-                                        "message": "str"  # Optional.
-                                          Human-readable helpful error message to provide additional
-                                          context for error (e.g.,: "u201cCapability ID 'foo' does not
-                                          exist"u201d).
-                                    },
-                                    "messageSchemaReference": {
-                                        "schemaName": "str",  # The message
-                                          schema name. Required.
-                                        "schemaRegistryNamespace": "str",  #
-                                          The message schema registry namespace. Required.
-                                        "schemaVersion": "str"  # The message
-                                          schema version. Required.
-                                    }
+                                        }
+                                    ]
                                 }
                             ],
                             "managementGroups": [
@@ -13402,47 +13667,55 @@ class NamespaceAssetsOperations:
                                     }
                                 }
                             ],
-                            "events": [
+                            "eventGroups": [
                                 {
-                                    "name": "str",  # The name of the event. Must
-                                      be unique within the status.events array. This name is used to
-                                      correlate between the spec and status event information.
-                                      Required.
-                                    "error": {
-                                        "code": "str",  # Optional. Error
-                                          code for classification of errors (ex: '400', '404', '500',
-                                          etc.).
-                                        "details": [
-                                            {
+                                    "name": "str",  # The name of the event
+                                      group. Must be unique within the status.eventGroups array. This
+                                      name is used to correlate between the spec and status event group
+                                      information. Required.
+                                    "events": [
+                                        {
+                                            "name": "str",  # The name of
+                                              the event. Must be unique within the status.events array.
+                                              This name is used to correlate between the spec and
+                                              status event information. Required.
+                                            "error": {
                                                 "code": "str",  #
-                                                  Optional. Multi-part error code for classification
-                                                  and root causing of errors (ex: 400.200.100.432).
-                                                "correlationId":
-                                                  "str",  # Optional. Unique identifier for the
-                                                  transaction to aid in debugging.
-                                                "info": "str",  #
-                                                  Optional. Human-readable helpful detailed text
-                                                  context for debugging (ex: "u201cThe following
-                                                  mechanisms are supported..."u201d).
+                                                  Optional. Error code for classification of errors
+                                                  (ex: '400', '404', '500', etc.).
+                                                "details": [
+                                                    {
+                "code": "str",  # Optional. Multi-part error
+                                                          code for classification and root causing of
+                                                          errors (ex: 400.200.100.432).
+                "correlationId": "str",  # Optional. Unique
+                                                          identifier for the transaction to aid in
+                                                          debugging.
+                "info": "str",  # Optional. Human-readable
+                                                          helpful detailed text context for debugging
+                                                          (ex: "u201cThe following mechanisms are
+                                                          supported..."u201d).
+                "message": "str"  # Optional. Human-readable
+                                                          helpful error message to provide additional
+                                                          context for error (ex: "u201cAuthentication
+                                                          method not supported"u201d).
+                                                    }
+                                                ],
                                                 "message": "str"  #
                                                   Optional. Human-readable helpful error message to
-                                                  provide additional context for error (ex:
-                                                  "u201cAuthentication method not supported"u201d).
+                                                  provide additional context for error (e.g.,:
+                                                  "u201cCapability ID 'foo' does not exist"u201d).
+                                            },
+                                            "messageSchemaReference": {
+                                                "schemaName": "str",
+                                                  # The message schema name. Required.
+                "schemaRegistryNamespace": "str",  # The message
+                                                  schema registry namespace. Required.
+                                                "schemaVersion":
+                                                  "str"  # The message schema version. Required.
                                             }
-                                        ],
-                                        "message": "str"  # Optional.
-                                          Human-readable helpful error message to provide additional
-                                          context for error (e.g.,: "u201cCapability ID 'foo' does not
-                                          exist"u201d).
-                                    },
-                                    "messageSchemaReference": {
-                                        "schemaName": "str",  # The message
-                                          schema name. Required.
-                                        "schemaRegistryNamespace": "str",  #
-                                          The message schema registry namespace. Required.
-                                        "schemaVersion": "str"  # The message
-                                          schema version. Required.
-                                    }
+                                        }
+                                    ]
                                 }
                             ],
                             "managementGroups": [
@@ -13854,47 +14127,55 @@ class NamespaceAssetsOperations:
                                     }
                                 }
                             ],
-                            "events": [
+                            "eventGroups": [
                                 {
-                                    "name": "str",  # The name of the event. Must
-                                      be unique within the status.events array. This name is used to
-                                      correlate between the spec and status event information.
-                                      Required.
-                                    "error": {
-                                        "code": "str",  # Optional. Error
-                                          code for classification of errors (ex: '400', '404', '500',
-                                          etc.).
-                                        "details": [
-                                            {
+                                    "name": "str",  # The name of the event
+                                      group. Must be unique within the status.eventGroups array. This
+                                      name is used to correlate between the spec and status event group
+                                      information. Required.
+                                    "events": [
+                                        {
+                                            "name": "str",  # The name of
+                                              the event. Must be unique within the status.events array.
+                                              This name is used to correlate between the spec and
+                                              status event information. Required.
+                                            "error": {
                                                 "code": "str",  #
-                                                  Optional. Multi-part error code for classification
-                                                  and root causing of errors (ex: 400.200.100.432).
-                                                "correlationId":
-                                                  "str",  # Optional. Unique identifier for the
-                                                  transaction to aid in debugging.
-                                                "info": "str",  #
-                                                  Optional. Human-readable helpful detailed text
-                                                  context for debugging (ex: "u201cThe following
-                                                  mechanisms are supported..."u201d).
+                                                  Optional. Error code for classification of errors
+                                                  (ex: '400', '404', '500', etc.).
+                                                "details": [
+                                                    {
+                "code": "str",  # Optional. Multi-part error
+                                                          code for classification and root causing of
+                                                          errors (ex: 400.200.100.432).
+                "correlationId": "str",  # Optional. Unique
+                                                          identifier for the transaction to aid in
+                                                          debugging.
+                "info": "str",  # Optional. Human-readable
+                                                          helpful detailed text context for debugging
+                                                          (ex: "u201cThe following mechanisms are
+                                                          supported..."u201d).
+                "message": "str"  # Optional. Human-readable
+                                                          helpful error message to provide additional
+                                                          context for error (ex: "u201cAuthentication
+                                                          method not supported"u201d).
+                                                    }
+                                                ],
                                                 "message": "str"  #
                                                   Optional. Human-readable helpful error message to
-                                                  provide additional context for error (ex:
-                                                  "u201cAuthentication method not supported"u201d).
+                                                  provide additional context for error (e.g.,:
+                                                  "u201cCapability ID 'foo' does not exist"u201d).
+                                            },
+                                            "messageSchemaReference": {
+                                                "schemaName": "str",
+                                                  # The message schema name. Required.
+                "schemaRegistryNamespace": "str",  # The message
+                                                  schema registry namespace. Required.
+                                                "schemaVersion":
+                                                  "str"  # The message schema version. Required.
                                             }
-                                        ],
-                                        "message": "str"  # Optional.
-                                          Human-readable helpful error message to provide additional
-                                          context for error (e.g.,: "u201cCapability ID 'foo' does not
-                                          exist"u201d).
-                                    },
-                                    "messageSchemaReference": {
-                                        "schemaName": "str",  # The message
-                                          schema name. Required.
-                                        "schemaRegistryNamespace": "str",  #
-                                          The message schema registry namespace. Required.
-                                        "schemaVersion": "str"  # The message
-                                          schema version. Required.
-                                    }
+                                        }
+                                    ]
                                 }
                             ],
                             "managementGroups": [
@@ -14639,47 +14920,55 @@ class NamespaceAssetsOperations:
                                     }
                                 }
                             ],
-                            "events": [
+                            "eventGroups": [
                                 {
-                                    "name": "str",  # The name of the event. Must
-                                      be unique within the status.events array. This name is used to
-                                      correlate between the spec and status event information.
-                                      Required.
-                                    "error": {
-                                        "code": "str",  # Optional. Error
-                                          code for classification of errors (ex: '400', '404', '500',
-                                          etc.).
-                                        "details": [
-                                            {
+                                    "name": "str",  # The name of the event
+                                      group. Must be unique within the status.eventGroups array. This
+                                      name is used to correlate between the spec and status event group
+                                      information. Required.
+                                    "events": [
+                                        {
+                                            "name": "str",  # The name of
+                                              the event. Must be unique within the status.events array.
+                                              This name is used to correlate between the spec and
+                                              status event information. Required.
+                                            "error": {
                                                 "code": "str",  #
-                                                  Optional. Multi-part error code for classification
-                                                  and root causing of errors (ex: 400.200.100.432).
-                                                "correlationId":
-                                                  "str",  # Optional. Unique identifier for the
-                                                  transaction to aid in debugging.
-                                                "info": "str",  #
-                                                  Optional. Human-readable helpful detailed text
-                                                  context for debugging (ex: "u201cThe following
-                                                  mechanisms are supported..."u201d).
+                                                  Optional. Error code for classification of errors
+                                                  (ex: '400', '404', '500', etc.).
+                                                "details": [
+                                                    {
+                "code": "str",  # Optional. Multi-part error
+                                                          code for classification and root causing of
+                                                          errors (ex: 400.200.100.432).
+                "correlationId": "str",  # Optional. Unique
+                                                          identifier for the transaction to aid in
+                                                          debugging.
+                "info": "str",  # Optional. Human-readable
+                                                          helpful detailed text context for debugging
+                                                          (ex: "u201cThe following mechanisms are
+                                                          supported..."u201d).
+                "message": "str"  # Optional. Human-readable
+                                                          helpful error message to provide additional
+                                                          context for error (ex: "u201cAuthentication
+                                                          method not supported"u201d).
+                                                    }
+                                                ],
                                                 "message": "str"  #
                                                   Optional. Human-readable helpful error message to
-                                                  provide additional context for error (ex:
-                                                  "u201cAuthentication method not supported"u201d).
+                                                  provide additional context for error (e.g.,:
+                                                  "u201cCapability ID 'foo' does not exist"u201d).
+                                            },
+                                            "messageSchemaReference": {
+                                                "schemaName": "str",
+                                                  # The message schema name. Required.
+                "schemaRegistryNamespace": "str",  # The message
+                                                  schema registry namespace. Required.
+                                                "schemaVersion":
+                                                  "str"  # The message schema version. Required.
                                             }
-                                        ],
-                                        "message": "str"  # Optional.
-                                          Human-readable helpful error message to provide additional
-                                          context for error (e.g.,: "u201cCapability ID 'foo' does not
-                                          exist"u201d).
-                                    },
-                                    "messageSchemaReference": {
-                                        "schemaName": "str",  # The message
-                                          schema name. Required.
-                                        "schemaRegistryNamespace": "str",  #
-                                          The message schema registry namespace. Required.
-                                        "schemaVersion": "str"  # The message
-                                          schema version. Required.
-                                    }
+                                        }
+                                    ]
                                 }
                             ],
                             "managementGroups": [
@@ -15125,47 +15414,55 @@ class NamespaceAssetsOperations:
                                     }
                                 }
                             ],
-                            "events": [
+                            "eventGroups": [
                                 {
-                                    "name": "str",  # The name of the event. Must
-                                      be unique within the status.events array. This name is used to
-                                      correlate between the spec and status event information.
-                                      Required.
-                                    "error": {
-                                        "code": "str",  # Optional. Error
-                                          code for classification of errors (ex: '400', '404', '500',
-                                          etc.).
-                                        "details": [
-                                            {
+                                    "name": "str",  # The name of the event
+                                      group. Must be unique within the status.eventGroups array. This
+                                      name is used to correlate between the spec and status event group
+                                      information. Required.
+                                    "events": [
+                                        {
+                                            "name": "str",  # The name of
+                                              the event. Must be unique within the status.events array.
+                                              This name is used to correlate between the spec and
+                                              status event information. Required.
+                                            "error": {
                                                 "code": "str",  #
-                                                  Optional. Multi-part error code for classification
-                                                  and root causing of errors (ex: 400.200.100.432).
-                                                "correlationId":
-                                                  "str",  # Optional. Unique identifier for the
-                                                  transaction to aid in debugging.
-                                                "info": "str",  #
-                                                  Optional. Human-readable helpful detailed text
-                                                  context for debugging (ex: "u201cThe following
-                                                  mechanisms are supported..."u201d).
+                                                  Optional. Error code for classification of errors
+                                                  (ex: '400', '404', '500', etc.).
+                                                "details": [
+                                                    {
+                "code": "str",  # Optional. Multi-part error
+                                                          code for classification and root causing of
+                                                          errors (ex: 400.200.100.432).
+                "correlationId": "str",  # Optional. Unique
+                                                          identifier for the transaction to aid in
+                                                          debugging.
+                "info": "str",  # Optional. Human-readable
+                                                          helpful detailed text context for debugging
+                                                          (ex: "u201cThe following mechanisms are
+                                                          supported..."u201d).
+                "message": "str"  # Optional. Human-readable
+                                                          helpful error message to provide additional
+                                                          context for error (ex: "u201cAuthentication
+                                                          method not supported"u201d).
+                                                    }
+                                                ],
                                                 "message": "str"  #
                                                   Optional. Human-readable helpful error message to
-                                                  provide additional context for error (ex:
-                                                  "u201cAuthentication method not supported"u201d).
+                                                  provide additional context for error (e.g.,:
+                                                  "u201cCapability ID 'foo' does not exist"u201d).
+                                            },
+                                            "messageSchemaReference": {
+                                                "schemaName": "str",
+                                                  # The message schema name. Required.
+                "schemaRegistryNamespace": "str",  # The message
+                                                  schema registry namespace. Required.
+                                                "schemaVersion":
+                                                  "str"  # The message schema version. Required.
                                             }
-                                        ],
-                                        "message": "str"  # Optional.
-                                          Human-readable helpful error message to provide additional
-                                          context for error (e.g.,: "u201cCapability ID 'foo' does not
-                                          exist"u201d).
-                                    },
-                                    "messageSchemaReference": {
-                                        "schemaName": "str",  # The message
-                                          schema name. Required.
-                                        "schemaRegistryNamespace": "str",  #
-                                          The message schema registry namespace. Required.
-                                        "schemaVersion": "str"  # The message
-                                          schema version. Required.
-                                    }
+                                        }
+                                    ]
                                 }
                             ],
                             "managementGroups": [
@@ -15784,47 +16081,55 @@ class NamespaceAssetsOperations:
                                     }
                                 }
                             ],
-                            "events": [
+                            "eventGroups": [
                                 {
-                                    "name": "str",  # The name of the event. Must
-                                      be unique within the status.events array. This name is used to
-                                      correlate between the spec and status event information.
-                                      Required.
-                                    "error": {
-                                        "code": "str",  # Optional. Error
-                                          code for classification of errors (ex: '400', '404', '500',
-                                          etc.).
-                                        "details": [
-                                            {
+                                    "name": "str",  # The name of the event
+                                      group. Must be unique within the status.eventGroups array. This
+                                      name is used to correlate between the spec and status event group
+                                      information. Required.
+                                    "events": [
+                                        {
+                                            "name": "str",  # The name of
+                                              the event. Must be unique within the status.events array.
+                                              This name is used to correlate between the spec and
+                                              status event information. Required.
+                                            "error": {
                                                 "code": "str",  #
-                                                  Optional. Multi-part error code for classification
-                                                  and root causing of errors (ex: 400.200.100.432).
-                                                "correlationId":
-                                                  "str",  # Optional. Unique identifier for the
-                                                  transaction to aid in debugging.
-                                                "info": "str",  #
-                                                  Optional. Human-readable helpful detailed text
-                                                  context for debugging (ex: "u201cThe following
-                                                  mechanisms are supported..."u201d).
+                                                  Optional. Error code for classification of errors
+                                                  (ex: '400', '404', '500', etc.).
+                                                "details": [
+                                                    {
+                "code": "str",  # Optional. Multi-part error
+                                                          code for classification and root causing of
+                                                          errors (ex: 400.200.100.432).
+                "correlationId": "str",  # Optional. Unique
+                                                          identifier for the transaction to aid in
+                                                          debugging.
+                "info": "str",  # Optional. Human-readable
+                                                          helpful detailed text context for debugging
+                                                          (ex: "u201cThe following mechanisms are
+                                                          supported..."u201d).
+                "message": "str"  # Optional. Human-readable
+                                                          helpful error message to provide additional
+                                                          context for error (ex: "u201cAuthentication
+                                                          method not supported"u201d).
+                                                    }
+                                                ],
                                                 "message": "str"  #
                                                   Optional. Human-readable helpful error message to
-                                                  provide additional context for error (ex:
-                                                  "u201cAuthentication method not supported"u201d).
+                                                  provide additional context for error (e.g.,:
+                                                  "u201cCapability ID 'foo' does not exist"u201d).
+                                            },
+                                            "messageSchemaReference": {
+                                                "schemaName": "str",
+                                                  # The message schema name. Required.
+                "schemaRegistryNamespace": "str",  # The message
+                                                  schema registry namespace. Required.
+                                                "schemaVersion":
+                                                  "str"  # The message schema version. Required.
                                             }
-                                        ],
-                                        "message": "str"  # Optional.
-                                          Human-readable helpful error message to provide additional
-                                          context for error (e.g.,: "u201cCapability ID 'foo' does not
-                                          exist"u201d).
-                                    },
-                                    "messageSchemaReference": {
-                                        "schemaName": "str",  # The message
-                                          schema name. Required.
-                                        "schemaRegistryNamespace": "str",  #
-                                          The message schema registry namespace. Required.
-                                        "schemaVersion": "str"  # The message
-                                          schema version. Required.
-                                    }
+                                        }
+                                    ]
                                 }
                             ],
                             "managementGroups": [
@@ -16126,6 +16431,358 @@ class NamespaceAssetsOperations:
             )
         return LROPoller[None](self._client, raw_result, get_long_running_output, polling_method)  # type: ignore
 
+    def _execute_action_initial(
+        self,
+        resource_group_name: str,
+        namespace_name: str,
+        asset_name: str,
+        body: Union[JSON, IO[bytes]],
+        **kwargs: Any
+    ) -> Optional[JSON]:
+        error_map: MutableMapping[int, Type[HttpResponseError]] = {
+            401: ClientAuthenticationError,
+            404: ResourceNotFoundError,
+            409: ResourceExistsError,
+            304: ResourceNotModifiedError,
+        }
+        error_map.update(kwargs.pop("error_map", {}) or {})
+
+        _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
+        _params = kwargs.pop("params", {}) or {}
+
+        content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
+        cls: ClsType[Optional[JSON]] = kwargs.pop("cls", None)
+
+        content_type = content_type or "application/json"
+        _json = None
+        _content = None
+        if isinstance(body, (IOBase, bytes)):
+            _content = body
+        else:
+            _json = body
+
+        _request = build_namespace_assets_execute_action_request(
+            resource_group_name=resource_group_name,
+            namespace_name=namespace_name,
+            asset_name=asset_name,
+            subscription_id=self._config.subscription_id,
+            content_type=content_type,
+            api_version=self._config.api_version,
+            json=_json,
+            content=_content,
+            headers=_headers,
+            params=_params,
+        )
+        _request.url = self._client.format_url(_request.url)
+
+        _stream = False
+        pipeline_response: PipelineResponse = self._client._pipeline.run(  # pylint: disable=protected-access
+            _request, stream=_stream, **kwargs
+        )
+
+        response = pipeline_response.http_response
+
+        if response.status_code not in [200, 202]:
+            if _stream:
+                response.read()  # Load the body in memory and close the socket
+            map_error(status_code=response.status_code, response=response, error_map=error_map)
+            raise HttpResponseError(response=response, error_format=ARMErrorFormat)
+
+        deserialized = None
+        response_headers = {}
+        if response.status_code == 200:
+            if response.content:
+                deserialized = response.json()
+            else:
+                deserialized = None
+
+        if response.status_code == 202:
+            response_headers["Azure-AsyncOperation"] = self._deserialize(
+                "str", response.headers.get("Azure-AsyncOperation")
+            )
+            response_headers["Location"] = self._deserialize("str", response.headers.get("Location"))
+            response_headers["Retry-After"] = self._deserialize("int", response.headers.get("Retry-After"))
+
+        if cls:
+            return cls(pipeline_response, deserialized, response_headers)  # type: ignore
+
+        return deserialized  # type: ignore
+
+    @overload
+    def begin_execute_action(
+        self,
+        resource_group_name: str,
+        namespace_name: str,
+        asset_name: str,
+        body: JSON,
+        *,
+        content_type: str = "application/json",
+        **kwargs: Any
+    ) -> LROPoller[JSON]:
+        # pylint: disable=line-too-long
+        """A long-running resource action.
+
+        :param resource_group_name: The name of the resource group. The name is case insensitive.
+         Required.
+        :type resource_group_name: str
+        :param namespace_name: The name of the namespace. Required.
+        :type namespace_name: str
+        :param asset_name: The name of the asset. Required.
+        :type asset_name: str
+        :param body: The content of the action request. Required.
+        :type body: JSON
+        :keyword content_type: Body Parameter content-type. Content type parameter for JSON body.
+         Default value is "application/json".
+        :paramtype content_type: str
+        :return: An instance of LROPoller that returns JSON object
+        :rtype: ~azure.core.polling.LROPoller[JSON]
+        :raises ~azure.core.exceptions.HttpResponseError:
+
+        Example:
+            .. code-block:: python
+
+                # JSON input template you can fill out and use as your body input.
+                body = {
+                    "managementActionName": "str",  # Name of the management action to be
+                      executed. Required.
+                    "managementGroupName": "str",  # Name of the management group under which the
+                      action is to be executed. Required.
+                    "payload": {
+                        "str": {}  # Optional. Payload required for executing the management
+                          action.
+                    }
+                }
+
+                # response body for status code(s): 200
+                response == {
+                    "assetResourceId": "str",  # Resource ID of the asset on which the management
+                      action was executed. Required.
+                    "managementActionName": "str",  # Name of the management action that was
+                      executed. Required.
+                    "managementGroupName": "str",  # Name of the management group under which the
+                      action was executed. Required.
+                    "status": "str",  # Status of the management action execution. Required.
+                      Known values are: "Succeeded", "Failed", "Canceled", and "InProgress".
+                    "error": {
+                        "code": "str",  # Optional. Error code for classification of errors
+                          (ex: '400', '404', '500', etc.).
+                        "details": [
+                            {
+                                "code": "str",  # Optional. Multi-part error code for
+                                  classification and root causing of errors (ex: 400.200.100.432).
+                                "correlationId": "str",  # Optional. Unique
+                                  identifier for the transaction to aid in debugging.
+                                "info": "str",  # Optional. Human-readable helpful
+                                  detailed text context for debugging (ex: "u201cThe following
+                                  mechanisms are supported..."u201d).
+                                "message": "str"  # Optional. Human-readable helpful
+                                  error message to provide additional context for error (ex:
+                                  "u201cAuthentication method not supported"u201d).
+                            }
+                        ],
+                        "message": "str"  # Optional. Human-readable helpful error message to
+                          provide additional context for error (e.g.,: "u201cCapability ID 'foo' does
+                          not exist"u201d).
+                    },
+                    "response": "str"  # Optional. Response from the asset regarding the
+                      management action execution.
+                }
+        """
+
+    @overload
+    def begin_execute_action(
+        self,
+        resource_group_name: str,
+        namespace_name: str,
+        asset_name: str,
+        body: IO[bytes],
+        *,
+        content_type: str = "application/json",
+        **kwargs: Any
+    ) -> LROPoller[JSON]:
+        # pylint: disable=line-too-long
+        """A long-running resource action.
+
+        :param resource_group_name: The name of the resource group. The name is case insensitive.
+         Required.
+        :type resource_group_name: str
+        :param namespace_name: The name of the namespace. Required.
+        :type namespace_name: str
+        :param asset_name: The name of the asset. Required.
+        :type asset_name: str
+        :param body: The content of the action request. Required.
+        :type body: IO[bytes]
+        :keyword content_type: Body Parameter content-type. Content type parameter for binary body.
+         Default value is "application/json".
+        :paramtype content_type: str
+        :return: An instance of LROPoller that returns JSON object
+        :rtype: ~azure.core.polling.LROPoller[JSON]
+        :raises ~azure.core.exceptions.HttpResponseError:
+
+        Example:
+            .. code-block:: python
+
+                # response body for status code(s): 200
+                response == {
+                    "assetResourceId": "str",  # Resource ID of the asset on which the management
+                      action was executed. Required.
+                    "managementActionName": "str",  # Name of the management action that was
+                      executed. Required.
+                    "managementGroupName": "str",  # Name of the management group under which the
+                      action was executed. Required.
+                    "status": "str",  # Status of the management action execution. Required.
+                      Known values are: "Succeeded", "Failed", "Canceled", and "InProgress".
+                    "error": {
+                        "code": "str",  # Optional. Error code for classification of errors
+                          (ex: '400', '404', '500', etc.).
+                        "details": [
+                            {
+                                "code": "str",  # Optional. Multi-part error code for
+                                  classification and root causing of errors (ex: 400.200.100.432).
+                                "correlationId": "str",  # Optional. Unique
+                                  identifier for the transaction to aid in debugging.
+                                "info": "str",  # Optional. Human-readable helpful
+                                  detailed text context for debugging (ex: "u201cThe following
+                                  mechanisms are supported..."u201d).
+                                "message": "str"  # Optional. Human-readable helpful
+                                  error message to provide additional context for error (ex:
+                                  "u201cAuthentication method not supported"u201d).
+                            }
+                        ],
+                        "message": "str"  # Optional. Human-readable helpful error message to
+                          provide additional context for error (e.g.,: "u201cCapability ID 'foo' does
+                          not exist"u201d).
+                    },
+                    "response": "str"  # Optional. Response from the asset regarding the
+                      management action execution.
+                }
+        """
+
+    @distributed_trace
+    def begin_execute_action(
+        self,
+        resource_group_name: str,
+        namespace_name: str,
+        asset_name: str,
+        body: Union[JSON, IO[bytes]],
+        **kwargs: Any
+    ) -> LROPoller[JSON]:
+        # pylint: disable=line-too-long
+        """A long-running resource action.
+
+        :param resource_group_name: The name of the resource group. The name is case insensitive.
+         Required.
+        :type resource_group_name: str
+        :param namespace_name: The name of the namespace. Required.
+        :type namespace_name: str
+        :param asset_name: The name of the asset. Required.
+        :type asset_name: str
+        :param body: The content of the action request. Is either a JSON type or a IO[bytes] type.
+         Required.
+        :type body: JSON or IO[bytes]
+        :return: An instance of LROPoller that returns JSON object
+        :rtype: ~azure.core.polling.LROPoller[JSON]
+        :raises ~azure.core.exceptions.HttpResponseError:
+
+        Example:
+            .. code-block:: python
+
+                # JSON input template you can fill out and use as your body input.
+                body = {
+                    "managementActionName": "str",  # Name of the management action to be
+                      executed. Required.
+                    "managementGroupName": "str",  # Name of the management group under which the
+                      action is to be executed. Required.
+                    "payload": {
+                        "str": {}  # Optional. Payload required for executing the management
+                          action.
+                    }
+                }
+
+                # response body for status code(s): 200
+                response == {
+                    "assetResourceId": "str",  # Resource ID of the asset on which the management
+                      action was executed. Required.
+                    "managementActionName": "str",  # Name of the management action that was
+                      executed. Required.
+                    "managementGroupName": "str",  # Name of the management group under which the
+                      action was executed. Required.
+                    "status": "str",  # Status of the management action execution. Required.
+                      Known values are: "Succeeded", "Failed", "Canceled", and "InProgress".
+                    "error": {
+                        "code": "str",  # Optional. Error code for classification of errors
+                          (ex: '400', '404', '500', etc.).
+                        "details": [
+                            {
+                                "code": "str",  # Optional. Multi-part error code for
+                                  classification and root causing of errors (ex: 400.200.100.432).
+                                "correlationId": "str",  # Optional. Unique
+                                  identifier for the transaction to aid in debugging.
+                                "info": "str",  # Optional. Human-readable helpful
+                                  detailed text context for debugging (ex: "u201cThe following
+                                  mechanisms are supported..."u201d).
+                                "message": "str"  # Optional. Human-readable helpful
+                                  error message to provide additional context for error (ex:
+                                  "u201cAuthentication method not supported"u201d).
+                            }
+                        ],
+                        "message": "str"  # Optional. Human-readable helpful error message to
+                          provide additional context for error (e.g.,: "u201cCapability ID 'foo' does
+                          not exist"u201d).
+                    },
+                    "response": "str"  # Optional. Response from the asset regarding the
+                      management action execution.
+                }
+        """
+        _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
+        _params = kwargs.pop("params", {}) or {}
+
+        content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
+        cls: ClsType[JSON] = kwargs.pop("cls", None)
+        polling: Union[bool, PollingMethod] = kwargs.pop("polling", True)
+        lro_delay = kwargs.pop("polling_interval", self._config.polling_interval)
+        cont_token: Optional[str] = kwargs.pop("continuation_token", None)
+        if cont_token is None:
+            raw_result = self._execute_action_initial(
+                resource_group_name=resource_group_name,
+                namespace_name=namespace_name,
+                asset_name=asset_name,
+                body=body,
+                content_type=content_type,
+                cls=lambda x, y, z: x,
+                headers=_headers,
+                params=_params,
+                **kwargs
+            )
+        kwargs.pop("error_map", None)
+
+        def get_long_running_output(pipeline_response):
+            response = pipeline_response.http_response
+            if response.content:
+                deserialized = response.json()
+            else:
+                deserialized = None
+            if cls:
+                return cls(pipeline_response, deserialized, {})  # type: ignore
+            return deserialized
+
+        if polling is True:
+            polling_method: PollingMethod = cast(
+                PollingMethod, ARMPolling(lro_delay, lro_options={"final-state-via": "location"}, **kwargs)
+            )
+        elif polling is False:
+            polling_method = cast(PollingMethod, NoPolling())
+        else:
+            polling_method = polling
+        if cont_token:
+            return LROPoller[JSON].from_continuation_token(
+                polling_method=polling_method,
+                continuation_token=cont_token,
+                client=self._client,
+                deserialization_callback=get_long_running_output,
+            )
+        return LROPoller[JSON](self._client, raw_result, get_long_running_output, polling_method)  # type: ignore
+
 
 class NamespaceDevicesOperations:
     """
@@ -16209,9 +16866,15 @@ class NamespaceDevicesOperations:
                                         },
                                         "x509Credentials": {
                                             "certificateSecretName":
-                                              "str"  # The name of the secret containing the
+                                              "str",  # The name of the secret containing the
                                               certificate and private key (e.g. stored as .der/.pem or
                                               .der/.pfx). Required.
+                "intermediateCertificatesSecretName": "str",  # Optional.
+                                              The name of the secret containing the combined
+                                              intermediate certificates in PEM format.
+                                            "keySecretName": "str"  #
+                                              Optional. The name of the secret containing the
+                                              certificate private key in PEM or DER format.
                                         }
                                     },
                                     "trustSettings": {
@@ -16493,9 +17156,15 @@ class NamespaceDevicesOperations:
                                         },
                                         "x509Credentials": {
                                             "certificateSecretName":
-                                              "str"  # The name of the secret containing the
+                                              "str",  # The name of the secret containing the
                                               certificate and private key (e.g. stored as .der/.pem or
                                               .der/.pfx). Required.
+                "intermediateCertificatesSecretName": "str",  # Optional.
+                                              The name of the secret containing the combined
+                                              intermediate certificates in PEM format.
+                                            "keySecretName": "str"  #
+                                              Optional. The name of the secret containing the
+                                              certificate private key in PEM or DER format.
                                         }
                                     },
                                     "trustSettings": {
@@ -16849,9 +17518,15 @@ class NamespaceDevicesOperations:
                                         },
                                         "x509Credentials": {
                                             "certificateSecretName":
-                                              "str"  # The name of the secret containing the
+                                              "str",  # The name of the secret containing the
                                               certificate and private key (e.g. stored as .der/.pem or
                                               .der/.pfx). Required.
+                "intermediateCertificatesSecretName": "str",  # Optional.
+                                              The name of the secret containing the combined
+                                              intermediate certificates in PEM format.
+                                            "keySecretName": "str"  #
+                                              Optional. The name of the secret containing the
+                                              certificate private key in PEM or DER format.
                                         }
                                     },
                                     "trustSettings": {
@@ -17045,9 +17720,15 @@ class NamespaceDevicesOperations:
                                         },
                                         "x509Credentials": {
                                             "certificateSecretName":
-                                              "str"  # The name of the secret containing the
+                                              "str",  # The name of the secret containing the
                                               certificate and private key (e.g. stored as .der/.pem or
                                               .der/.pfx). Required.
+                "intermediateCertificatesSecretName": "str",  # Optional.
+                                              The name of the secret containing the combined
+                                              intermediate certificates in PEM format.
+                                            "keySecretName": "str"  #
+                                              Optional. The name of the secret containing the
+                                              certificate private key in PEM or DER format.
                                         }
                                     },
                                     "trustSettings": {
@@ -17275,9 +17956,15 @@ class NamespaceDevicesOperations:
                                         },
                                         "x509Credentials": {
                                             "certificateSecretName":
-                                              "str"  # The name of the secret containing the
+                                              "str",  # The name of the secret containing the
                                               certificate and private key (e.g. stored as .der/.pem or
                                               .der/.pfx). Required.
+                "intermediateCertificatesSecretName": "str",  # Optional.
+                                              The name of the secret containing the combined
+                                              intermediate certificates in PEM format.
+                                            "keySecretName": "str"  #
+                                              Optional. The name of the secret containing the
+                                              certificate private key in PEM or DER format.
                                         }
                                     },
                                     "trustSettings": {
@@ -17501,9 +18188,15 @@ class NamespaceDevicesOperations:
                                         },
                                         "x509Credentials": {
                                             "certificateSecretName":
-                                              "str"  # The name of the secret containing the
+                                              "str",  # The name of the secret containing the
                                               certificate and private key (e.g. stored as .der/.pem or
                                               .der/.pfx). Required.
+                "intermediateCertificatesSecretName": "str",  # Optional.
+                                              The name of the secret containing the combined
+                                              intermediate certificates in PEM format.
+                                            "keySecretName": "str"  #
+                                              Optional. The name of the secret containing the
+                                              certificate private key in PEM or DER format.
                                         }
                                     },
                                     "trustSettings": {
@@ -17697,9 +18390,15 @@ class NamespaceDevicesOperations:
                                         },
                                         "x509Credentials": {
                                             "certificateSecretName":
-                                              "str"  # The name of the secret containing the
+                                              "str",  # The name of the secret containing the
                                               certificate and private key (e.g. stored as .der/.pem or
                                               .der/.pfx). Required.
+                "intermediateCertificatesSecretName": "str",  # Optional.
+                                              The name of the secret containing the combined
+                                              intermediate certificates in PEM format.
+                                            "keySecretName": "str"  #
+                                              Optional. The name of the secret containing the
+                                              certificate private key in PEM or DER format.
                                         }
                                     },
                                     "trustSettings": {
@@ -18036,9 +18735,15 @@ class NamespaceDevicesOperations:
                                         },
                                         "x509Credentials": {
                                             "certificateSecretName":
-                                              "str"  # Optional. The name of the secret containing the
+                                              "str",  # Optional. The name of the secret containing the
                                               certificate and private key (e.g. stored as .der/.pem or
                                               .der/.pfx).
+                "intermediateCertificatesSecretName": "str",  # Optional.
+                                              The name of the secret containing the combined
+                                              intermediate certificates in PEM format.
+                                            "keySecretName": "str"  #
+                                              Optional. The name of the secret containing the
+                                              certificate private key in PEM or DER format.
                                         }
                                     },
                                     "endpointType": "str",  # Optional. Type of
@@ -18128,9 +18833,15 @@ class NamespaceDevicesOperations:
                                         },
                                         "x509Credentials": {
                                             "certificateSecretName":
-                                              "str"  # The name of the secret containing the
+                                              "str",  # The name of the secret containing the
                                               certificate and private key (e.g. stored as .der/.pem or
                                               .der/.pfx). Required.
+                "intermediateCertificatesSecretName": "str",  # Optional.
+                                              The name of the secret containing the combined
+                                              intermediate certificates in PEM format.
+                                            "keySecretName": "str"  #
+                                              Optional. The name of the secret containing the
+                                              certificate private key in PEM or DER format.
                                         }
                                     },
                                     "trustSettings": {
@@ -18358,9 +19069,15 @@ class NamespaceDevicesOperations:
                                         },
                                         "x509Credentials": {
                                             "certificateSecretName":
-                                              "str"  # The name of the secret containing the
+                                              "str",  # The name of the secret containing the
                                               certificate and private key (e.g. stored as .der/.pem or
                                               .der/.pfx). Required.
+                "intermediateCertificatesSecretName": "str",  # Optional.
+                                              The name of the secret containing the combined
+                                              intermediate certificates in PEM format.
+                                            "keySecretName": "str"  #
+                                              Optional. The name of the secret containing the
+                                              certificate private key in PEM or DER format.
                                         }
                                     },
                                     "trustSettings": {
@@ -18571,9 +19288,15 @@ class NamespaceDevicesOperations:
                                         },
                                         "x509Credentials": {
                                             "certificateSecretName":
-                                              "str"  # Optional. The name of the secret containing the
+                                              "str",  # Optional. The name of the secret containing the
                                               certificate and private key (e.g. stored as .der/.pem or
                                               .der/.pfx).
+                "intermediateCertificatesSecretName": "str",  # Optional.
+                                              The name of the secret containing the combined
+                                              intermediate certificates in PEM format.
+                                            "keySecretName": "str"  #
+                                              Optional. The name of the secret containing the
+                                              certificate private key in PEM or DER format.
                                         }
                                     },
                                     "endpointType": "str",  # Optional. Type of
@@ -18663,9 +19386,15 @@ class NamespaceDevicesOperations:
                                         },
                                         "x509Credentials": {
                                             "certificateSecretName":
-                                              "str"  # The name of the secret containing the
+                                              "str",  # The name of the secret containing the
                                               certificate and private key (e.g. stored as .der/.pem or
                                               .der/.pfx). Required.
+                "intermediateCertificatesSecretName": "str",  # Optional.
+                                              The name of the secret containing the combined
+                                              intermediate certificates in PEM format.
+                                            "keySecretName": "str"  #
+                                              Optional. The name of the secret containing the
+                                              certificate private key in PEM or DER format.
                                         }
                                     },
                                     "trustSettings": {

@@ -200,10 +200,10 @@ class NamespaceAssets(Queryable):
     def __init__(self, cmd):
         super().__init__(cmd=cmd)
         self.deviceregistry_mgmt_client = get_registry_mgmt_client(
-            subscription_id=self.default_subscription_id
+            **self._get_client_kwargs()
         )
         self.resource_mgmt_client = get_resource_client(
-            subscription_id=self.default_subscription_id
+            **self._get_client_kwargs()
         )
         self.ops: "NamespaceAssetsOperations" = self.deviceregistry_mgmt_client.namespace_assets
         self.device_ops: "NamespaceDevicesOperations" = self.deviceregistry_mgmt_client.namespace_devices
@@ -540,7 +540,7 @@ class NamespaceAssets(Queryable):
         instance_resource_group: str,
         asset_type: str,
         dataset_name: str,
-        data_source: str,
+        data_source: Optional[str] = None,
         type_ref: Optional[str] = None,
         replace: bool = False,
         # TODO: future pr, import datapoints from file
@@ -570,12 +570,13 @@ class NamespaceAssets(Queryable):
         )
         new_dataset = {
             "name": dataset_name,
-            "dataSource": data_source,
             "datasetConfiguration": processed_configs.get("datasetsConfiguration"),
             "destinations": processed_configs.get("datasetsDestinations", []),
             "dataPoints": [],  # TODO: future pr, add datapoints
             "typeRef": type_ref
         }
+        if data_source:
+            new_dataset["dataSource"] = data_source
 
         # Validate the dataset configuration against connector metadata
         try:
@@ -1330,7 +1331,7 @@ class NamespaceAssets(Queryable):
         instance_resource_group: str,
         asset_type: str,
         group_name: str,
-        data_source: str,
+        data_source: Optional[str] = None,
         type_ref: Optional[str] = None,
         replace: bool = False,
         # TODO: future pr, add events
@@ -1357,16 +1358,16 @@ class NamespaceAssets(Queryable):
             default=False,
             **kwargs
         )
-        new_egs.append(
-            {
-                "name": group_name,
-                "dataSource": data_source,
-                "eventGroupConfiguration": processed_configs.get("eventsConfiguration"),
-                "defaultDestinations": processed_configs.get("eventsDestinations", []),
-                "events": [],
-                "typeRef": type_ref
-            }
-        )
+        new_eg = {
+            "name": group_name,
+            "eventGroupConfiguration": processed_configs.get("eventsConfiguration"),
+            "defaultDestinations": processed_configs.get("eventsDestinations", []),
+            "events": [],
+            "typeRef": type_ref
+        }
+        if data_source:
+            new_eg["dataSource"] = data_source
+        new_egs.append(new_eg)
 
         update_payload = {
             "properties": {
@@ -1515,7 +1516,7 @@ class NamespaceAssets(Queryable):
         asset_type: str,
         group_name: str,
         event_name: str,
-        data_source: str,
+        data_source: Optional[str] = None,
         # Custom
         custom_configuration: Optional[str] = None,
         # OPCUA specific
@@ -1940,7 +1941,7 @@ class NamespaceAssets(Queryable):
         instance_resource_group: str,
         asset_type: str,
         group_name: str,
-        data_source: str,
+        data_source: Optional[str] = None,
         default_topic: Optional[str] = None,
         default_timeout: Optional[int] = None,
         type_ref: Optional[str] = None,
@@ -1970,17 +1971,17 @@ class NamespaceAssets(Queryable):
             default=False,
             **kwargs
         )
-        remaining_mgmt_groups.append(
-            {
-                "name": group_name,
-                "dataSource": data_source,
-                "defaultTopic": default_topic,
-                "defaultTimeoutInSeconds": default_timeout,
-                "managementGroupConfiguration": processed_configs.get("managementGroupsConfiguration"),
-                "typeRef": type_ref,
-                "actions": []  # TODO: future, add actions in add_management_group
-            }
-        )
+        new_mgmt_group = {
+            "name": group_name,
+            "defaultTopic": default_topic,
+            "defaultTimeoutInSeconds": default_timeout,
+            "managementGroupConfiguration": processed_configs.get("managementGroupsConfiguration"),
+            "typeRef": type_ref,
+            "actions": []  # TODO: future, add actions in add_management_group
+        }
+        if data_source:
+            new_mgmt_group["dataSource"] = data_source
+        remaining_mgmt_groups.append(new_mgmt_group)
         update_payload = {
             "properties": {
                 "managementGroups": remaining_mgmt_groups
@@ -2741,7 +2742,7 @@ def _create_datapoint(
 
 def _create_event(
     event_name: str,
-    data_source: str,
+    data_source: Optional[str] = None,
     type_ref: Optional[str] = None,
     queue_size: Optional[int] = None,
     sampling_interval: Optional[int] = None,
@@ -2751,8 +2752,9 @@ def _create_event(
     """Helper function to create an event dictionary."""
     event = {
         "name": event_name,
-        "dataSource": data_source,
     }
+    if data_source:
+        event["dataSource"] = data_source
     if type_ref:
         event["typeRef"] = type_ref
     if event_destinations:

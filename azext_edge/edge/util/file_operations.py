@@ -116,6 +116,28 @@ def deserialize_file_content(file_path: str) -> Any:
     raise FileOperationError(f"File contents for {file_path} cannot be read.")
 
 
+def deserialize_json_input(value: str) -> Any:
+    """Deserialize a JSON input that is either a file path or an inline JSON string.
+
+    Attempts to read the value as a file path first. If that fails (file does not exist
+    or is not a file), falls back to treating the raw value as an inline JSON string.
+    Returns the parsed Python object (dict, list, etc.).
+
+    Raises:
+        InvalidArgumentValueError: If the input cannot be parsed as valid JSON.
+    """
+    raw = value
+    try:
+        raw = read_file_content(value)
+    except FileOperationError:
+        pass  # not a file path — treat as inline JSON
+
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError as e:
+        raise InvalidArgumentValueError(f"Failed to parse JSON input: {e}") from e
+
+
 def validate_file_extension(file_name: str, expected_exts: set[str]) -> str:
     ext = os.path.splitext(file_name)[1]
     lowercased_exts = {ext.lower() for ext in expected_exts}

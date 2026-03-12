@@ -10,7 +10,7 @@ from azext_edge.edge.providers.orchestration.resources.instances import SECRET_S
 import pytest
 
 import responses
-from azure.cli.core.azclierror import InvalidArgumentValueError
+from azure.cli.core.azclierror import InvalidArgumentValueError, ValidationError
 from azext_edge.edge.commands_connector import (
     add_connector_opcua_trust,
     remove_connector_opcua_trust,
@@ -148,6 +148,34 @@ def test_trust_add(
             )
             return
         assert result == expected_secret_sync
+
+
+def test_trust_add_opcua_disabled(
+    mocked_cmd,
+    mocked_instance: Mock,
+):
+    """Verify trust_add raises ValidationError when opcua.mode is Disabled."""
+    instance_name = generate_random_string()
+    rg_name = "mock-rg"
+    mocked_instance.show.return_value = {
+        "extendedLocation": {"name": "mock-cl", "type": "CustomLocations"},
+        "location": "eastus",
+        "properties": {"features": {"opcua": {"mode": "Disabled"}}},
+    }
+
+    with pytest.raises(ValidationError) as exc_info:
+        add_connector_opcua_trust(
+            cmd=mocked_cmd,
+            instance_name=instance_name,
+            resource_group=rg_name,
+            file="/fake/path/certificate.der",
+        )
+
+    exc_str = str(exc_info.value)
+    assert "OPC UA connector is disabled" in exc_str
+    assert instance_name in exc_str
+    assert "az iot ops update" in exc_str
+    assert "opcua.mode=Stable" in exc_str
 
 
 @pytest.mark.parametrize(

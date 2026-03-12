@@ -654,6 +654,20 @@ def load_adr_arguments(self, _):
             help="The resource group of the Azure IoT Operations instance.",
         )
 
+    with self.argument_context("iot ops ns mgmt-endpoint remove") as context:
+        context.argument(
+            "resource_group_name",
+            options_list=["--resource-group", "-g"],
+            help="Resource group containing the ADR namespace.",
+        )
+        context.argument(
+            "endpoint_key",
+            options_list=["--endpoint-key"],
+            help="The management endpoint key to remove (custom location resource ID). "
+                 "Use `az iot ops ns show` to inspect available endpoint keys under "
+                 "properties.management.endpoints.",
+        )
+
     with self.argument_context("iot ops ns device") as context:
         context.argument(
             "namespace_name",
@@ -752,8 +766,10 @@ def load_adr_arguments(self, _):
         context.argument(
             "endpoint_version",
             options_list=["--version"],
-            help="Endpoint version.",
-            deprecate_info=context.deprecate(hide=True),
+            help="Endpoint version. If not provided, the version is automatically retrieved from the "
+            "connector template matching this endpoint type (if one exists). The endpoint version is required "
+            "for connector pods to be created - without it, devices will not have associated connector pods "
+            "even if a connector template is deployed.",
         )
         # TODO: add description of how to use these in the wiki
         context.argument(
@@ -827,7 +843,9 @@ def load_adr_arguments(self, _):
         context.argument(
             "endpoint_version",
             options_list=["--version"],
-            help="Endpoint version.",
+            help="Endpoint version. For custom (3rd-party) connectors, the version is required if you want "
+            "connector pods to be created. If a connector template exists for this endpoint type, the version "
+            "will be automatically retrieved from the template when not provided.",
         )
         context.argument(
             "endpoint_type",
@@ -1585,6 +1603,13 @@ def load_adr_arguments(self, _):
                 help="Replace the action if another action with the same name is already present.",
                 arg_type=get_three_state_flag(),
             )
+
+    with self.argument_context("iot ops ns asset opcua mgmt-action") as context:
+        context.argument(
+            "type_ref",
+            options_list=["--type-ref", "--tr"],
+            help="URI or type definition ID for the action.",
+        )
 
     with self.argument_context("iot ops ns asset custom dataset") as context:
         context.argument(

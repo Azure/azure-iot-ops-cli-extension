@@ -944,7 +944,7 @@ def load_iotops_help():
           For more information on Azure Data Lake Storage Gen2 dataflow endpoint, see
           https://aka.ms/adlsv2.
           Note: When using user assigned managed identity authentication method,
-          scope will default to 'https://storage.azure.com/.default' if not
+          scope will default to `https://storage.azure.com/.default` if not
           specified by `--scope`.
 
         examples:
@@ -2110,6 +2110,137 @@ def load_iotops_help():
     """
 
     helps[
+        "iot ops mgmt-actions"
+    ] = """
+        type: group
+        short-summary: Instance management actions configuration.
+    """
+
+    helps[
+        "iot ops mgmt-actions enable"
+    ] = """
+        type: command
+        short-summary: Enable management actions for an IoT Operations instance.
+        long-summary: |
+            Bootstraps the infrastructure enabling cloud-based invocation of management
+            actions on assets through Event Grid MQTT broker integration.
+
+            The operation configures resources across three domains:
+            - Event Grid Namespace: topic space, topic templates, and permission bindings.
+            - Device Registry Namespace: managed identity enablement and management endpoint config.
+            - IoT Operations Instance: EG dataflow endpoint, dataflow graph, and response dataflow.
+
+            The command is idempotent. If a resource already exists, it is skipped. On partial failure,
+            re-run the command to reach the desired state.
+
+            By default, role assignments (Event Grid TopicSpaces Publisher and Subscriber) are created
+            for both the ADR namespace MI and the AIO extension MI against the EG namespace.
+            Use --skip-ra to skip role assignment creation, or --adr-role-ids / --ops-role-ids to
+            provide custom role Ids.
+
+        examples:
+        - name: Enable management actions for an instance using system managed identity.
+          text: >
+            az iot ops mgmt-actions enable --instance myinstance -g myresourcegroup
+            --eg-resource-id $EG_NAMESPACE_RESOURCE_ID
+        - name: Enable management actions using a user-assigned managed identity for the EG dataflow endpoint.
+          text: >
+            az iot ops mgmt-actions enable --instance myinstance -g myresourcegroup
+            --eg-resource-id $EG_NAMESPACE_RESOURCE_ID --mi-user-assigned $UA_MI_RESOURCE_ID
+        - name: Enable management actions and skip role assignments.
+          text: >
+            az iot ops mgmt-actions enable --instance myinstance -g myresourcegroup
+            --eg-resource-id $EG_NAMESPACE_RESOURCE_ID --skip-ra
+    """
+
+    helps[
+        "iot ops mgmt-actions disable"
+    ] = """
+        type: command
+        short-summary: Disable management actions for an IoT Operations instance.
+        long-summary: |
+            Removes management actions resources associated with the instance including
+            the dataflow graph, response dataflow, EG dataflow endpoint, EG topic space,
+            permission bindings, and the ADR namespace management endpoint entry.
+
+            Role assignments are not removed as they may be shared with other resources.
+
+            The Event Grid namespace is discovered from the ADR namespace management
+            endpoint config. If the management endpoint entry has already been removed,
+            Event Grid cleanup is skipped gracefully.
+
+        examples:
+        - name: Disable management actions for an instance.
+          text: >
+            az iot ops mgmt-actions disable --instance myinstance -g myresourcegroup
+        - name: Disable management actions without confirmation prompt.
+          text: >
+            az iot ops mgmt-actions disable --instance myinstance -g myresourcegroup --yes
+    """
+
+    helps[
+        "iot ops mgmt-actions show"
+    ] = """
+        type: command
+        short-summary: Show management actions configuration for an IoT Operations instance.
+        long-summary: |
+            Checks the status of management actions resources across three areas:
+            Device Registry (ADR) namespace, Event Grid resources, and AIO dataflow resources.
+
+            Returns a structured summary with an overall enabled flag and per-domain detail
+            sections. A domain that cannot be probed (e.g. missing ADR namespace ref) returns
+            null for that section without blocking other domains from being checked.
+
+        examples:
+        - name: Show management actions configuration for an instance.
+          text: >
+            az iot ops mgmt-actions show --instance myinstance -g myresourcegroup
+    """
+
+    helps[
+        "iot ops mgmt-actions execute"
+    ] = """
+        type: command
+        short-summary: Execute a management action on a namespace asset.
+        long-summary: |
+            Invokes a management action defined on a namespace asset via the Device Registry
+            executeAction operation. The management actions infrastructure must be enabled
+            (`az iot ops mgmt-actions enable`) before actions can be executed.
+
+            The command resolves the ADR namespace from the IoT Operations instance and
+            submits the action as a long-running operation. The result includes the action
+            status, any response from the asset, and error details if the action failed.
+
+        examples:
+        - name: Execute a management action with no payload.
+          text: >
+            az iot ops mgmt-actions execute
+            --instance myinstance
+            -g myresourcegroup
+            --asset myasset
+            --group mygroup
+            --action reboot
+        - name: Execute a management action with inline JSON payload.
+          text: >
+            az iot ops mgmt-actions execute
+            --instance myinstance
+            -g myresourcegroup
+            --asset myasset
+            --group mygroup
+            --action configure
+            -p '{"temperature": {"setpoint": 72}}'
+        - name: Execute a management action with payload from file.
+          text: >
+            az iot ops mgmt-actions execute
+            --instance myinstance
+            -g myresourcegroup
+            --asset myasset
+            --group mygroup
+            --action configure
+            -p payload.json
+    """
+
+    helps[
         "iot ops schema"
     ] = """
         type: group
@@ -2256,6 +2387,123 @@ def load_iotops_help():
     ] = """
         type: group
         short-summary: Connector management.
+    """
+
+    helps[
+        "iot ops connector template"
+    ] = """
+        type: group
+        short-summary: Connector template management.
+        long-summary: |
+          Connector templates provide a standardized, metadata-driven approach to connector deployment.
+          Templates are created from connector metadata references (MCR for 1st-party connectors,
+          ACR for 3rd-party connectors), automatically populating connector-specific configuration
+          while allowing user customization of deployment parameters.
+    """
+
+    helps[
+        "iot ops connector template create"
+    ] = """
+        type: command
+        short-summary: Create a new connector template.
+        long-summary: |
+          Creates a connector template from metadata stored in a container registry. The metadata
+          automatically populates connector-specific settings, while deployment parameters like
+          replicas, log levels, and secrets can be customized.
+        examples:
+        - name: Create a template for REST connector with default settings.
+          text: >
+            az iot ops connector template create --name my-rest-template
+            --resource-group myResourceGroup --instance myAIOInstance
+            --connector-metadata-ref mcr.microsoft.com/azureiotoperations/akri-connectors/rest-metadata:1.0.6
+        - name: Create a template with custom configuration.
+          text: >
+            az iot ops connector template create --name my-rest-template
+            --resource-group myResourceGroup --instance myAIOInstance
+            --connector-metadata-ref mcr.microsoft.com/azureiotoperations/akri-connectors/rest-metadata:1.0.6
+            --replicas 3 --log-level debug --image-pull-secrets acr-credentials
+        - name: Create a template for 3rd-party connector from private ACR.
+          text: >
+            az iot ops connector template create --name custom-plc-template
+            --resource-group myResourceGroup --instance myAIOInstance
+            --connector-metadata-ref contoso.azurecr.io/connectors/plc-metadata:1.0.0
+            --image-pull-secrets acr-pull-secret
+    """
+
+    helps[
+        "iot ops connector template update"
+    ] = """
+        type: command
+        short-summary: Update an existing connector template.
+        long-summary: |
+          Updates a connector template. Deployment parameters such as replicas, log levels, secrets,
+          image pull settings, and trust settings can be modified. Connector metadata can be updated
+          to patch or minor version upgrades only. Major version updates require creating a new template.
+        examples:
+        - name: Update replica count and log level.
+          text: >
+            az iot ops connector template update --name my-rest-template
+            --resource-group myResourceGroup --instance myAIOInstance
+            --replicas 5 --log-level debug
+        - name: Update to a newer patch version of the connector.
+          text: >
+            az iot ops connector template update --name my-rest-template
+            --resource-group myResourceGroup --instance myAIOInstance
+            --connector-metadata-ref mcr.microsoft.com/azureiotoperations/akri-connectors/rest-metadata:1.0.7
+    """
+
+    helps[
+        "iot ops connector template show"
+    ] = """
+        type: command
+        short-summary: Display a connector template.
+        long-summary: |
+          Shows the complete template configuration including metadata, connector information,
+          image configuration, deployment settings, storage configuration, and security settings.
+        examples:
+        - name: Show template details in JSON format.
+          text: >
+            az iot ops connector template show --name my-rest-template
+            --resource-group myResourceGroup --instance myAIOInstance
+        - name: Show template in table format.
+          text: >
+            az iot ops connector template show --name my-rest-template
+            --resource-group myResourceGroup --instance myAIOInstance --output table
+    """
+
+    helps[
+        "iot ops connector template delete"
+    ] = """
+        type: command
+        short-summary: Delete a connector template.
+        long-summary: |
+          Deletes a connector template. Validates if template is currently in use by deployed
+          connectors and prompts for confirmation unless --yes is provided.
+        examples:
+        - name: Delete template with confirmation prompt.
+          text: >
+            az iot ops connector template delete --name my-rest-template
+            --resource-group myResourceGroup --instance myAIOInstance
+        - name: Delete template without confirmation.
+          text: >
+            az iot ops connector template delete --name my-rest-template
+            --resource-group myResourceGroup --instance myAIOInstance --yes
+    """
+
+    helps[
+        "iot ops connector template list"
+    ] = """
+        type: command
+        short-summary: List all connector templates.
+        long-summary: |
+          Lists all connector templates for a specific Azure IoT Operations instance with
+          summary information including template name, connector type, version, replicas,
+          and creation/modification dates.
+        examples:
+        - name: List all templates for an instance.
+          text: >
+            az iot ops connector template list --resource-group myResourceGroup
+            --instance myAIOInstance
     """
 
     helps[

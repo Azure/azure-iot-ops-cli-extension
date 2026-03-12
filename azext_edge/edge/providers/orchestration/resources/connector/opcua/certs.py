@@ -12,7 +12,7 @@ from typing import List, Optional, Tuple, Union, cast
 
 from azure.core.exceptions import ResourceNotFoundError, HttpResponseError
 from azure.core.pipeline.transport import HttpTransport
-from azure.cli.core.azclierror import InvalidArgumentValueError
+from azure.cli.core.azclierror import InvalidArgumentValueError, ValidationError
 from knack.log import get_logger
 from rich.console import Console
 import yaml
@@ -56,7 +56,7 @@ class OpcUACerts(Queryable):
         super().__init__(cmd=cmd)
         self.instances = Instances(self.cmd)
         self.ssc_mgmt_client = get_ssc_mgmt_client(
-            subscription_id=self.default_subscription_id,
+            **self._get_client_kwargs()
         )
         self.keyvault_client = get_keyvault_client(
             subscription_id=self.default_subscription_id,
@@ -68,6 +68,17 @@ class OpcUACerts(Queryable):
         self.resource_map = self.instances.get_resource_map(instance)
         self.extended_location = instance["extendedLocation"]
         self.location = instance["location"]
+        self.opcua_mode = instance.get("properties", {}).get("features", {}).get("opcua", {}).get("mode")
+
+    def _assert_opcua_enabled(self) -> None:
+        """Raise ValidationError if OPC UA is explicitly disabled on the instance."""
+        if self.opcua_mode == "Disabled":
+            raise ValidationError(
+                f"OPC UA connector is disabled for instance '{self.instance_name}'. "
+                "Enable it before managing OPC UA connector certificates:\n"
+                f"  az iot ops update -n {self.instance_name} -g {self.resource_group_name} "
+                "--feature opcua.mode=Stable"
+            )
 
     def trust_add(
         self,
@@ -76,6 +87,7 @@ class OpcUACerts(Queryable):
         secret_name: Optional[str] = None,
         expiration_date: Optional[str] = None,
     ) -> dict:
+        self._assert_opcua_enabled()
         default_spc = self.instances.get_default_spc(
             instance_name=self.instance_name,
             resource_group_name=self.resource_group_name,
@@ -141,6 +153,7 @@ class OpcUACerts(Queryable):
         overwrite_secret: bool = False,
         secret_name: Optional[str] = None,
     ) -> dict:
+        self._assert_opcua_enabled()
         # get default SPC
         default_spc = self.instances.get_default_spc(self.instance_name, self.resource_group_name)
         spc_name = default_spc["name"]
@@ -243,6 +256,7 @@ class OpcUACerts(Queryable):
         public_key_secret_name: Optional[str] = None,
         private_key_secret_name: Optional[str] = None,
     ) -> dict:
+        self._assert_opcua_enabled()
         default_spc = self.instances.get_default_spc(
             instance_name=self.instance_name,
             resource_group_name=self.resource_group_name,

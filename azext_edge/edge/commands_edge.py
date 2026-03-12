@@ -8,7 +8,7 @@ import json
 from pathlib import PurePath
 from typing import Any, Dict, Iterable, List, Optional, Union
 
-from azure.cli.core.azclierror import ArgumentUsageError
+from azure.cli.core.azclierror import ArgumentUsageError, InvalidArgumentValueError
 from knack.log import get_logger
 
 from .features import FeatureFlag, feature_config
@@ -16,6 +16,8 @@ from .providers.base import DEFAULT_NAMESPACE, load_config_context
 from .providers.check.common import ResourceOutputDetailLevel
 from .providers.edge_api import META_API_V1
 from .providers.orchestration.common import (
+    DEFAULT_HEALTH_CHECKS_INTERVAL,
+    DEFAULT_HEALTH_CHECKS_MAX,
     IdentityUsageType,
     MqMemoryProfile,
 )
@@ -23,6 +25,13 @@ from .providers.orchestration.resources import Instances
 from .providers.support.base import get_bundle_path
 
 logger = get_logger(__name__)
+
+
+def _validate_health_check_args(health_checks_max: int, health_checks_interval: int) -> None:
+    if health_checks_max < 0:
+        raise InvalidArgumentValueError("--health-checks-max must be >= 0.")
+    if health_checks_interval < 0:
+        raise InvalidArgumentValueError("--health-checks-int must be >= 0.")
 
 
 def support_bundle(
@@ -111,8 +120,12 @@ def init(
     cm_config: Optional[List[str]] = None,
     cm_version: Optional[str] = None,
     cm_train: Optional[str] = None,
+    health_checks_max: int = DEFAULT_HEALTH_CHECKS_MAX,
+    health_checks_interval: int = DEFAULT_HEALTH_CHECKS_INTERVAL,
     **kwargs,
 ) -> Union[Dict[str, Any], None]:
+    _validate_health_check_args(health_checks_max, health_checks_interval)
+
     from .providers.orchestration.work import WorkManager
 
     work_manager = WorkManager(cmd)
@@ -130,6 +143,8 @@ def init(
         cm_config=cm_config,
         cm_version=cm_version,
         cm_train=cm_train,
+        health_checks_max=health_checks_max,
+        health_checks_interval=health_checks_interval,
         **kwargs,
     )
     if no_progress and result_payload:
@@ -173,8 +188,12 @@ def create_instance(
     skip_sr_ra: Optional[bool] = None,
     no_progress: Optional[bool] = None,
     no_preflight: Optional[bool] = None,
+    health_checks_max: int = DEFAULT_HEALTH_CHECKS_MAX,
+    health_checks_interval: int = DEFAULT_HEALTH_CHECKS_INTERVAL,
     **kwargs,
 ) -> Union[Dict[str, Any], None]:
+    _validate_health_check_args(health_checks_max, health_checks_interval)
+
     from .providers.orchestration.work import WorkManager
     from .util import read_file_content
 
@@ -219,6 +238,8 @@ def create_instance(
         persist_mode=persist_mode,
         tags=tags,
         skip_sr_ra=skip_sr_ra,
+        health_checks_max=health_checks_max,
+        health_checks_interval=health_checks_interval,
         **kwargs,
     )
     if no_progress and result_payload:
@@ -433,8 +454,8 @@ def enable_rsync(
 def get_versions(inline: Optional[bool] = None):
     # TODO: quick and dirty, refactor this in the future.
     if inline:
+        from ..constants import AIO_RELEASE, VERSION
         from .providers.orchestration.targets import InitTargets
-        from ..constants import VERSION, AIO_RELEASE
 
         targets = InitTargets("", "")
         return {

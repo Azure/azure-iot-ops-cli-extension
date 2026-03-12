@@ -515,6 +515,45 @@ def load_iotops_adr_help():
     """
 
     helps[
+        "iot ops ns mgmt-endpoint"
+    ] = """
+        type: group
+        short-summary: Manage management endpoints on Device Registry namespaces.
+        long-summary: |
+          Management endpoints are configured by `az iot ops mgmt-actions enable` and
+          associate an Event Grid namespace with a custom location scope.
+    """
+
+    helps[
+        "iot ops ns mgmt-endpoint remove"
+    ] = """
+        type: command
+        short-summary: Remove a management endpoint entry from a Device Registry namespace.
+        long-summary: |
+          Removes a single management endpoint entry from the ADR namespace.
+          This is useful for targeted cleanup when full `mgmt-actions disable` teardown
+          is not appropriate — for example, when switching Event Grid namespaces,
+          cleaning up after an externally deleted Event Grid namespace, or removing
+          management actions configuration for a specific custom location scope without
+          tearing down the full infrastructure.
+
+          Use `az iot ops ns show` to inspect available endpoint keys under
+          properties.management.endpoints.
+
+        examples:
+        - name: Remove a management endpoint entry by key.
+          text: >
+            az iot ops ns mgmt-endpoint remove -n mynamespace -g myResourceGroup
+            --endpoint-key $CUSTOM_LOCATION_RESOURCE_ID
+
+        - name: Remove a management endpoint entry without confirmation prompt.
+          text: >
+            az iot ops ns mgmt-endpoint remove -n mynamespace -g myResourceGroup
+            --endpoint-key $CUSTOM_LOCATION_RESOURCE_ID
+            -y
+    """
+
+    helps[
         "iot ops ns device"
     ] = """
         type: group
@@ -2414,9 +2453,9 @@ def load_iotops_adr_help():
         - name: Add a basic management group to an OPC UA asset.
           text: >
             az iot ops ns asset opcua mgmt-group add --asset myopcuaasset --instance myInstance -g myInstanceResourceGroup
-            --name myManagementGroup --data-source mydatasource
+            --name myManagementGroup
 
-        - name: Add a management group with default topic and timeout.
+        - name: Add a management group with data source, default topic and timeout.
           text: >
             az iot ops ns asset opcua mgmt-group add --asset myopcuaasset --instance myInstance -g myInstanceResourceGroup
             --name myManagementGroup --default-topic factory/opcua/management/responses --default-timeout 30
@@ -2517,6 +2556,12 @@ def load_iotops_adr_help():
             az iot ops ns asset opcua mgmt-action add --asset myopcuaasset --instance myInstance -g myInstanceResourceGroup
             --group myManagementGroup --name myAction --target-uri /opcua/device_service?OPCUAProfile=Profile1
             --action-type Call --timeout 30
+
+        - name: Add an action with a type reference.
+          text: >
+            az iot ops ns asset opcua mgmt-action add --asset myopcuaasset --instance myInstance -g myInstanceResourceGroup
+            --group myManagementGroup --name myAction --target-uri /opcua/device_service?OPCUAProfile=Profile1
+            --type-ref ns=2;i=1234
 
         - name: Replace an existing action with the same name.
           text: >

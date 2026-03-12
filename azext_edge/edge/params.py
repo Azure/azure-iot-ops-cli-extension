@@ -549,7 +549,7 @@ def load_iotops_arguments(self, _):
                 options_list=["--host"],
                 help="Host of the Azure Data Explorer is "
                 "Azure Data Explorer cluster URI. In the form "
-                "of https://cluster.region.kusto.windows.net",
+                "of `https://cluster.region.kusto.windows.net`",
             )
             context.argument(
                 "authentication_type",
@@ -1423,6 +1423,21 @@ def load_iotops_arguments(self, _):
                 arg_type=get_three_state_flag(),
                 help="Disable pre-flight checks such as resource provider registration and cluster health validation.",
             )
+            context.argument(
+                "health_checks_max",
+                options_list=["--health-checks-max"],
+                type=int,
+                help="Maximum number of cluster health checks to perform before blocking deployment. "
+                "If the cluster is reported as unavailable, it will be rechecked up to this many times "
+                "with a wait between each check. Set to 0 to skip the health check entirely.",
+            )
+            context.argument(
+                "health_checks_interval",
+                options_list=["--health-checks-int"],
+                type=int,
+                help="Seconds to wait between consecutive cluster health checks when the cluster "
+                "is reported as unavailable.",
+            )
 
     for cmd_space in ["iot ops create", "iot ops update"]:
         with self.argument_context(cmd_space) as context:
@@ -1525,6 +1540,79 @@ def load_iotops_arguments(self, _):
             "instance_name",
             options_list=["--instance", "-i", "-n"],
             help="IoT Operations instance name.",
+        )
+
+    with self.argument_context("iot ops mgmt-actions") as context:
+        context.argument(
+            "instance_name",
+            options_list=["--instance", "-i", "-n"],
+            help="IoT Operations instance name.",
+        )
+
+    with self.argument_context("iot ops mgmt-actions enable") as context:
+        context.argument(
+            "eg_resource_id",
+            options_list=["--eg-resource-id"],
+            help="Event Grid Namespace ARM resource Id.",
+        )
+        context.argument(
+            "mi_user_assigned",
+            options_list=["--mi-user-assigned"],
+            help="User-assigned managed identity resource Id for EG dataflow endpoint authentication. "
+            "Default: system managed identity.",
+        )
+        context.argument(
+            "eg_client_group",
+            options_list=["--eg-client-group"],
+            help="Client group for EG permission bindings. Default: $all.",
+        )
+        context.argument(
+            "adr_role_ids",
+            options_list=["--adr-role-ids"],
+            nargs="+",
+            help="Custom role Ids for ADR namespace managed identity role assignments against the EG namespace. "
+            "Default: 'Event Grid TopicSpaces Publisher' and 'Event Grid TopicSpaces Subscriber'.",
+            arg_group="Role Assignment",
+        )
+        context.argument(
+            "ops_role_ids",
+            options_list=["--ops-role-ids"],
+            nargs="+",
+            help="Custom role Ids for AIO extension managed identity role assignments against the EG namespace. "
+            "Default: 'Event Grid TopicSpaces Publisher' and 'Event Grid TopicSpaces Subscriber'.",
+            arg_group="Role Assignment",
+        )
+        context.argument(
+            "dataflow_profile",
+            options_list=["--dataflow-profile"],
+            help="Dataflow profile name for graph and dataflow resources. Default: 'default'.",
+        )
+        context.argument(
+            "registry_endpoint",
+            options_list=["--registry-endpoint"],
+            help="Registry endpoint name for the dataflow graph. Default: 'default'.",
+        )
+
+    with self.argument_context("iot ops mgmt-actions execute") as context:
+        context.argument(
+            "asset_name",
+            options_list=["--asset"],
+            help="Name of the namespace asset to execute the management action on.",
+        )
+        context.argument(
+            "group_name",
+            options_list=["--group"],
+            help="Management group name under which the action is defined.",
+        )
+        context.argument(
+            "action_name",
+            options_list=["--action"],
+            help="Management action name to execute.",
+        )
+        context.argument(
+            "payload",
+            options_list=["--payload", "-p"],
+            help="JSON payload for the management action. Inline JSON string or file path (e.g., payload.json).",
         )
 
     with self.argument_context("iot ops schema") as context:
@@ -1659,6 +1747,118 @@ def load_iotops_arguments(self, _):
             options_list=["--content"],
             help="File path containing or inline content for the version.",
             arg_group=None,
+        )
+
+    with self.argument_context("iot ops connector template") as context:
+        context.argument(
+            "name",
+            options_list=["--name", "-n"],
+            help="Template name.",
+        )
+        context.argument(
+            "resource_group",
+            options_list=["--resource-group", "-g"],
+            help="Instance resource group.",
+        )
+        context.argument(
+            "instance",
+            options_list=["--instance", "-i"],
+            help="IoT Operations instance name.",
+        )
+        context.argument(
+            "connector_metadata_ref",
+            options_list=["--connector-metadata-ref", "--ref"],
+            help="URL to connector metadata artifact from container registry.\n\n"
+            "                1st-party connectors (MCR):\n"
+            "                - `mcr.microsoft.com/azureiotoperations/akri-connectors/rest-metadata:VERSION`\n"
+            "                - `mcr.microsoft.com/azureiotoperations/akri-connectors/media-metadata:VERSION`\n"
+            "                - `mcr.microsoft.com/azureiotoperations/akri-connectors/mqtt-metadata:VERSION`\n"
+            "                - `mcr.microsoft.com/azureiotoperations/akri-connectors/sse-metadata:VERSION`\n"
+            "                - `mcr.microsoft.com/azureiotoperations/akri-connectors/onvif-metadata:VERSION`\n\n"
+            "                3rd-party connectors:\n"
+            "                - `REGISTRY.azurecr.io/PATH-metadata:VERSION`\n\n"
+            "                To list available versions for 1st-party connectors:\n"
+            "                `curl https://mcr.microsoft.com/v2/azureiotoperations/"
+            "akri-connectors/TYPE-metadata/tags/list`",
+        )
+        context.argument(
+            "replicas",
+            options_list=["--replicas", "-r"],
+            type=int,
+            help="Number of connector pod replicas to deploy. "
+            "Default is taken from recommendedReplicas in metadata, or 1 if not specified.",
+        )
+        context.argument(
+            "log_level",
+            options_list=["--log-level", "--ll"],
+            help="Log level for connector pods. Options: trace, debug, info, warn, error. Default: info.",
+        )
+        context.argument(
+            "image_pull_policy",
+            options_list=["--image-pull-policy", "--ipp"],
+            help="Kubernetes image pull policy. Options: Always, IfNotPresent, Never.",
+        )
+        context.argument(
+            "image_pull_secrets",
+            options_list=["--image-pull-secrets", "--ips"],
+            nargs="+",
+            help="Space-separated Kubernetes secret names for pulling container images from private registries. "
+            "For 3rd-party connectors using a private container registry, provide the secret(s) containing "
+            "registry credentials to enable the connector pod to pull the image. "
+            "Use '' to clear existing image pull secrets.",
+        )
+        context.argument(
+            "allocation_policy",
+            options_list=["--allocation-policy", "--ap"],
+            help="Policy for allocating device endpoints across connector instances (case-insensitive). "
+            "Options: Bucketized. If not provided, no allocation policy will be set.",
+        )
+        context.argument(
+            "bucket_size",
+            options_list=["--bucket-size", "--bs"],
+            type=int,
+            help="Number of endpoints per connector instance bucket. "
+            "Required when allocation policy is 'Bucketized'.",
+        )
+        context.argument(
+            "secrets",
+            options_list=["--secrets"],
+            nargs="+",
+            action="append",
+            help="Space-separated connector application secrets to mount in key=value format. "
+            "Each secret requires three fields: secretRef (name of the secret to mount), "
+            "secretKey (the key in the secret to be mounted), and secretAlias (application alias). "
+            "Example: secretRef=mySecret secretKey=password secretAlias=dbPassword. "
+            "Can be used multiple times to define multiple secrets. "
+            "The secretRef must reference a secret synced via the secret provider class. "
+            "Use '' to clear existing secrets.",
+        )
+        context.argument(
+            "storage_volumes",
+            options_list=["--storage-volumes", "--sv"],
+            nargs="+",
+            help="Space-separated persistent volume claim reference in key=value format. "
+            "Required keys: claimName (name of existing PVC), mountPath (mount path in container). "
+            "Example: claimName=myPVC mountPath=/data. "
+            "Use '' to clear existing storage volumes.",
+        )
+        context.argument(
+            "trust_settings_secret_ref",
+            options_list=["--trust-settings-secret-ref", "--tssr"],
+            help="Secret reference for certificates to trust. "
+            "This specifies the name of the Kubernetes secret containing trusted CA certificates. "
+            "Use '' to clear existing trust settings.",
+        )
+        context.argument(
+            "connector_config",
+            options_list=["--connector-config", "--cc"],
+            nargs="+",
+            action="extend",
+            help="Space-separated connector-specific key-value configurations. "
+            "Format: key=value. Can provide multiple values in one call or use multiple times. "
+            "Examples: --cc brokerAddress=mqtt://broker:1883 qos=1 keepAlive=60 OR "
+            "--cc brokerAddress=mqtt://broker:1883 --cc qos=1 --cc keepAlive=60. "
+            "Use '' to clear existing configurations.",
         )
 
     with self.argument_context("iot ops connector opcua") as context:

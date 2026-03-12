@@ -28,13 +28,13 @@ class MicrosoftDeviceRegistryManagementServiceConfiguration:  # pylint: disable=
     :type credential: ~azure.core.credentials.TokenCredential
     :param subscription_id: The ID of the target subscription. The value must be an UUID. Required.
     :type subscription_id: str
-    :keyword api_version: Api Version. Default value is "2025-10-01". Note that overriding this
+    :keyword api_version: Api Version. Default value is "2026-04-01". Note that overriding this
      default value may result in unsupported behavior.
     :paramtype api_version: str
     """
 
     def __init__(self, credential: "TokenCredential", subscription_id: str, **kwargs: Any) -> None:
-        api_version: str = kwargs.pop("api_version", "2025-10-01")
+        api_version: str = kwargs.pop("api_version", "2026-04-01")
 
         if credential is None:
             raise ValueError("Parameter 'credential' must not be None.")
@@ -45,7 +45,7 @@ class MicrosoftDeviceRegistryManagementServiceConfiguration:  # pylint: disable=
         self.subscription_id = subscription_id
         self.api_version = api_version
         self.credential_scopes = kwargs.pop("credential_scopes", ["https://management.azure.com/.default"])
-        kwargs.setdefault("sdk_moniker", "device-registry/{}".format(VERSION))
+        kwargs.setdefault("sdk_moniker", "deviceregistry/{}".format(VERSION))
         self.polling_interval = kwargs.get("polling_interval", 30)
         self._configure(**kwargs)
 

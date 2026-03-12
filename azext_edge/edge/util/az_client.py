@@ -49,6 +49,7 @@ if TYPE_CHECKING:
     from ..vendor.clients.resourcehealthmgmt import MicrosoftResourceHealth
     from ..vendor.clients.secretsyncmgmt import MicrosoftSecretSyncController
     from ..vendor.clients.storagemgmt import StorageManagementClient
+    from ..vendor.clients.eventgridmgmt import EventGridManagementClient
 
 
 # TODO @digimaun - simplify client init pattern. Consider multi-profile vs static API client.
@@ -138,16 +139,50 @@ def get_storage_mgmt_client(subscription_id: str, **kwargs) -> "StorageManagemen
     )
 
 
+class EventGridMgmtApiVersion(Enum):
+    V20250215 = "2025-02-15"
+
+
+DEFAULT_EVENTGRID_MGMT_API_VERSION = EventGridMgmtApiVersion.V20250215
+
+
+def get_eventgrid_mgmt_client(
+    subscription_id: str,
+    api_version: Union[EventGridMgmtApiVersion, str] = DEFAULT_EVENTGRID_MGMT_API_VERSION,
+    **kwargs,
+) -> "EventGridManagementClient":
+    from ..vendor.clients.eventgridmgmt import EventGridManagementClient
+
+    if isinstance(api_version, EventGridMgmtApiVersion):
+        api_version = api_version.value
+
+    if "http_logging_policy" not in kwargs:
+        kwargs["http_logging_policy"] = get_default_logging_policy()
+    kwargs["api_version"] = api_version
+
+    return EventGridManagementClient(
+        credential=AZURE_CLI_CREDENTIAL,
+        subscription_id=subscription_id,
+        user_agent_policy=UserAgentPolicy(user_agent=USER_AGENT),
+        **kwargs,
+    )
+
+
 class DeviceRegistryMgmtApiVersion(Enum):
+    V20260401 = "2026-04-01"
+    V20260201_preview = "2026-02-01-preview"
     V20251001 = "2025-10-01"
     V20250701_preview = "2025-07-01-preview"
     V20241101 = "2024-11-01"
     V20240901_preview = "2024-09-01-preview"
 
 
+DEFAULT_DEVICEREGISTRY_MGMT_API_VERSION = DeviceRegistryMgmtApiVersion.V20260401
+
+
 def get_registry_mgmt_client(
     subscription_id: str,
-    api_version: Union[DeviceRegistryMgmtApiVersion, str] = DeviceRegistryMgmtApiVersion.V20251001,
+    api_version: Union[DeviceRegistryMgmtApiVersion, str] = DEFAULT_DEVICEREGISTRY_MGMT_API_VERSION,
     **kwargs,
 ) -> "MicrosoftDeviceRegistryManagementService":
     from ..vendor.clients.deviceregistrymgmt import (
@@ -170,12 +205,13 @@ def get_registry_mgmt_client(
 
 
 class IoTOpsMgmtApiVersion(Enum):
+    V20260301 = "2026-03-01"
     V20251001 = "2025-10-01"
     V20250401 = "2025-04-01"
     V20241101 = "2024-11-01"
 
 
-DEFAULT_IOTOPS_MGMT_API_VERSION = IoTOpsMgmtApiVersion.V20251001
+DEFAULT_IOTOPS_MGMT_API_VERSION = IoTOpsMgmtApiVersion.V20260301
 
 
 def get_iotops_mgmt_client(

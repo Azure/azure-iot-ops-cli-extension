@@ -5,32 +5,34 @@
 # ----------------------------------------------------------------------------------------------
 
 
-from .v20251001.operations import (
+from .v20260401.operations import (
     AssetEndpointProfilesOperations,
     AssetsOperations,
     BillingContainersOperations,
-    OperationStatusOperations,
-    NamespacesOperations,
-    SchemaRegistriesOperations,
     NamespaceAssetsOperations,
     NamespaceDevicesOperations,
     NamespaceDiscoveredAssetsOperations,
     NamespaceDiscoveredDevicesOperations,
-    SchemasOperations,
+    NamespacesOperations,
+    OperationStatusOperations,
+    Operations,
+    SchemaRegistriesOperations,
     SchemaVersionsOperations,
+    SchemasOperations,
 )
 
 __all__ = [
     "AssetEndpointProfilesOperations",
     "AssetsOperations",
     "BillingContainersOperations",
-    "OperationStatusOperations",
-    "NamespacesOperations",
-    "SchemaRegistriesOperations",
     "NamespaceAssetsOperations",
     "NamespaceDevicesOperations",
     "NamespaceDiscoveredAssetsOperations",
     "NamespaceDiscoveredDevicesOperations",
-    "SchemasOperations",
+    "NamespacesOperations",
+    "OperationStatusOperations",
+    "Operations",
+    "SchemaRegistriesOperations",
     "SchemaVersionsOperations",
+    "SchemasOperations",
 ]

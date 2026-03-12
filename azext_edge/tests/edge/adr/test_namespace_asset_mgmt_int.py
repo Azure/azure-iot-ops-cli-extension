@@ -59,19 +59,17 @@ def test_namespace_custom_asset_management_group_lifecycle_operations(
     # 1. CREATE MANAGEMENT GROUP
     default_topic = "factory/custom/management/responses"
     default_timeout = 30
-    data_source = f"nsu=customNamespace;i={randint(1, 999)}"
     custom_config_path, custom_config = create_config_file(tracked_files)
 
     mgmt_group_result = run(
         f"az iot ops ns asset custom mgmt-group add --asset {asset_name} --instance {instance_name} "
-        f"-g {resource_group} --name {mgmt_group_name} --data-source '{data_source}' "
+        f"-g {resource_group} --name {mgmt_group_name} "
         f"--default-topic '{default_topic}' --default-timeout {default_timeout} --config {custom_config_path}"
     )
 
     assert_management_group_properties(
         mgmt_group_result,
         name=mgmt_group_name,
-        data_source=data_source,
         default_topic=default_topic,
         default_timeout=default_timeout,
         custom_configuration=custom_config,
@@ -276,21 +274,19 @@ def test_namespace_opcua_asset_management_group_lifecycle_operations(require_ini
     )
     tracked_resources.append(asset_opcua["id"])
 
-    # 1. CREATE MANAGEMENT GROUP WITH FULL OPCUA CONFIGURATION
+    # 1. CREATE MANAGEMENT GROUP WITH ONLY REQUIRED PARAMS (no data-source)
     default_topic = "factory/opcua/management/responses"
     default_timeout = 45
-    data_source = f"nsu=opcuaNamespace;i={randint(1, 999)}"
 
     mgmt_group_result = run(
         f"az iot ops ns asset opcua mgmt-group add --asset {asset_name} --instance {instance_name} "
         f"-g {resource_group} --name {mgmt_group_name} --default-topic '{default_topic}' "
-        f"--default-timeout {default_timeout} --data-source '{data_source}'"
+        f"--default-timeout {default_timeout}"
     )
 
     assert_management_group_properties(
         mgmt_group_result,
         name=mgmt_group_name,
-        data_source=data_source,
         default_topic=default_topic,
         default_timeout=default_timeout,
     )
@@ -331,12 +327,11 @@ def test_namespace_opcua_asset_management_group_lifecycle_operations(require_ini
     assert_management_group_properties(
         updated_mgmt_group,
         name=mgmt_group_name,
-        data_source=data_source,
         default_topic=updated_default_topic,
         default_timeout=updated_default_timeout,
     )
 
-    # 5. CREATE MANAGEMENT GROUP WITH REPLACE
+    # 5. CREATE MANAGEMENT GROUP WITH REPLACE (with optional data-source)
     replaced_default_topic = "factory/opcua/management/replaced_responses"
     replaced_data_source = f"nsu=replacedNamespace;i={randint(1, 999)}"
     replaced_mgmt_group = run(
@@ -357,12 +352,13 @@ def test_namespace_opcua_asset_management_group_lifecycle_operations(require_ini
     action_type = "Call"
     action_timeout = 30
     action_topic = "factory/opcua/actions/production"
+    action_type_ref = "ns=2;i=1234"
 
     action_result = run(
         f"az iot ops ns asset opcua mgmt-action add --asset {asset_name} --instance {instance_name} "
         f"-g {resource_group} --group {mgmt_group_name} --name {action_name} "
         f"--target-uri {action_target_uri} --action-type {action_type} --timeout {action_timeout} "
-        f"--topic {action_topic}"
+        f"--topic {action_topic} --type-ref '{action_type_ref}'"
     )
 
     assert_management_group_action_properties(
@@ -371,7 +367,8 @@ def test_namespace_opcua_asset_management_group_lifecycle_operations(require_ini
         target_uri=action_target_uri,
         action_type=action_type,
         timeout=action_timeout,
-        topic=action_topic
+        topic=action_topic,
+        type_ref=action_type_ref
     )
 
     # 7. LIST MANAGEMENT GROUP ACTIONS

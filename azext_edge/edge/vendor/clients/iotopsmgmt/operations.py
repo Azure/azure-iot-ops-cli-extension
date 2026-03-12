@@ -5,9 +5,10 @@
 # ----------------------------------------------------------------------------------------------
 
 
-from .v20251001.operations import (
+from .v20260301.operations import (
     AkriConnectorOperations,
     AkriConnectorTemplateOperations,
+    AkriServiceOperations,
     BrokerAuthenticationOperations,
     BrokerAuthorizationOperations,
     BrokerListenerOperations,
@@ -23,6 +24,7 @@ from .v20251001.operations import (
 __all__ = [
     "AkriConnectorOperations",
     "AkriConnectorTemplateOperations",
+    "AkriServiceOperations",
     "BrokerAuthenticationOperations",
     "BrokerAuthorizationOperations",
     "BrokerListenerOperations",

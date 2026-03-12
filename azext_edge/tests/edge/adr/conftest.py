@@ -10,20 +10,6 @@ from typing import Optional
 
 from azext_edge.edge.util.id_tools import parse_resource_id
 from ...generators import generate_random_string, get_zeroed_subscription
-from ...helpers import run
-
-
-@pytest.fixture()
-def require_init(init_setup):
-    # get the custom location used for tests.
-    if not all([init_setup.get("instanceName"), init_setup.get("resourceGroup")]):
-        pytest.skip("Cannot run this test without knowing the instance information.")
-
-    cluster_result = run(
-        f"az iot ops show -n {init_setup['instanceName']} -g {init_setup['resourceGroup']} "
-    )
-    init_setup["customLocationId"] = cluster_result["extendedLocation"]["name"]
-    yield init_setup
 
 
 @pytest.fixture()
@@ -130,6 +116,18 @@ def mocked_connector_metadata_validator(mocker):
     )
 
     yield mock_validator_instance
+def mocked_get_endpoint_version_from_template(mocker):
+    """
+    Mock ConnectorTemplates to return None from get_endpoint_version_for_type by default.
+    This prevents the class from making API calls during unit tests.
+    """
+    mock = mocker.patch(
+        "azext_edge.edge.providers.adr.namespace_devices.ConnectorTemplates"
+    )
+    # Configure the mock instance's get_endpoint_version_for_type method
+    mock.return_value.get_endpoint_version_for_type.return_value = None
+    # Yield the method mock so tests can configure return values
+    yield mock.return_value.get_endpoint_version_for_type
 
 
 def get_asset_id(

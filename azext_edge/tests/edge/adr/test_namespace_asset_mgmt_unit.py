@@ -119,6 +119,10 @@ def generate_management_group_action(
 ])
 @pytest.mark.parametrize("default_topic", [None, "/factory/mgmt/operations"])
 @pytest.mark.parametrize("default_timeout", [None, 5000])
+@pytest.mark.parametrize("data_source", [
+    None,
+    f"nsu=test;i={randint(1, 1000)}",
+])
 def test_add_namespace_asset_management_group(
     mocked_cmd,
     mocked_responses: responses,
@@ -129,6 +133,7 @@ def test_add_namespace_asset_management_group(
     replace_group: bool,
     default_topic: Optional[str],
     default_timeout: Optional[int],
+    data_source: Optional[str],
     mocked_check_cluster_connectivity,
     mocked_get_namespace_for_instance
 ):
@@ -136,7 +141,6 @@ def test_add_namespace_asset_management_group(
     instance_name = "testInstance"
     instance_resource_group = "testInstanceResourceGroup"
     group_name = f"test{asset_type.title()}Group{generate_random_string(5)}"
-    data_source = f"nsu=test;i={randint(1, 1000)}"
 
     # Get the namespace from the mocked function
     namespace_resource = mocked_get_namespace_for_instance.return_value
@@ -271,7 +275,10 @@ def test_add_namespace_asset_management_group(
 
     # Verify management group properties
     assert added_group["name"] == group_name
-    assert added_group["dataSource"] == data_source
+    if data_source:
+        assert added_group["dataSource"] == data_source
+    else:
+        assert "dataSource" not in added_group
     assert added_group["typeRef"] == mgmt_params.get("type_ref")
     assert added_group["defaultTopic"] == default_topic
     assert added_group["defaultTimeoutInSeconds"] == default_timeout

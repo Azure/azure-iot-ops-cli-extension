@@ -127,7 +127,6 @@ def test_namespace_asset_smoke_test(require_init, tracked_resources: List[str], 
     # DATASET
     # add a dataset to the asset
     dataset_name = "default"
-    dataset_data_source = "sensor/temperature"
     dataset_destinations = "topic=factory/temperature qos=Qos1 retain=Keep ttl=3600"
     custom_config_path, custom_config = create_config_file(tracked_files)
 
@@ -135,7 +134,6 @@ def test_namespace_asset_smoke_test(require_init, tracked_resources: List[str], 
     dataset_result = run(
         f"az iot ops ns asset custom dataset add --asset {asset_name} "
         f"--instance {instance_name} -g {resource_group} --name {dataset_name} "
-        f"--data-source {dataset_data_source} "
         f"--destination {dataset_destinations} "
         f"--config {custom_config_path}"
     )
@@ -143,7 +141,6 @@ def test_namespace_asset_smoke_test(require_init, tracked_resources: List[str], 
     assert_dataset_properties(
         dataset_result,
         name=dataset_name,
-        data_source=dataset_data_source,
         asset_type="custom",
         custom_configuration=custom_config
     )
@@ -175,7 +172,6 @@ def test_namespace_asset_smoke_test(require_init, tracked_resources: List[str], 
     assert_dataset_properties(
         shown_dataset,
         name=dataset_name,
-        data_source=dataset_data_source,
         asset_type="custom"
     )
 
@@ -192,38 +188,34 @@ def test_namespace_asset_smoke_test(require_init, tracked_resources: List[str], 
     # EVENT
     # First create an event group
     event_group_name = f"event{generate_random_string(size=4)}"
-    data_source = "temperature.alarm"
     custom_config_path, custom_config = create_config_file(tracked_files)
     event_destinations = "topic=factory/custom/events qos=Qos1 retain=Never ttl=3600"
 
     event_group_result = run(
         f"az iot ops ns asset custom event-group add --asset {asset_name} --instance {instance_name} "
-        f"-g {resource_group} --name {event_group_name} --data-source {data_source} "
+        f"-g {resource_group} --name {event_group_name} "
         f"--config {custom_config_path} --destination {event_destinations}"
     )
 
     assert_event_properties(
         event_group_result,
         name=event_group_name,
-        data_source=data_source,
         custom_configuration=custom_config,
     )
 
     # Now add an event to the event group
     event_name = f"event{generate_random_string(size=4)}"
-    event_data_source = "temperature.level"
     custom_config_path, custom_config = create_config_file(tracked_files)
 
     event_result = run(
         f"az iot ops ns asset custom event add --asset {asset_name} --instance {instance_name} "
         f"-g {resource_group} --event-group {event_group_name} --name {event_name} "
-        f"--data-source {event_data_source} --config {custom_config_path}"
+        f"--config {custom_config_path}"
     )
 
     assert_point_properties(
         event_result,
         name=event_name,
-        data_source=event_data_source,
         custom_configuration=custom_config
     )
 
@@ -266,21 +258,19 @@ def test_namespace_asset_smoke_test(require_init, tracked_resources: List[str], 
     # MANAGEMENT GROUP
     # add management group
     mgmt_group_name = f"mgmt-{generate_random_string(8)}"
-    mgmt_data_source = "management.control"
     default_topic = "factory/custom/management/responses"
     default_timeout = 30
     custom_config_path, custom_config = create_config_file(tracked_files)
 
     mgmt_group_result = run(
         f"az iot ops ns asset custom mgmt-group add --asset {asset_name} --instance {instance_name} "
-        f"-g {resource_group} --name {mgmt_group_name} --data-source {mgmt_data_source} "
+        f"-g {resource_group} --name {mgmt_group_name} "
         f"--default-topic {default_topic} --default-timeout {default_timeout} --config {custom_config_path}"
     )
 
     assert_management_group_properties(
         mgmt_group_result,
         name=mgmt_group_name,
-        data_source=mgmt_data_source,
         default_topic=default_topic,
         default_timeout=default_timeout,
         custom_configuration=custom_config,
