@@ -276,8 +276,10 @@ class MgmtActions(Queryable):
 
                 # Validate instance version
                 instance_version = instance.get("properties", {}).get("version", "")
-                if not instance_version or (
-                    semver.parse(instance_version) < semver.parse(MIN_INSTANCE_VERSION_MGMT_ACTIONS)
+                parsed_version = semver.parse(instance_version) if instance_version else None
+                if not parsed_version or (
+                    not parsed_version.prerelease
+                    and parsed_version < semver.parse(MIN_INSTANCE_VERSION_MGMT_ACTIONS)
                 ):
                     raise ValidationError(
                         f"Instance '{name}' version '{instance_version}' does not meet the minimum "

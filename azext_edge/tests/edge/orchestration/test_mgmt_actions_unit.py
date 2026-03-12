@@ -2798,6 +2798,39 @@ class TestEnable:
 
         assert len(mocked_responses.calls) == 1
 
+    @pytest.mark.parametrize(
+        "version",
+        [
+            "1.3.0-main.20260307.5",
+            "1.0.0-alpha.1",
+            "1.3.14-rc.1",
+            "2.0.0-beta.1",
+        ],
+        ids=[
+            "ci-build-below-min-patch",
+            "prerelease-well-below-min",
+            "prerelease-at-exact-min",
+            "prerelease-above-min-major",
+        ],
+    )
+    def test_prerelease_version_skips_gate(self, mocked_cmd, mocked_responses: responses, mocker, version: str):
+        """enable() skips the minimum version check when instance version has a pre-release component."""
+        f = self._make_enable_fixtures()
+        f["instance_response"]["properties"]["version"] = version
+        mocker.patch.object(MgmtActions, "_resolve_dataflow_auth_identity", return_value="df-pid")
+        mocker.patch.object(MgmtActions, "_setup_role_assignments", return_value={})
+        self._register_enable_mocks(mocked_responses, f)
+
+        provider = MgmtActions(cmd=mocked_cmd)
+        result = provider.enable(
+            name=f["instance_name"],
+            resource_group_name=f["rg"],
+            eg_resource_id=f["eg_rid"],
+            wait_sec=0,
+        )
+
+        assert result  # Flow completed without ValidationError
+
     def test_custom_dataflow_profile(self, mocked_cmd, mocked_responses: responses, mocker):
         """enable() uses a custom dataflow profile name when provided."""
         custom_profile = "my-custom-profile"

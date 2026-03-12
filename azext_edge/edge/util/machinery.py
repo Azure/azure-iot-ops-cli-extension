@@ -4,17 +4,13 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from typing import Protocol
+from typing import TYPE_CHECKING, Type
 
-Version = object  # Placeholder for the actual Version type from semver
-
-
-class HasSemverParse(Protocol):
-    def parse(self, version: str, optional_minor_and_patch: bool = False) -> Version:
-        ...
+if TYPE_CHECKING:
+    from semver.version import Version
 
 
-def scoped_semver_import() -> HasSemverParse:
+def scoped_semver_import() -> "Type[Version]":
     """
     This is necessary to avoid conflicts with Az CLI semver import.
     """
