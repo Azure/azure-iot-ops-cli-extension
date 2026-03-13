@@ -26,12 +26,14 @@ from .base import (
     process_v1_pods,
     process_validating_webhook_configurations,
 )
-from .common import NAME_LABEL_FORMAT
+from .common import NAME_LABEL_FORMAT, RESOURCE_NAME_FIELD_FORMAT
 
 logger = get_logger(__name__)
 
 MQ_NAME_LABEL = NAME_LABEL_FORMAT.format(label=MQ_ACTIVE_API.label)
 MQ_DIRECTORY_PATH = MQ_ACTIVE_API.moniker
+# aio-broker-generation-id does not have the common label
+MQ_GENERATION_ID_FIELD_SELECTOR = RESOURCE_NAME_FIELD_FORMAT.format(name="aio-broker-generation-id")
 
 
 def fetch_diagnostic_traces():
@@ -98,10 +100,17 @@ def fetch_jobs():
 
 
 def fetch_configmaps():
-    return process_config_maps(
+    result = process_config_maps(
         directory_path=MQ_DIRECTORY_PATH,
         label_selector=MQ_NAME_LABEL,
     )
+    result.extend(
+        process_config_maps(
+            directory_path=MQ_DIRECTORY_PATH,
+            field_selector=MQ_GENERATION_ID_FIELD_SELECTOR,
+        )
+    )
+    return result
 
 
 def fetch_pods(since_seconds: int = DAY_IN_SECONDS):

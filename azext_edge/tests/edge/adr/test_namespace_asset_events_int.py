@@ -247,17 +247,19 @@ def test_namespace_opcua_asset_event_lifecycle_operations(require_namespace_init
     event_destinations = "topic=factory/opcua/events qos=Qos0 retain=Keep ttl=7200"
     publishing_interval = 500
     queue_size = 10
+    start_instance = "ns=3;i=3001"
 
     event_result = run(
         f"az iot ops ns asset opcua event-group add --asset {asset_name} --instance {instance_name} "
         f"-g {resource_group} --name {event_group_name} "
         f"--destination {event_destinations} --publish-int {publishing_interval} "
-        f"--queue-size {queue_size}"
+        f"--queue-size {queue_size} --start-inst \"{start_instance}\""
     )
 
     assert_event_properties(
         event_result,
         name=event_group_name,
+        opcua_configuration={"startInstance": start_instance},
     )
 
     # 2. LIST EVENT GROUPS
@@ -425,6 +427,33 @@ def test_namespace_onvif_asset_event_lifecycle_operations(require_namespace_init
         name=event_group_name,
         data_source=replaced_data_source
     )
+
+    # 5b. ADD EVENT to the event group
+    event_name = f"event-{generate_random_string(6, force_lower=True)}"
+    event_result = run(
+        f"az iot ops ns asset onvif event add --asset {asset_name} --instance {instance_name} "
+        f"-g {resource_group} --event-group {event_group_name} --name {event_name}"
+    )
+    assert isinstance(event_result, list)
+    assert any(ev["name"] == event_name for ev in event_result)
+
+    # 5c. LIST EVENTS
+    events_list = run(
+        f"az iot ops ns asset onvif event list --asset {asset_name} --instance {instance_name} "
+        f"-g {resource_group} --event-group {event_group_name}"
+    )
+    assert any(ev["name"] == event_name for ev in events_list)
+
+    # 5d. REMOVE EVENT
+    run(
+        f"az iot ops ns asset onvif event remove --asset {asset_name} --instance {instance_name} "
+        f"-g {resource_group} --event-group {event_group_name} --name {event_name}"
+    )
+    remaining_events = run(
+        f"az iot ops ns asset onvif event list --asset {asset_name} --instance {instance_name} "
+        f"-g {resource_group} --event-group {event_group_name}"
+    )
+    assert not any(ev["name"] == event_name for ev in remaining_events)
 
     # 6. REMOVE EVENT GROUP
     run(

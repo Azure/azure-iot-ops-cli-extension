@@ -11,7 +11,7 @@ import pytest
 import responses
 from azure.cli.core.azclierror import InvalidArgumentValueError, ValidationError
 
-from azure.core.exceptions import HttpResponseError
+from azure.core.exceptions import HttpResponseError, ResourceNotFoundError
 
 from azext_edge.edge.providers.orchestration.common import (
     CUSTOM_LOCATIONS_API_VERSION,
@@ -69,6 +69,7 @@ def suppress_workflow_display(mocker):
     """Prevent WorkflowDisplay and render_summary from writing to stderr during tests."""
     mocker.patch("azext_edge.edge.providers.orchestration.mgmt_actions.WorkflowDisplay")
     mocker.patch("azext_edge.edge.providers.orchestration.mgmt_actions.render_summary")
+    mocker.patch("azext_edge.edge.providers.orchestration.mgmt_actions.console")
 
 
 # ---------------------------------------------------------------------------
@@ -4489,6 +4490,836 @@ class TestExecute:
         execute_request = mocked_responses.calls[1]
         body = json.loads(execute_request.request.body)
         assert body["payload"] == {"temperature": {"setpoint": 72}}
+
+
+# ---------------------------------------------------------------------------
+# Schema validation tests for execute()
+# ---------------------------------------------------------------------------
+
+
+def _build_namespace_asset_endpoint(
+    namespace_name: str,
+    resource_group_name: str,
+    asset_name: str,
+    subscription_id: Optional[str] = None,
+) -> str:
+    """Build a full management endpoint URL for a namespace asset GET."""
+    sub_id = subscription_id or ZEROED_SUBSCRIPTION
+    return (
+        f"{BASE_URL}/subscriptions/{sub_id}/resourceGroups/{resource_group_name}"
+        f"/providers/{DEVICEREGISTRY_RP}/namespaces/{namespace_name}/assets/{asset_name}"
+        f"?api-version={DEVICEREGISTRY_API_VERSION}"
+    )
+
+
+def _build_schema_version_endpoint(
+    registry_rg: str,
+    registry_name: str,
+    schema_name: str,
+    schema_version: str,
+    subscription_id: Optional[str] = None,
+) -> str:
+    """Build a full management endpoint URL for a schema version GET."""
+    sub_id = subscription_id or ZEROED_SUBSCRIPTION
+    return (
+        f"{BASE_URL}/subscriptions/{sub_id}/resourceGroups/{registry_rg}"
+        f"/providers/{DEVICEREGISTRY_RP}/schemaRegistries/{registry_name}"
+        f"/schemas/{schema_name}/schemaVersions/{schema_version}"
+        f"?api-version={DEVICEREGISTRY_API_VERSION}"
+    )
+
+
+def _build_asset_response_with_schema(
+    asset_name: str,
+    group_name: str,
+    action_name: str,
+    schema_name: str,
+    schema_version: str,
+) -> dict:
+    """Build a namespace asset GET response with requestMessageSchemaReference in status."""
+    return {
+        "name": asset_name,
+        "properties": {
+            "provisioningState": "Succeeded",
+            "status": {
+                "managementGroups": [
+                    {
+                        "name": group_name,
+                        "actions": [
+                            {
+                                "name": action_name,
+                                "requestMessageSchemaReference": {
+                                    "schemaName": schema_name,
+                                    "schemaVersion": schema_version,
+                                },
+                            }
+                        ],
+                    }
+                ]
+            },
+        },
+    }
+
+
+def _build_schema_version_response(schema_content: str) -> dict:
+    """Build a schema version GET response with stringified JSON Schema."""
+    return {
+        "properties": {
+            "schemaContent": schema_content,
+        },
+    }
+
+
+class _SchemaTestBase:
+    """Shared fixtures and helpers for schema-related execute() tests."""
+
+    SCHEMA_NAME = "temperatureSchema"
+    SCHEMA_VERSION = "1"
+    REGISTRY_NAME = "mySchemaRegistry"
+
+    def _make_fixtures(self) -> dict:
+        instance_name = generate_random_string()
+        rg = generate_random_string()
+        adr_ns_name = f"{instance_name}-adr-ns"
+        asset_name = generate_random_string()
+        group_name = generate_random_string()
+        action_name = generate_random_string()
+        return {
+            "instance_name": instance_name,
+            "rg": rg,
+            "adr_ns_name": adr_ns_name,
+            "asset_name": asset_name,
+            "group_name": group_name,
+            "action_name": action_name,
+        }
+
+    def _build_instance_with_registry(self, f: dict) -> dict:
+        """Build instance response with schemaRegistryRef."""
+        resp = _build_instance_response(f["instance_name"], f["rg"], adr_namespace_name=f["adr_ns_name"])
+        registry_id = (
+            f"/subscriptions/{ZEROED_SUBSCRIPTION}/resourceGroups/{f['rg']}"
+            f"/providers/{DEVICEREGISTRY_RP}/schemaRegistries/{self.REGISTRY_NAME}"
+        )
+        resp["properties"]["schemaRegistryRef"] = {"resourceId": registry_id}
+        return resp
+
+    def _build_execute_action_endpoint(
+        self,
+        namespace_name: str,
+        resource_group_name: str,
+        asset_name: str,
+    ) -> str:
+        sub_id = ZEROED_SUBSCRIPTION
+        return (
+            f"{BASE_URL}/subscriptions/{sub_id}/resourceGroups/{resource_group_name}"
+            f"/providers/{DEVICEREGISTRY_RP}/namespaces/{namespace_name}"
+            f"/assets/{asset_name}/executeAction"
+            f"?api-version={DEVICEREGISTRY_API_VERSION}"
+        )
+
+    def _register_schema_resolution_mocks(
+        self,
+        mocked_responses: responses,
+        f: dict,
+        schema_content: str,
+    ) -> None:
+        """Register mocks for schema resolution: Instance GET → Asset GET → Schema Version GET."""
+        # Instance GET
+        mocked_responses.add(
+            method=responses.GET,
+            url=_build_iotops_endpoint(f["instance_name"], f["rg"]),
+            json=self._build_instance_with_registry(f),
+            status=200,
+        )
+        # Asset GET
+        mocked_responses.add(
+            method=responses.GET,
+            url=_build_namespace_asset_endpoint(f["adr_ns_name"], f["rg"], f["asset_name"]),
+            json=_build_asset_response_with_schema(
+                f["asset_name"], f["group_name"], f["action_name"],
+                self.SCHEMA_NAME, self.SCHEMA_VERSION,
+            ),
+            status=200,
+        )
+        # Schema Version GET
+        mocked_responses.add(
+            method=responses.GET,
+            url=_build_schema_version_endpoint(
+                f["rg"], self.REGISTRY_NAME, self.SCHEMA_NAME, self.SCHEMA_VERSION,
+            ),
+            json=_build_schema_version_response(schema_content),
+            status=200,
+        )
+
+
+class TestExecutePayloadValidation(_SchemaTestBase):
+    """Tests for payload-against-schema validation in execute().
+
+    Schema resolution is soft-fail during normal execution — if any step
+    in the chain fails, validation is skipped and executeAction proceeds.
+    """
+
+    def _register_full_validation_mocks(
+        self,
+        mocked_responses: responses,
+        f: dict,
+        schema_content: str,
+        execute_response: dict,
+    ) -> None:
+        """Register all mocks for a full validation+execution flow.
+
+        Order: Instance GET → Asset GET → Schema Version GET → executeAction POST
+        """
+        self._register_schema_resolution_mocks(mocked_responses, f, schema_content)
+        # executeAction POST
+        mocked_responses.add(
+            method=responses.POST,
+            url=self._build_execute_action_endpoint(f["adr_ns_name"], f["rg"], f["asset_name"]),
+            json=execute_response,
+            status=200,
+        )
+
+    def test_validation_passes(self, mocked_cmd, mocked_responses: responses):
+        """Schema resolved and payload conforms → executeAction called normally."""
+        f = self._make_fixtures()
+        schema = json.dumps({
+            "type": "object",
+            "properties": {"temperature": {"type": "number"}},
+        })
+        execute_response = {"status": "Succeeded"}
+        self._register_full_validation_mocks(mocked_responses, f, schema, execute_response)
+
+        provider = MgmtActions(cmd=mocked_cmd)
+        result = provider.execute(
+            instance_name=f["instance_name"],
+            resource_group_name=f["rg"],
+            asset_name=f["asset_name"],
+            group_name=f["group_name"],
+            action_name=f["action_name"],
+            payload='{"temperature": 72}',
+            wait_sec=0,
+        )
+
+        assert result == execute_response
+        # 4 calls: Instance GET, Asset GET, Schema Version GET, executeAction POST
+        assert len(mocked_responses.calls) == 4
+
+    def test_validation_fails(self, mocked_cmd, mocked_responses: responses):
+        """Schema resolved, payload violates schema → InvalidArgumentValueError before POST."""
+        f = self._make_fixtures()
+        schema = json.dumps({
+            "type": "object",
+            "properties": {"temperature": {"type": "number"}},
+            "required": ["temperature"],
+            "additionalProperties": False,
+        })
+        # Register all mocks except POST (validation should fail before it)
+        mocked_responses.add(
+            method=responses.GET,
+            url=_build_iotops_endpoint(f["instance_name"], f["rg"]),
+            json=self._build_instance_with_registry(f),
+            status=200,
+        )
+        mocked_responses.add(
+            method=responses.GET,
+            url=_build_namespace_asset_endpoint(f["adr_ns_name"], f["rg"], f["asset_name"]),
+            json=_build_asset_response_with_schema(
+                f["asset_name"], f["group_name"], f["action_name"],
+                self.SCHEMA_NAME, self.SCHEMA_VERSION,
+            ),
+            status=200,
+        )
+        mocked_responses.add(
+            method=responses.GET,
+            url=_build_schema_version_endpoint(
+                f["rg"], self.REGISTRY_NAME, self.SCHEMA_NAME, self.SCHEMA_VERSION,
+            ),
+            json=_build_schema_version_response(schema),
+            status=200,
+        )
+
+        provider = MgmtActions(cmd=mocked_cmd)
+        with pytest.raises(InvalidArgumentValueError, match="payload"):
+            provider.execute(
+                instance_name=f["instance_name"],
+                resource_group_name=f["rg"],
+                asset_name=f["asset_name"],
+                group_name=f["group_name"],
+                action_name=f["action_name"],
+                payload='{"badField": "wrong"}',
+                wait_sec=0,
+            )
+
+        # 3 calls: Instance GET, Asset GET, Schema Version GET — no POST
+        assert len(mocked_responses.calls) == 3
+
+    def test_no_payload_validates_empty_object(self, mocked_cmd, mocked_responses: responses):
+        """No payload → schema resolved, {} validated against it, executeAction proceeds."""
+        f = self._make_fixtures()
+        schema = json.dumps({
+            "type": "object",
+            "properties": {"temperature": {"type": "number"}},
+        })
+        execute_response = {"status": "Succeeded"}
+        self._register_full_validation_mocks(mocked_responses, f, schema, execute_response)
+
+        provider = MgmtActions(cmd=mocked_cmd)
+        result = provider.execute(
+            instance_name=f["instance_name"],
+            resource_group_name=f["rg"],
+            asset_name=f["asset_name"],
+            group_name=f["group_name"],
+            action_name=f["action_name"],
+            wait_sec=0,
+        )
+
+        assert result == execute_response
+        # 4 calls: Instance GET, Asset GET, Schema Version GET, executeAction POST
+        assert len(mocked_responses.calls) == 4
+
+    def test_no_payload_required_fields_fails(self, mocked_cmd, mocked_responses: responses):
+        """No payload + schema has required fields → InvalidArgumentValueError before POST."""
+        f = self._make_fixtures()
+        schema = json.dumps({
+            "type": "object",
+            "properties": {"mode": {"type": "string"}},
+            "required": ["mode"],
+        })
+        # Register all mocks except POST (validation should fail before it)
+        mocked_responses.add(
+            method=responses.GET,
+            url=_build_iotops_endpoint(f["instance_name"], f["rg"]),
+            json=self._build_instance_with_registry(f),
+            status=200,
+        )
+        mocked_responses.add(
+            method=responses.GET,
+            url=_build_namespace_asset_endpoint(f["adr_ns_name"], f["rg"], f["asset_name"]),
+            json=_build_asset_response_with_schema(
+                f["asset_name"], f["group_name"], f["action_name"],
+                self.SCHEMA_NAME, self.SCHEMA_VERSION,
+            ),
+            status=200,
+        )
+        mocked_responses.add(
+            method=responses.GET,
+            url=_build_schema_version_endpoint(
+                f["rg"], self.REGISTRY_NAME, self.SCHEMA_NAME, self.SCHEMA_VERSION,
+            ),
+            json=_build_schema_version_response(schema),
+            status=200,
+        )
+
+        provider = MgmtActions(cmd=mocked_cmd)
+        with pytest.raises(InvalidArgumentValueError, match="payload"):
+            provider.execute(
+                instance_name=f["instance_name"],
+                resource_group_name=f["rg"],
+                asset_name=f["asset_name"],
+                group_name=f["group_name"],
+                action_name=f["action_name"],
+                wait_sec=0,
+            )
+
+        # 3 calls: Instance GET, Asset GET, Schema Version GET — no POST
+        assert len(mocked_responses.calls) == 3
+
+    def test_no_validate_skips_resolution(self, mocked_cmd, mocked_responses: responses):
+        """no_validate=True → _resolve_request_schema not called, executeAction proceeds."""
+        f = self._make_fixtures()
+        execute_response = {"status": "Succeeded"}
+        # Only register instance GET and executeAction POST — no schema mocks
+        mocked_responses.add(
+            method=responses.GET,
+            url=_build_iotops_endpoint(f["instance_name"], f["rg"]),
+            json=self._build_instance_with_registry(f),
+            status=200,
+        )
+        mocked_responses.add(
+            method=responses.POST,
+            url=self._build_execute_action_endpoint(f["adr_ns_name"], f["rg"], f["asset_name"]),
+            json=execute_response,
+            status=200,
+        )
+
+        provider = MgmtActions(cmd=mocked_cmd)
+        result = provider.execute(
+            instance_name=f["instance_name"],
+            resource_group_name=f["rg"],
+            asset_name=f["asset_name"],
+            group_name=f["group_name"],
+            action_name=f["action_name"],
+            payload='{"temperature": 72}',
+            no_validate=True,
+            wait_sec=0,
+        )
+
+        assert result == execute_response
+        # 2 calls only: Instance GET, executeAction POST
+        assert len(mocked_responses.calls) == 2
+
+    def test_schema_resolution_fails_soft(self, mocked_cmd, mocked_responses: responses):
+        """Asset GET fails → validation skipped, executeAction proceeds."""
+        f = self._make_fixtures()
+        execute_response = {"status": "Succeeded"}
+        # Instance GET (with registry)
+        mocked_responses.add(
+            method=responses.GET,
+            url=_build_iotops_endpoint(f["instance_name"], f["rg"]),
+            json=self._build_instance_with_registry(f),
+            status=200,
+        )
+        # Asset GET returns 404
+        mocked_responses.add(
+            method=responses.GET,
+            url=_build_namespace_asset_endpoint(f["adr_ns_name"], f["rg"], f["asset_name"]),
+            json={"error": {"code": "ResourceNotFound"}},
+            status=404,
+        )
+        # executeAction POST (should proceed despite schema failure)
+        mocked_responses.add(
+            method=responses.POST,
+            url=self._build_execute_action_endpoint(f["adr_ns_name"], f["rg"], f["asset_name"]),
+            json=execute_response,
+            status=200,
+        )
+
+        provider = MgmtActions(cmd=mocked_cmd)
+        result = provider.execute(
+            instance_name=f["instance_name"],
+            resource_group_name=f["rg"],
+            asset_name=f["asset_name"],
+            group_name=f["group_name"],
+            action_name=f["action_name"],
+            payload='{"temperature": 72}',
+            wait_sec=0,
+        )
+
+        assert result == execute_response
+        # 3 calls: Instance GET, Asset GET (404), executeAction POST
+        assert len(mocked_responses.calls) == 3
+
+    def test_no_schema_registry_ref(self, mocked_cmd, mocked_responses: responses):
+        """Instance has no schemaRegistryRef → validation skipped, executeAction proceeds."""
+        f = self._make_fixtures()
+        execute_response = {"status": "Succeeded"}
+        # Instance without schemaRegistryRef
+        mocked_responses.add(
+            method=responses.GET,
+            url=_build_iotops_endpoint(f["instance_name"], f["rg"]),
+            json=_build_instance_response(f["instance_name"], f["rg"], adr_namespace_name=f["adr_ns_name"]),
+            status=200,
+        )
+        # executeAction POST
+        mocked_responses.add(
+            method=responses.POST,
+            url=self._build_execute_action_endpoint(f["adr_ns_name"], f["rg"], f["asset_name"]),
+            json=execute_response,
+            status=200,
+        )
+
+        provider = MgmtActions(cmd=mocked_cmd)
+        result = provider.execute(
+            instance_name=f["instance_name"],
+            resource_group_name=f["rg"],
+            asset_name=f["asset_name"],
+            group_name=f["group_name"],
+            action_name=f["action_name"],
+            payload='{"temperature": 72}',
+            wait_sec=0,
+        )
+
+        assert result == execute_response
+        # 2 calls: Instance GET, executeAction POST — no schema resolution attempted
+        assert len(mocked_responses.calls) == 2
+
+    def test_cross_subscription_registry(self, mocked_cmd, mocked_responses: responses):
+        """Schema registry in different subscription → cross-sub client created, validation works."""
+        f = self._make_fixtures()
+        cross_sub = "11111111-1111-1111-1111-111111111111"
+        schema = json.dumps({
+            "type": "object",
+            "properties": {"temperature": {"type": "number"}},
+        })
+        execute_response = {"status": "Succeeded"}
+
+        # Build instance with cross-subscription registry
+        instance_resp = _build_instance_response(
+            f["instance_name"], f["rg"], adr_namespace_name=f["adr_ns_name"],
+        )
+        registry_id = (
+            f"/subscriptions/{cross_sub}/resourceGroups/{f['rg']}"
+            f"/providers/{DEVICEREGISTRY_RP}/schemaRegistries/{self.REGISTRY_NAME}"
+        )
+        instance_resp["properties"]["schemaRegistryRef"] = {"resourceId": registry_id}
+
+        # Instance GET
+        mocked_responses.add(
+            method=responses.GET,
+            url=_build_iotops_endpoint(f["instance_name"], f["rg"]),
+            json=instance_resp,
+            status=200,
+        )
+        # Asset GET (same subscription as instance — uses self.registry_mgmt_client)
+        mocked_responses.add(
+            method=responses.GET,
+            url=_build_namespace_asset_endpoint(f["adr_ns_name"], f["rg"], f["asset_name"]),
+            json=_build_asset_response_with_schema(
+                f["asset_name"], f["group_name"], f["action_name"],
+                self.SCHEMA_NAME, self.SCHEMA_VERSION,
+            ),
+            status=200,
+        )
+        # Schema Version GET — note cross_sub in the URL (uses cross-sub client)
+        mocked_responses.add(
+            method=responses.GET,
+            url=_build_schema_version_endpoint(
+                f["rg"], self.REGISTRY_NAME, self.SCHEMA_NAME, self.SCHEMA_VERSION,
+                subscription_id=cross_sub,
+            ),
+            json=_build_schema_version_response(schema),
+            status=200,
+        )
+        # executeAction POST
+        mocked_responses.add(
+            method=responses.POST,
+            url=self._build_execute_action_endpoint(f["adr_ns_name"], f["rg"], f["asset_name"]),
+            json=execute_response,
+            status=200,
+        )
+
+        provider = MgmtActions(cmd=mocked_cmd)
+        result = provider.execute(
+            instance_name=f["instance_name"],
+            resource_group_name=f["rg"],
+            asset_name=f["asset_name"],
+            group_name=f["group_name"],
+            action_name=f["action_name"],
+            payload='{"temperature": 72}',
+            wait_sec=0,
+        )
+
+        assert result == execute_response
+        # 4 calls: Instance GET, Asset GET, Schema Version GET (cross-sub), executeAction POST
+        assert len(mocked_responses.calls) == 4
+
+    def test_no_matching_action_in_status(self, mocked_cmd, mocked_responses: responses):
+        """Asset status has no matching group/action → validation skipped."""
+        f = self._make_fixtures()
+        execute_response = {"status": "Succeeded"}
+        mocked_responses.add(
+            method=responses.GET,
+            url=_build_iotops_endpoint(f["instance_name"], f["rg"]),
+            json=self._build_instance_with_registry(f),
+            status=200,
+        )
+        # Asset with different group/action in status
+        asset_response = _build_asset_response_with_schema(
+            f["asset_name"], "otherGroup", "otherAction",
+            self.SCHEMA_NAME, self.SCHEMA_VERSION,
+        )
+        mocked_responses.add(
+            method=responses.GET,
+            url=_build_namespace_asset_endpoint(f["adr_ns_name"], f["rg"], f["asset_name"]),
+            json=asset_response,
+            status=200,
+        )
+        # executeAction POST
+        mocked_responses.add(
+            method=responses.POST,
+            url=self._build_execute_action_endpoint(f["adr_ns_name"], f["rg"], f["asset_name"]),
+            json=execute_response,
+            status=200,
+        )
+
+        provider = MgmtActions(cmd=mocked_cmd)
+        result = provider.execute(
+            instance_name=f["instance_name"],
+            resource_group_name=f["rg"],
+            asset_name=f["asset_name"],
+            group_name=f["group_name"],
+            action_name=f["action_name"],
+            payload='{"temperature": 72}',
+            wait_sec=0,
+        )
+
+        assert result == execute_response
+        # 3 calls: Instance GET, Asset GET, executeAction POST
+        assert len(mocked_responses.calls) == 3
+
+    def test_schema_content_not_json(self, mocked_cmd, mocked_responses: responses):
+        """schemaContent is malformed → validation skipped, executeAction proceeds."""
+        f = self._make_fixtures()
+        execute_response = {"status": "Succeeded"}
+        mocked_responses.add(
+            method=responses.GET,
+            url=_build_iotops_endpoint(f["instance_name"], f["rg"]),
+            json=self._build_instance_with_registry(f),
+            status=200,
+        )
+        mocked_responses.add(
+            method=responses.GET,
+            url=_build_namespace_asset_endpoint(f["adr_ns_name"], f["rg"], f["asset_name"]),
+            json=_build_asset_response_with_schema(
+                f["asset_name"], f["group_name"], f["action_name"],
+                self.SCHEMA_NAME, self.SCHEMA_VERSION,
+            ),
+            status=200,
+        )
+        # Schema version with non-JSON content
+        mocked_responses.add(
+            method=responses.GET,
+            url=_build_schema_version_endpoint(
+                f["rg"], self.REGISTRY_NAME, self.SCHEMA_NAME, self.SCHEMA_VERSION,
+            ),
+            json=_build_schema_version_response("not valid json {{{"),
+            status=200,
+        )
+        # executeAction POST
+        mocked_responses.add(
+            method=responses.POST,
+            url=self._build_execute_action_endpoint(f["adr_ns_name"], f["rg"], f["asset_name"]),
+            json=execute_response,
+            status=200,
+        )
+
+        provider = MgmtActions(cmd=mocked_cmd)
+        result = provider.execute(
+            instance_name=f["instance_name"],
+            resource_group_name=f["rg"],
+            asset_name=f["asset_name"],
+            group_name=f["group_name"],
+            action_name=f["action_name"],
+            payload='{"temperature": 72}',
+            wait_sec=0,
+        )
+
+        assert result == execute_response
+        # 4 calls: Instance GET, Asset GET, Schema Version GET, executeAction POST
+        assert len(mocked_responses.calls) == 4
+
+    def test_incomplete_schema_reference(self, mocked_cmd, mocked_responses: responses):
+        """requestMessageSchemaReference missing schemaVersion → validation skipped."""
+        f = self._make_fixtures()
+        execute_response = {"status": "Succeeded"}
+        mocked_responses.add(
+            method=responses.GET,
+            url=_build_iotops_endpoint(f["instance_name"], f["rg"]),
+            json=self._build_instance_with_registry(f),
+            status=200,
+        )
+        # Asset with incomplete schema reference (missing schemaVersion)
+        asset_response = {
+            "name": f["asset_name"],
+            "properties": {
+                "provisioningState": "Succeeded",
+                "status": {
+                    "managementGroups": [
+                        {
+                            "name": f["group_name"],
+                            "actions": [
+                                {
+                                    "name": f["action_name"],
+                                    "requestMessageSchemaReference": {
+                                        "schemaName": self.SCHEMA_NAME,
+                                        # schemaVersion intentionally missing
+                                    },
+                                }
+                            ],
+                        }
+                    ]
+                },
+            },
+        }
+        mocked_responses.add(
+            method=responses.GET,
+            url=_build_namespace_asset_endpoint(f["adr_ns_name"], f["rg"], f["asset_name"]),
+            json=asset_response,
+            status=200,
+        )
+        # executeAction POST
+        mocked_responses.add(
+            method=responses.POST,
+            url=self._build_execute_action_endpoint(f["adr_ns_name"], f["rg"], f["asset_name"]),
+            json=execute_response,
+            status=200,
+        )
+
+        provider = MgmtActions(cmd=mocked_cmd)
+        result = provider.execute(
+            instance_name=f["instance_name"],
+            resource_group_name=f["rg"],
+            asset_name=f["asset_name"],
+            group_name=f["group_name"],
+            action_name=f["action_name"],
+            payload='{"temperature": 72}',
+            wait_sec=0,
+        )
+
+        assert result == execute_response
+        # 3 calls: Instance GET, Asset GET, executeAction POST
+        assert len(mocked_responses.calls) == 3
+
+    def test_non_jsonschema_format_skips_validation(self, mocked_cmd, mocked_responses: responses):
+        """Schema with non-standard $schema dialect → validation skipped, executeAction proceeds."""
+        f = self._make_fixtures()
+        schema = json.dumps({
+            "$schema": "iot-operations/1.0",
+            "fields": [{"name": "temperature", "type": "float"}],
+        })
+        execute_response = {"status": "Succeeded"}
+        self._register_full_validation_mocks(mocked_responses, f, schema, execute_response)
+
+        provider = MgmtActions(cmd=mocked_cmd)
+        result = provider.execute(
+            instance_name=f["instance_name"],
+            resource_group_name=f["rg"],
+            asset_name=f["asset_name"],
+            group_name=f["group_name"],
+            action_name=f["action_name"],
+            payload='{"temperature": 72}',
+            wait_sec=0,
+        )
+
+        assert result == execute_response
+        # 4 calls: Instance GET, Asset GET, Schema Version GET, executeAction POST
+        assert len(mocked_responses.calls) == 4
+
+    def test_malformed_jsonschema_skips_validation(self, mocked_cmd, mocked_responses: responses):
+        """Schema with recognized $schema but malformed body → SchemaError caught, executeAction proceeds."""
+        f = self._make_fixtures()
+        # Valid $schema URI but body uses invalid JSON Schema constructs
+        schema = json.dumps({
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "type": "object",
+            "properties": "not-a-dict",
+        })
+        execute_response = {"status": "Succeeded"}
+        self._register_full_validation_mocks(mocked_responses, f, schema, execute_response)
+
+        provider = MgmtActions(cmd=mocked_cmd)
+        result = provider.execute(
+            instance_name=f["instance_name"],
+            resource_group_name=f["rg"],
+            asset_name=f["asset_name"],
+            group_name=f["group_name"],
+            action_name=f["action_name"],
+            payload='{"temperature": 72}',
+            wait_sec=0,
+        )
+
+        assert result == execute_response
+        # 4 calls: Instance GET, Asset GET, Schema Version GET, executeAction POST
+        assert len(mocked_responses.calls) == 4
+
+
+class TestExecuteShowSchema(_SchemaTestBase):
+    """Tests for --show-schema mode.
+
+    When show_schema=True, the command resolves the request schema and returns
+    it without executing the action. Failures are hard (ResourceNotFoundError)
+    because the user explicitly requested the schema.
+    """
+
+    def test_show_schema_returns_schema(self, mocked_cmd, mocked_responses: responses):
+        """show_schema=True → resolves full chain → returns parsed JSON Schema dict."""
+        f = self._make_fixtures()
+        schema_dict = {
+            "type": "object",
+            "properties": {"temperature": {"type": "number"}},
+        }
+        self._register_schema_resolution_mocks(mocked_responses, f, json.dumps(schema_dict))
+
+        provider = MgmtActions(cmd=mocked_cmd)
+        result = provider.execute(
+            instance_name=f["instance_name"],
+            resource_group_name=f["rg"],
+            asset_name=f["asset_name"],
+            group_name=f["group_name"],
+            action_name=f["action_name"],
+            show_schema=True,
+            wait_sec=0,
+        )
+
+        assert result == schema_dict
+        # 3 calls: Instance GET, Asset GET, Schema Version GET — no executeAction POST
+        assert len(mocked_responses.calls) == 3
+
+    def test_show_schema_resolution_fails(self, mocked_cmd, mocked_responses: responses):
+        """show_schema=True, no schemaRegistryRef → ResourceNotFoundError."""
+        f = self._make_fixtures()
+        # Instance without schemaRegistryRef
+        mocked_responses.add(
+            method=responses.GET,
+            url=_build_iotops_endpoint(f["instance_name"], f["rg"]),
+            json=_build_instance_response(f["instance_name"], f["rg"], adr_namespace_name=f["adr_ns_name"]),
+            status=200,
+        )
+
+        provider = MgmtActions(cmd=mocked_cmd)
+        with pytest.raises(ResourceNotFoundError, match="Could not resolve the request schema"):
+            provider.execute(
+                instance_name=f["instance_name"],
+                resource_group_name=f["rg"],
+                asset_name=f["asset_name"],
+                group_name=f["group_name"],
+                action_name=f["action_name"],
+                show_schema=True,
+                wait_sec=0,
+            )
+
+        # 1 call: Instance GET only
+        assert len(mocked_responses.calls) == 1
+
+    def test_show_schema_ignores_payload(self, mocked_cmd, mocked_responses: responses):
+        """show_schema=True + payload → payload ignored, schema returned."""
+        f = self._make_fixtures()
+        schema_dict = {
+            "type": "object",
+            "properties": {"temperature": {"type": "number"}},
+        }
+        self._register_schema_resolution_mocks(mocked_responses, f, json.dumps(schema_dict))
+
+        provider = MgmtActions(cmd=mocked_cmd)
+        result = provider.execute(
+            instance_name=f["instance_name"],
+            resource_group_name=f["rg"],
+            asset_name=f["asset_name"],
+            group_name=f["group_name"],
+            action_name=f["action_name"],
+            payload='{"temperature": 72}',
+            show_schema=True,
+            wait_sec=0,
+        )
+
+        assert result == schema_dict
+        # 3 calls: Instance GET, Asset GET, Schema Version GET — no executeAction POST
+        assert len(mocked_responses.calls) == 3
+
+    def test_show_schema_ignores_no_validate(self, mocked_cmd, mocked_responses: responses):
+        """show_schema=True + no_validate=True → schema returned normally."""
+        f = self._make_fixtures()
+        schema_dict = {
+            "type": "object",
+            "properties": {"temperature": {"type": "number"}},
+        }
+        self._register_schema_resolution_mocks(mocked_responses, f, json.dumps(schema_dict))
+
+        provider = MgmtActions(cmd=mocked_cmd)
+        result = provider.execute(
+            instance_name=f["instance_name"],
+            resource_group_name=f["rg"],
+            asset_name=f["asset_name"],
+            group_name=f["group_name"],
+            action_name=f["action_name"],
+            show_schema=True,
+            no_validate=True,
+            wait_sec=0,
+        )
+
+        assert result == schema_dict
+        # 3 calls: Instance GET, Asset GET, Schema Version GET
+        assert len(mocked_responses.calls) == 3
 
 
 # ---------------------------------------------------------------------------

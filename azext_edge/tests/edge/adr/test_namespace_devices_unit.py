@@ -1309,6 +1309,7 @@ def test_add_inbound_media_device_endpoint(
 ])
 @pytest.mark.parametrize("accept_invalid_hostnames", [True, False])
 @pytest.mark.parametrize("accept_invalid_certificates", [True, False])
+@pytest.mark.parametrize("fallback_to_username_token_auth", [True, False])
 @pytest.mark.parametrize("endpoint_version", [None, "1.0"])
 @pytest.mark.parametrize("endpoints_present, replace", [
     (False, False),  # Endpoint does not exist, do not replace
@@ -1322,6 +1323,7 @@ def test_add_inbound_onvif_device_endpoint(
     password_ref: Optional[str],
     accept_invalid_hostnames: bool,
     accept_invalid_certificates: bool,
+    fallback_to_username_token_auth: bool,
     response_status: int,
     endpoint_version: Optional[str],
     endpoints_present: bool,
@@ -1435,6 +1437,7 @@ def test_add_inbound_onvif_device_endpoint(
                 password_reference=password_ref,
                 accept_invalid_hostnames=accept_invalid_hostnames,
                 accept_invalid_certificates=accept_invalid_certificates,
+                fallback_to_username_token_auth=fallback_to_username_token_auth,
                 endpoint_version=endpoint_version,
                 replace=replace,
                 wait_sec=0
@@ -1453,6 +1456,7 @@ def test_add_inbound_onvif_device_endpoint(
         password_reference=password_ref,
         accept_invalid_hostnames=accept_invalid_hostnames,
         accept_invalid_certificates=accept_invalid_certificates,
+        fallback_to_username_token_auth=fallback_to_username_token_auth,
         endpoint_version=endpoint_version,
         replace=replace,
         wait_sec=0
@@ -1476,6 +1480,7 @@ def test_add_inbound_onvif_device_endpoint(
     additional_config = json.loads(endpoint_patch["additionalConfiguration"])
     assert additional_config["acceptInvalidHostnames"] == accept_invalid_hostnames
     assert additional_config["acceptInvalidCertificates"] == accept_invalid_certificates
+    assert additional_config["fallbackToUsernameTokenAuth"] == fallback_to_username_token_auth
 
     assert endpoint_patch["authentication"]["method"] == expected_endpoint["authentication"]["method"]
     assert endpoint_patch["authentication"] == expected_endpoint["authentication"]
@@ -1506,6 +1511,7 @@ def test_add_inbound_onvif_device_endpoint(
         "security_policy": SecurityPolicy.aes128.value,
         "security_mode": SecurityMode.signandencrypt.value,
         "run_asset_discovery": True,
+        "sync_properties_into_state_store": True,
         "endpoint_version": "1.0"
     },
     {   # Partial set of parameters
@@ -1565,6 +1571,7 @@ def test_add_inbound_opcua_device_endpoint(
         security_policy = f"http://opcfoundation.org/UA/SecurityPolicy#{security_policy}"
     security_mode = req.get("security_mode", None)
     run_asset_discovery = req.get("run_asset_discovery", False)
+    sync_properties_into_state_store = req.get("sync_properties_into_state_store", False)
 
     # Create original device record with no endpoints
     original_device = get_namespace_device_record(
@@ -1610,7 +1617,8 @@ def test_add_inbound_opcua_device_endpoint(
                 "securityPolicy": security_policy,
                 "securityMode": security_mode
             },
-            "runAssetDiscovery": run_asset_discovery
+            "runAssetDiscovery": run_asset_discovery,
+            "syncPropertiesIntoStateStore": sync_properties_into_state_store
         })
     }
 
@@ -1725,6 +1733,7 @@ def test_add_inbound_opcua_device_endpoint(
     assert additional_config["applicationName"] == application_name
     assert additional_config["keepAliveMilliseconds"] == keep_alive
     assert additional_config["runAssetDiscovery"] == run_asset_discovery
+    assert additional_config["syncPropertiesIntoStateStore"] == sync_properties_into_state_store
 
     # Validate defaults settings
     assert additional_config["defaults"]["publishingIntervalMilliseconds"] == publishing_interval
@@ -2215,6 +2224,10 @@ def test_add_inbound_sse_device_endpoint(
 
 @pytest.mark.parametrize("response_status", [200, 400])
 @pytest.mark.parametrize("endpoint_version", [None, "0.3.4"])
+@pytest.mark.parametrize("asset_level, topic_filter, topic_mapping_prefix", [
+    (1, None, None),  # Default values
+    (2, "factory/device/+/telemetry", "assets/"),  # All MQTT params specified
+])
 @pytest.mark.parametrize("endpoints_present, replace", [
     (False, False),  # Endpoint does not exist, do not replace
     (True, False),   # Endpoint exists, do not replace
@@ -2225,6 +2238,9 @@ def test_add_inbound_mqtt_device_endpoint(
     mocked_responses: responses,
     response_status: int,
     endpoint_version: Optional[str],
+    asset_level: int,
+    topic_filter: Optional[str],
+    topic_mapping_prefix: Optional[str],
     endpoints_present: bool,
     replace: bool,
     mocked_get_namespace_for_instance,
@@ -2263,6 +2279,14 @@ def test_add_inbound_mqtt_device_endpoint(
         expected_version = template_version
     else:
         expected_version = endpoint_version
+    expected_mqtt_config = {
+        "assetLevel": asset_level,
+    }
+    if topic_filter is not None:
+        expected_mqtt_config["topicFilter"] = topic_filter
+    if topic_mapping_prefix is not None:
+        expected_mqtt_config["topicMappingPrefix"] = topic_mapping_prefix
+
     expected_endpoint = {
         "endpointType": DeviceEndpointType.MQTT.value,
         "address": endpoint_address,
@@ -2328,6 +2352,9 @@ def test_add_inbound_mqtt_device_endpoint(
                 endpoint_name=endpoint_name,
                 endpoint_address=endpoint_address,
                 endpoint_version=endpoint_version,
+                asset_level=asset_level,
+                topic_filter=topic_filter,
+                topic_mapping_prefix=topic_mapping_prefix,
                 replace=replace,
                 wait_sec=0
             )
@@ -2342,6 +2369,9 @@ def test_add_inbound_mqtt_device_endpoint(
         endpoint_name=endpoint_name,
         endpoint_address=endpoint_address,
         endpoint_version=endpoint_version,
+        asset_level=asset_level,
+        topic_filter=topic_filter,
+        topic_mapping_prefix=topic_mapping_prefix,
         replace=replace,
         wait_sec=0
     )
@@ -2361,3 +2391,7 @@ def test_add_inbound_mqtt_device_endpoint(
     assert endpoint_patch["address"] == endpoint_address
     assert endpoint_patch["authentication"]["method"] == expected_endpoint["authentication"]["method"]
     assert endpoint_patch["authentication"] == expected_endpoint["authentication"]
+
+    assert endpoint_patch["additionalConfiguration"]
+    additional_config = json.loads(endpoint_patch["additionalConfiguration"])
+    assert additional_config == expected_mqtt_config

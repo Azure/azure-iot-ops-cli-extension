@@ -290,6 +290,7 @@ def test_namespace_opcua_asset_dataset_lifecycle_operations(require_namespace_in
     dataset_destinations = "topic=factory/opcua/temperature qos=Qos1 retain=Keep ttl=3600"
 
     # Add OPCUA asset dataset with specific OPCUA parameters
+    start_instance = "ns=2;i=1001"
     dataset_result = run(
         f"az iot ops ns asset opcua dataset add --asset {asset_name} "
         f"--instance {instance_name} -g {resource_group} --name {dataset_name_1} "
@@ -298,6 +299,7 @@ def test_namespace_opcua_asset_dataset_lifecycle_operations(require_namespace_in
         f"--sampling-int 500 "
         f"--queue-size 10 "
         f"--key-frame-count 5 "
+        f"--start-inst \"{start_instance}\" "
     )
 
     assert_dataset_properties(
@@ -305,6 +307,7 @@ def test_namespace_opcua_asset_dataset_lifecycle_operations(require_namespace_in
         name=dataset_name_1,
         asset_type="opcua",
         publishing_interval=1000,
+        opcua_configuration={"startInstance": start_instance},
     )
 
     # 2. LIST DATASETS

@@ -95,6 +95,10 @@ def generate_dataset(dataset_name: Optional[str] = None, num_data_points: int = 
         "opcua_dataset_queue_size": 100,
         "opcua_dataset_key_frame_count": 3,
     }),
+    # OPCUA asset dataset with start instance
+    ("opcua", add_namespace_opcua_asset_dataset, {
+        "opcua_dataset_start_instance": "ns=2;i=1001",
+    }),
     # OPCUA asset dataset with minimal config
     ("opcua", add_namespace_opcua_asset_dataset, {}),
     # REST asset dataset with minimal config
@@ -172,6 +176,8 @@ def test_add_namespace_asset_dataset(
                 config["queueSize"] = config_params["opcua_dataset_queue_size"]
             if "opcua_dataset_key_frame_count" in config_params:
                 config["keyFrameCount"] = config_params["opcua_dataset_key_frame_count"]
+            if "opcua_dataset_start_instance" in config_params:
+                config["startInstance"] = config_params["opcua_dataset_start_instance"]
             if config:
                 expected_dataset["datasetConfiguration"] = json.dumps(config)
         elif asset_type == "rest":
@@ -752,6 +758,10 @@ def test_show_namespace_asset_dataset(
         "opcua_dataset_queue_size": 100,
         "opcua_dataset_key_frame_count": 3,
     }),
+    # OPCUA asset dataset with start instance
+    ("opcua", update_namespace_opcua_asset_dataset, {
+        "opcua_dataset_start_instance": "ns=2;i=2001",
+    }),
     # REST asset dataset with minimal config
     ("rest", update_namespace_rest_asset_dataset, {
         "rest_dataset_sampling_interval": 1000
@@ -839,6 +849,8 @@ def test_update_namespace_asset_dataset(
                 config["queueSize"] = unique_reqs["opcua_dataset_queue_size"]
             if "opcua_dataset_key_frame_count" in unique_reqs:
                 config["keyFrameCount"] = unique_reqs["opcua_dataset_key_frame_count"]
+            if "opcua_dataset_start_instance" in unique_reqs:
+                config["startInstance"] = unique_reqs["opcua_dataset_start_instance"]
 
             expected_dataset["datasetConfiguration"] = json.dumps(config)
         elif asset_type == "rest":

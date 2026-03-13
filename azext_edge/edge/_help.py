@@ -2211,6 +2211,11 @@ def load_iotops_help():
             submits the action as a long-running operation. The result includes the action
             status, any response from the asset, and error details if the action failed.
 
+            When a payload is provided, the CLI validates it against the action's request
+            schema (if available) before sending the request. Use --no-validate to skip
+            this check. Use --show-schema to view the action's request schema without
+            executing.
+
         examples:
         - name: Execute a management action with no payload.
           text: >
@@ -2238,6 +2243,25 @@ def load_iotops_help():
             --group mygroup
             --action configure
             -p payload.json
+        - name: Show the request schema for a management action.
+          text: >
+            az iot ops mgmt-actions execute
+            --instance myinstance
+            -g myresourcegroup
+            --asset myasset
+            --group mygroup
+            --action configure
+            --show-schema
+        - name: Execute with payload, skipping schema validation.
+          text: >
+            az iot ops mgmt-actions execute
+            --instance myinstance
+            -g myresourcegroup
+            --asset myasset
+            --group mygroup
+            --action configure
+            -p '{"temperature": {"setpoint": 72}}'
+            --no-validate
     """
 
     helps[

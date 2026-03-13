@@ -116,6 +116,7 @@ def test_namespace_device_lifecycle_operations(require_namespace_init, tracked_r
         f"--instance {instance_name} -g {resource_group} --name {endpoint_name_onvif} "
         f"--endpoint-address {endpoint_address} "
         f"--accept-invalid-hostnames true --accept-invalid-certificates true "
+        f"--fallback-username-token true "
         f"--user-ref {username_reference} --pass-ref {password_reference} "
         f"--version 1"
     )
@@ -126,6 +127,7 @@ def test_namespace_device_lifecycle_operations(require_namespace_init, tracked_r
         endpoint_address=endpoint_address,
         accept_invalid_hostnames=True,
         accept_invalid_certificates=True,
+        fallback_to_username_token_auth=True,
         authentication_method="UsernamePassword",
         username_reference=username_reference,
         password_reference=password_reference,
@@ -173,7 +175,7 @@ def test_namespace_device_lifecycle_operations(require_namespace_init, tracked_r
         f"--keep-alive {keep_alive} --publishing-interval {publishing_interval} "
         f"--sampling-interval {sampling_interval} --queue-size {queue_size} "
         f"--key-frame-count {key_frame_count} --security-policy {security_policy} "
-        f"--security-mode {security_mode} --run-asset-discovery "
+        f"--security-mode {security_mode} --run-asset-discovery --sync-props-into-dss "
         f"--session-timeout {session_timeout} --session-reconnect {reconnect_period} "
         f"--session-backoff {reconnect_exponential_backoff} "
         f"--session-tracing --subscription-lifetime {sub_lifetime} "
@@ -201,6 +203,7 @@ def test_namespace_device_lifecycle_operations(require_namespace_init, tracked_r
         accept_certs=True,
         enable_tracing=True,
         run_asset_discovery=True,
+        sync_properties_into_state_store=True,
         authentication_method="Anonymous",
     )
 
@@ -312,10 +315,16 @@ def test_namespace_device_lifecycle_operations(require_namespace_init, tracked_r
 
     # Add MQTT endpoint (no authentication, in-cluster broker only)
     mqtt_endpoint_address = "aio-broker:18883"
+    mqtt_asset_level = 2
+    mqtt_topic_filter = "factory/+/telemetry"
+    mqtt_topic_mapping_prefix = "assets/"
     result = run(
         f"az iot ops ns device endpoint inbound add mqtt --device {device_name_2} "
         f"--instance {instance_name} -g {resource_group} --name {endpoint_name_mqtt} "
         f"--endpoint-address {mqtt_endpoint_address} "
+        f"--asset-level {mqtt_asset_level} "
+        f"--topic-filter {mqtt_topic_filter} "
+        f"--topic-mapping-prefix {mqtt_topic_mapping_prefix} "
         f"--version 0.3.4"
     )
     assert_namespace_device_endpoint_props(
@@ -323,6 +332,9 @@ def test_namespace_device_lifecycle_operations(require_namespace_init, tracked_r
         endpoint_name=endpoint_name_mqtt,
         endpoint_type=DeviceEndpointType.MQTT.value,
         endpoint_address=mqtt_endpoint_address,
+        asset_level=mqtt_asset_level,
+        topic_filter=mqtt_topic_filter,
+        topic_mapping_prefix=mqtt_topic_mapping_prefix,
         accept_invalid_hostnames=True,
         accept_invalid_certificates=True,
         authentication_method="Anonymous",
@@ -532,6 +544,18 @@ def assert_namespace_device_endpoint_props(
         additional_config = json.loads(result_endpoint["additionalConfiguration"])
         assert additional_config["acceptInvalidHostnames"] == expected.get("accept_invalid_hostnames", False)
         assert additional_config["acceptInvalidCertificates"] == expected.get("accept_invalid_certificates", False)
+        if "fallback_to_username_token_auth" in expected:
+            assert additional_config["fallbackToUsernameTokenAuth"] == expected["fallback_to_username_token_auth"]
+
+    # MQTT Configuration
+    if result_endpoint["endpointType"] == "Microsoft.Mqtt":
+        additional_config = json.loads(result_endpoint["additionalConfiguration"])
+        if "asset_level" in expected:
+            assert additional_config["assetLevel"] == expected["asset_level"]
+        if "topic_filter" in expected:
+            assert additional_config["topicFilter"] == expected["topic_filter"]
+        if "topic_mapping_prefix" in expected:
+            assert additional_config["topicMappingPrefix"] == expected["topic_mapping_prefix"]
 
     # pylint said too many if statements
     if result_endpoint["endpointType"] == "Microsoft.OpcUa":
@@ -554,6 +578,8 @@ def assert_namespace_device_opcua_props(
         assert result_config["keepAliveMilliseconds"] == expected["keep_alive"]
     if "run_asset_discovery" in expected:
         assert result_config["runAssetDiscovery"] == expected["run_asset_discovery"]
+    if "sync_properties_into_state_store" in expected:
+        assert result_config["syncPropertiesIntoStateStore"] == expected["sync_properties_into_state_store"]
     # Default
     if "publishing_interval" in expected:
         assert result_config["defaults"]["publishingIntervalMilliseconds"] == expected["publishing_interval"]

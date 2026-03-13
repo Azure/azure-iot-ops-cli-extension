@@ -522,8 +522,8 @@ def test_process_configs(mocker, asset_type: str, test_case: dict, default: bool
     # Set up mocks for all the helper functions
     mocks = {}
     for func_name in [
-        "_process_opcua_dataset_configurations_v1",
-        "_process_opcua_event_configurations_v1",
+        "_process_opcua_dataset_configurations_v2",
+        "_process_opcua_event_configurations_v2",
         "_process_media_stream_configurations",
         "_process_rest_dataset_configurations",
         "process_additional_configuration",
@@ -625,8 +625,8 @@ def test_process_configs(mocker, asset_type: str, test_case: dict, default: bool
 
     # specific configurations
     for arg, func in [
-        ("opcua_dataset_values", "_process_opcua_dataset_configurations_v1"),
-        ("opcua_event_values", "_process_opcua_event_configurations_v1"),
+        ("opcua_dataset_values", "_process_opcua_dataset_configurations_v2"),
+        ("opcua_event_values", "_process_opcua_event_configurations_v2"),
         ("media_stream_values", "_process_media_stream_configurations"),
         ("rest_dataset_values", "_process_rest_dataset_configurations"),
     ]:

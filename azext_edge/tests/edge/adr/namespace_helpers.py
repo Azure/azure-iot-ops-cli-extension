@@ -23,6 +23,10 @@ def assert_dataset_properties(result, **expected):
         assert result["dataSource"] == expected["data_source"]
     if "custom_configuration" in expected:
         assert result["datasetConfiguration"] == expected["custom_configuration"]
+    if "opcua_configuration" in expected:
+        actual = json.loads(result["datasetConfiguration"])
+        for key, value in expected["opcua_configuration"].items():
+            assert actual[key] == value
 
 
 def assert_event_properties(result, **expected):
@@ -39,6 +43,11 @@ def assert_event_properties(result, **expected):
             assert result["eventGroupConfiguration"] == expected["custom_configuration"]
         elif "eventConfiguration" in result:
             assert result["eventConfiguration"] == expected["custom_configuration"]
+    if "opcua_configuration" in expected:
+        config_key = "eventGroupConfiguration" if "eventGroupConfiguration" in result else "eventConfiguration"
+        actual = json.loads(result[config_key])
+        for key, value in expected["opcua_configuration"].items():
+            assert actual[key] == value
 
 
 def assert_management_group_properties(result, **expected):

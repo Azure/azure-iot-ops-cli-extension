@@ -873,6 +873,13 @@ def load_adr_arguments(self, _):
             arg_type=get_three_state_flag(),
             arg_group="ONVIF Configuration",
         )
+        context.argument(
+            "fallback_to_username_token_auth",
+            options_list=["--fallback-username-token", "--fut"],
+            help="Fallback to username token authentication if more secure methods are unavailable.",
+            arg_type=get_three_state_flag(),
+            arg_group="ONVIF Configuration",
+        )
 
     with self.argument_context("iot ops ns device endpoint inbound add opcua") as context:
         context.argument(
@@ -992,6 +999,34 @@ def load_adr_arguments(self, _):
             help="Enable asset discovery after connecting to the endpoint.",
             arg_type=get_three_state_flag(),
             arg_group="Configuration",
+        )
+        context.argument(
+            "sync_properties_into_state_store",
+            options_list=["--sync-props-into-dss", "--spidss"],
+            help="Sync OPC UA properties into the state store.",
+            arg_type=get_three_state_flag(),
+            arg_group="Configuration",
+        )
+
+    with self.argument_context("iot ops ns device endpoint inbound add mqtt") as context:
+        context.argument(
+            "asset_level",
+            options_list=["--asset-level", "--al"],
+            help="Asset level for topic-based asset identification.",
+            type=int,
+            arg_group="MQTT Configuration",
+        )
+        context.argument(
+            "topic_filter",
+            options_list=["--topic-filter", "--tf"],
+            help="Topic filter for the MQTT endpoint.",
+            arg_group="MQTT Configuration",
+        )
+        context.argument(
+            "topic_mapping_prefix",
+            options_list=["--topic-mapping-prefix", "--tmp"],
+            help="Topic mapping prefix for the MQTT endpoint.",
+            arg_group="MQTT Configuration",
         )
 
     with self.argument_context("iot ops ns asset") as context:
@@ -1306,13 +1341,12 @@ def load_adr_arguments(self, _):
                 type=int,
                 arg_group="Default Dataset",
             )
-            # TODO: future release
-            # context.argument(
-            #     "dataset_start_instance",
-            #     options_list=["--dataset-start-inst", "--dss"],
-            #     help="Start instance for datasets.",
-            #     arg_group="Default Dataset",
-            # )
+            context.argument(
+                "dataset_start_instance",
+                options_list=["--dataset-start-inst", "--dss"],
+                help="Start instance for datasets.",
+                arg_group="Default Dataset",
+            )
             context.argument(
                 "dataset_destinations",
                 options_list=["--dataset-dest", "--dsd"],
@@ -1334,28 +1368,27 @@ def load_adr_arguments(self, _):
                 type=int,
                 arg_group="Default Event",
             )
-            # TODO: future release
-            # context.argument(
-            #     "events_start_instance",
-            #     options_list=["--event-start-inst", "--evs"],
-            #     help="Start instance for events.",
-            #     arg_group="Default Event",
-            # )
-            # context.argument(
-            #     "events_filter_type",
-            #     options_list=["--event-filter-type", "--evft"],
-            #     help="Filter type for events.",
-            #     arg_group="Default Event",
-            # )
-            # context.argument(
-            #     "events_filter_clauses",
-            #     options_list=["--event-filter-clause", "--evf"],
-            #     help="Space-separated key=value pairs for event filter clauses. Allowed keys are `path` (required), "
-            #     "`type`, and `field`.",
-            #     nargs="+",
-            #     action="append",
-            #     arg_group="Default Event",
-            # )
+            context.argument(
+                "events_start_instance",
+                options_list=["--event-start-inst", "--evs"],
+                help="Start instance for events.",
+                arg_group="Default Event",
+            )
+            context.argument(
+                "events_filter_type",
+                options_list=["--event-filter-type", "--evft"],
+                help="Filter type definition ID for the default event configuration.",
+                arg_group="Default Event",
+            )
+            context.argument(
+                "events_filter_clauses",
+                options_list=["--event-filter-clause", "--evf"],
+                help="Space-separated key=value pairs for event filter clauses. Allowed keys are `path` (required), "
+                "`type`, and `field`. This parameter can be specified multiple times to add multiple clauses.",
+                nargs="+",
+                action="append",
+                arg_group="Default Event",
+            )
             context.argument(
                 "event_destinations",
                 options_list=["--event-dest", "--evd"],
@@ -1656,12 +1689,11 @@ def load_adr_arguments(self, _):
             help="Key frame count for datasets. Minimum: 0.",
             type=int,
         )
-        # TODO: future follow up release
-        # context.argument(
-        #     "opcua_dataset_start_instance",
-        #     options_list=["--start-inst", "--start"],
-        #     help="Start instance for datasets.",
-        # )
+        context.argument(
+            "opcua_dataset_start_instance",
+            options_list=["--start-inst", "--start"],
+            help="Start instance for datasets.",
+        )
         context.argument(
             "dataset_destinations",
             options_list=["--destination", "--dest"],
@@ -1749,6 +1781,14 @@ def load_adr_arguments(self, _):
             nargs="+",
         )
 
+    with self.argument_context("iot ops ns asset onvif event") as context:
+        context.argument(
+            "event_destinations",
+            options_list=["--destination", "--dest"],
+            help=DEST_HELP_EVENT_MQTT_ONLY,
+            nargs="+",
+        )
+
     with self.argument_context("iot ops ns asset sse event-group") as context:
         context.argument(
             "event_destinations",
@@ -1778,20 +1818,24 @@ def load_adr_arguments(self, _):
             help="Queue size for events. Minimum: 0.",
             type=int,
         )
-        # TODO: future follow up release
-        # context.argument(
-        #     "opcua_event_filter_type",
-        #     options_list=["--filter-type", "--ft"],
-        #     help="Filter type for events.",
-        # )
-        # context.argument(
-        #     "opcua_event_filter_clauses",
-        #     options_list=["--filter-clause", "--fc"],
-        #     help="Space-separated key=value pairs for event filter clauses. Allowed keys are `path` (required), "
-        #     "`type`, and `field`.",
-        #     nargs="+",
-        #     action="append",
-        # )
+        context.argument(
+            "opcua_event_start_instance",
+            options_list=["--start-inst", "--start"],
+            help="Start instance for events.",
+        )
+        context.argument(
+            "opcua_event_filter_type",
+            options_list=["--filter-type", "--ft"],
+            help="Filter type definition ID for the event group configuration.",
+        )
+        context.argument(
+            "opcua_event_filter_clauses",
+            options_list=["--filter-clause", "--fc"],
+            help="Space-separated key=value pairs for event filter clauses. Allowed keys are `path` (required), "
+            "`type`, and `field`. This parameter can be specified multiple times to add multiple clauses.",
+            nargs="+",
+            action="append",
+        )
         context.argument(
             "event_destinations",
             options_list=["--destination", "--dest"],
@@ -1799,20 +1843,32 @@ def load_adr_arguments(self, _):
             nargs="+",
         )
 
-    # TODO: future follow up release
-    # with self.argument_context("iot ops ns asset opcua event point") as context:
-    #     context.argument(
-    #         "sampling_interval",
-    #         options_list=["--sampling-int", "--si"],
-    #         help="Sampling interval in milliseconds. Minimum: -1.",
-    #         type=int,
-    #     )
-    #     context.argument(
-    #         "queue_size",
-    #         options_list=["--queue-size", "--qs"],
-    #         help="Queue size. Minimum: 0.",
-    #         type=int,
-    #     )
+    with self.argument_context("iot ops ns asset opcua event") as context:
+        context.argument(
+            "queue_size",
+            options_list=["--queue-size", "--qs"],
+            help="Queue size. Minimum: 0.",
+            type=int,
+        )
+        context.argument(
+            "sampling_interval",
+            options_list=["--sampling-int", "--si"],
+            help="Sampling interval in milliseconds. Minimum: -1.",
+            type=int,
+        )
+        context.argument(
+            "opcua_event_filter_type",
+            options_list=["--filter-type", "--ft"],
+            help="Filter type definition ID for the event.",
+        )
+        context.argument(
+            "opcua_event_filter_clauses",
+            options_list=["--filter-clause", "--fc"],
+            help="Space-separated key=value pairs for event filter clauses. Allowed keys are `path` (required), "
+            "`type`, and `field`. This parameter can be specified multiple times to add multiple clauses.",
+            nargs="+",
+            action="append",
+        )
 
     with self.argument_context("iot ops ns asset custom stream") as context:
         context.argument(

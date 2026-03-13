@@ -848,6 +848,10 @@ def load_iotops_adr_help():
         - name: Add an OPC UA endpoint with security settings and asset discovery enabled
           text: >
             az iot ops ns device endpoint inbound add opcua --device mydevice --instance myInstance -g myInstanceResourceGroup --name myOPCUAEndpoint --endpoint-address "opc.tcp://192.168.1.100:4840" --security-policy "Basic256Sha256" --security-mode "SignAndEncrypt" --run-asset-discovery
+
+        - name: Add an OPC UA endpoint with asset discovery and property sync to state store enabled
+          text: >
+            az iot ops ns device endpoint inbound add opcua --device mydevice --instance myInstance -g myInstanceResourceGroup --name myOPCUAEndpoint --endpoint-address "opc.tcp://192.168.1.100:4840" --run-asset-discovery --sync-props-into-dss
     """
 
     helps[
@@ -2002,6 +2006,64 @@ def load_iotops_adr_help():
     """
 
     helps[
+        "iot ops ns asset onvif event"
+    ] = """
+        type: group
+        short-summary: Manage individual events for ONVIF asset event groups in Device Registry namespaces.
+    """
+
+    helps[
+        "iot ops ns asset onvif event add"
+    ] = """
+        type: command
+        short-summary: Add an event to an ONVIF asset event group in a Device Registry namespace.
+
+        examples:
+        - name: Add a basic ONVIF event
+          text: >
+            az iot ops ns asset onvif event add --asset myonvifasset --instance myInstance
+            -g myInstanceResourceGroup --event-group motionEvents --name motion --data-source "camera.motion"
+
+        - name: Add an ONVIF event with MQTT destination
+          text: >
+            az iot ops ns asset onvif event add --asset myonvifasset --instance myInstance
+            -g myInstanceResourceGroup --event-group motionEvents --name intrusion --data-source "camera.intrusion"
+            --dest topic="factory/onvif/events" retain=Keep qos=Qos1 ttl=3600
+
+        - name: Replace an ONVIF event with same name (all properties must be re-specified)
+          text: >
+            az iot ops ns asset onvif event add --asset myonvifasset --instance myInstance
+            -g myInstanceResourceGroup --event-group motionEvents --name intrusion --data-source "camera.intrusion.v2"
+            --dest topic="factory/onvif/events" retain=Keep qos=Qos1 ttl=3600 --replace
+    """
+
+    helps[
+        "iot ops ns asset onvif event list"
+    ] = """
+        type: command
+        short-summary: List events for an ONVIF asset event group in a Device Registry namespace.
+
+        examples:
+        - name: List all events for an event group
+          text: >
+            az iot ops ns asset onvif event list --asset myonvifasset --instance myInstance
+            -g myInstanceResourceGroup --event-group motionEvents
+    """
+
+    helps[
+        "iot ops ns asset onvif event remove"
+    ] = """
+        type: command
+        short-summary: Remove an event from an ONVIF asset event group in a Device Registry namespace.
+
+        examples:
+        - name: Remove an event from an event group
+          text: >
+            az iot ops ns asset onvif event remove --asset myonvifasset --instance myInstance
+            -g myInstanceResourceGroup --event-group motionEvents --name motion
+    """
+
+    helps[
         "iot ops ns asset onvif mgmt-group"
     ] = """
         type: group
@@ -2131,6 +2193,18 @@ def load_iotops_adr_help():
             --device myOpcuaDevice --endpoint myOpcuaEndpoint
             --dataset-dest topic="factory/opcua/data" retain=Keep qos=Qos1 ttl=3600
             --event-dest topic="factory/opcua/events" retain=Never qos=Qos1 ttl=3600
+
+        - name: Create an OPC UA asset with start instances for datasets and events
+          text: >
+            az iot ops ns asset opcua create --name myopcuaasset --instance myInstance -g myInstanceResourceGroup
+            --device myOpcuaDevice --endpoint myOpcuaEndpoint --dataset-start-inst "ns=2;i=1001"
+            --event-start-inst "ns=3;i=3001"
+
+        - name: Create an OPC UA asset with event filter configuration
+          text: >
+            az iot ops ns asset opcua create --name myopcuaasset --instance myInstance -g myInstanceResourceGroup
+            --device myOpcuaDevice --endpoint myOpcuaEndpoint --event-filter-type "ns=2;i=5001"
+            --event-filter-clause path="/EventType" type="ns=2;i=5001"
     """
 
     helps[
@@ -2168,6 +2242,11 @@ def load_iotops_adr_help():
             az iot ops ns asset opcua update --name myopcuaasset --instance myInstance -g myInstanceResourceGroup
             --manufacturer "Automation Corp" --model "PLC-2000" --serial-number "PLC87654"
             --attribute location=factory-floor zone="production line"
+
+        - name: Update an OPC UA asset's start instances for datasets and events
+          text: >
+            az iot ops ns asset opcua update --name myopcuaasset --instance myInstance -g myInstanceResourceGroup
+            --dataset-start-inst "ns=2;i=1001" --event-start-inst "ns=3;i=3001"
     """
 
     helps[
@@ -2213,6 +2292,12 @@ def load_iotops_adr_help():
             az iot ops ns asset opcua dataset add --asset myopcuaasset --instance myInstance
             -g myInstanceResourceGroup --name temperatureData --data-source "ns=3;s=NewTemperature"
             --replace
+
+        - name: Add an OPC UA dataset with a start instance
+          text: >
+            az iot ops ns asset opcua dataset add --asset myopcuaasset --instance myInstance
+            -g myInstanceResourceGroup --name temperatureData --data-source "ns=2;s=Temperature"
+            --start-inst "ns=2;i=1001"
     """
 
     helps[
@@ -2277,6 +2362,11 @@ def load_iotops_adr_help():
             az iot ops ns asset opcua dataset update --asset myopcuaasset --instance myInstance
             -g myInstanceResourceGroup --name temperatureData
             --dest topic="factory/opcua/updated/temperature" retain=Never qos=Qos0 ttl=7200
+
+        - name: Update the start instance for a dataset
+          text: >
+            az iot ops ns asset opcua dataset update --asset myopcuaasset --instance myInstance
+            -g myInstanceResourceGroup --name temperatureData --start-inst "ns=2;i=2001"
     """
 
     helps[
@@ -2373,6 +2463,18 @@ def load_iotops_adr_help():
             az iot ops ns asset opcua event-group add --asset myopcuaasset --instance myInstance
             -g myInstanceResourceGroup --name alarmEvent --data-source "ns=3;i=1000"
             --replace
+
+        - name: Add an OPC UA event group with a start instance
+          text: >
+            az iot ops ns asset opcua event-group add --asset myopcuaasset --instance myInstance
+            -g myInstanceResourceGroup --name alarmEvent --data-source "ns=2;i=1000"
+            --start-inst "ns=3;i=3001"
+
+        - name: Add an OPC UA event group with filter type and filter clauses
+          text: >
+            az iot ops ns asset opcua event-group add --asset myopcuaasset --instance myInstance
+            -g myInstanceResourceGroup --name alarmEvent --data-source "ns=2;i=1000"
+            --filter-type "ns=2;i=5001" --filter-clause path="/EventType" type="ns=2;i=5001"
     """
 
     helps[
@@ -2431,6 +2533,76 @@ def load_iotops_adr_help():
             az iot ops ns asset opcua event-group update --asset myopcuaasset --instance myInstance
             -g myInstanceResourceGroup --name systemEvent
             --dest topic="factory/opcua/system/updated" retain=Never qos=Qos1 ttl=3600
+
+        - name: Update event group start instance and filter configuration
+          text: >
+            az iot ops ns asset opcua event-group update --asset myopcuaasset --instance myInstance
+            -g myInstanceResourceGroup --name alarmEvent --start-inst "ns=3;i=4001"
+            --filter-type "ns=2;i=5002" --filter-clause path="/Severity" type="ns=2;i=5002"
+    """
+
+    helps[
+        "iot ops ns asset opcua event"
+    ] = """
+        type: group
+        short-summary: Manage individual events for OPC UA asset event groups in Device Registry namespaces.
+    """
+
+    helps[
+        "iot ops ns asset opcua event add"
+    ] = """
+        type: command
+        short-summary: Add an event to an OPC UA asset event group in a Device Registry namespace.
+
+        examples:
+        - name: Add a basic OPC UA event
+          text: >
+            az iot ops ns asset opcua event add --asset myopcuaasset --instance myInstance
+            -g myInstanceResourceGroup --event-group alarmGroup --name severity --data-source "alarm.severity"
+
+        - name: Add an OPC UA event with sampling interval and queue size
+          text: >
+            az iot ops ns asset opcua event add --asset myopcuaasset --instance myInstance
+            -g myInstanceResourceGroup --event-group alarmGroup --name pressure --data-source "alarm.pressure"
+            --sampling-int 500 --queue-size 5
+
+        - name: Replace an OPC UA event with same name
+          text: >
+            az iot ops ns asset opcua event add --asset myopcuaasset --instance myInstance
+            -g myInstanceResourceGroup --event-group alarmGroup --name severity --data-source "alarm.severity.updated"
+            --replace
+
+        - name: Add an OPC UA event with filter type and filter clauses
+          text: >
+            az iot ops ns asset opcua event add --asset myopcuaasset --instance myInstance
+            -g myInstanceResourceGroup --event-group alarmGroup --name criticalAlarm --data-source "alarm.critical"
+            --filter-type "ns=2;i=5001" --filter-clause path="/EventType" type="ns=2;i=5001"
+    """
+
+    helps[
+        "iot ops ns asset opcua event list"
+    ] = """
+        type: command
+        short-summary: List events for an OPC UA asset event group in a Device Registry namespace.
+
+        examples:
+        - name: List all events for an event group
+          text: >
+            az iot ops ns asset opcua event list --asset myopcuaasset --instance myInstance
+            -g myInstanceResourceGroup --event-group alarmGroup
+    """
+
+    helps[
+        "iot ops ns asset opcua event remove"
+    ] = """
+        type: command
+        short-summary: Remove an event from an OPC UA asset event group in a Device Registry namespace.
+
+        examples:
+        - name: Remove an event from an event group
+          text: >
+            az iot ops ns asset opcua event remove --asset myopcuaasset --instance myInstance
+            -g myInstanceResourceGroup --event-group alarmGroup --name severity
     """
 
     helps[

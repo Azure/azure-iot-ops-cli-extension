@@ -1614,6 +1614,18 @@ def load_iotops_arguments(self, _):
             options_list=["--payload", "-p"],
             help="JSON payload for the management action. Inline JSON string or file path (e.g., payload.json).",
         )
+        context.argument(
+            "no_validate",
+            options_list=["--no-validate"],
+            help="Skip client-side payload validation against the action's request schema.",
+            action="store_true",
+        )
+        context.argument(
+            "show_schema",
+            options_list=["--show-schema"],
+            help="Resolve and display the action's request schema. No action is executed.",
+            action="store_true",
+        )
 
     with self.argument_context("iot ops schema") as context:
         context.argument(

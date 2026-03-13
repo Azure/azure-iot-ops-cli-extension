@@ -503,6 +503,7 @@ def _get_endpoints(device: dict, inbound: bool = True) -> dict:
 def _process_onvif_configuration(
     accept_invalid_hostnames: Optional[bool] = False,
     accept_invalid_certificates: Optional[bool] = False,
+    fallback_to_username_token_auth: Optional[bool] = False,
     **_
 ) -> str:
     """
@@ -511,7 +512,8 @@ def _process_onvif_configuration(
     """
     configuration = {
         "acceptInvalidHostnames": accept_invalid_hostnames,
-        "acceptInvalidCertificates": accept_invalid_certificates
+        "acceptInvalidCertificates": accept_invalid_certificates,
+        "fallbackToUsernameTokenAuth": fallback_to_username_token_auth
     }
 
     return json.dumps(configuration)
@@ -535,6 +537,7 @@ def _process_opcua_configuration(
     security_policy: Optional[str] = None,
     security_mode: Optional[str] = None,
     run_asset_discovery: Optional[bool] = False,
+    sync_properties_into_state_store: Optional[bool] = False,
     **_
 ) -> str:
     """
@@ -572,7 +575,8 @@ def _process_opcua_configuration(
             "securityPolicy": security_policy,
             "securityMode": security_mode
         },
-        "runAssetDiscovery": run_asset_discovery
+        "runAssetDiscovery": run_asset_discovery,
+        "syncPropertiesIntoStateStore": sync_properties_into_state_store
     }
 
     # Validate the configuration against the schema
@@ -581,8 +585,29 @@ def _process_opcua_configuration(
     return json.dumps(configuration)
 
 
+def _process_mqtt_configuration(
+    asset_level: Optional[int] = 1,
+    topic_filter: Optional[str] = None,
+    topic_mapping_prefix: Optional[str] = None,
+    **_
+) -> str:
+    """
+    Creates a stringified JSON for the MQTT endpoint configuration.
+    """
+    configuration: Dict = {
+        "assetLevel": asset_level,
+    }
+    if topic_filter is not None:
+        configuration["topicFilter"] = topic_filter
+    if topic_mapping_prefix is not None:
+        configuration["topicMappingPrefix"] = topic_mapping_prefix
+
+    return json.dumps(configuration)
+
+
 ENDPOINT_TYPE_TO_FUNCTION_MAP: Dict[str, Optional[Callable]] = {
     DeviceEndpointType.OPCUA.value: _process_opcua_configuration,
     DeviceEndpointType.ONVIF.value: _process_onvif_configuration,
     DeviceEndpointType.MEDIA.value: None,
+    DeviceEndpointType.MQTT.value: _process_mqtt_configuration,
 }

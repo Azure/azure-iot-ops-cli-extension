@@ -1550,6 +1550,8 @@ class NamespaceAssets(Queryable):
         # OPCUA specific
         queue_size: Optional[int] = None,
         sampling_interval: Optional[int] = None,
+        opcua_event_filter_type: Optional[str] = None,
+        opcua_event_filter_clauses: Optional[List[List[str]]] = None,
         event_destinations: Optional[List[dict]] = None,
         type_ref: Optional[str] = None,
         replace: bool = False,
@@ -1582,7 +1584,9 @@ class NamespaceAssets(Queryable):
             custom_configuration=custom_configuration,
             event_destinations=event_destinations,
             queue_size=queue_size,
-            sampling_interval=sampling_interval
+            sampling_interval=sampling_interval,
+            opcua_event_filter_type=opcua_event_filter_type,
+            opcua_event_filter_clauses=opcua_event_filter_clauses,
         )
         remaining_events.append(event)
         event_group["events"] = remaining_events
@@ -2819,7 +2823,9 @@ def _create_event(
     queue_size: Optional[int] = None,
     sampling_interval: Optional[int] = None,
     custom_configuration: Optional[str] = None,
-    event_destinations: Optional[List[List[str]]] = None
+    event_destinations: Optional[List[List[str]]] = None,
+    opcua_event_filter_type: Optional[str] = None,
+    opcua_event_filter_clauses: Optional[List[List[str]]] = None,
 ) -> dict:
     """Helper function to create an event dictionary."""
     event = {
@@ -2839,6 +2845,14 @@ def _create_event(
             config_type="event"
         )
         return event
+    if opcua_event_filter_type or opcua_event_filter_clauses:
+        event["eventConfiguration"] = _process_opcua_event_configurations_v2(
+            opcua_event_queue_size=queue_size,
+            opcua_event_filter_type=opcua_event_filter_type,
+            opcua_event_filter_clauses=opcua_event_filter_clauses,
+        )
+        return event
+
     additional_configuration = {}
     if queue_size is not None:
         additional_configuration["queueSize"] = queue_size
@@ -2851,7 +2865,6 @@ def _create_event(
         )
 
     event["eventConfiguration"] = json.dumps(additional_configuration)
-    # TODO: other event specific configurations can be added here
     return event
 
 
@@ -2889,10 +2902,10 @@ def _process_configs(
         # allowed: datasets, events, mgmt groups (no schema?), destinations must be mqtt
         # not allowed: streams
         result = {
-            "datasetsConfiguration": _process_opcua_dataset_configurations_v1(
+            "datasetsConfiguration": _process_opcua_dataset_configurations_v2(
                 **kwargs
             ),
-            "eventsConfiguration": _process_opcua_event_configurations_v1(
+            "eventsConfiguration": _process_opcua_event_configurations_v2(
                 **kwargs
             ),
             "datasetsDestinations": _build_destination(
@@ -3082,7 +3095,7 @@ def _process_opcua_event_configurations_v2(
 
     if opcua_event_filter_type or opcua_event_filter_clauses:
         result["eventFilter"] = {}
-    if opcua_event_filter_type is not None:
+    if opcua_event_filter_type:
         result["eventFilter"]["typeDefinitionId"] = opcua_event_filter_type
     if opcua_event_filter_clauses:
         result["eventFilter"]["selectClauses"] = []
