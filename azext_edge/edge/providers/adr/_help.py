@@ -3529,7 +3529,7 @@ def load_iotops_adr_help():
             long-summary: Import event-groups from JSON or YAML file. Use --replace to merge with overwrite.
         """
 
-    for asset_type in ["custom", "opcua", "sse"]:
+    for asset_type in ["custom", "opcua", "onvif", "sse"]:
         helps[
             f"iot ops ns asset {asset_type} event export"
         ] = """
