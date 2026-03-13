@@ -80,6 +80,8 @@ def mgmt_actions_execute(
     group_name: str,
     action_name: str,
     payload: Optional[str] = None,
+    no_validate: bool = False,
+    show_schema: bool = False,
     **kwargs,
 ) -> Dict:
     return MgmtActions(cmd).execute(
@@ -89,6 +91,8 @@ def mgmt_actions_execute(
         group_name=group_name,
         action_name=action_name,
         payload=payload,
+        no_validate=no_validate,
+        show_schema=show_schema,
         **kwargs,
     )
 

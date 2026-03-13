@@ -350,36 +350,6 @@ def ensure_schema_structure(schema: dict, input_data: dict, name: Optional[str] 
     """
     Validates the input data against the provided schema using jsonschema.
     """
-    import jsonschema
+    from ...util.schema_validation import validate_data_against_schema
 
-    validator = jsonschema.validators.validator_for(schema)(schema)
-    errors = sorted(validator.iter_errors(input_data), key=lambda e: str(list(e.path)))
-
-    if errors:
-        final_messages = []
-        for error in errors:
-            path = ".".join([str(p) for p in error.path])
-            if error.validator in ["oneOf", "anyOf"] and error.context:
-                # Try to find the most relevant error from the context
-                # We prefer errors that are not about structural mismatch (like additionalProperties)
-                # if there are other errors available.
-                context_errors = error.context
-                # Filter for errors that indicate a value mismatch rather than a structure mismatch
-                value_errors = [
-                    e for e in context_errors
-                    if e.validator not in ["additionalProperties", "required", "type", "const", "enum"]
-                ]
-
-                best = jsonschema.exceptions.best_match(value_errors or context_errors)
-                msg = best.message
-            else:
-                msg = error.message
-
-            if path:
-                final_messages.append(f"Property '{path}' is invalid: {msg}")
-            else:
-                final_messages.append(f"Invalid configuration: {msg}")
-
-        error_msg = "\n".join(final_messages)
-        prefix = f"The following {name} values are invalid:\n" if name else "Invalid input data:\n"
-        raise InvalidArgumentValueError(f"{prefix}{error_msg}")
+    validate_data_against_schema(schema, input_data, name=name)

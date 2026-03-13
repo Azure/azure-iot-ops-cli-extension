@@ -2152,6 +2152,115 @@ class MgmtActions(Queryable):
 
         return result
 
+    def _resolve_request_schema(
+        self,
+        instance: dict,
+        namespace_rg: str,
+        namespace_name: str,
+        asset_name: str,
+        group_name: str,
+        action_name: str,
+    ) -> Optional[dict]:
+        """Resolve the request JSON schema for a management action.
+
+        Walks the resolution chain: instance schemaRegistryRef → asset status →
+        action's requestMessageSchemaReference → schema version content.
+        Returns the parsed JSON Schema dict, or None if any step fails.
+        """
+        # Resolve schema registry from instance
+        schema_registry_id = (
+            instance.get("properties", {})
+            .get("schemaRegistryRef", {})
+            .get("resourceId")
+        )
+        if not schema_registry_id:
+            logger.debug("No schemaRegistryRef on instance — skipping payload validation.")
+            return None
+
+        parsed_registry = parse_resource_id_dict(schema_registry_id)
+        registry_rg = parsed_registry.get("resource_group")
+        registry_name = parsed_registry.get("name")
+        registry_sub = parsed_registry.get("subscription")
+        if not registry_rg or not registry_name:
+            logger.debug("Could not parse schema registry resource ID — skipping payload validation.")
+            return None
+
+        # Resolve client for schema registry operations (may be cross-subscription)
+        if registry_sub and registry_sub.casefold() != self.default_subscription_id.casefold():
+            logger.debug(
+                "Schema registry is in subscription %s — using cross-subscription client.",
+                registry_sub,
+            )
+            schema_client = get_registry_mgmt_client(**self._get_client_kwargs(subscription_id=registry_sub))
+        else:
+            schema_client = self.registry_mgmt_client
+
+        # Fetch asset with status to get requestMessageSchemaReference
+        try:
+            asset = self.registry_mgmt_client.namespace_assets.get(
+                resource_group_name=namespace_rg,
+                namespace_name=namespace_name,
+                asset_name=asset_name,
+            )
+        except HttpResponseError as e:
+            logger.debug("Failed to fetch asset for schema resolution: %s", e)
+            return None
+
+        # Find matching group + action in status
+        schema_ref = None
+        for mg in asset.get("properties", {}).get("status", {}).get("managementGroups", []):
+            if mg.get("name", "").casefold() != group_name.casefold():
+                continue
+            for action in mg.get("actions", []):
+                if action.get("name", "").casefold() != action_name.casefold():
+                    continue
+                schema_ref = action.get("requestMessageSchemaReference")
+                break
+            if schema_ref:
+                break
+
+        if not schema_ref:
+            logger.debug(
+                "No requestMessageSchemaReference found for group=%s action=%s — skipping.",
+                group_name,
+                action_name,
+            )
+            return None
+
+        schema_name = schema_ref.get("schemaName")
+        schema_version = schema_ref.get("schemaVersion")
+        if not schema_name or not schema_version:
+            logger.debug(
+                "Incomplete schemaReference (name=%s, version=%s) — skipping.",
+                schema_name,
+                schema_version,
+            )
+            return None
+
+        # Fetch schema version content
+        try:
+            schema_version_resource = schema_client.schema_versions.get(
+                resource_group_name=registry_rg,
+                schema_registry_name=registry_name,
+                schema_name=schema_name,
+                schema_version_name=schema_version,
+            )
+        except HttpResponseError as e:
+            logger.debug("Failed to fetch schema version %s/%s: %s", schema_name, schema_version, e)
+            return None
+
+        schema_content_str = schema_version_resource.get("properties", {}).get("schemaContent")
+        if not schema_content_str:
+            logger.debug("Schema version has no schemaContent — skipping payload validation.")
+            return None
+
+        # Parse schemaContent JSON
+        try:
+            return json.loads(schema_content_str)
+        except json.JSONDecodeError as e:
+            logger.debug("schemaContent is not valid JSON: %s — skipping payload validation.", e)
+            return None
+
     def execute(
         self,
         instance_name: str,
@@ -2160,15 +2269,22 @@ class MgmtActions(Queryable):
         group_name: str,
         action_name: str,
         payload: Optional[str] = None,
+        no_validate: bool = False,
+        show_schema: bool = False,
         **kwargs,
     ) -> dict:
         """Execute a management action on a namespace asset.
 
-        Resolves the ADR namespace from the instance, then invokes the executeAction
+        Resolves the ADR namespace from the instance, then optionally validates the
+        payload against the action's request schema before invoking the executeAction
         ARM operation as an LRO. Returns the action result (status, response, errors).
+
+        When show_schema is True, resolves and returns the request schema without
+        executing the action.
         """
         from ...util.file_operations import deserialize_json_input
 
+        # Resolve instance → ADR namespace
         instance = self.iotops_mgmt_client.instance.get(
             instance_name=instance_name,
             resource_group_name=resource_group_name,
@@ -2180,20 +2296,77 @@ class MgmtActions(Queryable):
                 "Ensure the instance is properly configured."
             )
         parsed_adr = parse_resource_id_dict(adr_namespace_ref)
+        namespace_rg = parsed_adr.get("resource_group")
+        namespace_name = parsed_adr.get("name")
+        if not namespace_rg or not namespace_name:
+            raise ValidationError(
+                f"Could not parse ADR namespace resource ID: {adr_namespace_ref}"
+            )
 
+        # --show-schema: resolve and return the request schema, then exit
+        if show_schema:
+            with console.status("Resolving request schema..."):
+                request_schema = self._resolve_request_schema(
+                    instance=instance,
+                    namespace_rg=namespace_rg,
+                    namespace_name=namespace_name,
+                    asset_name=asset_name,
+                    group_name=group_name,
+                    action_name=action_name,
+                )
+            if not request_schema:
+                raise ResourceNotFoundError(
+                    f"Could not resolve the request schema for action '{action_name}' "
+                    f"in group '{group_name}' on asset '{asset_name}'. "
+                    "The schema may not be published, the asset status may not be populated, "
+                    "or the schema registry may be inaccessible."
+                )
+            return request_schema
+
+        # Build request body
         body: Dict[str, Any] = {
             "managementActionName": action_name,
             "managementGroupName": group_name,
         }
+        deserialized_payload = None
         if payload:
-            body["payload"] = deserialize_json_input(payload)
+            deserialized_payload = deserialize_json_input(payload)
+            body["payload"] = deserialized_payload
+
+        # Validate payload against request schema (when validation is enabled)
+        if not no_validate:
+            with console.status("Validating payload..."):
+                request_schema = self._resolve_request_schema(
+                    instance=instance,
+                    namespace_rg=namespace_rg,
+                    namespace_name=namespace_name,
+                    asset_name=asset_name,
+                    group_name=group_name,
+                    action_name=action_name,
+                )
+                if request_schema:
+                    from ...util.schema_validation import check_json_schema, validate_data_against_schema
+
+                    schema_issue = check_json_schema(request_schema)
+                    if schema_issue:
+                        logger.warning(
+                            "%s — skipping validation. Use --show-schema to inspect the schema.",
+                            schema_issue,
+                        )
+                    else:
+                        validate_data_against_schema(
+                            request_schema,
+                            deserialized_payload if deserialized_payload is not None else {},
+                            name="payload",
+                        )
 
         logger.debug("Execute action request body: %s", body)
 
+        # Execute action (LRO)
         with console.status("Sending request...") as status:
             poller = self.registry_mgmt_client.namespace_assets.begin_execute_action(
-                resource_group_name=parsed_adr["resource_group"],
-                namespace_name=parsed_adr["name"],
+                resource_group_name=namespace_rg,
+                namespace_name=namespace_name,
                 asset_name=asset_name,
                 body=body,
             )
