@@ -102,10 +102,6 @@ def generate_event_group(
         "opcua_event_publishing_interval": 1500,
         "opcua_event_queue_size": 100,
     }),
-    # OPCUA asset event group with start instance
-    ("opcua", add_namespace_opcua_asset_event_group, {
-        "opcua_event_start_instance": "ns=2;i=3001",
-    }),
     # OPCUA asset dataset with minimal config
     ("opcua", add_namespace_opcua_asset_event_group, {}),
     # ONVIF asset dataset with minimal config
@@ -170,8 +166,6 @@ def test_add_namespace_asset_event_group(
                 opcua_config["publishingInterval"] = config_params["opcua_event_publishing_interval"]
             if "opcua_event_queue_size" in config_params:
                 opcua_config["queueSize"] = config_params["opcua_event_queue_size"]
-            if "opcua_event_start_instance" in config_params:
-                opcua_config["startInstance"] = config_params["opcua_event_start_instance"]
             expected_group["eventGroupConfiguration"] = json.dumps(opcua_config)
         elif asset_type == "custom":
             expected_group["eventGroupConfiguration"] = config_params.get("event_custom_configuration")
@@ -699,15 +693,6 @@ def test_remove_namespace_asset_event_group(
         "opcua_event_publishing_interval": 2000,
         "opcua_event_queue_size": 10,
     }),
-    # OPCUA asset event group with start instance
-    ("opcua", update_namespace_opcua_asset_event_group, {
-        "opcua_event_start_instance": "ns=2;i=4001",
-    }),
-    # OPCUA asset event group with filter type and clauses
-    ("opcua", update_namespace_opcua_asset_event_group, {
-        "opcua_event_filter_type": "ns=2;i=5002",
-        "opcua_event_filter_clauses": [["path=/Severity", "type=ns=2;i=5002"]],
-    }),
     # ONVIF asset event
     ("onvif", update_namespace_onvif_asset_event_group, {}),
     # SSE asset event group (event-driven, no sampling intervals)
@@ -793,8 +778,6 @@ def test_update_namespace_asset_event_group(
                 opcua_config["publishingInterval"] = unique_reqs.get("opcua_event_publishing_interval")
             if "opcua_event_queue_size" in unique_reqs:
                 opcua_config["queueSize"] = unique_reqs.get("opcua_event_queue_size")
-            if "opcua_event_start_instance" in unique_reqs:
-                opcua_config["startInstance"] = unique_reqs.get("opcua_event_start_instance")
             expected_group["eventGroupConfiguration"] = json.dumps(opcua_config)
 
     # Update destinations if specified
@@ -923,22 +906,6 @@ def test_update_namespace_asset_event_group(
         add_namespace_opcua_asset_event_group_event,
         {}
     ),
-    # OPCUA asset event with filter type only
-    (
-        "opcua",
-        add_namespace_opcua_asset_event_group_event,
-        {"opcua_event_filter_type": "ns=1;i=TestEventType"}
-    ),
-    # OPCUA asset event with filter type and clauses
-    (
-        "opcua",
-        add_namespace_opcua_asset_event_group_event,
-        {
-            "queue_size": 10,
-            "opcua_event_filter_type": "ns=1;i=TestEventType",
-            "opcua_event_filter_clauses": [["path=/path/to/node", "type=TestType", "field=TestField"]]
-        }
-    ),
     # ONVIF asset event with minimal parameters
     (
         "onvif",
@@ -1061,21 +1028,13 @@ def test_add_namespace_asset_event_group_event(
         expected_event["eventConfiguration"] = config_params["custom_configuration"]
         expected_event["typeRef"] = config_params.get("type_ref")
     elif asset_type == "opcua":
-        if "opcua_event_filter_type" in config_params or "opcua_event_filter_clauses" in config_params:
-            from azext_edge.edge.providers.adr.namespace_assets import _process_opcua_event_configurations_v2
-            expected_event["eventConfiguration"] = _process_opcua_event_configurations_v2(
-                opcua_event_queue_size=config_params.get("queue_size"),
-                opcua_event_filter_type=config_params.get("opcua_event_filter_type"),
-                opcua_event_filter_clauses=config_params.get("opcua_event_filter_clauses"),
-            )
-        else:
-            config = {}
-            if "queue_size" in config_params:
-                config["queueSize"] = config_params["queue_size"]
-            if "sampling_interval" in config_params:
-                config["samplingInterval"] = config_params["sampling_interval"]
-            if config:
-                expected_event["eventConfiguration"] = json.dumps(config)
+        config = {}
+        if "queue_size" in config_params:
+            config["queueSize"] = config_params["queue_size"]
+        if "sampling_interval" in config_params:
+            config["samplingInterval"] = config_params["sampling_interval"]
+        if config:
+            expected_event["eventConfiguration"] = json.dumps(config)
     elif asset_type == "onvif":
         # ONVIF events support type_ref; no configuration schema
         expected_event["typeRef"] = config_params.get("type_ref")

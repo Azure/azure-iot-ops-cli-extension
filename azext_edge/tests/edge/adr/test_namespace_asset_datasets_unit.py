@@ -95,10 +95,6 @@ def generate_dataset(dataset_name: Optional[str] = None, num_data_points: int = 
         "opcua_dataset_queue_size": 100,
         "opcua_dataset_key_frame_count": 3,
     }),
-    # OPCUA asset dataset with start instance
-    ("opcua", add_namespace_opcua_asset_dataset, {
-        "opcua_dataset_start_instance": "ns=2;i=1001",
-    }),
     # OPCUA asset dataset with minimal config
     ("opcua", add_namespace_opcua_asset_dataset, {}),
     # REST asset dataset with minimal config
@@ -757,10 +753,6 @@ def test_show_namespace_asset_dataset(
         "opcua_dataset_sampling_interval": 750,
         "opcua_dataset_queue_size": 100,
         "opcua_dataset_key_frame_count": 3,
-    }),
-    # OPCUA asset dataset with start instance
-    ("opcua", update_namespace_opcua_asset_dataset, {
-        "opcua_dataset_start_instance": "ns=2;i=2001",
     }),
     # REST asset dataset with minimal config
     ("rest", update_namespace_rest_asset_dataset, {

@@ -50,6 +50,7 @@ console = Console()
 logger = get_logger(__name__)
 NAMESPACE_ASSET_RESOURCE_TYPE = "Microsoft.DeviceRegistry/namespaces/assets"
 
+
 def _convert_sub_points_to_csv_namespace(
     sub_points: List[Dict[str, str]],
     sub_point_type: str,

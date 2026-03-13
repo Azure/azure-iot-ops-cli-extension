@@ -22,7 +22,6 @@ Usage::
             log.check("count == 2", count == 2)
 """
 
-import json
 import os
 import subprocess
 import time
@@ -30,6 +29,8 @@ from datetime import datetime, timezone
 from typing import Any, List, Optional
 
 from azure.cli.core.azclierror import CLIInternalError
+
+from .helpers import run as _helpers_run
 from knack.log import get_logger
 
 logger = get_logger(__name__)
@@ -156,29 +157,17 @@ class TestLog:
 
         cmd_timeout = timeout if timeout is not None else self.DEFAULT_CMD_TIMEOUT
         try:
-            result = subprocess.run(
-                command, check=False, shell=True, text=True, capture_output=True,
-                encoding="utf-8", timeout=cmd_timeout
+            parsed = _helpers_run(
+                command, expect_failure=expect_failure, timeout=cmd_timeout
             )
         except subprocess.TimeoutExpired:
             _log(f"  ⚠ command timed out after {cmd_timeout}s", "terra")
             raise CLIInternalError(f"Command timed out after {cmd_timeout}s: {command}")
-
-        if expect_failure and result.returncode == 0:
-            raise CLIInternalError(f"Command did not fail as expected: {command}")
-        if not expect_failure and result.returncode != 0:
-            _log(f"  ⚠ exit code: {result.returncode}", "terra")
-            if result.stderr:
-                for line in result.stderr.strip().splitlines()[:3]:
-                    _log(f"  ↳ {line}", "clay")
-            raise CLIInternalError(result.stderr)
-
-        parsed = None
-        if result.stdout:
-            try:
-                parsed = json.loads(result.stdout)
-            except json.JSONDecodeError:
-                parsed = result.stdout
+        except CLIInternalError as e:
+            err_lines = str(e).strip().splitlines()[:3]
+            for line in err_lines:
+                _log(f"  ↳ {line}", "clay")
+            raise
 
         if tracked_resources is not None and isinstance(parsed, dict) and "id" in parsed:
             tracked_resources.append(parsed["id"])
