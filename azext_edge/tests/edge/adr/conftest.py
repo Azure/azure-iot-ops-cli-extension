@@ -134,6 +134,7 @@ def mocked_connector_metadata_validator(mocker):
     yield mock_validator_instance
 
 
+@pytest.fixture()
 def mocked_get_endpoint_version_from_template(mocker):
     """
     Mock ConnectorTemplates to return None from get_endpoint_version_for_type by default.

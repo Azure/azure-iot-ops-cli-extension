@@ -2008,7 +2008,7 @@ def load_adr_arguments(self, _):
     _register_export_import_args(["custom", "opcua"], "datapoint", supports_csv=True)
     _register_export_import_args(["custom", "opcua", "onvif", "sse"], "event-group")
     _register_export_import_args(
-        ["custom", "opcua", "sse"], "event", supports_csv=True,
+        ["custom", "opcua", "onvif", "sse"], "event", supports_csv=True,
         extra_args={"event_group_name": {"options_list": ["--event-group", "--eg"], "help": "Event-group name."}},
     )
 
