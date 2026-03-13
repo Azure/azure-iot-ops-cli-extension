@@ -127,6 +127,11 @@ def test_namespace_asset_dataset_export_import(
                     f"--destination {dataset_destinations}"
                 )
             log.detail(f"datasets: {dataset_name_1}, {dataset_name_2}")
+            datasets_after_add = log.run_command(
+                f"az iot ops ns asset {asset_type} dataset list --asset {asset_name} "
+                f"--instance {instance_name} -g {resource_group}"
+            )
+            log.check("2 datasets added", len(datasets_after_add) == 2, actual=len(datasets_after_add))
 
         # Step 4: Export datasets as JSON
         with log.step(4, "Export Datasets (JSON)"):
@@ -261,6 +266,11 @@ def test_namespace_asset_datapoint_export_import(
                     f"--name {dp_name} --data-source sensor/{dp_name}"
                 )
             log.detail(f"datapoints: {dp_name_1}, {dp_name_2}")
+            dps_after_add = log.run_command(
+                f"az iot ops ns asset {asset_type} datapoint list --asset {asset_name} "
+                f"--instance {instance_name} -g {resource_group} --dataset {dataset_name}"
+            )
+            log.check("2 datapoints added", len(dps_after_add) == 2, actual=len(dps_after_add))
 
         # Step 4: Export datapoints
         with log.step(4, f"Export Datapoints ({export_format})"):
@@ -408,6 +418,11 @@ def test_namespace_asset_event_group_export_import(
                     f"--instance {instance_name} -g {resource_group} --name {eg_name} "
                     f"--data-source events/source/{eg_name}"
                 )
+            egs_after_add = log.run_command(
+                f"az iot ops ns asset {asset_type} event-group list --asset {asset_name} "
+                f"--instance {instance_name} -g {resource_group}"
+            )
+            log.check("2 event-groups added", len(egs_after_add) == 2, actual=len(egs_after_add))
 
         # Step 4: Export event-groups as JSON
         with log.step(4, "Export Event Groups (JSON)"):
@@ -541,6 +556,11 @@ def test_namespace_asset_event_export_import(
                     f"--name {ev_name} --data-source events/{ev_name}"
                 )
             log.detail(f"events: {ev_name_1}, {ev_name_2}")
+            evs_after_add = log.run_command(
+                f"az iot ops ns asset {asset_type} event list --asset {asset_name} "
+                f"--instance {instance_name} -g {resource_group} --event-group {event_group_name}"
+            )
+            log.check("2 events added", len(evs_after_add) == 2, actual=len(evs_after_add))
 
         # Step 4: Export events
         with log.step(4, f"Export Events ({export_format})"):
@@ -685,6 +705,11 @@ def test_namespace_asset_stream_export_import(
                     f"az iot ops ns asset {asset_type} stream add --asset {asset_name} "
                     f"--instance {instance_name} -g {resource_group} --name {stream_name}"
                 )
+            streams_after_add = log.run_command(
+                f"az iot ops ns asset {asset_type} stream list --asset {asset_name} "
+                f"--instance {instance_name} -g {resource_group}"
+            )
+            log.check("2 streams added", len(streams_after_add) == 2, actual=len(streams_after_add))
 
         # Step 4: Export streams as JSON
         with log.step(4, "Export Streams (JSON)"):
@@ -785,6 +810,11 @@ def test_namespace_asset_management_group_export_import(
                     f"--instance {instance_name} -g {resource_group} --name {group_name} "
                     f"--data-source mgmt/{group_name}"
                 )
+            groups_after_add = log.run_command(
+                f"az iot ops ns asset {asset_type} mgmt-group list --asset {asset_name} "
+                f"--instance {instance_name} -g {resource_group}"
+            )
+            log.check("2 mgmt-groups added", len(groups_after_add) == 2, actual=len(groups_after_add))
 
         # Step 4: Export management groups as JSON
         with log.step(4, "Export Management Groups (JSON)"):
@@ -899,6 +929,11 @@ def test_namespace_asset_management_action_export_import(
                     f"--name {action_name} --target-uri 'ns=2;s={action_name}'"
                 )
             log.detail(f"actions: {action_name_1}, {action_name_2}")
+            actions_after_add = log.run_command(
+                f"az iot ops ns asset {asset_type} mgmt-action list --asset {asset_name} "
+                f"--instance {instance_name} -g {resource_group} --group {group_name}"
+            )
+            log.check("2 actions added", len(actions_after_add) == 2, actual=len(actions_after_add))
 
         # Step 4: Export actions
         with log.step(4, f"Export Management Actions ({export_format})"):

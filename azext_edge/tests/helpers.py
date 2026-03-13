@@ -211,7 +211,12 @@ def remove_file(file_path):
             logger.error(f"Failed to remove file: {file_path}. {e}")
 
 
-def run(command: str, shell_mode: bool = True, expect_failure: bool = False) -> Union[Dict[str, Any], str, None]:
+def run(
+    command: str,
+    shell_mode: bool = True,
+    expect_failure: bool = False,
+    timeout: Optional[int] = None,
+) -> Union[Dict[str, Any], str, None]:
     """
     Wrapper function for run_host_command used for testing.
     Parameter `expect_failure` determines if an error will be raised for the command result.
@@ -220,7 +225,10 @@ def run(command: str, shell_mode: bool = True, expect_failure: bool = False) -> 
     """
     import subprocess
 
-    result = subprocess.run(command, check=False, shell=shell_mode, text=True, capture_output=True, encoding="utf-8")
+    result = subprocess.run(
+        command, check=False, shell=shell_mode, text=True, capture_output=True,
+        encoding="utf-8", timeout=timeout,
+    )
     if expect_failure and result.returncode == 0:
         raise CLIInternalError(f"Command `{command}` did not fail as expected.")
     elif not expect_failure and result.returncode != 0:

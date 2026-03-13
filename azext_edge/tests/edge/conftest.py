@@ -172,8 +172,8 @@ def tracked_resources():
     yield resources
     for res in reversed(resources):
         try:
-            run(f"az resource delete --id {res} -v")
-        except CLIInternalError:
+            run(f"az resource delete --id {res} -v", timeout=600)
+        except Exception:
             logger.error(f"Failed to delete {res}")
 
 
