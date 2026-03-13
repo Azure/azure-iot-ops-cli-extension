@@ -80,7 +80,6 @@ def _ensure_asset_for_format_tests(
     return asset_name
 
 
-
 @pytest.mark.parametrize("asset_type, endpoint_type, endpoint_address", [
     ("custom", "custom", "http://192.168.1.100:8000/custom/service"),
     ("opcua", "opcua", "opc.tcp://opcuaserver.local:4840"),
@@ -140,7 +139,7 @@ def test_namespace_asset_dataset_export_import(
             log.check("'file_path' in result", "file_path" in export_result_json)
             log.check("'dataset_count' in result", "dataset_count" in export_result_json)
             log.check("dataset_count == 2", export_result_json["dataset_count"] == 2,
-                       actual=export_result_json.get("dataset_count"))
+                      actual=export_result_json.get("dataset_count"))
             log.check("file is .json", ".json" in export_result_json["file_path"])
 
             exported_file = export_result_json["file_path"]
@@ -157,7 +156,7 @@ def test_namespace_asset_dataset_export_import(
             for ds_name in [dataset_name_1, dataset_name_2]:
                 ds = ds_dict[ds_name]
                 log.check(f"{ds_name} dataSource", ds.get("dataSource") == f"sensor/data/{ds_name}",
-                           actual=ds.get("dataSource"))
+                          actual=ds.get("dataSource"))
                 log.check(f"{ds_name} has destinations", "destinations" in ds and len(ds["destinations"]) > 0)
 
         # Step 5: Remove one dataset
@@ -171,7 +170,7 @@ def test_namespace_asset_dataset_export_import(
                 f"--instance {instance_name} -g {resource_group}"
             )
             log.check("1 dataset remains", len(datasets_after_remove) == 1,
-                       actual=len(datasets_after_remove))
+                      actual=len(datasets_after_remove))
 
         # Step 6: Import datasets back
         with log.step(6, "Import Datasets"):
@@ -181,14 +180,14 @@ def test_namespace_asset_dataset_export_import(
             )
 
             log.check("imported 2 datasets", len(imported_datasets) == 2,
-                       actual=len(imported_datasets))
+                      actual=len(imported_datasets))
             imp_dict = {ds["name"]: ds for ds in imported_datasets}
             log.check(f"{dataset_name_1} restored", dataset_name_1 in imp_dict)
             log.check(f"{dataset_name_2} restored", dataset_name_2 in imp_dict)
             for ds_name in [dataset_name_1, dataset_name_2]:
                 ds = imp_dict[ds_name]
                 log.check(f"{ds_name} dataSource intact", ds.get("dataSource") == f"sensor/data/{ds_name}",
-                           actual=ds.get("dataSource"))
+                          actual=ds.get("dataSource"))
 
         # Step 7: Verify final state
         with log.step(7, "Verify Final State"):
@@ -274,7 +273,7 @@ def test_namespace_asset_datapoint_export_import(
             log.check("'file_path' in result", "file_path" in export_result)
             log.check("'datapoint_count' in result", "datapoint_count" in export_result)
             log.check("datapoint_count == 2", export_result["datapoint_count"] == 2,
-                       actual=export_result.get("datapoint_count"))
+                      actual=export_result.get("datapoint_count"))
             log.check(f"file is .{export_format}", f".{export_format}" in export_result["file_path"])
 
             exported_file = export_result["file_path"]
@@ -289,8 +288,8 @@ def test_namespace_asset_datapoint_export_import(
                 for dp_name in [dp_name_1, dp_name_2]:
                     log.check(f"{dp_name} in export", dp_name in dp_dict)
                     log.check(f"{dp_name} dataSource",
-                               dp_dict[dp_name].get("dataSource") == f"sensor/{dp_name}",
-                               actual=dp_dict[dp_name].get("dataSource"))
+                              dp_dict[dp_name].get("dataSource") == f"sensor/{dp_name}",
+                              actual=dp_dict[dp_name].get("dataSource"))
 
         # Step 5: Remove all datapoints
         with log.step(5, "Remove All Datapoints"):
@@ -305,7 +304,7 @@ def test_namespace_asset_datapoint_export_import(
                 f"--instance {instance_name} -g {resource_group} --dataset {dataset_name}"
             )
             log.check("0 datapoints remain", len(datapoints_after_remove) == 0,
-                       actual=len(datapoints_after_remove))
+                      actual=len(datapoints_after_remove))
 
         # Step 6: Import datapoints back
         with log.step(6, "Import Datapoints"):
@@ -316,13 +315,13 @@ def test_namespace_asset_datapoint_export_import(
             )
 
             log.check("imported 2 datapoints", len(imported_datapoints) == 2,
-                       actual=len(imported_datapoints))
+                      actual=len(imported_datapoints))
             imp_dict = {dp["name"]: dp for dp in imported_datapoints}
             for dp_name in [dp_name_1, dp_name_2]:
                 log.check(f"{dp_name} restored", dp_name in imp_dict)
                 log.check(f"{dp_name} dataSource intact",
-                           imp_dict[dp_name].get("dataSource") == f"sensor/{dp_name}",
-                           actual=imp_dict[dp_name].get("dataSource"))
+                          imp_dict[dp_name].get("dataSource") == f"sensor/{dp_name}",
+                          actual=imp_dict[dp_name].get("dataSource"))
 
         # Step 7: Verify final state
         with log.step(7, "Verify Final State"):
@@ -331,7 +330,7 @@ def test_namespace_asset_datapoint_export_import(
                 f"--instance {instance_name} -g {resource_group} --dataset {dataset_name}"
             )
             log.check("final count == 2", len(final_datapoints) == 2,
-                       actual=len(final_datapoints))
+                      actual=len(final_datapoints))
 
         # Steps 8-9: REPLACE mode (JSON only)
         if export_format == "json":
@@ -357,7 +356,7 @@ def test_namespace_asset_datapoint_export_import(
                 )
 
                 log.check("still 2 datapoints", len(replaced_datapoints) == 2,
-                           actual=len(replaced_datapoints))
+                          actual=len(replaced_datapoints))
                 dp_dict = {dp["name"]: dp for dp in replaced_datapoints}
                 log.check(f"{dp_name_1} modified", "_modified" in dp_dict[dp_name_1]["dataSource"])
                 log.check(f"{dp_name_2} unchanged", "_modified" not in dp_dict[dp_name_2]["dataSource"])
@@ -421,7 +420,7 @@ def test_namespace_asset_event_group_export_import(
             log.check("'file_path' in result", "file_path" in export_result_json)
             log.check("'event_group_count' in result", "event_group_count" in export_result_json)
             log.check("event_group_count == 2", export_result_json["event_group_count"] == 2,
-                       actual=export_result_json.get("event_group_count"))
+                      actual=export_result_json.get("event_group_count"))
             log.check("file is .json", ".json" in export_result_json["file_path"])
 
             exported_file = export_result_json["file_path"]
@@ -431,14 +430,14 @@ def test_namespace_asset_event_group_export_import(
             with open(exported_file, 'r', encoding='utf-8') as f:
                 exported_event_groups = json.load(f)
             log.check("exported 2 event-groups", len(exported_event_groups) == 2,
-                       actual=len(exported_event_groups))
+                      actual=len(exported_event_groups))
             eg_dict = {eg["name"]: eg for eg in exported_event_groups}
             log.check(f"{event_group_name_1} in export", event_group_name_1 in eg_dict)
             log.check(f"{event_group_name_2} in export", event_group_name_2 in eg_dict)
             for eg_name in [event_group_name_1, event_group_name_2]:
                 log.check(f"{eg_name} dataSource",
-                           eg_dict[eg_name].get("dataSource") == f"events/source/{eg_name}",
-                           actual=eg_dict[eg_name].get("dataSource"))
+                          eg_dict[eg_name].get("dataSource") == f"events/source/{eg_name}",
+                          actual=eg_dict[eg_name].get("dataSource"))
 
         # Step 5: Remove one event-group & verify
         with log.step(5, "Remove Event Group & Verify"):
@@ -451,7 +450,7 @@ def test_namespace_asset_event_group_export_import(
                 f"--instance {instance_name} -g {resource_group}"
             )
             log.check("1 event-group remains", len(event_groups_after_remove) == 1,
-                       actual=len(event_groups_after_remove))
+                      actual=len(event_groups_after_remove))
 
         # Step 6: Import event-groups back
         with log.step(6, "Import Event Groups"):
@@ -460,14 +459,14 @@ def test_namespace_asset_event_group_export_import(
                 f"--instance {instance_name} -g {resource_group} --input-file {exported_file}"
             )
             log.check("imported 2 event-groups", len(imported_event_groups) == 2,
-                       actual=len(imported_event_groups))
+                      actual=len(imported_event_groups))
             imp_dict = {eg["name"]: eg for eg in imported_event_groups}
             log.check(f"{event_group_name_1} restored", event_group_name_1 in imp_dict)
             log.check(f"{event_group_name_2} restored", event_group_name_2 in imp_dict)
             for eg_name in [event_group_name_1, event_group_name_2]:
                 log.check(f"{eg_name} dataSource intact",
-                           imp_dict[eg_name].get("dataSource") == f"events/source/{eg_name}",
-                           actual=imp_dict[eg_name].get("dataSource"))
+                          imp_dict[eg_name].get("dataSource") == f"events/source/{eg_name}",
+                          actual=imp_dict[eg_name].get("dataSource"))
 
         # Step 7: Verify final state
         with log.step(7, "Verify Final State"):
@@ -476,7 +475,7 @@ def test_namespace_asset_event_group_export_import(
                 f"--instance {instance_name} -g {resource_group}"
             )
             log.check("final count == 2", len(final_event_groups) == 2,
-                       actual=len(final_event_groups))
+                      actual=len(final_event_groups))
 
         # Step 8: Export as YAML
         with log.step(8, "Export Event Groups (YAML)"):
@@ -554,7 +553,7 @@ def test_namespace_asset_event_export_import(
             log.check("'file_path' in result", "file_path" in export_result)
             log.check("'event_count' in result", "event_count" in export_result)
             log.check("event_count == 2", export_result["event_count"] == 2,
-                       actual=export_result.get("event_count"))
+                      actual=export_result.get("event_count"))
             log.check(f"file is .{export_format}", f".{export_format}" in export_result["file_path"])
 
             exported_file = export_result["file_path"]
@@ -569,8 +568,8 @@ def test_namespace_asset_event_export_import(
                 for ev_name in [ev_name_1, ev_name_2]:
                     log.check(f"{ev_name} in export", ev_name in ev_dict)
                     log.check(f"{ev_name} dataSource",
-                               ev_dict[ev_name].get("dataSource") == f"events/{ev_name}",
-                               actual=ev_dict[ev_name].get("dataSource"))
+                              ev_dict[ev_name].get("dataSource") == f"events/{ev_name}",
+                              actual=ev_dict[ev_name].get("dataSource"))
 
         # Step 5: Remove all events
         with log.step(5, "Remove All Events"):
@@ -585,7 +584,7 @@ def test_namespace_asset_event_export_import(
                 f"--instance {instance_name} -g {resource_group} --event-group {event_group_name}"
             )
             log.check("0 events remain", len(events_after_remove) == 0,
-                       actual=len(events_after_remove))
+                      actual=len(events_after_remove))
 
         # Step 6: Import events back
         with log.step(6, "Import Events"):
@@ -596,13 +595,13 @@ def test_namespace_asset_event_export_import(
             )
 
             log.check("imported 2 events", len(imported_events) == 2,
-                       actual=len(imported_events))
+                      actual=len(imported_events))
             imp_dict = {ev["name"]: ev for ev in imported_events}
             for ev_name in [ev_name_1, ev_name_2]:
                 log.check(f"{ev_name} restored", ev_name in imp_dict)
                 log.check(f"{ev_name} dataSource intact",
-                           imp_dict[ev_name].get("dataSource") == f"events/{ev_name}",
-                           actual=imp_dict[ev_name].get("dataSource"))
+                          imp_dict[ev_name].get("dataSource") == f"events/{ev_name}",
+                          actual=imp_dict[ev_name].get("dataSource"))
 
         # Step 7: Verify final state
         with log.step(7, "Verify Final State"):
@@ -611,7 +610,7 @@ def test_namespace_asset_event_export_import(
                 f"--instance {instance_name} -g {resource_group} --event-group {event_group_name}"
             )
             log.check("final count == 2", len(final_events) == 2,
-                       actual=len(final_events))
+                      actual=len(final_events))
 
         # Steps 8-9: REPLACE mode (JSON only)
         if export_format == "json":
@@ -637,7 +636,7 @@ def test_namespace_asset_event_export_import(
                 )
 
                 log.check("still 2 events", len(replaced_events) == 2,
-                           actual=len(replaced_events))
+                          actual=len(replaced_events))
                 ev_dict = {ev["name"]: ev for ev in replaced_events}
                 log.check(f"{ev_name_1} modified", "_modified" in ev_dict[ev_name_1]["dataSource"])
                 log.check(f"{ev_name_2} unchanged", "_modified" not in ev_dict[ev_name_2]["dataSource"])
@@ -698,7 +697,7 @@ def test_namespace_asset_stream_export_import(
             log.check("'file_path' in result", "file_path" in export_result_json)
             log.check("'stream_count' in result", "stream_count" in export_result_json)
             log.check("stream_count == 2", export_result_json["stream_count"] == 2,
-                       actual=export_result_json.get("stream_count"))
+                      actual=export_result_json.get("stream_count"))
             log.check("file is .json", ".json" in export_result_json["file_path"])
 
             exported_file = export_result_json["file_path"]
@@ -708,7 +707,7 @@ def test_namespace_asset_stream_export_import(
             with open(exported_file, 'r', encoding='utf-8') as f:
                 exported_streams = json.load(f)
             log.check("exported 2 streams", len(exported_streams) == 2,
-                       actual=len(exported_streams))
+                      actual=len(exported_streams))
             exported_names = [s["name"] for s in exported_streams]
             log.check(f"{stream_name_1} in export", stream_name_1 in exported_names)
             log.check(f"{stream_name_2} in export", stream_name_2 in exported_names)
@@ -726,7 +725,7 @@ def test_namespace_asset_stream_export_import(
                 f"--instance {instance_name} -g {resource_group}"
             )
             log.check("1 stream remains", len(streams_after_remove) == 1,
-                       actual=len(streams_after_remove))
+                      actual=len(streams_after_remove))
 
         # Step 6: Import streams back
         with log.step(6, "Import Streams"):
@@ -735,7 +734,7 @@ def test_namespace_asset_stream_export_import(
                 f"--instance {instance_name} -g {resource_group} --input-file {exported_file}"
             )
             log.check("imported 2 streams", len(imported_streams) == 2,
-                       actual=len(imported_streams))
+                      actual=len(imported_streams))
             imported_names = [s["name"] for s in imported_streams]
             log.check(f"{stream_name_1} restored", stream_name_1 in imported_names)
             log.check(f"{stream_name_2} restored", stream_name_2 in imported_names)
@@ -798,7 +797,7 @@ def test_namespace_asset_management_group_export_import(
             log.check("'file_path' in result", "file_path" in export_result_json)
             log.check("'management_group_count' in result", "management_group_count" in export_result_json)
             log.check("management_group_count == 2", export_result_json["management_group_count"] == 2,
-                       actual=export_result_json.get("management_group_count"))
+                      actual=export_result_json.get("management_group_count"))
             log.check("file is .json", ".json" in export_result_json["file_path"])
 
             exported_file = export_result_json["file_path"]
@@ -808,7 +807,7 @@ def test_namespace_asset_management_group_export_import(
             with open(exported_file, 'r', encoding='utf-8') as f:
                 exported_groups = json.load(f)
             log.check("exported 2 groups", len(exported_groups) == 2,
-                       actual=len(exported_groups))
+                      actual=len(exported_groups))
             grp_dict = {g["name"]: g for g in exported_groups}
             log.check(f"{group_name_1} in export", group_name_1 in grp_dict)
             log.check(f"{group_name_2} in export", group_name_2 in grp_dict)
@@ -816,8 +815,8 @@ def test_namespace_asset_management_group_export_import(
                 grp = grp_dict[grp_name]
                 log.check(f"no 'actions' in {grp_name}", "actions" not in grp)
                 log.check(f"{grp_name} dataSource",
-                           grp.get("dataSource") == f"mgmt/{grp_name}",
-                           actual=grp.get("dataSource"))
+                          grp.get("dataSource") == f"mgmt/{grp_name}",
+                          actual=grp.get("dataSource"))
 
         # Step 5: Remove one group & verify
         with log.step(5, "Remove Management Group & Verify"):
@@ -830,7 +829,7 @@ def test_namespace_asset_management_group_export_import(
                 f"--instance {instance_name} -g {resource_group}"
             )
             log.check("1 group remains", len(groups_after_remove) == 1,
-                       actual=len(groups_after_remove))
+                      actual=len(groups_after_remove))
 
         # Step 6: Import management groups back
         with log.step(6, "Import Management Groups"):
@@ -839,14 +838,14 @@ def test_namespace_asset_management_group_export_import(
                 f"--instance {instance_name} -g {resource_group} --input-file {exported_file}"
             )
             log.check("imported 2 groups", len(imported_groups) == 2,
-                       actual=len(imported_groups))
+                      actual=len(imported_groups))
             imp_dict = {g["name"]: g for g in imported_groups}
             log.check(f"{group_name_1} restored", group_name_1 in imp_dict)
             log.check(f"{group_name_2} restored", group_name_2 in imp_dict)
             for grp_name in [group_name_1, group_name_2]:
                 log.check(f"{grp_name} dataSource intact",
-                           imp_dict[grp_name].get("dataSource") == f"mgmt/{grp_name}",
-                           actual=imp_dict[grp_name].get("dataSource"))
+                          imp_dict[grp_name].get("dataSource") == f"mgmt/{grp_name}",
+                          actual=imp_dict[grp_name].get("dataSource"))
 
 
 @pytest.mark.parametrize("asset_type, endpoint_type, endpoint_address", [
@@ -912,7 +911,7 @@ def test_namespace_asset_management_action_export_import(
             log.check("'file_path' in result", "file_path" in export_result)
             log.check("'action_count' in result", "action_count" in export_result)
             log.check("action_count == 2", export_result["action_count"] == 2,
-                       actual=export_result.get("action_count"))
+                      actual=export_result.get("action_count"))
             log.check(f"file is .{export_format}", f".{export_format}" in export_result["file_path"])
 
             exported_file = export_result["file_path"]
@@ -927,8 +926,8 @@ def test_namespace_asset_management_action_export_import(
                 for act_name in [action_name_1, action_name_2]:
                     log.check(f"{act_name} in export", act_name in act_dict)
                     log.check(f"{act_name} targetUri",
-                               act_dict[act_name].get("targetUri") == f"ns=2;s={act_name}",
-                               actual=act_dict[act_name].get("targetUri"))
+                              act_dict[act_name].get("targetUri") == f"ns=2;s={act_name}",
+                              actual=act_dict[act_name].get("targetUri"))
 
         # Step 5: Remove all actions
         with log.step(5, "Remove All Actions"):
@@ -943,7 +942,7 @@ def test_namespace_asset_management_action_export_import(
                 f"--instance {instance_name} -g {resource_group} --group {group_name}"
             )
             log.check("0 actions remain", len(actions_after_remove) == 0,
-                       actual=len(actions_after_remove))
+                      actual=len(actions_after_remove))
 
         # Step 6: Import actions back
         with log.step(6, "Import Management Actions"):
@@ -954,13 +953,13 @@ def test_namespace_asset_management_action_export_import(
             )
 
             log.check("imported 2 actions", len(imported_actions) == 2,
-                       actual=len(imported_actions))
+                      actual=len(imported_actions))
             imp_dict = {a["name"]: a for a in imported_actions}
             for act_name in [action_name_1, action_name_2]:
                 log.check(f"{act_name} restored", act_name in imp_dict)
                 log.check(f"{act_name} targetUri intact",
-                           imp_dict[act_name].get("targetUri") == f"ns=2;s={act_name}",
-                           actual=imp_dict[act_name].get("targetUri"))
+                          imp_dict[act_name].get("targetUri") == f"ns=2;s={act_name}",
+                          actual=imp_dict[act_name].get("targetUri"))
 
         # Step 7: Verify final state
         with log.step(7, "Verify Final State"):
@@ -969,7 +968,7 @@ def test_namespace_asset_management_action_export_import(
                 f"--instance {instance_name} -g {resource_group} --group {group_name}"
             )
             log.check("final count == 2", len(final_actions) == 2,
-                       actual=len(final_actions))
+                      actual=len(final_actions))
 
         # Steps 8-9: REPLACE mode (JSON only)
         if export_format == "json":
@@ -995,7 +994,7 @@ def test_namespace_asset_management_action_export_import(
                 )
 
                 log.check("still 2 actions", len(replaced_actions) == 2,
-                           actual=len(replaced_actions))
+                          actual=len(replaced_actions))
                 action_dict = {a["name"]: a for a in replaced_actions}
                 log.check(f"{action_name_1} modified", "_modified" in action_dict[action_name_1]["targetUri"])
                 log.check(f"{action_name_2} unchanged", "_modified" not in action_dict[action_name_2]["targetUri"])

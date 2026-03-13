@@ -10,7 +10,6 @@ from typing import Optional
 
 from azext_edge.edge.util.id_tools import parse_resource_id
 from ...generators import generate_random_string, get_zeroed_subscription
-from ...helpers import run
 
 
 @pytest.fixture()
@@ -133,6 +132,7 @@ def mocked_connector_metadata_validator(mocker):
     )
 
     yield mock_validator_instance
+
 
 def mocked_get_endpoint_version_from_template(mocker):
     """

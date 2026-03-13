@@ -240,7 +240,9 @@ def test_namespace_custom_asset_management_group_lifecycle_operations(
     assert mgmt_group_name not in remaining_mgmt_group_names
 
 
-def test_namespace_opcua_asset_management_group_lifecycle_operations(require_namespace_init, tracked_resources: List[str]):
+def test_namespace_opcua_asset_management_group_lifecycle_operations(
+    require_namespace_init, tracked_resources: List[str]
+):
     """Test complete lifecycle of OPC UA asset management group operations."""
     # Setup test variables
     instance_name = require_namespace_init["instanceName"]
@@ -427,7 +429,9 @@ def test_namespace_opcua_asset_management_group_lifecycle_operations(require_nam
     assert mgmt_group_name not in remaining_mgmt_group_names
 
 
-def test_namespace_onvif_asset_management_group_lifecycle_operations(require_namespace_init, tracked_resources: List[str]):
+def test_namespace_onvif_asset_management_group_lifecycle_operations(
+    require_namespace_init, tracked_resources: List[str]
+):
     """Test complete lifecycle of ONVIF asset management group operations."""
     # Setup test variables
     instance_name = require_namespace_init["instanceName"]
