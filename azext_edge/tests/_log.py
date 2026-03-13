@@ -35,7 +35,10 @@ from knack.log import get_logger
 
 logger = get_logger(__name__)
 
-_PRETTY = os.environ.get("PRETTY_LOG")
+
+def _is_pretty() -> bool:
+    """Check at call time, so monkeypatch / late env changes work."""
+    return bool(os.environ.get("PRETTY_LOG"))
 
 _ANSI_RESET = "\033[0m"
 _ANSI = {
@@ -64,7 +67,7 @@ def _fmt_duration(seconds: float) -> str:
 def _log(msg: str, color: str = ""):
     """Emit a single log line.  Uses ANSI color when ``PRETTY_LOG`` is set,
     otherwise falls back to ``logger.warning()`` for pytest log capture."""
-    if _PRETTY:
+    if _is_pretty():
         ansi = _ANSI.get(color, "")
         if ansi:
             print(f"{ansi}{msg}{_ANSI_RESET}", flush=True)
