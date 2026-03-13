@@ -896,7 +896,7 @@ def test_namespace_asset_management_action_export_import(
                 log.run_command(
                     f"az iot ops ns asset {asset_type} mgmt-action add --asset {asset_name} "
                     f"--instance {instance_name} -g {resource_group} --group {group_name} "
-                    f"--name {action_name} --target-uri ns=2;s={action_name}"
+                    f"--name {action_name} --target-uri 'ns=2;s={action_name}'"
                 )
             log.detail(f"actions: {action_name_1}, {action_name_2}")
 

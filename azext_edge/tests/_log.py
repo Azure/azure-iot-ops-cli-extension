@@ -141,18 +141,28 @@ class TestLog:
         """Create a numbered step context."""
         return self._Step(self, num, description)
 
+    # Default timeout per CLI command (seconds). Override via TESTLOG_CMD_TIMEOUT env var.
+    DEFAULT_CMD_TIMEOUT = int(os.environ.get("TESTLOG_CMD_TIMEOUT", 300))
+
     def run_command(
         self,
         command: str,
         tracked_resources: Optional[List[str]] = None,
         expect_failure: bool = False,
+        timeout: Optional[int] = None,
     ) -> Any:
         """Run a CLI command with logging. Optionally track resource IDs for cleanup."""
         _log(f"  › {command}", "sage")
 
-        result = subprocess.run(
-            command, check=False, shell=True, text=True, capture_output=True, encoding="utf-8"
-        )
+        cmd_timeout = timeout if timeout is not None else self.DEFAULT_CMD_TIMEOUT
+        try:
+            result = subprocess.run(
+                command, check=False, shell=True, text=True, capture_output=True,
+                encoding="utf-8", timeout=cmd_timeout
+            )
+        except subprocess.TimeoutExpired:
+            _log(f"  ⚠ command timed out after {cmd_timeout}s", "terra")
+            raise CLIInternalError(f"Command timed out after {cmd_timeout}s: {command}")
 
         if expect_failure and result.returncode == 0:
             raise CLIInternalError(f"Command did not fail as expected: {command}")

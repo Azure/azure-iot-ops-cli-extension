@@ -170,7 +170,7 @@ def settings_with_rg(settings):
 def tracked_resources():
     resources = []
     yield resources
-    for res in resources:
+    for res in reversed(resources):
         try:
             run(f"az resource delete --id {res} -v")
         except CLIInternalError:
