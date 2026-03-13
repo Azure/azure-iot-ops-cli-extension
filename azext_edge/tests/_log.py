@@ -40,6 +40,7 @@ def _is_pretty() -> bool:
     """Check at call time, so monkeypatch / late env changes work."""
     return bool(os.environ.get("PRETTY_LOG"))
 
+
 _ANSI_RESET = "\033[0m"
 _ANSI = {
     "gold": "\033[38;2;202;157;100m",   # #CA9D64 – sandy gold
