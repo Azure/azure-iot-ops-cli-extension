@@ -785,9 +785,10 @@ class NamespaceAssets(Queryable):
         instance_name: str,
         instance_resource_group: str,
         file_path: str,
+        replace: bool = False,
         **kwargs
     ) -> List[dict]:
-        """Import datasets from a file, replacing all existing datasets in the asset."""
+        """Import datasets from file. Supports JSON and YAML formats."""
         asset = self.show(
             asset_name=asset_name,
             instance_name=instance_name,
@@ -795,19 +796,36 @@ class NamespaceAssets(Queryable):
             check_cluster=True
         )
         namespace = parse_resource_id(asset["id"])
+        original_datasets = asset["properties"].get("datasets", [])
 
-        imported_datasets = list(deserialize_file_content(file_path=file_path))
-
-        # Validate imported datasets
-        validator = ConnectorMetadataValidator.from_asset(
-            cmd=self.cmd,
-            asset=asset,
-            instance_name=instance_name,
-            instance_resource_group=instance_resource_group
+        imported_datasets = _process_namespace_sub_points_file_path(
+            file_path=file_path,
+            original_items=original_datasets,
+            point_key="name",
+            replace=replace
         )
 
-        for dataset in imported_datasets:
-            validator.validate_dataset(dataset)
+        # Validate imported datasets
+        try:
+            validator = ConnectorMetadataValidator.from_asset(
+                cmd=self.cmd,
+                asset=asset,
+                instance_name=instance_name,
+                instance_resource_group=instance_resource_group
+            )
+
+            for dataset in imported_datasets:
+                validator.validate_dataset(dataset)
+            logger.info("Datasets validated successfully.")
+        except ValidationError:
+            raise
+        except Exception as e:
+            logger.warning(
+                f"Dataset validation skipped: {e}. "
+                "This may occur if the connector is not deployed or the cluster is not connected. "
+                "The datasets will be imported but may fail at runtime if the configuration is invalid."
+            )
+
         update_payload = {
             "properties": {
                 "datasets": imported_datasets
@@ -1060,15 +1078,25 @@ class NamespaceAssets(Queryable):
         )
 
         # Validate imported datapoints
-        validator = ConnectorMetadataValidator.from_asset(
-            cmd=self.cmd,
-            asset=asset,
-            instance_name=instance_name,
-            instance_resource_group=instance_resource_group
-        )
+        try:
+            validator = ConnectorMetadataValidator.from_asset(
+                cmd=self.cmd,
+                asset=asset,
+                instance_name=instance_name,
+                instance_resource_group=instance_resource_group
+            )
 
-        for datapoint in imported_datapoints:
-            validator.validate_datapoint(datapoint)
+            for datapoint in imported_datapoints:
+                validator.validate_datapoint(datapoint)
+            logger.info("Datapoints validated successfully.")
+        except ValidationError:
+            raise
+        except Exception as e:
+            logger.warning(
+                f"Datapoint validation skipped: {e}. "
+                "This may occur if the connector is not deployed or the cluster is not connected. "
+                "The datapoints will be imported but may fail at runtime if the configuration is invalid."
+            )
 
         dataset["dataPoints"] = imported_datapoints
 
@@ -1899,18 +1927,32 @@ class NamespaceAssets(Queryable):
         )
 
         # Validate imported streams using ConnectorMetadataValidator
-        validator = ConnectorMetadataValidator.from_asset(
-            cmd=self.cmd,
-            asset=asset,
-            instance_name=instance_name,
-            instance_resource_group=instance_resource_group
-        )
+        try:
+            validator = ConnectorMetadataValidator.from_asset(
+                cmd=self.cmd,
+                asset=asset,
+                instance_name=instance_name,
+                instance_resource_group=instance_resource_group
+            )
 
-        for stream in imported_streams:
-            validator.validate_stream(stream)
-            # Auto-assign destinations from asset defaults if available
-            if default_destinations and ("destinations" not in stream or not stream["destinations"]):
-                stream["destinations"] = deepcopy(default_destinations)
+            for stream in imported_streams:
+                validator.validate_stream(stream)
+                # Auto-assign destinations from asset defaults if available
+                if default_destinations and ("destinations" not in stream or not stream["destinations"]):
+                    stream["destinations"] = deepcopy(default_destinations)
+            logger.info("Streams validated successfully.")
+        except ValidationError:
+            raise
+        except Exception as e:
+            logger.warning(
+                f"Stream validation skipped: {e}. "
+                "This may occur if the connector is not deployed or the cluster is not connected. "
+                "The streams will be imported but may fail at runtime if the configuration is invalid."
+            )
+            # Still auto-assign destinations even if validation is skipped
+            for stream in imported_streams:
+                if default_destinations and ("destinations" not in stream or not stream["destinations"]):
+                    stream["destinations"] = deepcopy(default_destinations)
 
         update_payload = {
             "properties": {
@@ -2340,21 +2382,37 @@ class NamespaceAssets(Queryable):
         )
 
         # Validate imported management groups using ConnectorMetadataValidator
-        validator = ConnectorMetadataValidator.from_asset(
-            cmd=self.cmd,
-            asset=asset,
-            instance_name=instance_name,
-            instance_resource_group=instance_resource_group
-        )
+        try:
+            validator = ConnectorMetadataValidator.from_asset(
+                cmd=self.cmd,
+                asset=asset,
+                instance_name=instance_name,
+                instance_resource_group=instance_resource_group
+            )
 
-        for mgmt_group in imported_mgmt_groups:
-            validator.validate_management_group(mgmt_group)
-            # Ensure actions array exists (preserve existing actions if merging)
-            if "actions" not in mgmt_group:
-                # Check if there's an original group with the same name
-                name = mgmt_group.get("name", "")
-                original = next((g for g in original_mgmt_groups if g["name"] == name), None)
-                mgmt_group["actions"] = original.get("actions", []) if original else []
+            for mgmt_group in imported_mgmt_groups:
+                validator.validate_management_group(mgmt_group)
+                # Ensure actions array exists (preserve existing actions if merging)
+                if "actions" not in mgmt_group:
+                    # Check if there's an original group with the same name
+                    name = mgmt_group.get("name", "")
+                    original = next((g for g in original_mgmt_groups if g["name"] == name), None)
+                    mgmt_group["actions"] = original.get("actions", []) if original else []
+            logger.info("Management groups validated successfully.")
+        except ValidationError:
+            raise
+        except Exception as e:
+            logger.warning(
+                f"Management group validation skipped: {e}. "
+                "This may occur if the connector is not deployed or the cluster is not connected. "
+                "The management groups will be imported but may fail at runtime if the configuration is invalid."
+            )
+            # Still preserve actions even if validation is skipped
+            for mgmt_group in imported_mgmt_groups:
+                if "actions" not in mgmt_group:
+                    name = mgmt_group.get("name", "")
+                    original = next((g for g in original_mgmt_groups if g["name"] == name), None)
+                    mgmt_group["actions"] = original.get("actions", []) if original else []
 
         update_payload = {
             "properties": {
@@ -2479,18 +2537,32 @@ class NamespaceAssets(Queryable):
         )
 
         # Validate imported actions using ConnectorMetadataValidator
-        validator = ConnectorMetadataValidator.from_asset(
-            cmd=self.cmd,
-            asset=asset,
-            instance_name=instance_name,
-            instance_resource_group=instance_resource_group
-        )
+        try:
+            validator = ConnectorMetadataValidator.from_asset(
+                cmd=self.cmd,
+                asset=asset,
+                instance_name=instance_name,
+                instance_resource_group=instance_resource_group
+            )
 
-        for action in imported_actions:
-            validator.validate_action(action)
-            # Default actionType to 'Call' if not specified
-            if not action.get("actionType"):
-                action["actionType"] = "Call"
+            for action in imported_actions:
+                validator.validate_action(action)
+                # Default actionType to 'Call' if not specified
+                if not action.get("actionType"):
+                    action["actionType"] = "Call"
+            logger.info("Actions validated successfully.")
+        except ValidationError:
+            raise
+        except Exception as e:
+            logger.warning(
+                f"Action validation skipped: {e}. "
+                "This may occur if the connector is not deployed or the cluster is not connected. "
+                "The actions will be imported but may fail at runtime if the configuration is invalid."
+            )
+            # Still apply defaults even if validation is skipped
+            for action in imported_actions:
+                if not action.get("actionType"):
+                    action["actionType"] = "Call"
 
         mgmt_group["actions"] = imported_actions
 

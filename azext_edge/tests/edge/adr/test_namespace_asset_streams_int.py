@@ -18,12 +18,12 @@ pytestmark = [pytest.mark.rpsaas, pytest.mark.long_running]
 
 
 def test_namespace_custom_asset_stream_lifecycle_operations(
-    require_init, tracked_resources: List[str], tracked_files: List[str]
+    require_namespace_init, tracked_resources: List[str], tracked_files: List[str]
 ):
     """Test complete lifecycle of custom asset stream operations."""
     # Setup test variables
-    instance_name = require_init["instanceName"]
-    resource_group = require_init["resourceGroup"]
+    instance_name = require_namespace_init["instanceName"]
+    resource_group = require_namespace_init["resourceGroup"]
     device_name = f"dev-{generate_random_string(8, force_lower=True)}"
     endpoint_name = f"custom-{generate_random_string(8)}"
     asset_name = f"custom-{generate_random_string(8, force_lower=True)}"
@@ -135,11 +135,11 @@ def test_namespace_custom_asset_stream_lifecycle_operations(
     assert stream_name not in remaining_stream_names
 
 
-def test_namespace_media_asset_stream_lifecycle_operations(require_init, tracked_resources: List[str]):
+def test_namespace_media_asset_stream_lifecycle_operations(require_namespace_init, tracked_resources: List[str]):
     """Test complete lifecycle of media asset stream operations with all stream types."""
     # Setup test variables
-    instance_name = require_init["instanceName"]
-    resource_group = require_init["resourceGroup"]
+    instance_name = require_namespace_init["instanceName"]
+    resource_group = require_namespace_init["resourceGroup"]
     device_name = f"dev-{generate_random_string(8, force_lower=True)}"
     endpoint_name = f"media-{generate_random_string(8)}"
     asset_name = f"media-{generate_random_string(8, force_lower=True)}"

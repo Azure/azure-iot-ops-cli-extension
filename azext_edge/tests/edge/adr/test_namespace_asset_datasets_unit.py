@@ -1453,17 +1453,19 @@ def test_export_namespace_asset_datasets(
     ("sse", "import_namespace_sse_asset_dataset"),
     ("mqtt", "import_namespace_mqtt_asset_dataset"),
 ])
+@pytest.mark.parametrize("replace", [True, False])
 def test_import_namespace_asset_datasets(
     mocked_cmd,
     mocked_responses: responses,
     asset_type: str,
     import_func: str,
+    replace: bool,
     mocked_check_cluster_connectivity,
     mocked_get_namespace_for_instance,
     mocked_connector_metadata_validator,
     tmp_path
 ):
-    """Test dataset import for all asset types."""
+    """Test dataset import with merge and replace modes for all asset types."""
     from azext_edge.edge import commands_namespaces
     import json as json_module
 
@@ -1476,10 +1478,17 @@ def test_import_namespace_asset_datasets(
     namespace_name = namespace_resource["name"]
     resource_group_name = namespace_resource["resource_group"]
 
-    # Create mock datasets to import
-    datasets_to_import = [
-        generate_dataset(f"importedDataset{i}", num_data_points=1)
+    # Create existing datasets
+    existing_datasets = [
+        generate_dataset(f"existingDataset{i}", num_data_points=1)
         for i in range(2)
+    ]
+    existing_dataset_names = [ds["name"] for ds in existing_datasets]
+
+    # Create datasets to import (one overlapping, one new)
+    datasets_to_import = [
+        generate_dataset(existing_dataset_names[0], num_data_points=1),  # Overlapping
+        generate_dataset("newDataset", num_data_points=1),  # New
     ]
 
     # Create import file
@@ -1493,7 +1502,7 @@ def test_import_namespace_asset_datasets(
         namespace_name=namespace_name,
         resource_group_name=resource_group_name
     )
-    asset_record["properties"]["datasets"] = []
+    asset_record["properties"]["datasets"] = existing_datasets
 
     mocked_responses.add(
         responses.GET,
@@ -1511,11 +1520,18 @@ def test_import_namespace_asset_datasets(
         patch_body = json_module.loads(request.body)
         imported_datasets = patch_body["properties"]["datasets"]
 
-        # Verify datasets were imported
-        assert len(imported_datasets) == 2
-        for i, dataset in enumerate(datasets_to_import):
-            assert imported_datasets[i]["name"] == dataset["name"]
-            assert imported_datasets[i]["dataSource"] == dataset["dataSource"]
+        # Both modes should have 3 datasets (2 existing + 1 new, with overlap handled)
+        assert len(imported_datasets) == 3
+        if replace:
+            # Replace mode: overlapping dataset is overwritten
+            updated_ds = next(
+                (ds for ds in imported_datasets if ds["name"] == existing_dataset_names[0]), None
+            )
+            assert updated_ds is not None
+            assert updated_ds["dataSource"] == datasets_to_import[0]["dataSource"]
+        # Both modes: second existing preserved, new dataset added
+        assert any(ds["name"] == existing_dataset_names[1] for ds in imported_datasets)
+        assert any(ds["name"] == "newDataset" for ds in imported_datasets)
 
         return (200, {}, json_module.dumps(asset_record))
 
@@ -1550,7 +1566,8 @@ def test_import_namespace_asset_datasets(
         asset_name=asset_name,
         instance_name=instance_name,
         instance_resource_group=instance_resource_group,
-        file_path=str(import_file)
+        file_path=str(import_file),
+        replace=replace
     )
 
     # Verify result
@@ -1883,17 +1900,19 @@ def test_export_namespace_asset_event_groups(
     ("onvif", "import_namespace_onvif_asset_event_group"),
     ("sse", "import_namespace_sse_asset_event_group"),
 ])
+@pytest.mark.parametrize("replace", [True, False])
 def test_import_namespace_asset_event_groups(
     mocked_cmd,
     mocked_responses: responses,
     asset_type: str,
     import_func: str,
+    replace: bool,
     mocked_check_cluster_connectivity,
     mocked_get_namespace_for_instance,
     mocked_connector_metadata_validator,
     tmp_path
 ):
-    """Test event-group import for all asset types."""
+    """Test event-group import with merge and replace modes for all asset types."""
     from azext_edge.edge import commands_namespaces
     import json as json_module
 
@@ -1906,10 +1925,17 @@ def test_import_namespace_asset_event_groups(
     namespace_name = namespace_resource["name"]
     resource_group_name = namespace_resource["resource_group"]
 
-    # Create mock event-groups to import
-    event_groups_to_import = [
-        generate_event_group(f"importedEventGroup{i}", num_events=1)
+    # Create existing event-groups
+    existing_event_groups = [
+        generate_event_group(f"existingEventGroup{i}", num_events=1)
         for i in range(2)
+    ]
+    existing_event_group_names = [eg["name"] for eg in existing_event_groups]
+
+    # Create event-groups to import (one overlapping, one new)
+    event_groups_to_import = [
+        generate_event_group(existing_event_group_names[0], num_events=1),  # Overlapping
+        generate_event_group("newEventGroup", num_events=1),  # New
     ]
 
     # Create import file
@@ -1923,7 +1949,7 @@ def test_import_namespace_asset_event_groups(
         namespace_name=namespace_name,
         resource_group_name=resource_group_name
     )
-    asset_record["properties"]["eventGroups"] = []
+    asset_record["properties"]["eventGroups"] = existing_event_groups
 
     mocked_responses.add(
         responses.GET,
@@ -1941,11 +1967,18 @@ def test_import_namespace_asset_event_groups(
         patch_body = json_module.loads(request.body)
         imported_event_groups = patch_body["properties"]["eventGroups"]
 
-        # Verify event-groups were imported
-        assert len(imported_event_groups) == 2
-        for i, event_group in enumerate(event_groups_to_import):
-            assert imported_event_groups[i]["name"] == event_group["name"]
-            assert imported_event_groups[i]["dataSource"] == event_group["dataSource"]
+        # Both modes should have 3 event-groups (2 existing + 1 new, with overlap handled)
+        assert len(imported_event_groups) == 3
+        if replace:
+            # Replace mode: overlapping event-group is overwritten
+            updated_eg = next(
+                (eg for eg in imported_event_groups if eg["name"] == existing_event_group_names[0]), None
+            )
+            assert updated_eg is not None
+            assert updated_eg["dataSource"] == event_groups_to_import[0]["dataSource"]
+        # Both modes: second existing preserved, new event-group added
+        assert any(eg["name"] == existing_event_group_names[1] for eg in imported_event_groups)
+        assert any(eg["name"] == "newEventGroup" for eg in imported_event_groups)
 
         return (200, {}, json_module.dumps(asset_record))
 
@@ -1980,7 +2013,8 @@ def test_import_namespace_asset_event_groups(
         asset_name=asset_name,
         instance_name=instance_name,
         instance_resource_group=instance_resource_group,
-        file_path=str(import_file)
+        file_path=str(import_file),
+        replace=replace
     )
 
     # Verify result

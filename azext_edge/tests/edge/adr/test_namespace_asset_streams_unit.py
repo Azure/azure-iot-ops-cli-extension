@@ -1008,3 +1008,201 @@ def test_update_namespace_asset_stream(
         instance_name=instance_name,
         instance_resource_group=instance_resource_group
     )
+
+
+@pytest.mark.parametrize("asset_type, export_func", [
+    ("custom", "export_namespace_custom_asset_stream"),
+    ("media", "export_namespace_media_asset_stream"),
+])
+@pytest.mark.parametrize("extension", ["json", "yaml"])
+def test_export_namespace_asset_streams(
+    mocked_cmd,
+    mocked_responses: responses,
+    asset_type: str,
+    export_func: str,
+    extension: str,
+    mocked_get_namespace_for_instance,
+    tmp_path
+):
+    """Test stream export for custom and media asset types."""
+    from azext_edge.edge import commands_namespaces
+
+    asset_name = "testAsset"
+    instance_name = "testInstance"
+    instance_resource_group = "testInstanceResourceGroup"
+    output_dir = str(tmp_path)
+
+    # Get the namespace from the mocked function
+    namespace_resource = mocked_get_namespace_for_instance.return_value
+    namespace_name = namespace_resource["name"]
+    resource_group_name = namespace_resource["resource_group"]
+
+    # Create mock streams
+    streams = [
+        generate_stream(f"stream{i}", asset_type=asset_type)
+        for i in range(3)
+    ]
+
+    # Mock the asset GET call
+    asset_record = get_namespace_asset_record(
+        asset_name=asset_name,
+        namespace_name=namespace_name,
+        resource_group_name=resource_group_name
+    )
+    asset_record["properties"]["streams"] = streams
+
+    mocked_responses.add(
+        responses.GET,
+        get_namespace_asset_mgmt_uri(
+            asset_name=asset_name,
+            namespace_name=namespace_name,
+            resource_group_name=resource_group_name
+        ),
+        json=asset_record,
+        status=200
+    )
+
+    # Call export function
+    func = getattr(commands_namespaces, export_func)
+    result = func(
+        cmd=mocked_cmd,
+        asset_name=asset_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
+        extension=extension,
+        output_dir=output_dir,
+        replace=False
+    )
+
+    # Verify result
+    assert "file_path" in result
+    assert "stream_count" in result
+    assert result["stream_count"] == 3
+    assert extension in result["file_path"]
+    assert asset_name in result["file_path"]
+
+
+@pytest.mark.parametrize("asset_type, import_func", [
+    ("custom", "import_namespace_custom_asset_stream"),
+    ("media", "import_namespace_media_asset_stream"),
+])
+@pytest.mark.parametrize("replace", [True, False])
+def test_import_namespace_asset_streams(
+    mocked_cmd,
+    mocked_responses: responses,
+    asset_type: str,
+    import_func: str,
+    replace: bool,
+    mocked_check_cluster_connectivity,
+    mocked_get_namespace_for_instance,
+    mocked_connector_metadata_validator,
+    tmp_path
+):
+    """Test stream import with merge and replace modes."""
+    from azext_edge.edge import commands_namespaces
+    import json as json_module
+
+    asset_name = "testAsset"
+    instance_name = "testInstance"
+    instance_resource_group = "testInstanceResourceGroup"
+
+    # Get the namespace from the mocked function
+    namespace_resource = mocked_get_namespace_for_instance.return_value
+    namespace_name = namespace_resource["name"]
+    resource_group_name = namespace_resource["resource_group"]
+
+    # Create existing streams
+    existing_streams = [
+        generate_stream(f"existingStream{i}", asset_type=asset_type)
+        for i in range(2)
+    ]
+    existing_stream_names = [s["name"] for s in existing_streams]
+
+    # Create streams to import (one overlapping, one new)
+    streams_to_import = [
+        generate_stream(existing_stream_names[0], asset_type=asset_type),  # Overlapping
+        generate_stream("newStream", asset_type=asset_type),  # New
+    ]
+
+    # Create import file
+    import_file = tmp_path / "streams_import.json"
+    with open(import_file, 'w', encoding='utf-8') as f:
+        json_module.dump(streams_to_import, f)
+
+    # Mock the asset GET call
+    asset_record = get_namespace_asset_record(
+        asset_name=asset_name,
+        namespace_name=namespace_name,
+        resource_group_name=resource_group_name
+    )
+    asset_record["properties"]["streams"] = existing_streams
+
+    mocked_responses.add(
+        responses.GET,
+        get_namespace_asset_mgmt_uri(
+            asset_name=asset_name,
+            namespace_name=namespace_name,
+            resource_group_name=resource_group_name
+        ),
+        json=asset_record,
+        status=200
+    )
+
+    # Mock the PATCH call
+    def check_patch_request(request):
+        patch_body = json_module.loads(request.body)
+        imported_streams = patch_body["properties"]["streams"]
+
+        # Both modes should have 3 streams (2 existing + 1 new, with overlap handled)
+        assert len(imported_streams) == 3
+        if replace:
+            # Replace mode: overlapping stream is overwritten
+            updated_s = next(
+                (s for s in imported_streams if s["name"] == existing_stream_names[0]), None
+            )
+            assert updated_s is not None
+            assert updated_s["streamConfiguration"] == streams_to_import[0]["streamConfiguration"]
+        # Both modes: second existing preserved, new stream added
+        assert any(s["name"] == existing_stream_names[1] for s in imported_streams)
+        assert any(s["name"] == "newStream" for s in imported_streams)
+
+        return (200, {}, json_module.dumps(asset_record))
+
+    mocked_responses.add_callback(
+        responses.PATCH,
+        get_namespace_asset_mgmt_uri(
+            asset_name=asset_name,
+            namespace_name=namespace_name,
+            resource_group_name=resource_group_name
+        ),
+        callback=check_patch_request,
+        content_type="application/json"
+    )
+
+    # Mock the final GET call
+    asset_record["properties"]["streams"] = streams_to_import
+    mocked_responses.add(
+        responses.GET,
+        get_namespace_asset_mgmt_uri(
+            asset_name=asset_name,
+            namespace_name=namespace_name,
+            resource_group_name=resource_group_name
+        ),
+        json=asset_record,
+        status=200
+    )
+
+    # Call import function
+    func = getattr(commands_namespaces, import_func)
+    result = func(
+        cmd=mocked_cmd,
+        asset_name=asset_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
+        file_path=str(import_file),
+        replace=replace
+    )
+
+    # Verify result is a list of streams
+    assert isinstance(result, list)
+    assert len(result) > 0

@@ -23,6 +23,9 @@ def require_init(init_setup):
         f"az iot ops show -n {init_setup['instanceName']} -g {init_setup['resourceGroup']} "
     )
     init_setup["customLocationId"] = cluster_result["extendedLocation"]["name"]
+    init_setup["adrNamespaceRef"] = (
+        cluster_result.get("properties", {}).get("adrNamespaceRef", {}).get("resourceId")
+    )
     yield init_setup
 
 

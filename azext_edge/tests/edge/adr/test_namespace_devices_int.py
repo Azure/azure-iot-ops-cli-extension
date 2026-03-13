@@ -19,11 +19,11 @@ logger = get_logger(__name__)
 pytestmark = pytest.mark.rpsaas
 
 
-def test_namespace_device_lifecycle_operations(require_init, tracked_resources: List[str]):
+def test_namespace_device_lifecycle_operations(require_namespace_init, tracked_resources: List[str]):
     # Setup test variables
-    instance_name = require_init["instanceName"]
-    resource_group = require_init["resourceGroup"]
-    custom_location = require_init["customLocationId"]
+    instance_name = require_namespace_init["instanceName"]
+    resource_group = require_namespace_init["resourceGroup"]
+    custom_location = require_namespace_init["customLocationId"]
     device_name_1 = f"dev-{generate_random_string(8, force_lower=True)}"
     device_name_2 = f"dev-{generate_random_string(8, force_lower=True)}"
     endpoint_name_onvif = f"onvif-{generate_random_string(8)}"

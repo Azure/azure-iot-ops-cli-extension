@@ -16,12 +16,12 @@ pytestmark = [pytest.mark.rpsaas, pytest.mark.long_running]
 
 
 def test_namespace_custom_asset_dataset_lifecycle_operations(
-    require_init, tracked_resources: List[str], tracked_files: List[str]
+    require_namespace_init, tracked_resources: List[str], tracked_files: List[str]
 ):
     """Test complete lifecycle of custom asset dataset and datapoint operations."""
     # Setup test variables
-    instance_name = require_init["instanceName"]
-    resource_group = require_init["resourceGroup"]
+    instance_name = require_namespace_init["instanceName"]
+    resource_group = require_namespace_init["resourceGroup"]
     device_name = f"dev-{generate_random_string(8, force_lower=True)}"
     endpoint_name = f"custom-{generate_random_string(8)}"
     asset_name = f"custom-{generate_random_string(8, force_lower=True)}"
@@ -250,11 +250,11 @@ def test_namespace_custom_asset_dataset_lifecycle_operations(
     assert dataset_name_1 not in remaining_dataset_names
 
 
-def test_namespace_opcua_asset_dataset_lifecycle_operations(require_init, tracked_resources: List[str]):
+def test_namespace_opcua_asset_dataset_lifecycle_operations(require_namespace_init, tracked_resources: List[str]):
     """Test complete lifecycle of OPCUA asset dataset and datapoint operations."""
     # Setup test variables
-    instance_name = require_init["instanceName"]
-    resource_group = require_init["resourceGroup"]
+    instance_name = require_namespace_init["instanceName"]
+    resource_group = require_namespace_init["resourceGroup"]
     device_name = f"dev-{generate_random_string(8, force_lower=True)}"
     endpoint_name = f"opcua-{generate_random_string(8)}"
     asset_name = f"opcua-{generate_random_string(8, force_lower=True)}"
@@ -483,11 +483,11 @@ def test_namespace_opcua_asset_dataset_lifecycle_operations(require_init, tracke
     assert dataset_name_1 not in remaining_dataset_names
 
 
-def test_namespace_rest_asset_dataset_lifecycle_operations(require_init, tracked_resources: List[str]):
+def test_namespace_rest_asset_dataset_lifecycle_operations(require_namespace_init, tracked_resources: List[str]):
     """Test complete lifecycle of REST asset dataset operations."""
     # Setup test variables
-    instance_name = require_init["instanceName"]
-    resource_group = require_init["resourceGroup"]
+    instance_name = require_namespace_init["instanceName"]
+    resource_group = require_namespace_init["resourceGroup"]
     device_name = f"dev-{generate_random_string(8, force_lower=True)}"
     endpoint_name = f"rest-{generate_random_string(8)}"
     asset_name = f"rest-{generate_random_string(8, force_lower=True)}"
@@ -635,11 +635,11 @@ def test_namespace_rest_asset_dataset_lifecycle_operations(require_init, tracked
     assert dataset_name_1 not in remaining_dataset_names
 
 
-def test_namespace_sse_asset_dataset_lifecycle_operations(require_init, tracked_resources: List[str]):
+def test_namespace_sse_asset_dataset_lifecycle_operations(require_namespace_init, tracked_resources: List[str]):
     """Test complete lifecycle of SSE asset dataset operations."""
     # Setup test variables
-    instance_name = require_init["instanceName"]
-    resource_group = require_init["resourceGroup"]
+    instance_name = require_namespace_init["instanceName"]
+    resource_group = require_namespace_init["resourceGroup"]
     device_name = f"dev-{generate_random_string(8, force_lower=True)}"
     endpoint_name = f"sse-{generate_random_string(8)}"
     asset_name = f"sse-{generate_random_string(8, force_lower=True)}"
@@ -784,11 +784,11 @@ def test_namespace_sse_asset_dataset_lifecycle_operations(require_init, tracked_
     assert dataset_name_1 not in remaining_dataset_names
 
 
-def test_namespace_mqtt_asset_dataset_lifecycle_operations(require_init, tracked_resources: List[str]):
+def test_namespace_mqtt_asset_dataset_lifecycle_operations(require_namespace_init, tracked_resources: List[str]):
     """Test complete lifecycle of MQTT asset dataset operations."""
     # Setup test variables
-    instance_name = require_init["instanceName"]
-    resource_group = require_init["resourceGroup"]
+    instance_name = require_namespace_init["instanceName"]
+    resource_group = require_namespace_init["resourceGroup"]
     device_name = f"dev-{generate_random_string(8, force_lower=True)}"
     endpoint_name = f"mqtt-{generate_random_string(8)}"
     asset_name = f"mqtt-{generate_random_string(8, force_lower=True)}"

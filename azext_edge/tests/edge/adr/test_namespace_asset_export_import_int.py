@@ -11,12 +11,76 @@ import pytest
 from typing import List
 
 from ...generators import generate_random_string
-from ...helpers import run
+from ..._log import TestLog
 
 pytestmark = [pytest.mark.rpsaas, pytest.mark.long_running]
 
+# Module-level caches for shared resource reuse
+_shared_device_name = None
+_endpoint_cache = {}  # (endpoint_type, endpoint_address) -> endpoint_name
+_format_test_asset_cache = {}
 
-# Export/Import Integration Tests
+
+def _ensure_device_and_endpoint(
+    log, instance_name, resource_group, asset_type, endpoint_type,
+    endpoint_address, tracked_resources,
+):
+    """Create or reuse a single shared device, adding each endpoint type once."""
+    global _shared_device_name
+
+    if _shared_device_name is None:
+        _shared_device_name = f"dev-{generate_random_string(8, force_lower=True)}"
+        log.run_command(
+            f"az iot ops ns device create --name {_shared_device_name} --instance {instance_name} "
+            f"-g {resource_group}",
+            tracked_resources=tracked_resources,
+        )
+    else:
+        log.detail(f"Reusing shared device={_shared_device_name}")
+
+    ep_key = (endpoint_type, endpoint_address)
+    if ep_key in _endpoint_cache:
+        endpoint_name = _endpoint_cache[ep_key]
+        log.detail(f"Reusing endpoint={endpoint_name}")
+        return _shared_device_name, endpoint_name
+
+    endpoint_name = f"{asset_type}-{generate_random_string(8)}"
+    endpoint_cmd = (
+        f"az iot ops ns device endpoint inbound add {endpoint_type} --name {endpoint_name} "
+        f"--instance {instance_name} -g {resource_group} --device {_shared_device_name} "
+        f"--endpoint-address '{endpoint_address}'"
+    )
+    if endpoint_type == "custom":
+        endpoint_cmd += " --endpoint-type custom"
+    log.run_command(endpoint_cmd)
+
+    _endpoint_cache[ep_key] = endpoint_name
+    return _shared_device_name, endpoint_name
+
+
+def _ensure_asset_for_format_tests(
+    log, instance_name, resource_group, asset_type, device_name,
+    endpoint_name, tracked_resources, test_category,
+):
+    """Create or reuse an asset shared across format variants of the same test_category+asset_type."""
+    cache_key = (asset_type, test_category)
+    if cache_key in _format_test_asset_cache:
+        asset_name = _format_test_asset_cache[cache_key]
+        log.detail(f"Reusing shared asset={asset_name}")
+        return asset_name
+
+    asset_name = f"{asset_type}-{generate_random_string(8, force_lower=True)}"
+    log.run_command(
+        f"az iot ops ns asset {asset_type} create --name {asset_name} --instance {instance_name} "
+        f"-g {resource_group} --device {device_name} --endpoint {endpoint_name}",
+        tracked_resources=tracked_resources,
+    )
+
+    _format_test_asset_cache[cache_key] = asset_name
+    return asset_name
+
+
+
 @pytest.mark.parametrize("asset_type, endpoint_type, endpoint_address", [
     ("custom", "custom", "http://192.168.1.100:8000/custom/service"),
     ("opcua", "opcua", "opc.tcp://opcuaserver.local:4840"),
@@ -25,120 +89,126 @@ pytestmark = [pytest.mark.rpsaas, pytest.mark.long_running]
     ("mqtt", "mqtt", "aio-broker:18883"),
 ])
 def test_namespace_asset_dataset_export_import(
-    require_init, tracked_resources: List[str], tracked_files: List[str], tmp_path, asset_type: str,
+    require_namespace_init, tracked_resources: List[str], tracked_files: List[str], tmp_path, asset_type: str,
     endpoint_type: str, endpoint_address: str
 ):
     """Test dataset export and import for all asset types."""
-    instance_name = require_init["instanceName"]
-    resource_group = require_init["resourceGroup"]
+    instance_name = require_namespace_init["instanceName"]
+    resource_group = require_namespace_init["resourceGroup"]
     output_dir = str(tmp_path)
-    device_name = f"dev-{generate_random_string(8, force_lower=True)}"
-    endpoint_name = f"{asset_type}-{generate_random_string(8)}"
     asset_name = f"{asset_type}-{generate_random_string(8, force_lower=True)}"
     dataset_name_1 = f"ds1-{generate_random_string(6, force_lower=True)}"
     dataset_name_2 = f"ds2-{generate_random_string(6, force_lower=True)}"
 
-    # Create Device
-    result = run(
-        f"az iot ops ns device create --name {device_name} --instance {instance_name} "
-        f"-g {resource_group}"
-    )
-    tracked_resources.append(result["id"])
+    with TestLog(f"test_namespace_asset_dataset_export_import[{asset_type}]", total_steps=8) as log:
 
-    # Create device endpoint
-    endpoint_cmd = (
-        f"az iot ops ns device endpoint inbound add {endpoint_type} --name {endpoint_name} "
-        f"--instance {instance_name} -g {resource_group} --device {device_name} "
-        f"--endpoint-address '{endpoint_address}'"
-    )
-    if endpoint_type == "custom":
-        endpoint_cmd += " --endpoint-type custom"
-    run(endpoint_cmd)
+        # Step 1: Ensure Device + Endpoint
+        with log.step(1, "Ensure Device + Endpoint"):
+            device_name, endpoint_name = _ensure_device_and_endpoint(
+                log, instance_name, resource_group, asset_type, endpoint_type,
+                endpoint_address, tracked_resources,
+            )
 
-    # Create asset
-    asset_result = run(
-        f"az iot ops ns asset {asset_type} create --name {asset_name} --instance {instance_name} "
-        f"-g {resource_group} --device {device_name} --endpoint {endpoint_name}"
-    )
-    tracked_resources.append(asset_result["id"])
+        # Step 2: Create asset
+        with log.step(2, f"Create {asset_type} Asset"):
+            log.run_command(
+                f"az iot ops ns asset {asset_type} create --name {asset_name} --instance {instance_name} "
+                f"-g {resource_group} --device {device_name} --endpoint {endpoint_name}",
+                tracked_resources=tracked_resources,
+            )
 
-    # Add datasets
-    dataset_destinations = "topic=factory/test qos=Qos1 retain=Keep ttl=3600"
+        # Step 3: Add datasets
+        with log.step(3, "Add Datasets"):
+            dataset_destinations = "topic=factory/test qos=Qos1 retain=Keep ttl=3600"
+            for ds_name in [dataset_name_1, dataset_name_2]:
+                log.run_command(
+                    f"az iot ops ns asset {asset_type} dataset add --asset {asset_name} "
+                    f"--instance {instance_name} -g {resource_group} --name {ds_name} "
+                    f"--data-source sensor/data/{ds_name} "
+                    f"--destination {dataset_destinations}"
+                )
+            log.detail(f"datasets: {dataset_name_1}, {dataset_name_2}")
 
-    for ds_name in [dataset_name_1, dataset_name_2]:
-        run(
-            f"az iot ops ns asset {asset_type} dataset add --asset {asset_name} "
-            f"--instance {instance_name} -g {resource_group} --name {ds_name} "
-            f"--data-source sensor/data/{ds_name} "
-            f"--destination {dataset_destinations}"
-        )
+        # Step 4: Export datasets as JSON
+        with log.step(4, "Export Datasets (JSON)"):
+            export_result_json = log.run_command(
+                f"az iot ops ns asset {asset_type} dataset export --asset {asset_name} "
+                f"--instance {instance_name} -g {resource_group} -f json "
+                f"--output-dir {output_dir}"
+            )
 
-    # EXPORT datasets as JSON
-    export_result_json = run(
-        f"az iot ops ns asset {asset_type} dataset export --asset {asset_name} "
-        f"--instance {instance_name} -g {resource_group} -f json "
-        f"--output-dir {output_dir}"
-    )
+            log.check("'file_path' in result", "file_path" in export_result_json)
+            log.check("'dataset_count' in result", "dataset_count" in export_result_json)
+            log.check("dataset_count == 2", export_result_json["dataset_count"] == 2,
+                       actual=export_result_json.get("dataset_count"))
+            log.check("file is .json", ".json" in export_result_json["file_path"])
 
-    assert "file_path" in export_result_json
-    assert "dataset_count" in export_result_json
-    assert export_result_json["dataset_count"] == 2
-    assert ".json" in export_result_json["file_path"]
+            exported_file = export_result_json["file_path"]
+            tracked_files.append(exported_file)
 
-    exported_file = export_result_json["file_path"]
-    tracked_files.append(exported_file)
+            log.check("exported file exists", os.path.exists(exported_file))
+            with open(exported_file, 'r', encoding='utf-8') as f:
+                exported_datasets = json.load(f)
 
-    # Verify exported file content
-    assert os.path.exists(exported_file)
-    with open(exported_file, 'r', encoding='utf-8') as f:
-        exported_datasets = json.load(f)
+            log.check("exported 2 datasets", len(exported_datasets) == 2, actual=len(exported_datasets))
+            ds_dict = {ds["name"]: ds for ds in exported_datasets}
+            log.check(f"{dataset_name_1} in export", dataset_name_1 in ds_dict)
+            log.check(f"{dataset_name_2} in export", dataset_name_2 in ds_dict)
+            for ds_name in [dataset_name_1, dataset_name_2]:
+                ds = ds_dict[ds_name]
+                log.check(f"{ds_name} dataSource", ds.get("dataSource") == f"sensor/data/{ds_name}",
+                           actual=ds.get("dataSource"))
+                log.check(f"{ds_name} has destinations", "destinations" in ds and len(ds["destinations"]) > 0)
 
-    assert len(exported_datasets) == 2
-    exported_names = [ds["name"] for ds in exported_datasets]
-    assert dataset_name_1 in exported_names
-    assert dataset_name_2 in exported_names
+        # Step 5: Remove one dataset
+        with log.step(5, "Remove Dataset & Verify"):
+            log.run_command(
+                f"az iot ops ns asset {asset_type} dataset remove --asset {asset_name} "
+                f"--instance {instance_name} -g {resource_group} --name {dataset_name_1}"
+            )
+            datasets_after_remove = log.run_command(
+                f"az iot ops ns asset {asset_type} dataset list --asset {asset_name} "
+                f"--instance {instance_name} -g {resource_group}"
+            )
+            log.check("1 dataset remains", len(datasets_after_remove) == 1,
+                       actual=len(datasets_after_remove))
 
-    # Remove one dataset
-    run(
-        f"az iot ops ns asset {asset_type} dataset remove --asset {asset_name} "
-        f"--instance {instance_name} -g {resource_group} --name {dataset_name_1}"
-    )
+        # Step 6: Import datasets back
+        with log.step(6, "Import Datasets"):
+            imported_datasets = log.run_command(
+                f"az iot ops ns asset {asset_type} dataset import --asset {asset_name} "
+                f"--instance {instance_name} -g {resource_group} --input-file {exported_file}"
+            )
 
-    # Verify only one dataset remains
-    datasets_after_remove = run(
-        f"az iot ops ns asset {asset_type} dataset list --asset {asset_name} "
-        f"--instance {instance_name} -g {resource_group}"
-    )
-    assert len(datasets_after_remove) == 1
+            log.check("imported 2 datasets", len(imported_datasets) == 2,
+                       actual=len(imported_datasets))
+            imp_dict = {ds["name"]: ds for ds in imported_datasets}
+            log.check(f"{dataset_name_1} restored", dataset_name_1 in imp_dict)
+            log.check(f"{dataset_name_2} restored", dataset_name_2 in imp_dict)
+            for ds_name in [dataset_name_1, dataset_name_2]:
+                ds = imp_dict[ds_name]
+                log.check(f"{ds_name} dataSource intact", ds.get("dataSource") == f"sensor/data/{ds_name}",
+                           actual=ds.get("dataSource"))
 
-    # IMPORT datasets back (should restore both)
-    imported_datasets = run(
-        f"az iot ops ns asset {asset_type} dataset import --asset {asset_name} "
-        f"--instance {instance_name} -g {resource_group} --input-file {exported_file}"
-    )
+        # Step 7: Verify final state
+        with log.step(7, "Verify Final State"):
+            final_datasets = log.run_command(
+                f"az iot ops ns asset {asset_type} dataset list --asset {asset_name} "
+                f"--instance {instance_name} -g {resource_group}"
+            )
+            log.check("final count == 2", len(final_datasets) == 2, actual=len(final_datasets))
 
-    assert len(imported_datasets) == 2
-    imported_names = [ds["name"] for ds in imported_datasets]
-    assert dataset_name_1 in imported_names
-    assert dataset_name_2 in imported_names
+        # Step 8: Export as YAML
+        with log.step(8, "Export Datasets (YAML)"):
+            export_result_yaml = log.run_command(
+                f"az iot ops ns asset {asset_type} dataset export --asset {asset_name} "
+                f"--instance {instance_name} -g {resource_group} -f yaml --replace "
+                f"--output-dir {output_dir}"
+            )
 
-    # Verify datasets were imported correctly
-    final_datasets = run(
-        f"az iot ops ns asset {asset_type} dataset list --asset {asset_name} "
-        f"--instance {instance_name} -g {resource_group}"
-    )
-    assert len(final_datasets) == 2
-
-    # EXPORT as YAML
-    export_result_yaml = run(
-        f"az iot ops ns asset {asset_type} dataset export --asset {asset_name} "
-        f"--instance {instance_name} -g {resource_group} -f yaml --replace "
-        f"--output-dir {output_dir}"
-    )
-
-    assert "file_path" in export_result_yaml
-    assert ".yaml" in export_result_yaml["file_path"]
-    tracked_files.append(export_result_yaml["file_path"])
+            log.check("'file_path' in result", "file_path" in export_result_yaml)
+            log.check("file is .yaml", ".yaml" in export_result_yaml["file_path"])
+            tracked_files.append(export_result_yaml["file_path"])
 
 
 @pytest.mark.parametrize("asset_type, endpoint_type, endpoint_address", [
@@ -147,144 +217,150 @@ def test_namespace_asset_dataset_export_import(
 ])
 @pytest.mark.parametrize("export_format", ["json", "yaml", "csv"])
 def test_namespace_asset_datapoint_export_import(
-    require_init, tracked_resources: List[str], tracked_files: List[str], tmp_path,
+    require_namespace_init, tracked_resources: List[str], tracked_files: List[str], tmp_path,
     asset_type: str, endpoint_type: str, endpoint_address: str, export_format: str
 ):
     """Test datapoint export and import for custom and opcua assets."""
-    instance_name = require_init["instanceName"]
-    resource_group = require_init["resourceGroup"]
+    instance_name = require_namespace_init["instanceName"]
+    resource_group = require_namespace_init["resourceGroup"]
     output_dir = str(tmp_path)
-    device_name = f"dev-{generate_random_string(8, force_lower=True)}"
-    endpoint_name = f"{asset_type}-{generate_random_string(8)}"
-    asset_name = f"{asset_type}-{generate_random_string(8, force_lower=True)}"
     dataset_name = f"ds-{generate_random_string(6, force_lower=True)}"
     dp_name_1 = f"dp1-{generate_random_string(6, force_lower=True)}"
     dp_name_2 = f"dp2-{generate_random_string(6, force_lower=True)}"
-    dp_name_3 = f"dp3-{generate_random_string(6, force_lower=True)}"
 
-    # Create Device
-    result = run(
-        f"az iot ops ns device create --name {device_name} --instance {instance_name} "
-        f"-g {resource_group}"
-    )
-    tracked_resources.append(result["id"])
+    step_count = 9 if export_format == "json" else 7
+    with TestLog(
+        f"test_namespace_asset_datapoint_export_import[{export_format}-{asset_type}]",
+        total_steps=step_count,
+    ) as log:
 
-    # Create device endpoint
-    endpoint_cmd = (
-        f"az iot ops ns device endpoint inbound add {endpoint_type} --name {endpoint_name} "
-        f"--instance {instance_name} -g {resource_group} --device {device_name} "
-        f"--endpoint-address '{endpoint_address}'"
-    )
-    if endpoint_type == "custom":
-        endpoint_cmd += " --endpoint-type custom"
-    run(endpoint_cmd)
+        # Step 1: Ensure Device + Endpoint
+        with log.step(1, "Ensure Device + Endpoint"):
+            device_name, endpoint_name = _ensure_device_and_endpoint(
+                log, instance_name, resource_group, asset_type, endpoint_type,
+                endpoint_address, tracked_resources,
+            )
 
-    # Create asset
-    asset_result = run(
-        f"az iot ops ns asset {asset_type} create --name {asset_name} --instance {instance_name} "
-        f"-g {resource_group} --device {device_name} --endpoint {endpoint_name}"
-    )
-    tracked_resources.append(asset_result["id"])
+        # Step 2: Ensure Asset + Create Dataset
+        with log.step(2, f"Ensure {asset_type} Asset + Create Dataset"):
+            asset_name = _ensure_asset_for_format_tests(
+                log, instance_name, resource_group, asset_type, device_name,
+                endpoint_name, tracked_resources, "datapoint",
+            )
+            log.run_command(
+                f"az iot ops ns asset {asset_type} dataset add --asset {asset_name} "
+                f"--instance {instance_name} -g {resource_group} --name {dataset_name} "
+                f"--data-source sensor/dataset1"
+            )
 
-    # Add dataset
-    run(
-        f"az iot ops ns asset {asset_type} dataset add --asset {asset_name} "
-        f"--instance {instance_name} -g {resource_group} --name {dataset_name} "
-        f"--data-source sensor/dataset1"
-    )
+        # Step 3: Add datapoints
+        with log.step(3, "Add Datapoints"):
+            for dp_name in [dp_name_1, dp_name_2]:
+                log.run_command(
+                    f"az iot ops ns asset {asset_type} datapoint add --asset {asset_name} "
+                    f"--instance {instance_name} -g {resource_group} --dataset {dataset_name} "
+                    f"--name {dp_name} --data-source sensor/{dp_name}"
+                )
+            log.detail(f"datapoints: {dp_name_1}, {dp_name_2}")
 
-    # Add datapoints
-    for dp_name in [dp_name_1, dp_name_2, dp_name_3]:
-        run(
-            f"az iot ops ns asset {asset_type} datapoint add --asset {asset_name} "
-            f"--instance {instance_name} -g {resource_group} --dataset {dataset_name} "
-            f"--name {dp_name} --data-source sensor/{dp_name}"
-        )
+        # Step 4: Export datapoints
+        with log.step(4, f"Export Datapoints ({export_format})"):
+            export_result = log.run_command(
+                f"az iot ops ns asset {asset_type} datapoint export --asset {asset_name} "
+                f"--instance {instance_name} -g {resource_group} --dataset {dataset_name} "
+                f"-f {export_format} --output-dir {output_dir}"
+            )
 
-    # EXPORT datapoints
-    export_result = run(
-        f"az iot ops ns asset {asset_type} datapoint export --asset {asset_name} "
-        f"--instance {instance_name} -g {resource_group} --dataset {dataset_name} "
-        f"-f {export_format} --output-dir {output_dir}"
-    )
+            log.check("'file_path' in result", "file_path" in export_result)
+            log.check("'datapoint_count' in result", "datapoint_count" in export_result)
+            log.check("datapoint_count == 2", export_result["datapoint_count"] == 2,
+                       actual=export_result.get("datapoint_count"))
+            log.check(f"file is .{export_format}", f".{export_format}" in export_result["file_path"])
 
-    assert "file_path" in export_result
-    assert "datapoint_count" in export_result
-    assert export_result["datapoint_count"] == 3
-    assert f".{export_format}" in export_result["file_path"]
+            exported_file = export_result["file_path"]
+            tracked_files.append(exported_file)
+            log.check("exported file exists", os.path.exists(exported_file))
 
-    exported_file = export_result["file_path"]
-    tracked_files.append(exported_file)
+            if export_format == "json":
+                with open(exported_file, 'r', encoding='utf-8') as f:
+                    exported_dps = json.load(f)
+                log.check("exported 2 datapoints", len(exported_dps) == 2, actual=len(exported_dps))
+                dp_dict = {dp["name"]: dp for dp in exported_dps}
+                for dp_name in [dp_name_1, dp_name_2]:
+                    log.check(f"{dp_name} in export", dp_name in dp_dict)
+                    log.check(f"{dp_name} dataSource",
+                               dp_dict[dp_name].get("dataSource") == f"sensor/{dp_name}",
+                               actual=dp_dict[dp_name].get("dataSource"))
 
-    # Verify exported file exists
-    assert os.path.exists(exported_file)
+        # Step 5: Remove all datapoints
+        with log.step(5, "Remove All Datapoints"):
+            for dp_name in [dp_name_1, dp_name_2]:
+                log.run_command(
+                    f"az iot ops ns asset {asset_type} datapoint remove --asset {asset_name} "
+                    f"--instance {instance_name} -g {resource_group} --dataset {dataset_name} "
+                    f"--name {dp_name}"
+                )
+            datapoints_after_remove = log.run_command(
+                f"az iot ops ns asset {asset_type} datapoint list --asset {asset_name} "
+                f"--instance {instance_name} -g {resource_group} --dataset {dataset_name}"
+            )
+            log.check("0 datapoints remain", len(datapoints_after_remove) == 0,
+                       actual=len(datapoints_after_remove))
 
-    # Remove all datapoints
-    for dp_name in [dp_name_1, dp_name_2, dp_name_3]:
-        run(
-            f"az iot ops ns asset {asset_type} datapoint remove --asset {asset_name} "
-            f"--instance {instance_name} -g {resource_group} --dataset {dataset_name} "
-            f"--name {dp_name}"
-        )
+        # Step 6: Import datapoints back
+        with log.step(6, "Import Datapoints"):
+            imported_datapoints = log.run_command(
+                f"az iot ops ns asset {asset_type} datapoint import --asset {asset_name} "
+                f"--instance {instance_name} -g {resource_group} --dataset {dataset_name} "
+                f"--input-file {exported_file}"
+            )
 
-    # Verify no datapoints remain
-    datapoints_after_remove = run(
-        f"az iot ops ns asset {asset_type} datapoint list --asset {asset_name} "
-        f"--instance {instance_name} -g {resource_group} --dataset {dataset_name}"
-    )
-    assert len(datapoints_after_remove) == 0
+            log.check("imported 2 datapoints", len(imported_datapoints) == 2,
+                       actual=len(imported_datapoints))
+            imp_dict = {dp["name"]: dp for dp in imported_datapoints}
+            for dp_name in [dp_name_1, dp_name_2]:
+                log.check(f"{dp_name} restored", dp_name in imp_dict)
+                log.check(f"{dp_name} dataSource intact",
+                           imp_dict[dp_name].get("dataSource") == f"sensor/{dp_name}",
+                           actual=imp_dict[dp_name].get("dataSource"))
 
-    # IMPORT datapoints back
-    imported_datapoints = run(
-        f"az iot ops ns asset {asset_type} datapoint import --asset {asset_name} "
-        f"--instance {instance_name} -g {resource_group} --dataset {dataset_name} "
-        f"--input-file {exported_file}"
-    )
+        # Step 7: Verify final state
+        with log.step(7, "Verify Final State"):
+            final_datapoints = log.run_command(
+                f"az iot ops ns asset {asset_type} datapoint list --asset {asset_name} "
+                f"--instance {instance_name} -g {resource_group} --dataset {dataset_name}"
+            )
+            log.check("final count == 2", len(final_datapoints) == 2,
+                       actual=len(final_datapoints))
 
-    assert len(imported_datapoints) == 3
-    imported_names = [dp["name"] for dp in imported_datapoints]
-    assert dp_name_1 in imported_names
-    assert dp_name_2 in imported_names
-    assert dp_name_3 in imported_names
+        # Steps 8-9: REPLACE mode (JSON only)
+        if export_format == "json":
+            with log.step(8, "Prepare Modified File"):
+                with open(exported_file, 'r', encoding='utf-8') as f:
+                    datapoints = json.load(f)
 
-    # Verify datapoints were imported correctly
-    final_datapoints = run(
-        f"az iot ops ns asset {asset_type} datapoint list --asset {asset_name} "
-        f"--instance {instance_name} -g {resource_group} --dataset {dataset_name}"
-    )
-    assert len(final_datapoints) == 3
+                modified_datapoints = [datapoints[0]]
+                modified_datapoints[0]["dataSource"] = modified_datapoints[0]["dataSource"] + "_modified"
 
-    # Test REPLACE mode
-    # replace=True means: merge with overwrite on collision (overwrites matching names from file)
-    if export_format == "json":
-        with open(exported_file, 'r', encoding='utf-8') as f:
-            datapoints = json.load(f)
+                modified_file = exported_file.replace(".json", "_modified.json")
+                tracked_files.append(modified_file)
+                with open(modified_file, 'w', encoding='utf-8') as f:
+                    json.dump(modified_datapoints, f)
+                log.detail(f"modified 1 datapoint: {dp_name_1}")
+                log.detail(f"file: {modified_file}")
 
-        # Modify first 2 datapoints' data sources
-        modified_datapoints = datapoints[:2]
-        for dp in modified_datapoints:
-            dp["dataSource"] = dp["dataSource"] + "_modified"
+            with log.step(9, "Import with --replace"):
+                replaced_datapoints = log.run_command(
+                    f"az iot ops ns asset {asset_type} datapoint import --asset {asset_name} "
+                    f"--instance {instance_name} -g {resource_group} --dataset {dataset_name} "
+                    f"--input-file {modified_file} --replace"
+                )
 
-        modified_file = exported_file.replace(".json", "_modified.json")
-        tracked_files.append(modified_file)
-        with open(modified_file, 'w', encoding='utf-8') as f:
-            json.dump(modified_datapoints, f)
-
-        # Import with replace - should overwrite the 2 matching datapoints and keep the 3rd
-        replaced_datapoints = run(
-            f"az iot ops ns asset {asset_type} datapoint import --asset {asset_name} "
-            f"--instance {instance_name} -g {resource_group} --dataset {dataset_name} "
-            f"--input-file {modified_file} --replace"
-        )
-
-        # Should still have 3 datapoints (2 modified from file + 1 original untouched)
-        assert len(replaced_datapoints) == 3
-
-        # Verify the first 2 were modified, 3rd is unchanged
-        dp_dict = {dp["name"]: dp for dp in replaced_datapoints}
-        assert "_modified" in dp_dict[dp_name_1]["dataSource"]
-        assert "_modified" in dp_dict[dp_name_2]["dataSource"]
-        assert "_modified" not in dp_dict[dp_name_3]["dataSource"]
+                log.check("still 2 datapoints", len(replaced_datapoints) == 2,
+                           actual=len(replaced_datapoints))
+                dp_dict = {dp["name"]: dp for dp in replaced_datapoints}
+                log.check(f"{dp_name_1} modified", "_modified" in dp_dict[dp_name_1]["dataSource"])
+                log.check(f"{dp_name_2} unchanged", "_modified" not in dp_dict[dp_name_2]["dataSource"])
 
 
 @pytest.mark.parametrize("asset_type, endpoint_type, endpoint_address", [
@@ -294,117 +370,124 @@ def test_namespace_asset_datapoint_export_import(
     ("sse", "sse", "https://events.example.com/stream"),
 ])
 def test_namespace_asset_event_group_export_import(
-    require_init, tracked_resources: List[str], tracked_files: List[str], tmp_path, asset_type: str,
+    require_namespace_init, tracked_resources: List[str], tracked_files: List[str], tmp_path, asset_type: str,
     endpoint_type: str, endpoint_address: str
 ):
     """Test event-group export and import for all asset types."""
-    instance_name = require_init["instanceName"]
-    resource_group = require_init["resourceGroup"]
+    instance_name = require_namespace_init["instanceName"]
+    resource_group = require_namespace_init["resourceGroup"]
     output_dir = str(tmp_path)
-    device_name = f"dev-{generate_random_string(8, force_lower=True)}"
-    endpoint_name = f"{asset_type}-{generate_random_string(8)}"
     asset_name = f"{asset_type}-{generate_random_string(8, force_lower=True)}"
     event_group_name_1 = f"eg1-{generate_random_string(6, force_lower=True)}"
     event_group_name_2 = f"eg2-{generate_random_string(6, force_lower=True)}"
 
-    # Create Device
-    result = run(
-        f"az iot ops ns device create --name {device_name} --instance {instance_name} "
-        f"-g {resource_group}"
-    )
-    tracked_resources.append(result["id"])
+    with TestLog(
+        f"test_namespace_asset_event_group_export_import[{asset_type}]",
+        total_steps=8,
+    ) as log:
 
-    # Create device endpoint
-    endpoint_cmd = (
-        f"az iot ops ns device endpoint inbound add {endpoint_type} --name {endpoint_name} "
-        f"--instance {instance_name} -g {resource_group} --device {device_name} "
-        f"--endpoint-address '{endpoint_address}'"
-    )
-    if endpoint_type == "custom":
-        endpoint_cmd += " --endpoint-type custom"
-    run(endpoint_cmd)
+        # Step 1: Ensure Device + Endpoint
+        with log.step(1, "Ensure Device + Endpoint"):
+            device_name, endpoint_name = _ensure_device_and_endpoint(
+                log, instance_name, resource_group, asset_type, endpoint_type,
+                endpoint_address, tracked_resources,
+            )
 
-    # Create asset
-    asset_result = run(
-        f"az iot ops ns asset {asset_type} create --name {asset_name} --instance {instance_name} "
-        f"-g {resource_group} --device {device_name} --endpoint {endpoint_name}"
-    )
-    tracked_resources.append(asset_result["id"])
+        # Step 2: Create asset
+        with log.step(2, f"Create {asset_type} Asset"):
+            log.run_command(
+                f"az iot ops ns asset {asset_type} create --name {asset_name} --instance {instance_name} "
+                f"-g {resource_group} --device {device_name} --endpoint {endpoint_name}",
+                tracked_resources=tracked_resources,
+            )
 
-    # Add event-groups
-    for eg_name in [event_group_name_1, event_group_name_2]:
-        run(
-            f"az iot ops ns asset {asset_type} event-group add --asset {asset_name} "
-            f"--instance {instance_name} -g {resource_group} --name {eg_name} "
-            f"--data-source events/source/{eg_name}"
-        )
+        # Step 3: Add event-groups
+        with log.step(3, "Add Event Groups"):
+            for eg_name in [event_group_name_1, event_group_name_2]:
+                log.run_command(
+                    f"az iot ops ns asset {asset_type} event-group add --asset {asset_name} "
+                    f"--instance {instance_name} -g {resource_group} --name {eg_name} "
+                    f"--data-source events/source/{eg_name}"
+                )
 
-    # EXPORT event-groups as JSON
-    export_result_json = run(
-        f"az iot ops ns asset {asset_type} event-group export --asset {asset_name} "
-        f"--instance {instance_name} -g {resource_group} -f json "
-        f"--output-dir {output_dir}"
-    )
+        # Step 4: Export event-groups as JSON
+        with log.step(4, "Export Event Groups (JSON)"):
+            export_result_json = log.run_command(
+                f"az iot ops ns asset {asset_type} event-group export --asset {asset_name} "
+                f"--instance {instance_name} -g {resource_group} -f json "
+                f"--output-dir {output_dir}"
+            )
 
-    assert "file_path" in export_result_json
-    assert "event_group_count" in export_result_json
-    assert export_result_json["event_group_count"] == 2
-    assert ".json" in export_result_json["file_path"]
+            log.check("'file_path' in result", "file_path" in export_result_json)
+            log.check("'event_group_count' in result", "event_group_count" in export_result_json)
+            log.check("event_group_count == 2", export_result_json["event_group_count"] == 2,
+                       actual=export_result_json.get("event_group_count"))
+            log.check("file is .json", ".json" in export_result_json["file_path"])
 
-    exported_file = export_result_json["file_path"]
-    tracked_files.append(exported_file)
+            exported_file = export_result_json["file_path"]
+            tracked_files.append(exported_file)
 
-    # Verify exported file content
-    assert os.path.exists(exported_file)
-    with open(exported_file, 'r', encoding='utf-8') as f:
-        exported_event_groups = json.load(f)
+            log.check("exported file exists", os.path.exists(exported_file))
+            with open(exported_file, 'r', encoding='utf-8') as f:
+                exported_event_groups = json.load(f)
+            log.check("exported 2 event-groups", len(exported_event_groups) == 2,
+                       actual=len(exported_event_groups))
+            eg_dict = {eg["name"]: eg for eg in exported_event_groups}
+            log.check(f"{event_group_name_1} in export", event_group_name_1 in eg_dict)
+            log.check(f"{event_group_name_2} in export", event_group_name_2 in eg_dict)
+            for eg_name in [event_group_name_1, event_group_name_2]:
+                log.check(f"{eg_name} dataSource",
+                           eg_dict[eg_name].get("dataSource") == f"events/source/{eg_name}",
+                           actual=eg_dict[eg_name].get("dataSource"))
 
-    assert len(exported_event_groups) == 2
-    exported_names = [eg["name"] for eg in exported_event_groups]
-    assert event_group_name_1 in exported_names
-    assert event_group_name_2 in exported_names
+        # Step 5: Remove one event-group & verify
+        with log.step(5, "Remove Event Group & Verify"):
+            log.run_command(
+                f"az iot ops ns asset {asset_type} event-group remove --asset {asset_name} "
+                f"--instance {instance_name} -g {resource_group} --name {event_group_name_1}"
+            )
+            event_groups_after_remove = log.run_command(
+                f"az iot ops ns asset {asset_type} event-group list --asset {asset_name} "
+                f"--instance {instance_name} -g {resource_group}"
+            )
+            log.check("1 event-group remains", len(event_groups_after_remove) == 1,
+                       actual=len(event_groups_after_remove))
 
-    # Remove one event-group
-    run(
-        f"az iot ops ns asset {asset_type} event-group remove --asset {asset_name} "
-        f"--instance {instance_name} -g {resource_group} --name {event_group_name_1}"
-    )
+        # Step 6: Import event-groups back
+        with log.step(6, "Import Event Groups"):
+            imported_event_groups = log.run_command(
+                f"az iot ops ns asset {asset_type} event-group import --asset {asset_name} "
+                f"--instance {instance_name} -g {resource_group} --input-file {exported_file}"
+            )
+            log.check("imported 2 event-groups", len(imported_event_groups) == 2,
+                       actual=len(imported_event_groups))
+            imp_dict = {eg["name"]: eg for eg in imported_event_groups}
+            log.check(f"{event_group_name_1} restored", event_group_name_1 in imp_dict)
+            log.check(f"{event_group_name_2} restored", event_group_name_2 in imp_dict)
+            for eg_name in [event_group_name_1, event_group_name_2]:
+                log.check(f"{eg_name} dataSource intact",
+                           imp_dict[eg_name].get("dataSource") == f"events/source/{eg_name}",
+                           actual=imp_dict[eg_name].get("dataSource"))
 
-    # Verify only one event-group remains
-    event_groups_after_remove = run(
-        f"az iot ops ns asset {asset_type} event-group list --asset {asset_name} "
-        f"--instance {instance_name} -g {resource_group}"
-    )
-    assert len(event_groups_after_remove) == 1
+        # Step 7: Verify final state
+        with log.step(7, "Verify Final State"):
+            final_event_groups = log.run_command(
+                f"az iot ops ns asset {asset_type} event-group list --asset {asset_name} "
+                f"--instance {instance_name} -g {resource_group}"
+            )
+            log.check("final count == 2", len(final_event_groups) == 2,
+                       actual=len(final_event_groups))
 
-    # IMPORT event-groups back (should restore both)
-    imported_event_groups = run(
-        f"az iot ops ns asset {asset_type} event-group import --asset {asset_name} "
-        f"--instance {instance_name} -g {resource_group} --input-file {exported_file}"
-    )
-
-    assert len(imported_event_groups) == 2
-    imported_names = [eg["name"] for eg in imported_event_groups]
-    assert event_group_name_1 in imported_names
-    assert event_group_name_2 in imported_names
-
-    # Verify event-groups were imported correctly
-    final_event_groups = run(
-        f"az iot ops ns asset {asset_type} event-group list --asset {asset_name} "
-        f"--instance {instance_name} -g {resource_group}"
-    )
-    assert len(final_event_groups) == 2
-
-    # EXPORT as YAML
-    export_result_yaml = run(
-        f"az iot ops ns asset {asset_type} event-group export --asset {asset_name} "
-        f"--instance {instance_name} -g {resource_group} -f yaml --replace "
-        f"--output-dir {output_dir}"
-    )
-
-    assert "file_path" in export_result_yaml
-    assert ".yaml" in export_result_yaml["file_path"]
-    tracked_files.append(export_result_yaml["file_path"])
+        # Step 8: Export as YAML
+        with log.step(8, "Export Event Groups (YAML)"):
+            export_result_yaml = log.run_command(
+                f"az iot ops ns asset {asset_type} event-group export --asset {asset_name} "
+                f"--instance {instance_name} -g {resource_group} -f yaml --replace "
+                f"--output-dir {output_dir}"
+            )
+            log.check("'file_path' in result", "file_path" in export_result_yaml)
+            log.check("file is .yaml", ".yaml" in export_result_yaml["file_path"])
+            tracked_files.append(export_result_yaml["file_path"])
 
 
 @pytest.mark.parametrize("asset_type, endpoint_type, endpoint_address", [
@@ -414,144 +497,150 @@ def test_namespace_asset_event_group_export_import(
 ])
 @pytest.mark.parametrize("export_format", ["json", "yaml", "csv"])
 def test_namespace_asset_event_export_import(
-    require_init, tracked_resources: List[str], tracked_files: List[str], tmp_path,
+    require_namespace_init, tracked_resources: List[str], tracked_files: List[str], tmp_path,
     asset_type: str, endpoint_type: str, endpoint_address: str, export_format: str
 ):
     """Test event export and import for custom, opcua, and sse assets."""
-    instance_name = require_init["instanceName"]
-    resource_group = require_init["resourceGroup"]
+    instance_name = require_namespace_init["instanceName"]
+    resource_group = require_namespace_init["resourceGroup"]
     output_dir = str(tmp_path)
-    device_name = f"dev-{generate_random_string(8, force_lower=True)}"
-    endpoint_name = f"{asset_type}-{generate_random_string(8)}"
-    asset_name = f"{asset_type}-{generate_random_string(8, force_lower=True)}"
     event_group_name = f"eg-{generate_random_string(6, force_lower=True)}"
     ev_name_1 = f"ev1-{generate_random_string(6, force_lower=True)}"
     ev_name_2 = f"ev2-{generate_random_string(6, force_lower=True)}"
-    ev_name_3 = f"ev3-{generate_random_string(6, force_lower=True)}"
 
-    # Create Device
-    result = run(
-        f"az iot ops ns device create --name {device_name} --instance {instance_name} "
-        f"-g {resource_group}"
-    )
-    tracked_resources.append(result["id"])
+    step_count = 9 if export_format == "json" else 7
+    with TestLog(
+        f"test_namespace_asset_event_export_import[{export_format}-{asset_type}]",
+        total_steps=step_count,
+    ) as log:
 
-    # Create device endpoint
-    endpoint_cmd = (
-        f"az iot ops ns device endpoint inbound add {endpoint_type} --name {endpoint_name} "
-        f"--instance {instance_name} -g {resource_group} --device {device_name} "
-        f"--endpoint-address '{endpoint_address}'"
-    )
-    if endpoint_type == "custom":
-        endpoint_cmd += " --endpoint-type custom"
-    run(endpoint_cmd)
+        # Step 1: Ensure Device + Endpoint
+        with log.step(1, "Ensure Device + Endpoint"):
+            device_name, endpoint_name = _ensure_device_and_endpoint(
+                log, instance_name, resource_group, asset_type, endpoint_type,
+                endpoint_address, tracked_resources,
+            )
 
-    # Create asset
-    asset_result = run(
-        f"az iot ops ns asset {asset_type} create --name {asset_name} --instance {instance_name} "
-        f"-g {resource_group} --device {device_name} --endpoint {endpoint_name}"
-    )
-    tracked_resources.append(asset_result["id"])
+        # Step 2: Ensure Asset + Create Event Group
+        with log.step(2, f"Ensure {asset_type} Asset + Create Event Group"):
+            asset_name = _ensure_asset_for_format_tests(
+                log, instance_name, resource_group, asset_type, device_name,
+                endpoint_name, tracked_resources, "event",
+            )
+            log.run_command(
+                f"az iot ops ns asset {asset_type} event-group add --asset {asset_name} "
+                f"--instance {instance_name} -g {resource_group} --name {event_group_name} "
+                f"--data-source events/group1"
+            )
 
-    # Add event-group
-    run(
-        f"az iot ops ns asset {asset_type} event-group add --asset {asset_name} "
-        f"--instance {instance_name} -g {resource_group} --name {event_group_name} "
-        f"--data-source events/group1"
-    )
+        # Step 3: Add events
+        with log.step(3, "Add Events"):
+            for ev_name in [ev_name_1, ev_name_2]:
+                log.run_command(
+                    f"az iot ops ns asset {asset_type} event add --asset {asset_name} "
+                    f"--instance {instance_name} -g {resource_group} --event-group {event_group_name} "
+                    f"--name {ev_name} --data-source events/{ev_name}"
+                )
+            log.detail(f"events: {ev_name_1}, {ev_name_2}")
 
-    # Add events
-    for ev_name in [ev_name_1, ev_name_2, ev_name_3]:
-        run(
-            f"az iot ops ns asset {asset_type} event add --asset {asset_name} "
-            f"--instance {instance_name} -g {resource_group} --event-group {event_group_name} "
-            f"--name {ev_name} --data-source events/{ev_name}"
-        )
+        # Step 4: Export events
+        with log.step(4, f"Export Events ({export_format})"):
+            export_result = log.run_command(
+                f"az iot ops ns asset {asset_type} event export --asset {asset_name} "
+                f"--instance {instance_name} -g {resource_group} --event-group {event_group_name} "
+                f"-f {export_format} --output-dir {output_dir}"
+            )
 
-    # EXPORT events
-    export_result = run(
-        f"az iot ops ns asset {asset_type} event export --asset {asset_name} "
-        f"--instance {instance_name} -g {resource_group} --event-group {event_group_name} "
-        f"-f {export_format} --output-dir {output_dir}"
-    )
+            log.check("'file_path' in result", "file_path" in export_result)
+            log.check("'event_count' in result", "event_count" in export_result)
+            log.check("event_count == 2", export_result["event_count"] == 2,
+                       actual=export_result.get("event_count"))
+            log.check(f"file is .{export_format}", f".{export_format}" in export_result["file_path"])
 
-    assert "file_path" in export_result
-    assert "event_count" in export_result
-    assert export_result["event_count"] == 3
-    assert f".{export_format}" in export_result["file_path"]
+            exported_file = export_result["file_path"]
+            tracked_files.append(exported_file)
+            log.check("exported file exists", os.path.exists(exported_file))
 
-    exported_file = export_result["file_path"]
-    tracked_files.append(exported_file)
+            if export_format == "json":
+                with open(exported_file, 'r', encoding='utf-8') as f:
+                    exported_evs = json.load(f)
+                log.check("exported 2 events", len(exported_evs) == 2, actual=len(exported_evs))
+                ev_dict = {ev["name"]: ev for ev in exported_evs}
+                for ev_name in [ev_name_1, ev_name_2]:
+                    log.check(f"{ev_name} in export", ev_name in ev_dict)
+                    log.check(f"{ev_name} dataSource",
+                               ev_dict[ev_name].get("dataSource") == f"events/{ev_name}",
+                               actual=ev_dict[ev_name].get("dataSource"))
 
-    # Verify exported file exists
-    assert os.path.exists(exported_file)
+        # Step 5: Remove all events
+        with log.step(5, "Remove All Events"):
+            for ev_name in [ev_name_1, ev_name_2]:
+                log.run_command(
+                    f"az iot ops ns asset {asset_type} event remove --asset {asset_name} "
+                    f"--instance {instance_name} -g {resource_group} --event-group {event_group_name} "
+                    f"--name {ev_name}"
+                )
+            events_after_remove = log.run_command(
+                f"az iot ops ns asset {asset_type} event list --asset {asset_name} "
+                f"--instance {instance_name} -g {resource_group} --event-group {event_group_name}"
+            )
+            log.check("0 events remain", len(events_after_remove) == 0,
+                       actual=len(events_after_remove))
 
-    # Remove all events
-    for ev_name in [ev_name_1, ev_name_2, ev_name_3]:
-        run(
-            f"az iot ops ns asset {asset_type} event remove --asset {asset_name} "
-            f"--instance {instance_name} -g {resource_group} --event-group {event_group_name} "
-            f"--name {ev_name}"
-        )
+        # Step 6: Import events back
+        with log.step(6, "Import Events"):
+            imported_events = log.run_command(
+                f"az iot ops ns asset {asset_type} event import --asset {asset_name} "
+                f"--instance {instance_name} -g {resource_group} --event-group {event_group_name} "
+                f"--input-file {exported_file}"
+            )
 
-    # Verify no events remain
-    events_after_remove = run(
-        f"az iot ops ns asset {asset_type} event list --asset {asset_name} "
-        f"--instance {instance_name} -g {resource_group} --event-group {event_group_name}"
-    )
-    assert len(events_after_remove) == 0
+            log.check("imported 2 events", len(imported_events) == 2,
+                       actual=len(imported_events))
+            imp_dict = {ev["name"]: ev for ev in imported_events}
+            for ev_name in [ev_name_1, ev_name_2]:
+                log.check(f"{ev_name} restored", ev_name in imp_dict)
+                log.check(f"{ev_name} dataSource intact",
+                           imp_dict[ev_name].get("dataSource") == f"events/{ev_name}",
+                           actual=imp_dict[ev_name].get("dataSource"))
 
-    # IMPORT events back
-    imported_events = run(
-        f"az iot ops ns asset {asset_type} event import --asset {asset_name} "
-        f"--instance {instance_name} -g {resource_group} --event-group {event_group_name} "
-        f"--input-file {exported_file}"
-    )
+        # Step 7: Verify final state
+        with log.step(7, "Verify Final State"):
+            final_events = log.run_command(
+                f"az iot ops ns asset {asset_type} event list --asset {asset_name} "
+                f"--instance {instance_name} -g {resource_group} --event-group {event_group_name}"
+            )
+            log.check("final count == 2", len(final_events) == 2,
+                       actual=len(final_events))
 
-    assert len(imported_events) == 3
-    imported_names = [ev["name"] for ev in imported_events]
-    assert ev_name_1 in imported_names
-    assert ev_name_2 in imported_names
-    assert ev_name_3 in imported_names
+        # Steps 8-9: REPLACE mode (JSON only)
+        if export_format == "json":
+            with log.step(8, "Prepare Modified File"):
+                with open(exported_file, 'r', encoding='utf-8') as f:
+                    events = json.load(f)
 
-    # Verify events were imported correctly
-    final_events = run(
-        f"az iot ops ns asset {asset_type} event list --asset {asset_name} "
-        f"--instance {instance_name} -g {resource_group} --event-group {event_group_name}"
-    )
-    assert len(final_events) == 3
+                modified_events = [events[0]]
+                modified_events[0]["dataSource"] = modified_events[0]["dataSource"] + "_modified"
 
-    # Test REPLACE mode
-    # replace=True means: merge with overwrite on collision (overwrites matching names from file)
-    if export_format == "json":
-        with open(exported_file, 'r', encoding='utf-8') as f:
-            events = json.load(f)
+                modified_file = exported_file.replace(".json", "_modified.json")
+                tracked_files.append(modified_file)
+                with open(modified_file, 'w', encoding='utf-8') as f:
+                    json.dump(modified_events, f)
+                log.detail(f"modified 1 event: {ev_name_1}")
+                log.detail(f"file: {modified_file}")
 
-        # Modify first 2 events' data sources
-        modified_events = events[:2]
-        for ev in modified_events:
-            ev["dataSource"] = ev["dataSource"] + "_modified"
+            with log.step(9, "Import with --replace"):
+                replaced_events = log.run_command(
+                    f"az iot ops ns asset {asset_type} event import --asset {asset_name} "
+                    f"--instance {instance_name} -g {resource_group} --event-group {event_group_name} "
+                    f"--input-file {modified_file} --replace"
+                )
 
-        modified_file = exported_file.replace(".json", "_modified.json")
-        tracked_files.append(modified_file)
-        with open(modified_file, 'w', encoding='utf-8') as f:
-            json.dump(modified_events, f)
-
-        # Import with replace - should overwrite the 2 matching events and keep the 3rd
-        replaced_events = run(
-            f"az iot ops ns asset {asset_type} event import --asset {asset_name} "
-            f"--instance {instance_name} -g {resource_group} --event-group {event_group_name} "
-            f"--input-file {modified_file} --replace"
-        )
-
-        # Should still have 3 events (2 modified from file + 1 original untouched)
-        assert len(replaced_events) == 3
-
-        # Verify the first 2 were modified, 3rd is unchanged
-        ev_dict = {ev["name"]: ev for ev in replaced_events}
-        assert "_modified" in ev_dict[ev_name_1]["dataSource"]
-        assert "_modified" in ev_dict[ev_name_2]["dataSource"]
-        assert "_modified" not in ev_dict[ev_name_3]["dataSource"]
+                log.check("still 2 events", len(replaced_events) == 2,
+                           actual=len(replaced_events))
+                ev_dict = {ev["name"]: ev for ev in replaced_events}
+                log.check(f"{ev_name_1} modified", "_modified" in ev_dict[ev_name_1]["dataSource"])
+                log.check(f"{ev_name_2} unchanged", "_modified" not in ev_dict[ev_name_2]["dataSource"])
 
 
 @pytest.mark.parametrize("asset_type, endpoint_type, endpoint_address", [
@@ -559,101 +648,97 @@ def test_namespace_asset_event_export_import(
     ("media", "media", "rtsp://192.168.1.200:554/stream"),
 ])
 def test_namespace_asset_stream_export_import(
-    require_init, tracked_resources: List[str], tracked_files: List[str], tmp_path,
+    require_namespace_init, tracked_resources: List[str], tracked_files: List[str], tmp_path,
     asset_type: str, endpoint_type: str, endpoint_address: str
 ):
     """Test stream export and import for custom and media assets."""
-    instance_name = require_init["instanceName"]
-    resource_group = require_init["resourceGroup"]
+    instance_name = require_namespace_init["instanceName"]
+    resource_group = require_namespace_init["resourceGroup"]
     output_dir = str(tmp_path)
-    device_name = f"dev-{generate_random_string(8, force_lower=True)}"
-    endpoint_name = f"{asset_type}-{generate_random_string(8)}"
     asset_name = f"{asset_type}-{generate_random_string(8, force_lower=True)}"
     stream_name_1 = f"str1-{generate_random_string(6, force_lower=True)}"
     stream_name_2 = f"str2-{generate_random_string(6, force_lower=True)}"
 
-    # Create Device
-    result = run(
-        f"az iot ops ns device create --name {device_name} --instance {instance_name} "
-        f"-g {resource_group}"
-    )
-    tracked_resources.append(result["id"])
+    with TestLog(
+        f"test_namespace_asset_stream_export_import[{asset_type}]",
+        total_steps=6,
+    ) as log:
 
-    # Create device endpoint
-    endpoint_cmd = (
-        f"az iot ops ns device endpoint inbound add {endpoint_type} --name {endpoint_name} "
-        f"--instance {instance_name} -g {resource_group} --device {device_name} "
-        f"--endpoint-address '{endpoint_address}'"
-    )
-    if endpoint_type == "custom":
-        endpoint_cmd += " --endpoint-type custom"
-    run(endpoint_cmd)
+        # Step 1: Ensure Device + Endpoint
+        with log.step(1, "Ensure Device + Endpoint"):
+            device_name, endpoint_name = _ensure_device_and_endpoint(
+                log, instance_name, resource_group, asset_type, endpoint_type,
+                endpoint_address, tracked_resources,
+            )
 
-    # Create asset
-    asset_result = run(
-        f"az iot ops ns asset {asset_type} create --name {asset_name} --instance {instance_name} "
-        f"-g {resource_group} --device {device_name} --endpoint {endpoint_name}"
-    )
-    tracked_resources.append(asset_result["id"])
+        # Step 2: Create asset
+        with log.step(2, f"Create {asset_type} Asset"):
+            log.run_command(
+                f"az iot ops ns asset {asset_type} create --name {asset_name} --instance {instance_name} "
+                f"-g {resource_group} --device {device_name} --endpoint {endpoint_name}",
+                tracked_resources=tracked_resources,
+            )
 
-    # Add streams
-    for stream_name in [stream_name_1, stream_name_2]:
-        run(
-            f"az iot ops ns asset {asset_type} stream add --asset {asset_name} "
-            f"--instance {instance_name} -g {resource_group} --name {stream_name}"
-        )
+        # Step 3: Add streams
+        with log.step(3, "Add Streams"):
+            for stream_name in [stream_name_1, stream_name_2]:
+                log.run_command(
+                    f"az iot ops ns asset {asset_type} stream add --asset {asset_name} "
+                    f"--instance {instance_name} -g {resource_group} --name {stream_name}"
+                )
 
-    # EXPORT streams as JSON
-    export_result_json = run(
-        f"az iot ops ns asset {asset_type} stream export --asset {asset_name} "
-        f"--instance {instance_name} -g {resource_group} -f json "
-        f"--output-dir {output_dir}"
-    )
+        # Step 4: Export streams as JSON
+        with log.step(4, "Export Streams (JSON)"):
+            export_result_json = log.run_command(
+                f"az iot ops ns asset {asset_type} stream export --asset {asset_name} "
+                f"--instance {instance_name} -g {resource_group} -f json "
+                f"--output-dir {output_dir}"
+            )
 
-    assert "file_path" in export_result_json
-    assert "stream_count" in export_result_json
-    assert export_result_json["stream_count"] == 2
-    assert ".json" in export_result_json["file_path"]
+            log.check("'file_path' in result", "file_path" in export_result_json)
+            log.check("'stream_count' in result", "stream_count" in export_result_json)
+            log.check("stream_count == 2", export_result_json["stream_count"] == 2,
+                       actual=export_result_json.get("stream_count"))
+            log.check("file is .json", ".json" in export_result_json["file_path"])
 
-    exported_file = export_result_json["file_path"]
-    tracked_files.append(exported_file)
+            exported_file = export_result_json["file_path"]
+            tracked_files.append(exported_file)
 
-    # Verify exported file content
-    assert os.path.exists(exported_file)
-    with open(exported_file, 'r', encoding='utf-8') as f:
-        exported_streams = json.load(f)
+            log.check("exported file exists", os.path.exists(exported_file))
+            with open(exported_file, 'r', encoding='utf-8') as f:
+                exported_streams = json.load(f)
+            log.check("exported 2 streams", len(exported_streams) == 2,
+                       actual=len(exported_streams))
+            exported_names = [s["name"] for s in exported_streams]
+            log.check(f"{stream_name_1} in export", stream_name_1 in exported_names)
+            log.check(f"{stream_name_2} in export", stream_name_2 in exported_names)
+            for stream in exported_streams:
+                log.check(f"no 'destinations' in {stream['name']}", "destinations" not in stream)
 
-    assert len(exported_streams) == 2
-    exported_names = [s["name"] for s in exported_streams]
-    assert stream_name_1 in exported_names
-    assert stream_name_2 in exported_names
-    # Destinations should NOT be in exported file
-    for stream in exported_streams:
-        assert "destinations" not in stream
+        # Step 5: Remove one stream & verify
+        with log.step(5, "Remove Stream & Verify"):
+            log.run_command(
+                f"az iot ops ns asset {asset_type} stream remove --asset {asset_name} "
+                f"--instance {instance_name} -g {resource_group} --name {stream_name_1}"
+            )
+            streams_after_remove = log.run_command(
+                f"az iot ops ns asset {asset_type} stream list --asset {asset_name} "
+                f"--instance {instance_name} -g {resource_group}"
+            )
+            log.check("1 stream remains", len(streams_after_remove) == 1,
+                       actual=len(streams_after_remove))
 
-    # Remove one stream
-    run(
-        f"az iot ops ns asset {asset_type} stream remove --asset {asset_name} "
-        f"--instance {instance_name} -g {resource_group} --name {stream_name_1}"
-    )
-
-    # Verify only one stream remains
-    streams_after_remove = run(
-        f"az iot ops ns asset {asset_type} stream list --asset {asset_name} "
-        f"--instance {instance_name} -g {resource_group}"
-    )
-    assert len(streams_after_remove) == 1
-
-    # IMPORT streams back (should restore both)
-    imported_streams = run(
-        f"az iot ops ns asset {asset_type} stream import --asset {asset_name} "
-        f"--instance {instance_name} -g {resource_group} --input-file {exported_file}"
-    )
-
-    assert len(imported_streams) == 2
-    imported_names = [s["name"] for s in imported_streams]
-    assert stream_name_1 in imported_names
-    assert stream_name_2 in imported_names
+        # Step 6: Import streams back
+        with log.step(6, "Import Streams"):
+            imported_streams = log.run_command(
+                f"az iot ops ns asset {asset_type} stream import --asset {asset_name} "
+                f"--instance {instance_name} -g {resource_group} --input-file {exported_file}"
+            )
+            log.check("imported 2 streams", len(imported_streams) == 2,
+                       actual=len(imported_streams))
+            imported_names = [s["name"] for s in imported_streams]
+            log.check(f"{stream_name_1} restored", stream_name_1 in imported_names)
+            log.check(f"{stream_name_2} restored", stream_name_2 in imported_names)
 
 
 @pytest.mark.parametrize("asset_type, endpoint_type, endpoint_address", [
@@ -662,102 +747,106 @@ def test_namespace_asset_stream_export_import(
     ("onvif", "onvif", "http://192.168.1.200:8080/onvif"),
 ])
 def test_namespace_asset_management_group_export_import(
-    require_init, tracked_resources: List[str], tracked_files: List[str], tmp_path,
+    require_namespace_init, tracked_resources: List[str], tracked_files: List[str], tmp_path,
     asset_type: str, endpoint_type: str, endpoint_address: str
 ):
     """Test management group export and import for all asset types."""
-    instance_name = require_init["instanceName"]
-    resource_group = require_init["resourceGroup"]
+    instance_name = require_namespace_init["instanceName"]
+    resource_group = require_namespace_init["resourceGroup"]
     output_dir = str(tmp_path)
-    device_name = f"dev-{generate_random_string(8, force_lower=True)}"
-    endpoint_name = f"{asset_type}-{generate_random_string(8)}"
     asset_name = f"{asset_type}-{generate_random_string(8, force_lower=True)}"
     group_name_1 = f"grp1-{generate_random_string(6, force_lower=True)}"
     group_name_2 = f"grp2-{generate_random_string(6, force_lower=True)}"
 
-    # Create Device
-    result = run(
-        f"az iot ops ns device create --name {device_name} --instance {instance_name} "
-        f"-g {resource_group}"
-    )
-    tracked_resources.append(result["id"])
+    with TestLog(
+        f"test_namespace_asset_management_group_export_import[{asset_type}]",
+        total_steps=6,
+    ) as log:
 
-    # Create device endpoint
-    endpoint_cmd = (
-        f"az iot ops ns device endpoint inbound add {endpoint_type} --name {endpoint_name} "
-        f"--instance {instance_name} -g {resource_group} --device {device_name} "
-        f"--endpoint-address '{endpoint_address}'"
-    )
-    if endpoint_type == "custom":
-        endpoint_cmd += " --endpoint-type custom"
-    run(endpoint_cmd)
+        # Step 1: Ensure Device + Endpoint
+        with log.step(1, "Ensure Device + Endpoint"):
+            device_name, endpoint_name = _ensure_device_and_endpoint(
+                log, instance_name, resource_group, asset_type, endpoint_type,
+                endpoint_address, tracked_resources,
+            )
 
-    # Create asset
-    asset_result = run(
-        f"az iot ops ns asset {asset_type} create --name {asset_name} --instance {instance_name} "
-        f"-g {resource_group} --device {device_name} --endpoint {endpoint_name}"
-    )
-    tracked_resources.append(asset_result["id"])
+        # Step 2: Create asset
+        with log.step(2, f"Create {asset_type} Asset"):
+            log.run_command(
+                f"az iot ops ns asset {asset_type} create --name {asset_name} --instance {instance_name} "
+                f"-g {resource_group} --device {device_name} --endpoint {endpoint_name}",
+                tracked_resources=tracked_resources,
+            )
 
-    # Add management groups
-    for group_name in [group_name_1, group_name_2]:
-        run(
-            f"az iot ops ns asset {asset_type} mgmt-group add --asset {asset_name} "
-            f"--instance {instance_name} -g {resource_group} --name {group_name} "
-            f"--data-source mgmt/{group_name}"
-        )
+        # Step 3: Add management groups
+        with log.step(3, "Add Management Groups"):
+            for group_name in [group_name_1, group_name_2]:
+                log.run_command(
+                    f"az iot ops ns asset {asset_type} mgmt-group add --asset {asset_name} "
+                    f"--instance {instance_name} -g {resource_group} --name {group_name} "
+                    f"--data-source mgmt/{group_name}"
+                )
 
-    # EXPORT management groups as JSON
-    export_result_json = run(
-        f"az iot ops ns asset {asset_type} mgmt-group export --asset {asset_name} "
-        f"--instance {instance_name} -g {resource_group} -f json "
-        f"--output-dir {output_dir}"
-    )
+        # Step 4: Export management groups as JSON
+        with log.step(4, "Export Management Groups (JSON)"):
+            export_result_json = log.run_command(
+                f"az iot ops ns asset {asset_type} mgmt-group export --asset {asset_name} "
+                f"--instance {instance_name} -g {resource_group} -f json "
+                f"--output-dir {output_dir}"
+            )
 
-    assert "file_path" in export_result_json
-    assert "management_group_count" in export_result_json
-    assert export_result_json["management_group_count"] == 2
-    assert ".json" in export_result_json["file_path"]
+            log.check("'file_path' in result", "file_path" in export_result_json)
+            log.check("'management_group_count' in result", "management_group_count" in export_result_json)
+            log.check("management_group_count == 2", export_result_json["management_group_count"] == 2,
+                       actual=export_result_json.get("management_group_count"))
+            log.check("file is .json", ".json" in export_result_json["file_path"])
 
-    exported_file = export_result_json["file_path"]
-    tracked_files.append(exported_file)
+            exported_file = export_result_json["file_path"]
+            tracked_files.append(exported_file)
 
-    # Verify exported file content
-    assert os.path.exists(exported_file)
-    with open(exported_file, 'r', encoding='utf-8') as f:
-        exported_groups = json.load(f)
+            log.check("exported file exists", os.path.exists(exported_file))
+            with open(exported_file, 'r', encoding='utf-8') as f:
+                exported_groups = json.load(f)
+            log.check("exported 2 groups", len(exported_groups) == 2,
+                       actual=len(exported_groups))
+            grp_dict = {g["name"]: g for g in exported_groups}
+            log.check(f"{group_name_1} in export", group_name_1 in grp_dict)
+            log.check(f"{group_name_2} in export", group_name_2 in grp_dict)
+            for grp_name in [group_name_1, group_name_2]:
+                grp = grp_dict[grp_name]
+                log.check(f"no 'actions' in {grp_name}", "actions" not in grp)
+                log.check(f"{grp_name} dataSource",
+                           grp.get("dataSource") == f"mgmt/{grp_name}",
+                           actual=grp.get("dataSource"))
 
-    assert len(exported_groups) == 2
-    exported_names = [g["name"] for g in exported_groups]
-    assert group_name_1 in exported_names
-    assert group_name_2 in exported_names
-    # Actions should NOT be in exported file
-    for group in exported_groups:
-        assert "actions" not in group
+        # Step 5: Remove one group & verify
+        with log.step(5, "Remove Management Group & Verify"):
+            log.run_command(
+                f"az iot ops ns asset {asset_type} mgmt-group remove --asset {asset_name} "
+                f"--instance {instance_name} -g {resource_group} --name {group_name_1}"
+            )
+            groups_after_remove = log.run_command(
+                f"az iot ops ns asset {asset_type} mgmt-group list --asset {asset_name} "
+                f"--instance {instance_name} -g {resource_group}"
+            )
+            log.check("1 group remains", len(groups_after_remove) == 1,
+                       actual=len(groups_after_remove))
 
-    # Remove one management group
-    run(
-        f"az iot ops ns asset {asset_type} mgmt-group remove --asset {asset_name} "
-        f"--instance {instance_name} -g {resource_group} --name {group_name_1}"
-    )
-
-    # Verify only one group remains
-    groups_after_remove = run(
-        f"az iot ops ns asset {asset_type} mgmt-group list --asset {asset_name} "
-        f"--instance {instance_name} -g {resource_group}"
-    )
-    assert len(groups_after_remove) == 1
-
-    # IMPORT management groups back (should restore both)
-    imported_groups = run(
-        f"az iot ops ns asset {asset_type} mgmt-group import --asset {asset_name} "
-        f"--instance {instance_name} -g {resource_group} --input-file {exported_file}"
-    )
-
-    assert len(imported_groups) == 2
-    imported_names = [g["name"] for g in imported_groups]
-    assert group_name_1 in imported_names
-    assert group_name_2 in imported_names
+        # Step 6: Import management groups back
+        with log.step(6, "Import Management Groups"):
+            imported_groups = log.run_command(
+                f"az iot ops ns asset {asset_type} mgmt-group import --asset {asset_name} "
+                f"--instance {instance_name} -g {resource_group} --input-file {exported_file}"
+            )
+            log.check("imported 2 groups", len(imported_groups) == 2,
+                       actual=len(imported_groups))
+            imp_dict = {g["name"]: g for g in imported_groups}
+            log.check(f"{group_name_1} restored", group_name_1 in imp_dict)
+            log.check(f"{group_name_2} restored", group_name_2 in imp_dict)
+            for grp_name in [group_name_1, group_name_2]:
+                log.check(f"{grp_name} dataSource intact",
+                           imp_dict[grp_name].get("dataSource") == f"mgmt/{grp_name}",
+                           actual=imp_dict[grp_name].get("dataSource"))
 
 
 @pytest.mark.parametrize("asset_type, endpoint_type, endpoint_address", [
@@ -766,140 +855,147 @@ def test_namespace_asset_management_group_export_import(
 ])
 @pytest.mark.parametrize("export_format", ["json", "yaml", "csv"])
 def test_namespace_asset_management_action_export_import(
-    require_init, tracked_resources: List[str], tracked_files: List[str], tmp_path,
+    require_namespace_init, tracked_resources: List[str], tracked_files: List[str], tmp_path,
     asset_type: str, endpoint_type: str, endpoint_address: str, export_format: str
 ):
     """Test management action export and import for custom and opcua assets."""
-    instance_name = require_init["instanceName"]
-    resource_group = require_init["resourceGroup"]
+    instance_name = require_namespace_init["instanceName"]
+    resource_group = require_namespace_init["resourceGroup"]
     output_dir = str(tmp_path)
-    device_name = f"dev-{generate_random_string(8, force_lower=True)}"
-    endpoint_name = f"{asset_type}-{generate_random_string(8)}"
-    asset_name = f"{asset_type}-{generate_random_string(8, force_lower=True)}"
     group_name = f"grp-{generate_random_string(6, force_lower=True)}"
     action_name_1 = f"act1-{generate_random_string(6, force_lower=True)}"
     action_name_2 = f"act2-{generate_random_string(6, force_lower=True)}"
-    action_name_3 = f"act3-{generate_random_string(6, force_lower=True)}"
 
-    # Create Device
-    result = run(
-        f"az iot ops ns device create --name {device_name} --instance {instance_name} "
-        f"-g {resource_group}"
-    )
-    tracked_resources.append(result["id"])
+    step_count = 9 if export_format == "json" else 7
+    with TestLog(
+        f"test_namespace_asset_management_action_export_import[{export_format}-{asset_type}]",
+        total_steps=step_count,
+    ) as log:
 
-    # Create device endpoint
-    endpoint_cmd = (
-        f"az iot ops ns device endpoint inbound add {endpoint_type} --name {endpoint_name} "
-        f"--instance {instance_name} -g {resource_group} --device {device_name} "
-        f"--endpoint-address '{endpoint_address}'"
-    )
-    if endpoint_type == "custom":
-        endpoint_cmd += " --endpoint-type custom"
-    run(endpoint_cmd)
+        # Step 1: Ensure Device + Endpoint
+        with log.step(1, "Ensure Device + Endpoint"):
+            device_name, endpoint_name = _ensure_device_and_endpoint(
+                log, instance_name, resource_group, asset_type, endpoint_type,
+                endpoint_address, tracked_resources,
+            )
 
-    # Create asset
-    asset_result = run(
-        f"az iot ops ns asset {asset_type} create --name {asset_name} --instance {instance_name} "
-        f"-g {resource_group} --device {device_name} --endpoint {endpoint_name}"
-    )
-    tracked_resources.append(asset_result["id"])
+        # Step 2: Ensure Asset + Create Management Group
+        with log.step(2, f"Ensure {asset_type} Asset + Create Management Group"):
+            asset_name = _ensure_asset_for_format_tests(
+                log, instance_name, resource_group, asset_type, device_name,
+                endpoint_name, tracked_resources, "mgmt_action",
+            )
+            log.run_command(
+                f"az iot ops ns asset {asset_type} mgmt-group add --asset {asset_name} "
+                f"--instance {instance_name} -g {resource_group} --name {group_name} "
+                f"--data-source mgmt/{group_name}"
+            )
 
-    # Add management group
-    run(
-        f"az iot ops ns asset {asset_type} mgmt-group add --asset {asset_name} "
-        f"--instance {instance_name} -g {resource_group} --name {group_name} "
-        f"--data-source mgmt/{group_name}"
-    )
+        # Step 3: Add actions
+        with log.step(3, "Add Management Actions"):
+            for action_name in [action_name_1, action_name_2]:
+                log.run_command(
+                    f"az iot ops ns asset {asset_type} mgmt-action add --asset {asset_name} "
+                    f"--instance {instance_name} -g {resource_group} --group {group_name} "
+                    f"--name {action_name} --target-uri ns=2;s={action_name}"
+                )
+            log.detail(f"actions: {action_name_1}, {action_name_2}")
 
-    # Add actions
-    for action_name in [action_name_1, action_name_2, action_name_3]:
-        run(
-            f"az iot ops ns asset {asset_type} mgmt-action add --asset {asset_name} "
-            f"--instance {instance_name} -g {resource_group} --group {group_name} "
-            f"--name {action_name} --target-uri ns=2;s={action_name}"
-        )
+        # Step 4: Export actions
+        with log.step(4, f"Export Management Actions ({export_format})"):
+            export_result = log.run_command(
+                f"az iot ops ns asset {asset_type} mgmt-action export --asset {asset_name} "
+                f"--instance {instance_name} -g {resource_group} --group {group_name} "
+                f"-f {export_format} --output-dir {output_dir}"
+            )
 
-    # EXPORT actions
-    export_result = run(
-        f"az iot ops ns asset {asset_type} mgmt-action export --asset {asset_name} "
-        f"--instance {instance_name} -g {resource_group} --group {group_name} "
-        f"-f {export_format} --output-dir {output_dir}"
-    )
+            log.check("'file_path' in result", "file_path" in export_result)
+            log.check("'action_count' in result", "action_count" in export_result)
+            log.check("action_count == 2", export_result["action_count"] == 2,
+                       actual=export_result.get("action_count"))
+            log.check(f"file is .{export_format}", f".{export_format}" in export_result["file_path"])
 
-    assert "file_path" in export_result
-    assert "action_count" in export_result
-    assert export_result["action_count"] == 3
-    assert f".{export_format}" in export_result["file_path"]
+            exported_file = export_result["file_path"]
+            tracked_files.append(exported_file)
+            log.check("exported file exists", os.path.exists(exported_file))
 
-    exported_file = export_result["file_path"]
-    tracked_files.append(exported_file)
+            if export_format == "json":
+                with open(exported_file, 'r', encoding='utf-8') as f:
+                    exported_acts = json.load(f)
+                log.check("exported 2 actions", len(exported_acts) == 2, actual=len(exported_acts))
+                act_dict = {a["name"]: a for a in exported_acts}
+                for act_name in [action_name_1, action_name_2]:
+                    log.check(f"{act_name} in export", act_name in act_dict)
+                    log.check(f"{act_name} targetUri",
+                               act_dict[act_name].get("targetUri") == f"ns=2;s={act_name}",
+                               actual=act_dict[act_name].get("targetUri"))
 
-    # Verify exported file exists
-    assert os.path.exists(exported_file)
+        # Step 5: Remove all actions
+        with log.step(5, "Remove All Actions"):
+            for action_name in [action_name_1, action_name_2]:
+                log.run_command(
+                    f"az iot ops ns asset {asset_type} mgmt-action remove --asset {asset_name} "
+                    f"--instance {instance_name} -g {resource_group} --group {group_name} "
+                    f"--name {action_name}"
+                )
+            actions_after_remove = log.run_command(
+                f"az iot ops ns asset {asset_type} mgmt-action list --asset {asset_name} "
+                f"--instance {instance_name} -g {resource_group} --group {group_name}"
+            )
+            log.check("0 actions remain", len(actions_after_remove) == 0,
+                       actual=len(actions_after_remove))
 
-    # Remove all actions
-    for action_name in [action_name_1, action_name_2, action_name_3]:
-        run(
-            f"az iot ops ns asset {asset_type} mgmt-action remove --asset {asset_name} "
-            f"--instance {instance_name} -g {resource_group} --group {group_name} "
-            f"--name {action_name}"
-        )
+        # Step 6: Import actions back
+        with log.step(6, "Import Management Actions"):
+            imported_actions = log.run_command(
+                f"az iot ops ns asset {asset_type} mgmt-action import --asset {asset_name} "
+                f"--instance {instance_name} -g {resource_group} --group {group_name} "
+                f"--input-file {exported_file}"
+            )
 
-    # Verify no actions remain
-    actions_after_remove = run(
-        f"az iot ops ns asset {asset_type} mgmt-action list --asset {asset_name} "
-        f"--instance {instance_name} -g {resource_group} --group {group_name}"
-    )
-    assert len(actions_after_remove) == 0
+            log.check("imported 2 actions", len(imported_actions) == 2,
+                       actual=len(imported_actions))
+            imp_dict = {a["name"]: a for a in imported_actions}
+            for act_name in [action_name_1, action_name_2]:
+                log.check(f"{act_name} restored", act_name in imp_dict)
+                log.check(f"{act_name} targetUri intact",
+                           imp_dict[act_name].get("targetUri") == f"ns=2;s={act_name}",
+                           actual=imp_dict[act_name].get("targetUri"))
 
-    # IMPORT actions back
-    imported_actions = run(
-        f"az iot ops ns asset {asset_type} mgmt-action import --asset {asset_name} "
-        f"--instance {instance_name} -g {resource_group} --group {group_name} "
-        f"--input-file {exported_file}"
-    )
+        # Step 7: Verify final state
+        with log.step(7, "Verify Final State"):
+            final_actions = log.run_command(
+                f"az iot ops ns asset {asset_type} mgmt-action list --asset {asset_name} "
+                f"--instance {instance_name} -g {resource_group} --group {group_name}"
+            )
+            log.check("final count == 2", len(final_actions) == 2,
+                       actual=len(final_actions))
 
-    assert len(imported_actions) == 3
-    imported_names = [a["name"] for a in imported_actions]
-    assert action_name_1 in imported_names
-    assert action_name_2 in imported_names
-    assert action_name_3 in imported_names
+        # Steps 8-9: REPLACE mode (JSON only)
+        if export_format == "json":
+            with log.step(8, "Prepare Modified File"):
+                with open(exported_file, 'r', encoding='utf-8') as f:
+                    actions = json.load(f)
 
-    # Verify actions were imported correctly
-    final_actions = run(
-        f"az iot ops ns asset {asset_type} mgmt-action list --asset {asset_name} "
-        f"--instance {instance_name} -g {resource_group} --group {group_name}"
-    )
-    assert len(final_actions) == 3
+                modified_actions = [actions[0]]
+                modified_actions[0]["targetUri"] = modified_actions[0]["targetUri"] + "_modified"
 
-    # Test REPLACE mode
-    if export_format == "json":
-        with open(exported_file, 'r', encoding='utf-8') as f:
-            actions = json.load(f)
+                modified_file = exported_file.replace(".json", "_modified.json")
+                tracked_files.append(modified_file)
+                with open(modified_file, 'w', encoding='utf-8') as f:
+                    json.dump(modified_actions, f)
+                log.detail(f"modified 1 action: {action_name_1}")
+                log.detail(f"file: {modified_file}")
 
-        # Modify first 2 actions' target URIs
-        modified_actions = actions[:2]
-        for action in modified_actions:
-            action["targetUri"] = action["targetUri"] + "_modified"
+            with log.step(9, "Import with --replace"):
+                replaced_actions = log.run_command(
+                    f"az iot ops ns asset {asset_type} mgmt-action import --asset {asset_name} "
+                    f"--instance {instance_name} -g {resource_group} --group {group_name} "
+                    f"--input-file {modified_file} --replace"
+                )
 
-        modified_file = exported_file.replace(".json", "_modified.json")
-        tracked_files.append(modified_file)
-        with open(modified_file, 'w', encoding='utf-8') as f:
-            json.dump(modified_actions, f)
-
-        # Import with replace - should overwrite the 2 matching actions and keep the 3rd
-        replaced_actions = run(
-            f"az iot ops ns asset {asset_type} mgmt-action import --asset {asset_name} "
-            f"--instance {instance_name} -g {resource_group} --group {group_name} "
-            f"--input-file {modified_file} --replace"
-        )
-
-        # Should still have 3 actions (2 modified from file + 1 original untouched)
-        assert len(replaced_actions) == 3
-
-        # Verify the first 2 were modified, 3rd is unchanged
-        action_dict = {a["name"]: a for a in replaced_actions}
-        assert "_modified" in action_dict[action_name_1]["targetUri"]
-        assert "_modified" in action_dict[action_name_2]["targetUri"]
-        assert "_modified" not in action_dict[action_name_3]["targetUri"]
+                log.check("still 2 actions", len(replaced_actions) == 2,
+                           actual=len(replaced_actions))
+                action_dict = {a["name"]: a for a in replaced_actions}
+                log.check(f"{action_name_1} modified", "_modified" in action_dict[action_name_1]["targetUri"])
+                log.check(f"{action_name_2} unchanged", "_modified" not in action_dict[action_name_2]["targetUri"])

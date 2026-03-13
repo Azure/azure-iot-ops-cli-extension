@@ -19,12 +19,12 @@ pytestmark = [pytest.mark.rpsaas, pytest.mark.long_running]
 
 
 def test_namespace_custom_asset_management_group_lifecycle_operations(
-    require_init, tracked_resources: List[str], tracked_files: List[str]
+    require_namespace_init, tracked_resources: List[str], tracked_files: List[str]
 ):
     """Test complete lifecycle of custom asset management group and action operations."""
     # Setup test variables
-    instance_name = require_init["instanceName"]
-    resource_group = require_init["resourceGroup"]
+    instance_name = require_namespace_init["instanceName"]
+    resource_group = require_namespace_init["resourceGroup"]
     device_name = f"dev-{generate_random_string(8, force_lower=True)}"
     endpoint_name = f"custom-{generate_random_string(8)}"
     asset_name = f"custom-{generate_random_string(8, force_lower=True)}"
@@ -240,11 +240,11 @@ def test_namespace_custom_asset_management_group_lifecycle_operations(
     assert mgmt_group_name not in remaining_mgmt_group_names
 
 
-def test_namespace_opcua_asset_management_group_lifecycle_operations(require_init, tracked_resources: List[str]):
+def test_namespace_opcua_asset_management_group_lifecycle_operations(require_namespace_init, tracked_resources: List[str]):
     """Test complete lifecycle of OPC UA asset management group operations."""
     # Setup test variables
-    instance_name = require_init["instanceName"]
-    resource_group = require_init["resourceGroup"]
+    instance_name = require_namespace_init["instanceName"]
+    resource_group = require_namespace_init["resourceGroup"]
     device_name = f"dev-{generate_random_string(8, force_lower=True)}"
     endpoint_name = f"opcua-{generate_random_string(8)}"
     asset_name = f"opcua-{generate_random_string(8, force_lower=True)}"
@@ -427,11 +427,11 @@ def test_namespace_opcua_asset_management_group_lifecycle_operations(require_ini
     assert mgmt_group_name not in remaining_mgmt_group_names
 
 
-def test_namespace_onvif_asset_management_group_lifecycle_operations(require_init, tracked_resources: List[str]):
+def test_namespace_onvif_asset_management_group_lifecycle_operations(require_namespace_init, tracked_resources: List[str]):
     """Test complete lifecycle of ONVIF asset management group operations."""
     # Setup test variables
-    instance_name = require_init["instanceName"]
-    resource_group = require_init["resourceGroup"]
+    instance_name = require_namespace_init["instanceName"]
+    resource_group = require_namespace_init["resourceGroup"]
     device_name = f"dev-{generate_random_string(8, force_lower=True)}"
     endpoint_name = f"onvif-{generate_random_string(8)}"
     asset_name = f"onvif-{generate_random_string(8, force_lower=True)}"

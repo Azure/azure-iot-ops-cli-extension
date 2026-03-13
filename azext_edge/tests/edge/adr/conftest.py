@@ -10,6 +10,23 @@ from typing import Optional
 
 from azext_edge.edge.util.id_tools import parse_resource_id
 from ...generators import generate_random_string, get_zeroed_subscription
+from ...helpers import run
+
+
+@pytest.fixture()
+def require_namespace_init(require_init):
+    """Extends require_init to ensure the instance has an ADR namespace reference.
+
+    If the instance does not have one, the test is skipped. Set up a namespace
+    manually before running these tests — see README or conftest docstring.
+    """
+    if not require_init.get("adrNamespaceRef"):
+        pytest.skip(
+            "Instance does not have an ADR namespace reference (adrNamespaceRef). "
+            "Create one and link it to the instance before running namespace tests. "
+            "See: az iot ops ns create / az iot ops update"
+        )
+    yield require_init
 
 
 @pytest.fixture()
@@ -116,6 +133,7 @@ def mocked_connector_metadata_validator(mocker):
     )
 
     yield mock_validator_instance
+
 def mocked_get_endpoint_version_from_template(mocker):
     """
     Mock ConnectorTemplates to return None from get_endpoint_version_for_type by default.

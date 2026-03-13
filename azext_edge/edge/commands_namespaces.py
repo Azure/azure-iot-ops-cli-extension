@@ -1776,6 +1776,7 @@ def import_namespace_custom_asset_dataset(
     instance_name: str,
     instance_resource_group: str,
     file_path: str,
+    replace: bool = False,
     **kwargs
 ) -> List[dict]:
     return NamespaceAssets(cmd).import_datasets(
@@ -1783,6 +1784,7 @@ def import_namespace_custom_asset_dataset(
         instance_name=instance_name,
         instance_resource_group=instance_resource_group,
         file_path=file_path,
+        replace=replace,
         **kwargs
     )
 
@@ -1793,6 +1795,7 @@ def import_namespace_opcua_asset_dataset(
     instance_name: str,
     instance_resource_group: str,
     file_path: str,
+    replace: bool = False,
     **kwargs
 ) -> List[dict]:
     return NamespaceAssets(cmd).import_datasets(
@@ -1800,6 +1803,7 @@ def import_namespace_opcua_asset_dataset(
         instance_name=instance_name,
         instance_resource_group=instance_resource_group,
         file_path=file_path,
+        replace=replace,
         **kwargs
     )
 
@@ -1810,6 +1814,7 @@ def import_namespace_rest_asset_dataset(
     instance_name: str,
     instance_resource_group: str,
     file_path: str,
+    replace: bool = False,
     **kwargs
 ) -> List[dict]:
     return NamespaceAssets(cmd).import_datasets(
@@ -1817,6 +1822,7 @@ def import_namespace_rest_asset_dataset(
         instance_name=instance_name,
         instance_resource_group=instance_resource_group,
         file_path=file_path,
+        replace=replace,
         **kwargs
     )
 
@@ -1827,6 +1833,7 @@ def import_namespace_sse_asset_dataset(
     instance_name: str,
     instance_resource_group: str,
     file_path: str,
+    replace: bool = False,
     **kwargs
 ) -> List[dict]:
     return NamespaceAssets(cmd).import_datasets(
@@ -1834,6 +1841,7 @@ def import_namespace_sse_asset_dataset(
         instance_name=instance_name,
         instance_resource_group=instance_resource_group,
         file_path=file_path,
+        replace=replace,
         **kwargs
     )
 
@@ -1844,6 +1852,7 @@ def import_namespace_mqtt_asset_dataset(
     instance_name: str,
     instance_resource_group: str,
     file_path: str,
+    replace: bool = False,
     **kwargs
 ) -> List[dict]:
     return NamespaceAssets(cmd).import_datasets(
@@ -1851,6 +1860,7 @@ def import_namespace_mqtt_asset_dataset(
         instance_name=instance_name,
         instance_resource_group=instance_resource_group,
         file_path=file_path,
+        replace=replace,
         **kwargs
     )
 

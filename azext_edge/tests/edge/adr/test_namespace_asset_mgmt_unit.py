@@ -1274,3 +1274,415 @@ def test_remove_namespace_asset_management_group_action(
         instance_name=instance_name,
         instance_resource_group=instance_resource_group
     )
+
+
+@pytest.mark.parametrize("asset_type, export_func", [
+    ("custom", "export_namespace_custom_asset_management_group"),
+    ("opcua", "export_namespace_opcua_asset_management_group"),
+    ("onvif", "export_namespace_onvif_asset_management_group"),
+])
+@pytest.mark.parametrize("extension", ["json", "yaml"])
+def test_export_namespace_asset_management_groups(
+    mocked_cmd,
+    mocked_responses: responses,
+    asset_type: str,
+    export_func: str,
+    extension: str,
+    mocked_get_namespace_for_instance,
+    tmp_path
+):
+    """Test management group export for all asset types."""
+    from azext_edge.edge import commands_namespaces
+
+    asset_name = "testAsset"
+    instance_name = "testInstance"
+    instance_resource_group = "testInstanceResourceGroup"
+    output_dir = str(tmp_path)
+
+    # Get the namespace from the mocked function
+    namespace_resource = mocked_get_namespace_for_instance.return_value
+    namespace_name = namespace_resource["name"]
+    resource_group_name = namespace_resource["resource_group"]
+
+    # Create mock management groups
+    mgmt_groups = [
+        generate_management_group(f"mgmtGroup{i}", asset_type=asset_type, num_actions=2)
+        for i in range(3)
+    ]
+
+    # Mock the asset GET call
+    asset_record = get_namespace_asset_record(
+        asset_name=asset_name,
+        namespace_name=namespace_name,
+        resource_group_name=resource_group_name
+    )
+    asset_record["properties"]["managementGroups"] = mgmt_groups
+
+    mocked_responses.add(
+        responses.GET,
+        get_namespace_asset_mgmt_uri(
+            asset_name=asset_name,
+            namespace_name=namespace_name,
+            resource_group_name=resource_group_name
+        ),
+        json=asset_record,
+        status=200
+    )
+
+    # Call export function
+    func = getattr(commands_namespaces, export_func)
+    result = func(
+        cmd=mocked_cmd,
+        asset_name=asset_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
+        extension=extension,
+        output_dir=output_dir,
+        replace=False
+    )
+
+    # Verify result
+    assert "file_path" in result
+    assert "management_group_count" in result
+    assert result["management_group_count"] == 3
+    assert extension in result["file_path"]
+    assert asset_name in result["file_path"]
+
+
+@pytest.mark.parametrize("asset_type, import_func", [
+    ("custom", "import_namespace_custom_asset_management_group"),
+    ("opcua", "import_namespace_opcua_asset_management_group"),
+    ("onvif", "import_namespace_onvif_asset_management_group"),
+])
+@pytest.mark.parametrize("replace", [True, False])
+def test_import_namespace_asset_management_groups(
+    mocked_cmd,
+    mocked_responses: responses,
+    asset_type: str,
+    import_func: str,
+    replace: bool,
+    mocked_check_cluster_connectivity,
+    mocked_get_namespace_for_instance,
+    mocked_connector_metadata_validator,
+    tmp_path
+):
+    """Test management group import with merge and replace modes."""
+    from azext_edge.edge import commands_namespaces
+    import json as json_module
+
+    asset_name = "testAsset"
+    instance_name = "testInstance"
+    instance_resource_group = "testInstanceResourceGroup"
+
+    # Get the namespace from the mocked function
+    namespace_resource = mocked_get_namespace_for_instance.return_value
+    namespace_name = namespace_resource["name"]
+    resource_group_name = namespace_resource["resource_group"]
+
+    # Create existing management groups
+    existing_mgmt_groups = [
+        generate_management_group(f"existingGroup{i}", asset_type=asset_type, num_actions=1)
+        for i in range(2)
+    ]
+    existing_group_names = [mg["name"] for mg in existing_mgmt_groups]
+
+    # Create management groups to import (one overlapping, one new)
+    mgmt_groups_to_import = [
+        generate_management_group(existing_group_names[0], asset_type=asset_type, num_actions=1),  # Overlapping
+        generate_management_group("newGroup", asset_type=asset_type, num_actions=1),  # New
+    ]
+
+    # Create import file
+    import_file = tmp_path / "mgmt_groups_import.json"
+    with open(import_file, 'w', encoding='utf-8') as f:
+        json_module.dump(mgmt_groups_to_import, f)
+
+    # Mock the asset GET call
+    asset_record = get_namespace_asset_record(
+        asset_name=asset_name,
+        namespace_name=namespace_name,
+        resource_group_name=resource_group_name
+    )
+    asset_record["properties"]["managementGroups"] = existing_mgmt_groups
+
+    mocked_responses.add(
+        responses.GET,
+        get_namespace_asset_mgmt_uri(
+            asset_name=asset_name,
+            namespace_name=namespace_name,
+            resource_group_name=resource_group_name
+        ),
+        json=asset_record,
+        status=200
+    )
+
+    # Mock the PATCH call
+    def check_patch_request(request):
+        patch_body = json_module.loads(request.body)
+        imported_groups = patch_body["properties"]["managementGroups"]
+
+        # Both modes should have 3 groups (2 existing + 1 new, with overlap handled)
+        assert len(imported_groups) == 3
+        if replace:
+            # Replace mode: overlapping group is overwritten
+            updated_mg = next(
+                (mg for mg in imported_groups if mg["name"] == existing_group_names[0]), None
+            )
+            assert updated_mg is not None
+            assert updated_mg["dataSource"] == mgmt_groups_to_import[0]["dataSource"]
+        # Both modes: second existing preserved, new group added
+        assert any(mg["name"] == existing_group_names[1] for mg in imported_groups)
+        assert any(mg["name"] == "newGroup" for mg in imported_groups)
+
+        return (200, {}, json_module.dumps(asset_record))
+
+    mocked_responses.add_callback(
+        responses.PATCH,
+        get_namespace_asset_mgmt_uri(
+            asset_name=asset_name,
+            namespace_name=namespace_name,
+            resource_group_name=resource_group_name
+        ),
+        callback=check_patch_request,
+        content_type="application/json"
+    )
+
+    # Mock the final GET call
+    asset_record["properties"]["managementGroups"] = mgmt_groups_to_import
+    mocked_responses.add(
+        responses.GET,
+        get_namespace_asset_mgmt_uri(
+            asset_name=asset_name,
+            namespace_name=namespace_name,
+            resource_group_name=resource_group_name
+        ),
+        json=asset_record,
+        status=200
+    )
+
+    # Call import function
+    func = getattr(commands_namespaces, import_func)
+    result = func(
+        cmd=mocked_cmd,
+        asset_name=asset_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
+        file_path=str(import_file),
+        replace=replace
+    )
+
+    # Verify result is a list of management groups
+    assert isinstance(result, list)
+    assert len(result) > 0
+
+
+@pytest.mark.parametrize("asset_type, export_func", [
+    ("custom", "export_namespace_custom_asset_management_group_action"),
+    ("opcua", "export_namespace_opcua_asset_management_group_action"),
+])
+@pytest.mark.parametrize("extension", ["json", "yaml"])
+def test_export_namespace_asset_management_group_actions(
+    mocked_cmd,
+    mocked_responses: responses,
+    asset_type: str,
+    export_func: str,
+    extension: str,
+    mocked_get_namespace_for_instance,
+    tmp_path
+):
+    """Test management group action export for custom and opcua asset types."""
+    from azext_edge.edge import commands_namespaces
+
+    asset_name = "testAsset"
+    group_name = "testGroup"
+    instance_name = "testInstance"
+    instance_resource_group = "testInstanceResourceGroup"
+    output_dir = str(tmp_path)
+
+    # Get the namespace from the mocked function
+    namespace_resource = mocked_get_namespace_for_instance.return_value
+    namespace_name = namespace_resource["name"]
+    resource_group_name = namespace_resource["resource_group"]
+
+    # Create mock management group with actions
+    mgmt_group = generate_management_group(group_name, asset_type=asset_type, num_actions=5)
+
+    # Mock the asset GET call
+    asset_record = get_namespace_asset_record(
+        asset_name=asset_name,
+        namespace_name=namespace_name,
+        resource_group_name=resource_group_name
+    )
+    asset_record["properties"]["managementGroups"] = [mgmt_group]
+
+    mocked_responses.add(
+        responses.GET,
+        get_namespace_asset_mgmt_uri(
+            asset_name=asset_name,
+            namespace_name=namespace_name,
+            resource_group_name=resource_group_name
+        ),
+        json=asset_record,
+        status=200
+    )
+
+    # Call export function
+    func = getattr(commands_namespaces, export_func)
+    result = func(
+        cmd=mocked_cmd,
+        asset_name=asset_name,
+        group_name=group_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
+        extension=extension,
+        output_dir=output_dir,
+        replace=False
+    )
+
+    # Verify result
+    assert "file_path" in result
+    assert "action_count" in result
+    assert result["action_count"] == 5
+    assert extension in result["file_path"]
+    assert group_name in result["file_path"]
+
+
+@pytest.mark.parametrize("asset_type, import_func", [
+    ("custom", "import_namespace_custom_asset_management_group_action"),
+    ("opcua", "import_namespace_opcua_asset_management_group_action"),
+])
+@pytest.mark.parametrize("replace", [True, False])
+def test_import_namespace_asset_management_group_actions(
+    mocked_cmd,
+    mocked_responses: responses,
+    asset_type: str,
+    import_func: str,
+    replace: bool,
+    mocked_check_cluster_connectivity,
+    mocked_get_namespace_for_instance,
+    mocked_connector_metadata_validator,
+    tmp_path
+):
+    """Test management group action import with merge and replace modes."""
+    from azext_edge.edge import commands_namespaces
+    import json as json_module
+
+    asset_name = "testAsset"
+    group_name = "testGroup"
+    instance_name = "testInstance"
+    instance_resource_group = "testInstanceResourceGroup"
+
+    # Get the namespace from the mocked function
+    namespace_resource = mocked_get_namespace_for_instance.return_value
+    namespace_name = namespace_resource["name"]
+    resource_group_name = namespace_resource["resource_group"]
+
+    # Create existing management group with actions
+    existing_mgmt_group = generate_management_group(group_name, asset_type=asset_type, num_actions=2)
+    existing_action_names = [a["name"] for a in existing_mgmt_group["actions"]]
+
+    # Create actions to import (one overlapping, one new)
+    actions_to_import = [
+        {
+            "name": existing_action_names[0],  # Overlapping
+            "targetUri": "ns=2;s=UpdatedAction1",
+            "actionType": "Call",
+            "timeout": 3000
+        },
+        {
+            "name": "newAction",  # New
+            "targetUri": "ns=2;s=NewAction",
+            "actionType": "Call",
+            "timeout": 2000
+        }
+    ]
+
+    # Create import file
+    import_file = tmp_path / "actions_import.json"
+    with open(import_file, 'w', encoding='utf-8') as f:
+        json_module.dump(actions_to_import, f)
+
+    # Mock the asset GET call
+    asset_record = get_namespace_asset_record(
+        asset_name=asset_name,
+        namespace_name=namespace_name,
+        resource_group_name=resource_group_name
+    )
+    asset_record["properties"]["managementGroups"] = [existing_mgmt_group]
+
+    mocked_responses.add(
+        responses.GET,
+        get_namespace_asset_mgmt_uri(
+            asset_name=asset_name,
+            namespace_name=namespace_name,
+            resource_group_name=resource_group_name
+        ),
+        json=asset_record,
+        status=200
+    )
+
+    # Mock the PATCH call
+    def check_patch_request(request):
+        patch_body = json_module.loads(request.body)
+        patched_groups = patch_body["properties"]["managementGroups"]
+
+        # Find the group
+        patched_group = next((g for g in patched_groups if g["name"] == group_name), None)
+        assert patched_group is not None
+
+        patched_actions = patched_group["actions"]
+
+        # Verify action merge/replace behavior
+        if replace:
+            # Replace mode: merge with overwrite - all actions present, matching ones updated
+            assert len(patched_actions) == 3  # 2 existing + 1 new
+            updated_a = next((a for a in patched_actions if a["name"] == actions_to_import[0]["name"]), None)
+            assert updated_a is not None
+            assert updated_a["targetUri"] == "ns=2;s=UpdatedAction1"
+            assert any(a["name"] == existing_action_names[1] for a in patched_actions)
+            assert any(a["name"] == "newAction" for a in patched_actions)
+        else:
+            # Merge mode: all actions present, duplicate warning logged
+            assert len(patched_actions) == 3
+            assert any(a["name"] == "newAction" for a in patched_actions)
+
+        return (200, {}, json_module.dumps(asset_record))
+
+    mocked_responses.add_callback(
+        responses.PATCH,
+        get_namespace_asset_mgmt_uri(
+            asset_name=asset_name,
+            namespace_name=namespace_name,
+            resource_group_name=resource_group_name
+        ),
+        callback=check_patch_request,
+        content_type="application/json"
+    )
+
+    # Mock the final GET call
+    mocked_responses.add(
+        responses.GET,
+        get_namespace_asset_mgmt_uri(
+            asset_name=asset_name,
+            namespace_name=namespace_name,
+            resource_group_name=resource_group_name
+        ),
+        json=asset_record,
+        status=200
+    )
+
+    # Call import function
+    func = getattr(commands_namespaces, import_func)
+    result = func(
+        cmd=mocked_cmd,
+        asset_name=asset_name,
+        group_name=group_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
+        file_path=str(import_file),
+        replace=replace
+    )
+
+    # Verify result is a list of actions
+    assert isinstance(result, list)
+    assert len(result) > 0
