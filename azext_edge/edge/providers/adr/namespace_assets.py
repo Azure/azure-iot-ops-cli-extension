@@ -1935,9 +1935,6 @@ class NamespaceAssets(Queryable):
 
             for stream in imported_streams:
                 validator.validate_stream(stream)
-                # Auto-assign destinations from asset defaults if available
-                if default_destinations and ("destinations" not in stream or not stream["destinations"]):
-                    stream["destinations"] = deepcopy(default_destinations)
             logger.info("Streams validated successfully.")
         except ValidationError:
             raise
@@ -1947,10 +1944,11 @@ class NamespaceAssets(Queryable):
                 "This may occur if the connector is not deployed or the cluster is not connected. "
                 "The streams will be imported but may fail at runtime if the configuration is invalid."
             )
-            # Still auto-assign destinations even if validation is skipped
-            for stream in imported_streams:
-                if default_destinations and ("destinations" not in stream or not stream["destinations"]):
-                    stream["destinations"] = deepcopy(default_destinations)
+
+        # Always auto-assign destinations uniformly after validation
+        for stream in imported_streams:
+            if default_destinations and ("destinations" not in stream or not stream["destinations"]):
+                stream["destinations"] = deepcopy(default_destinations)
 
         update_payload = {
             "properties": {
