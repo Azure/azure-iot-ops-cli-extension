@@ -35,81 +35,15 @@ def load_config_context(context_name: Optional[str] = None):
     Load default config using a specific context or 'current-context' if not specified.
     """
     from ..util import set_log_level
-    import sys
 
     # This will ensure --debug works with http(s) k8s interactions
     set_log_level("urllib3.connectionpool")
 
     config.load_kube_config(context=context_name)
 
-    # TODO: Remove once connectedk8s proxy certificates are fixed
-    # Python 3.13+ enforces VERIFY_X509_STRICT which rejects certificates
-    # with empty issuer names (common in connectedk8s proxy setups)
-    if sys.version_info >= (3, 13):
-        _patch_kubernetes_client_ssl_verification()
-
     _, current_config = config.list_kube_config_contexts()
     global DEFAULT_NAMESPACE
     DEFAULT_NAMESPACE = current_config.get("namespace") or "azure-iot-operations"
-
-
-def _patch_kubernetes_client_ssl_verification():
-    """
-    Patch kubernetes client to disable VERIFY_X509_STRICT for Python 3.13+.
-    This works around issues with connectedk8s proxy certificates that have empty issuer names.
-    """
-    import ssl
-
-    try:
-        from kubernetes.client import rest
-
-        original_rest_init = rest.RESTClientObject.__init__
-
-        def patched_rest_init(self, configuration, pools_size=4, maxsize=None):
-            # Call the original init
-            original_rest_init(self, configuration, pools_size, maxsize)
-
-            # Check if this is a connectedk8s proxy connection
-            try:
-                if not (hasattr(configuration, "host") and isinstance(configuration.host, str)):
-                    return
-
-                import urllib.parse
-
-                parsed = urllib.parse.urlparse(configuration.host)
-
-                # Only patch for connectedk8s proxy: localhost/127.0.0.1 + /proxies/ path
-                if not (parsed.hostname in ("127.0.0.1", "localhost") and parsed.path.startswith("/proxies/")):
-                    return
-
-                # Apply the SSL workaround
-                if (
-                    hasattr(self, "pool_manager")
-                    and hasattr(self.pool_manager, "connection_pool_kw")
-                    and isinstance(self.pool_manager.connection_pool_kw, dict)
-                ):
-
-                    # Create a new SSL context without the strict flag
-                    ssl_context = ssl.create_default_context()
-                    ssl_context.verify_flags &= ~ssl.VERIFY_X509_STRICT
-
-                    # Load CA cert if configured
-                    if hasattr(configuration, "ssl_ca_cert") and configuration.ssl_ca_cert:
-                        ssl_context.load_verify_locations(cafile=configuration.ssl_ca_cert)
-
-                    # Load client cert if configured
-                    if hasattr(configuration, "cert_file") and configuration.cert_file:
-                        keyfile = getattr(configuration, "key_file", None)
-                        ssl_context.load_cert_chain(configuration.cert_file, keyfile)
-
-                    self.pool_manager.connection_pool_kw["ssl_context"] = ssl_context
-            except Exception:
-                pass  # Silently continue if patching fails
-
-        rest.RESTClientObject.__init__ = patched_rest_init
-
-    except Exception:
-        pass  # If we can't patch, continue without it
 
 
 _namespaced_service_cache: dict = {}
