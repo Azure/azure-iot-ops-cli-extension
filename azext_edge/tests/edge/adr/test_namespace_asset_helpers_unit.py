@@ -21,6 +21,7 @@ from azext_edge.edge.providers.adr.namespace_assets import (
     _get_sub_property,
     _create_event,
     _process_configs,
+    _process_namespace_sub_points_file_path,
     _process_opcua_dataset_configurations_v1,
     _process_opcua_event_configurations_v1,
     _process_opcua_dataset_configurations_v2,
@@ -1245,3 +1246,52 @@ def test_process_rest_dataset_configurations(test_case):
 
     # Check that no unexpected keys are present
     assert len(result) == len(test_case["expected_values"])
+
+
+@pytest.mark.parametrize("replace", [False, True])
+@pytest.mark.parametrize("has_duplicates", [False, True])
+def test_process_namespace_sub_points_file_path(mocker, mocked_logger, replace, has_duplicates):
+    """Test merge behavior and consolidated skip warning."""
+    original_items = [
+        {"name": "existing1", "value": "orig1"},
+        {"name": "existing2", "value": "orig2"},
+    ]
+    file_items = [
+        {"name": "new1", "value": "file_new"},
+    ]
+    if has_duplicates:
+        file_items.append({"name": "existing1", "value": "file_dup1"})
+        file_items.append({"name": "existing2", "value": "file_dup2"})
+
+    mocker.patch(
+        "azext_edge.edge.util.deserialize_file_content",
+        return_value=file_items,
+    )
+
+    result = _process_namespace_sub_points_file_path(
+        file_path="test.json",
+        original_items=original_items,
+        point_key="name",
+        replace=replace,
+    )
+
+    result_by_name = {item["name"]: item for item in result}
+    # New item always added
+    assert result_by_name["new1"]["value"] == "file_new"
+
+    if has_duplicates and not replace:
+        # Originals kept, single consolidated warning
+        assert result_by_name["existing1"]["value"] == "orig1"
+        assert result_by_name["existing2"]["value"] == "orig2"
+        mocked_logger.warning.assert_called_once()
+        warning_msg = mocked_logger.warning.call_args[0][0]
+        assert "existing1" in warning_msg
+        assert "existing2" in warning_msg
+    elif has_duplicates and replace:
+        # File values overwrite originals, no warning
+        assert result_by_name["existing1"]["value"] == "file_dup1"
+        assert result_by_name["existing2"]["value"] == "file_dup2"
+        mocked_logger.warning.assert_not_called()
+    else:
+        # No duplicates, no warning
+        mocked_logger.warning.assert_not_called()

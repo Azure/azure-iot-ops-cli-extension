@@ -3306,10 +3306,17 @@ def _process_namespace_sub_points_file_path(
     original_points = {point[point_key]: point for point in original_items}
     file_points_dict = {point[point_key]: point for point in file_points}
 
+    skipped_keys = []
     for key in file_points_dict:
         if key in original_points and not replace:
-            logger.warning(f"{key} is already present in the asset and will be ignored.")
+            skipped_keys.append(key)
         else:
             original_points[key] = file_points_dict[key]
+
+    if skipped_keys:
+        logger.warning(
+            f"The following entries are already present in the asset and will be ignored: "
+            f"{', '.join(str(k) for k in skipped_keys)}"
+        )
 
     return list(original_points.values())
