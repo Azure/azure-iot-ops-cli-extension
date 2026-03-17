@@ -1430,6 +1430,7 @@ def load_iotops_arguments(self, _):
                 help="Maximum number of cluster health checks to perform before blocking deployment. "
                 "If the cluster is reported as unavailable, it will be rechecked up to this many times "
                 "with a wait between each check. Set to 0 to skip the health check entirely.",
+                arg_group="Cluster Health",
             )
             context.argument(
                 "health_checks_interval",
@@ -1437,6 +1438,7 @@ def load_iotops_arguments(self, _):
                 type=int,
                 help="Seconds to wait between consecutive cluster health checks when the cluster "
                 "is reported as unavailable.",
+                arg_group="Cluster Health",
             )
 
     for cmd_space in ["iot ops create", "iot ops update"]:
