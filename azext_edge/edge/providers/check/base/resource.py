@@ -82,6 +82,9 @@ def filter_resources_by_name(
 ) -> List[dict]:
     from fnmatch import fnmatch
 
+    if not resources:
+        return []
+
     if not resource_name:
         return resources
 
@@ -120,6 +123,8 @@ def get_resources_by_name(
 
 
 def get_resources_grouped_by_namespace(resources: List[dict]):
+    if not resources:
+        return []
     resources.sort(key=_get_namespace)
     return groupby(resources, key=_get_namespace)
 
