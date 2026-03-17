@@ -1517,13 +1517,22 @@ def load_iotops_arguments(self, _):
             "include_dependencies",
             options_list=["--include-deps"],
             arg_type=get_three_state_flag(),
-            help="Indicates the command should remove IoT Operations dependencies. "
-            "This option is intended to reverse the application of init.",
+            help="Include dependency extensions in deletion "
+            "(cert manager, secret store, and container "
+            "storage when deployed by init).",
         )
         context.argument(
             "cluster_name",
             options_list=["--cluster"],
-            help="Target cluster name for IoT Operations deletion.",
+            help="Target cluster name for IoT Operations deletion. "
+            "Use as an alternative to --name when the instance "
+            "has already been deleted or is unknown.",
+        )
+        context.argument(
+            "force",
+            arg_type=get_three_state_flag(),
+            help="Force deletion even when the cluster "
+            "is disconnected.",
         )
 
     with self.argument_context("iot ops secretsync") as context:

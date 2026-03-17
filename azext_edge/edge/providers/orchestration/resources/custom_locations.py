@@ -15,7 +15,10 @@ logger = get_logger(__name__)
 
 
 if TYPE_CHECKING:
-    from ....vendor.clients.extendedlocmgmt.operations import CustomLocationsOperations
+    from ....vendor.clients.extendedlocmgmt.operations import (
+        CustomLocationsOperations,
+        ResourceSyncRulesOperations,
+    )
 
 
 class CustomLocations(Queryable):
@@ -25,6 +28,7 @@ class CustomLocations(Queryable):
             **self._get_client_kwargs()
         )
         self.ops: "CustomLocationsOperations" = self.extloc_mgmt_client.custom_locations
+        self.sync_rules_ops: "ResourceSyncRulesOperations" = self.extloc_mgmt_client.resource_sync_rules
 
     def show(self, name: str, resource_group_name: str) -> dict:
         return self.ops.get(resource_group_name=resource_group_name, resource_name=name)
@@ -66,3 +70,11 @@ class CustomLocations(Queryable):
         )
 
         return wait_for_terminal_state(poller, **kwargs)
+
+    def list(self, resource_group_name: str) -> Iterable[dict]:
+        return self.ops.list_by_resource_group(resource_group_name=resource_group_name)
+
+    def list_resource_sync_rules(self, resource_group_name: str, cl_name: str) -> Iterable[dict]:
+        return self.sync_rules_ops.list_by_custom_location_id(
+            resource_group_name=resource_group_name, resource_name=cl_name
+        )
