@@ -2973,6 +2973,7 @@ def _process_opcua_dataset_configurations_v1(
     opcua_dataset_sampling_interval: Optional[int] = None,
     opcua_dataset_queue_size: Optional[int] = None,
     opcua_dataset_key_frame_count: Optional[int] = None,
+    opcua_dataset_start_instance: Optional[str] = None,
     **_
 ) -> str:
     from .specs import NAMESPACE_ASSET_OPCUA_DATASET_CONFIGURATION_SCHEMA_V1
@@ -2986,6 +2987,8 @@ def _process_opcua_dataset_configurations_v1(
         result["queueSize"] = opcua_dataset_queue_size
     if opcua_dataset_key_frame_count is not None:
         result["keyFrameCount"] = opcua_dataset_key_frame_count
+    if opcua_dataset_start_instance is not None:
+        result["startInstance"] = opcua_dataset_start_instance
 
     ensure_schema_structure(
         schema=NAMESPACE_ASSET_OPCUA_DATASET_CONFIGURATION_SCHEMA_V1,
@@ -3030,6 +3033,7 @@ def _process_opcua_event_configurations_v1(
     original_event_configuration: Optional[str] = None,
     opcua_event_publishing_interval: Optional[int] = None,
     opcua_event_queue_size: Optional[int] = None,
+    opcua_event_start_instance: Optional[str] = None,
     **_
 ) -> str:
     from .specs import NAMESPACE_ASSET_OPCUA_EVENT_CONFIGURATION_SCHEMA_V1
@@ -3039,6 +3043,8 @@ def _process_opcua_event_configurations_v1(
         result["publishingInterval"] = opcua_event_publishing_interval
     if opcua_event_queue_size is not None:
         result["queueSize"] = opcua_event_queue_size
+    if opcua_event_start_instance is not None:
+        result["startInstance"] = opcua_event_start_instance
 
     ensure_schema_structure(
         schema=NAMESPACE_ASSET_OPCUA_EVENT_CONFIGURATION_SCHEMA_V1,
