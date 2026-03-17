@@ -1300,11 +1300,6 @@ class NamespaceAssets(Queryable):
             csv_converter=_convert_sub_points_from_csv_namespace
         )
 
-        # Auto-assign destinations if not present (required by API)
-        for event in imported_events:
-            if "destinations" not in event or not event["destinations"]:
-                event["destinations"] = deepcopy(default_destinations)
-
         # Validate imported events
         try:
             validator = ConnectorMetadataValidator.from_asset(
@@ -1325,6 +1320,11 @@ class NamespaceAssets(Queryable):
                 "This may occur if the connector is not deployed or the cluster is not connected. "
                 "The events will be imported but may fail at runtime if the configuration is invalid."
             )
+
+        # Always auto-assign destinations if not present (required by API)
+        for event in imported_events:
+            if "destinations" not in event or not event["destinations"]:
+                event["destinations"] = deepcopy(default_destinations)
 
         event_group["events"] = imported_events
 
@@ -1924,7 +1924,7 @@ class NamespaceAssets(Queryable):
             replace=replace
         )
 
-        # Validate imported streams using ConnectorMetadataValidator
+        # Validate imported streams
         try:
             validator = ConnectorMetadataValidator.from_asset(
                 cmd=self.cmd,
@@ -1945,7 +1945,7 @@ class NamespaceAssets(Queryable):
                 "The streams will be imported but may fail at runtime if the configuration is invalid."
             )
 
-        # Always auto-assign destinations uniformly after validation
+        # Always auto-assign destinations if not present (required by API)
         for stream in imported_streams:
             if default_destinations and ("destinations" not in stream or not stream["destinations"]):
                 stream["destinations"] = deepcopy(default_destinations)
@@ -2377,7 +2377,7 @@ class NamespaceAssets(Queryable):
             replace=replace
         )
 
-        # Validate imported management groups using ConnectorMetadataValidator
+        # Validate imported management groups
         try:
             validator = ConnectorMetadataValidator.from_asset(
                 cmd=self.cmd,
@@ -2388,12 +2388,6 @@ class NamespaceAssets(Queryable):
 
             for mgmt_group in imported_mgmt_groups:
                 validator.validate_management_group(mgmt_group)
-                # Ensure actions array exists (preserve existing actions if merging)
-                if "actions" not in mgmt_group:
-                    # Check if there's an original group with the same name
-                    name = mgmt_group.get("name", "")
-                    original = next((g for g in original_mgmt_groups if g["name"] == name), None)
-                    mgmt_group["actions"] = original.get("actions", []) if original else []
             logger.info("Management groups validated successfully.")
         except ValidationError:
             raise
@@ -2403,12 +2397,13 @@ class NamespaceAssets(Queryable):
                 "This may occur if the connector is not deployed or the cluster is not connected. "
                 "The management groups will be imported but may fail at runtime if the configuration is invalid."
             )
-            # Still preserve actions even if validation is skipped
-            for mgmt_group in imported_mgmt_groups:
-                if "actions" not in mgmt_group:
-                    name = mgmt_group.get("name", "")
-                    original = next((g for g in original_mgmt_groups if g["name"] == name), None)
-                    mgmt_group["actions"] = original.get("actions", []) if original else []
+
+        # Always preserve existing actions if merging
+        for mgmt_group in imported_mgmt_groups:
+            if "actions" not in mgmt_group:
+                name = mgmt_group.get("name", "")
+                original = next((g for g in original_mgmt_groups if g["name"] == name), None)
+                mgmt_group["actions"] = original.get("actions", []) if original else []
 
         update_payload = {
             "properties": {
@@ -2532,7 +2527,7 @@ class NamespaceAssets(Queryable):
             csv_converter=_convert_actions_from_csv
         )
 
-        # Validate imported actions using ConnectorMetadataValidator
+        # Validate imported actions
         try:
             validator = ConnectorMetadataValidator.from_asset(
                 cmd=self.cmd,
@@ -2543,9 +2538,6 @@ class NamespaceAssets(Queryable):
 
             for action in imported_actions:
                 validator.validate_action(action)
-                # Default actionType to 'Call' if not specified
-                if not action.get("actionType"):
-                    action["actionType"] = "Call"
             logger.info("Actions validated successfully.")
         except ValidationError:
             raise
@@ -2555,10 +2547,11 @@ class NamespaceAssets(Queryable):
                 "This may occur if the connector is not deployed or the cluster is not connected. "
                 "The actions will be imported but may fail at runtime if the configuration is invalid."
             )
-            # Still apply defaults even if validation is skipped
-            for action in imported_actions:
-                if not action.get("actionType"):
-                    action["actionType"] = "Call"
+
+        # Always default actionType to 'Call' if not specified
+        for action in imported_actions:
+            if not action.get("actionType"):
+                action["actionType"] = "Call"
 
         mgmt_group["actions"] = imported_actions
 

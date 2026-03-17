@@ -41,6 +41,11 @@ def _is_pretty() -> bool:
     return bool(os.environ.get("PRETTY_LOG"))
 
 
+def _default_cmd_timeout() -> int:
+    """Default timeout per CLI command (seconds). Override via TESTLOG_CMD_TIMEOUT env var."""
+    return int(os.environ.get("TESTLOG_CMD_TIMEOUT", 300))
+
+
 _ANSI_RESET = "\033[0m"
 _ANSI = {
     "gold": "\033[38;2;202;157;100m",   # #CA9D64 – sandy gold
@@ -146,9 +151,6 @@ class TestLog:
         """Create a numbered step context."""
         return self._Step(self, num, description)
 
-    # Default timeout per CLI command (seconds). Override via TESTLOG_CMD_TIMEOUT env var.
-    DEFAULT_CMD_TIMEOUT = int(os.environ.get("TESTLOG_CMD_TIMEOUT", 300))
-
     def run_command(
         self,
         command: str,
@@ -159,7 +161,7 @@ class TestLog:
         """Run a CLI command with logging. Optionally track resource IDs for cleanup."""
         _log(f"  › {command}", "sage")
 
-        cmd_timeout = timeout if timeout is not None else self.DEFAULT_CMD_TIMEOUT
+        cmd_timeout = timeout if timeout is not None else _default_cmd_timeout()
         try:
             parsed = _helpers_run(
                 command, expect_failure=expect_failure, timeout=cmd_timeout
