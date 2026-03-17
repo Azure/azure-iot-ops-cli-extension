@@ -25,7 +25,7 @@ def test_wait_for_terminal_state(mocker, done):
 
     result = wait_for_terminal_state(poller)
     assert result == poller.result.return_value
-    assert sleep_patch.call_count == (1 if done else poll_num)
+    assert sleep_patch.call_count == (0 if done else poll_num)
 
 
 def test_get_tenant_id(mocker):
