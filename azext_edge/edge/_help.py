@@ -393,7 +393,7 @@ def load_iotops_help():
                   {
                       "method": "Custom",
                       "customSettings": {
-                          "endpoint": "`https://auth-server-template`",
+                          "endpoint": "https://auth-server-template",
                           "caCertConfigMap": "custom-auth-ca",
                           "auth": {
                               "x509": {
