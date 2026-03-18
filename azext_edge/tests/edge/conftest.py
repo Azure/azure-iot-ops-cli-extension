@@ -29,6 +29,22 @@ def require_init(init_setup):
     yield init_setup
 
 
+@pytest.fixture(scope="module")
+def require_init_module(init_setup):
+    """Module-scoped variant of require_init for shared fixtures."""
+    if not all([init_setup.get("instanceName"), init_setup.get("resourceGroup")]):
+        pytest.skip("Cannot run this test without knowing the instance information.")
+
+    cluster_result = run(
+        f"az iot ops show -n {init_setup['instanceName']} -g {init_setup['resourceGroup']} "
+    )
+    init_setup["customLocationId"] = cluster_result["extendedLocation"]["name"]
+    init_setup["adrNamespaceRef"] = (
+        cluster_result.get("properties", {}).get("adrNamespaceRef", {}).get("resourceId")
+    )
+    yield init_setup
+
+
 #  Unit testing
 @pytest.fixture
 def mocked_client(mocker):

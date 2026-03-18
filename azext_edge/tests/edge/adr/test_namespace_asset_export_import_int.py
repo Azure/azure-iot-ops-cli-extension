@@ -7,6 +7,7 @@
 import csv
 import json
 import os
+from time import sleep
 
 import pytest
 import yaml
@@ -61,57 +62,88 @@ def _validate_exported_items(log, items: list, expected_names: list, export_form
                         )
 
 
-# Module-level caches for shared resource reuse
-_shared_device_name = None
-_endpoint_cache = {}  # (endpoint_type, endpoint_address) -> endpoint_name
-_format_test_asset_cache = {}
+def _remove_all_with_retry(
+    log,
+    items: list,
+    remove_cmd_template: str,
+    list_cmd: str,
+    item_label: str = "item",
+    max_retries: int = 6,
+    retry_interval: int = 15,
+):
+    """Remove items sequentially, then poll-verify that 0 remain.
+
+    Accounts for Azure API eventual consistency: after initial removes,
+    polls up to *max_retries* times (sleeping *retry_interval* seconds)
+    and re-issues removes for any stragglers that reappear due to stale
+    reads.
+    """
+    # Issue initial remove for every item.
+    for name in items:
+        log.run_command(remove_cmd_template.format(name=name))
+
+    # Poll until the list is empty or retries are exhausted.
+    for attempt in range(max_retries + 1):
+        remaining = log.run_command(list_cmd)
+        if len(remaining) == 0:
+            log.check(f"0 {item_label}s remain", True)
+            return
+
+        if attempt < max_retries:
+            log.detail(
+                f"{len(remaining)} {item_label}(s) still present "
+                f"(attempt {attempt + 1}/{max_retries}), "
+                f"retrying in {retry_interval}s..."
+            )
+            sleep(retry_interval)
+
+            # Re-issue remove for stragglers (provider handles not-found gracefully).
+            stale_names = {
+                entry.get("name") for entry in remaining if "name" in entry
+            }
+            for name in items:
+                if name in stale_names:
+                    log.run_command(remove_cmd_template.format(name=name))
+
+    # All retries exhausted — assert-fail with the actual count.
+    log.check(f"0 {item_label}s remain", len(remaining) == 0, actual=len(remaining))
 
 
 def _ensure_device_and_endpoint(
     log, instance_name, resource_group, asset_type, endpoint_type,
-    endpoint_address, tracked_resources,
+    endpoint_address, shared_device, endpoint_cache,
 ):
-    """Create or reuse a single shared device, adding each endpoint type once."""
-    global _shared_device_name
-
-    if _shared_device_name is None:
-        _shared_device_name = f"dev-{generate_random_string(8, force_lower=True)}"
-        log.run_command(
-            f"az iot ops ns device create --name {_shared_device_name} --instance {instance_name} "
-            f"-g {resource_group}",
-            tracked_resources=tracked_resources,
-        )
-    else:
-        log.detail(f"Reusing shared device={_shared_device_name}")
+    """Reuse the shared device and add each endpoint type once via endpoint_cache."""
+    log.detail(f"Reusing shared device={shared_device}")
 
     ep_key = (endpoint_type, endpoint_address)
-    if ep_key in _endpoint_cache:
-        endpoint_name = _endpoint_cache[ep_key]
+    if ep_key in endpoint_cache:
+        endpoint_name = endpoint_cache[ep_key]
         log.detail(f"Reusing endpoint={endpoint_name}")
-        return _shared_device_name, endpoint_name
+        return shared_device, endpoint_name
 
     endpoint_name = f"{asset_type}-{generate_random_string(8)}"
     endpoint_cmd = (
         f"az iot ops ns device endpoint inbound add {endpoint_type} --name {endpoint_name} "
-        f"--instance {instance_name} -g {resource_group} --device {_shared_device_name} "
+        f"--instance {instance_name} -g {resource_group} --device {shared_device} "
         f"--endpoint-address '{endpoint_address}'"
     )
     if endpoint_type == "custom":
         endpoint_cmd += " --endpoint-type custom"
     log.run_command(endpoint_cmd)
 
-    _endpoint_cache[ep_key] = endpoint_name
-    return _shared_device_name, endpoint_name
+    endpoint_cache[ep_key] = endpoint_name
+    return shared_device, endpoint_name
 
 
 def _ensure_asset_for_format_tests(
     log, instance_name, resource_group, asset_type, device_name,
-    endpoint_name, tracked_resources, test_category,
+    endpoint_name, tracked_resources, test_category, format_test_asset_cache,
 ):
     """Create or reuse an asset shared across format variants of the same test_category+asset_type."""
     cache_key = (asset_type, test_category)
-    if cache_key in _format_test_asset_cache:
-        asset_name = _format_test_asset_cache[cache_key]
+    if cache_key in format_test_asset_cache:
+        asset_name = format_test_asset_cache[cache_key]
         log.detail(f"Reusing shared asset={asset_name}")
         return asset_name
 
@@ -122,7 +154,7 @@ def _ensure_asset_for_format_tests(
         tracked_resources=tracked_resources,
     )
 
-    _format_test_asset_cache[cache_key] = asset_name
+    format_test_asset_cache[cache_key] = asset_name
     return asset_name
 
 
@@ -134,8 +166,9 @@ def _ensure_asset_for_format_tests(
     ("mqtt", "mqtt", "aio-broker:18883"),
 ])
 def test_namespace_asset_dataset_export_import(
-    require_namespace_init, tracked_resources: List[str], tracked_files: List[str], tmp_path, asset_type: str,
-    endpoint_type: str, endpoint_address: str
+    require_namespace_init, tracked_resources: List[str], tracked_files: List[str], tmp_path,
+    shared_device: str, endpoint_cache: dict,
+    asset_type: str, endpoint_type: str, endpoint_address: str
 ):
     """Test dataset export and import for all asset types."""
     instance_name = require_namespace_init["instanceName"]
@@ -151,7 +184,7 @@ def test_namespace_asset_dataset_export_import(
         with log.step(1, "Ensure Device + Endpoint"):
             device_name, endpoint_name = _ensure_device_and_endpoint(
                 log, instance_name, resource_group, asset_type, endpoint_type,
-                endpoint_address, tracked_resources,
+                endpoint_address, shared_device, endpoint_cache,
             )
 
         # Step 2: Create asset
@@ -268,6 +301,7 @@ def test_namespace_asset_dataset_export_import(
 @pytest.mark.parametrize("export_format", ["json", "yaml", "csv"])
 def test_namespace_asset_datapoint_export_import(
     require_namespace_init, tracked_resources: List[str], tracked_files: List[str], tmp_path,
+    shared_device: str, endpoint_cache: dict, format_test_asset_cache: dict,
     asset_type: str, endpoint_type: str, endpoint_address: str, export_format: str
 ):
     """Test datapoint export and import for custom and opcua assets."""
@@ -288,14 +322,14 @@ def test_namespace_asset_datapoint_export_import(
         with log.step(1, "Ensure Device + Endpoint"):
             device_name, endpoint_name = _ensure_device_and_endpoint(
                 log, instance_name, resource_group, asset_type, endpoint_type,
-                endpoint_address, tracked_resources,
+                endpoint_address, shared_device, endpoint_cache,
             )
 
         # Step 2: Ensure Asset + Create Dataset
         with log.step(2, f"Ensure {asset_type} Asset + Create Dataset"):
             asset_name = _ensure_asset_for_format_tests(
                 log, instance_name, resource_group, asset_type, device_name,
-                endpoint_name, tracked_resources, "datapoint",
+                endpoint_name, tracked_resources, "datapoint", format_test_asset_cache,
             )
             log.run_command(
                 f"az iot ops ns asset {asset_type} dataset add --asset {asset_name} "
@@ -349,18 +383,21 @@ def test_namespace_asset_datapoint_export_import(
 
         # Step 5: Remove all datapoints
         with log.step(5, "Remove All Datapoints"):
-            for dp_name in [dp_name_1, dp_name_2]:
-                log.run_command(
+            _remove_all_with_retry(
+                log,
+                items=[dp_name_1, dp_name_2],
+                remove_cmd_template=(
                     f"az iot ops ns asset {asset_type} datapoint remove --asset {asset_name} "
-                    f"--instance {instance_name} -g {resource_group} --dataset {dataset_name} "
-                    f"--name {dp_name}"
-                )
-            datapoints_after_remove = log.run_command(
-                f"az iot ops ns asset {asset_type} datapoint list --asset {asset_name} "
-                f"--instance {instance_name} -g {resource_group} --dataset {dataset_name}"
+                    f"--instance {instance_name} -g {resource_group} "
+                    f"--dataset {dataset_name} --name {{name}}"
+                ),
+                list_cmd=(
+                    f"az iot ops ns asset {asset_type} datapoint list --asset {asset_name} "
+                    f"--instance {instance_name} -g {resource_group} "
+                    f"--dataset {dataset_name}"
+                ),
+                item_label="datapoint",
             )
-            log.check("0 datapoints remain", len(datapoints_after_remove) == 0,
-                      actual=len(datapoints_after_remove))
 
         # Step 6: Import datapoints back
         with log.step(6, "Import Datapoints"):
@@ -425,8 +462,9 @@ def test_namespace_asset_datapoint_export_import(
     ("sse", "sse", "https://events.example.com/stream"),
 ])
 def test_namespace_asset_event_group_export_import(
-    require_namespace_init, tracked_resources: List[str], tracked_files: List[str], tmp_path, asset_type: str,
-    endpoint_type: str, endpoint_address: str
+    require_namespace_init, tracked_resources: List[str], tracked_files: List[str], tmp_path,
+    shared_device: str, endpoint_cache: dict,
+    asset_type: str, endpoint_type: str, endpoint_address: str
 ):
     """Test event-group export and import for all asset types."""
     instance_name = require_namespace_init["instanceName"]
@@ -445,7 +483,7 @@ def test_namespace_asset_event_group_export_import(
         with log.step(1, "Ensure Device + Endpoint"):
             device_name, endpoint_name = _ensure_device_and_endpoint(
                 log, instance_name, resource_group, asset_type, endpoint_type,
-                endpoint_address, tracked_resources,
+                endpoint_address, shared_device, endpoint_cache,
             )
 
         # Step 2: Create asset
@@ -558,6 +596,7 @@ def test_namespace_asset_event_group_export_import(
 @pytest.mark.parametrize("export_format", ["json", "yaml", "csv"])
 def test_namespace_asset_event_export_import(
     require_namespace_init, tracked_resources: List[str], tracked_files: List[str], tmp_path,
+    shared_device: str, endpoint_cache: dict, format_test_asset_cache: dict,
     asset_type: str, endpoint_type: str, endpoint_address: str, export_format: str
 ):
     """Test event export and import for custom, opcua, and sse assets."""
@@ -578,14 +617,14 @@ def test_namespace_asset_event_export_import(
         with log.step(1, "Ensure Device + Endpoint"):
             device_name, endpoint_name = _ensure_device_and_endpoint(
                 log, instance_name, resource_group, asset_type, endpoint_type,
-                endpoint_address, tracked_resources,
+                endpoint_address, shared_device, endpoint_cache,
             )
 
         # Step 2: Ensure Asset + Create Event Group
         with log.step(2, f"Ensure {asset_type} Asset + Create Event Group"):
             asset_name = _ensure_asset_for_format_tests(
                 log, instance_name, resource_group, asset_type, device_name,
-                endpoint_name, tracked_resources, "event",
+                endpoint_name, tracked_resources, "event", format_test_asset_cache,
             )
             log.run_command(
                 f"az iot ops ns asset {asset_type} event-group add --asset {asset_name} "
@@ -641,18 +680,21 @@ def test_namespace_asset_event_export_import(
 
         # Step 5: Remove all events
         with log.step(5, "Remove All Events"):
-            for ev_name in [ev_name_1, ev_name_2]:
-                log.run_command(
+            _remove_all_with_retry(
+                log,
+                items=[ev_name_1, ev_name_2],
+                remove_cmd_template=(
                     f"az iot ops ns asset {asset_type} event remove --asset {asset_name} "
-                    f"--instance {instance_name} -g {resource_group} --event-group {event_group_name} "
-                    f"--name {ev_name}"
-                )
-            events_after_remove = log.run_command(
-                f"az iot ops ns asset {asset_type} event list --asset {asset_name} "
-                f"--instance {instance_name} -g {resource_group} --event-group {event_group_name}"
+                    f"--instance {instance_name} -g {resource_group} "
+                    f"--event-group {event_group_name} --name {{name}}"
+                ),
+                list_cmd=(
+                    f"az iot ops ns asset {asset_type} event list --asset {asset_name} "
+                    f"--instance {instance_name} -g {resource_group} "
+                    f"--event-group {event_group_name}"
+                ),
+                item_label="event",
             )
-            log.check("0 events remain", len(events_after_remove) == 0,
-                      actual=len(events_after_remove))
 
         # Step 6: Import events back
         with log.step(6, "Import Events"):
@@ -725,6 +767,7 @@ def test_namespace_asset_event_export_import(
 ])
 def test_namespace_asset_stream_export_import(
     require_namespace_init, tracked_resources: List[str], tracked_files: List[str], tmp_path,
+    shared_device: str, endpoint_cache: dict,
     asset_type: str, endpoint_type: str, endpoint_address: str
 ):
     """Test stream export and import for custom and media assets."""
@@ -744,7 +787,7 @@ def test_namespace_asset_stream_export_import(
         with log.step(1, "Ensure Device + Endpoint"):
             device_name, endpoint_name = _ensure_device_and_endpoint(
                 log, instance_name, resource_group, asset_type, endpoint_type,
-                endpoint_address, tracked_resources,
+                endpoint_address, shared_device, endpoint_cache,
             )
 
         # Step 2: Create asset
@@ -829,6 +872,7 @@ def test_namespace_asset_stream_export_import(
 ])
 def test_namespace_asset_management_group_export_import(
     require_namespace_init, tracked_resources: List[str], tracked_files: List[str], tmp_path,
+    shared_device: str, endpoint_cache: dict,
     asset_type: str, endpoint_type: str, endpoint_address: str
 ):
     """Test management group export and import for all asset types."""
@@ -848,7 +892,7 @@ def test_namespace_asset_management_group_export_import(
         with log.step(1, "Ensure Device + Endpoint"):
             device_name, endpoint_name = _ensure_device_and_endpoint(
                 log, instance_name, resource_group, asset_type, endpoint_type,
-                endpoint_address, tracked_resources,
+                endpoint_address, shared_device, endpoint_cache,
             )
 
         # Step 2: Create asset
@@ -942,6 +986,7 @@ def test_namespace_asset_management_group_export_import(
 @pytest.mark.parametrize("export_format", ["json", "yaml", "csv"])
 def test_namespace_asset_management_action_export_import(
     require_namespace_init, tracked_resources: List[str], tracked_files: List[str], tmp_path,
+    shared_device: str, endpoint_cache: dict, format_test_asset_cache: dict,
     asset_type: str, endpoint_type: str, endpoint_address: str, export_format: str
 ):
     """Test management action export and import for custom and opcua assets."""
@@ -962,14 +1007,14 @@ def test_namespace_asset_management_action_export_import(
         with log.step(1, "Ensure Device + Endpoint"):
             device_name, endpoint_name = _ensure_device_and_endpoint(
                 log, instance_name, resource_group, asset_type, endpoint_type,
-                endpoint_address, tracked_resources,
+                endpoint_address, shared_device, endpoint_cache,
             )
 
         # Step 2: Ensure Asset + Create Management Group
         with log.step(2, f"Ensure {asset_type} Asset + Create Management Group"):
             asset_name = _ensure_asset_for_format_tests(
                 log, instance_name, resource_group, asset_type, device_name,
-                endpoint_name, tracked_resources, "mgmt_action",
+                endpoint_name, tracked_resources, "mgmt_action", format_test_asset_cache,
             )
             log.run_command(
                 f"az iot ops ns asset {asset_type} mgmt-group add --asset {asset_name} "
@@ -1023,18 +1068,21 @@ def test_namespace_asset_management_action_export_import(
 
         # Step 5: Remove all actions
         with log.step(5, "Remove All Actions"):
-            for action_name in [action_name_1, action_name_2]:
-                log.run_command(
+            _remove_all_with_retry(
+                log,
+                items=[action_name_1, action_name_2],
+                remove_cmd_template=(
                     f"az iot ops ns asset {asset_type} mgmt-action remove --asset {asset_name} "
-                    f"--instance {instance_name} -g {resource_group} --group {group_name} "
-                    f"--name {action_name}"
-                )
-            actions_after_remove = log.run_command(
-                f"az iot ops ns asset {asset_type} mgmt-action list --asset {asset_name} "
-                f"--instance {instance_name} -g {resource_group} --group {group_name}"
+                    f"--instance {instance_name} -g {resource_group} "
+                    f"--group {group_name} --name {{name}}"
+                ),
+                list_cmd=(
+                    f"az iot ops ns asset {asset_type} mgmt-action list --asset {asset_name} "
+                    f"--instance {instance_name} -g {resource_group} "
+                    f"--group {group_name}"
+                ),
+                item_label="action",
             )
-            log.check("0 actions remain", len(actions_after_remove) == 0,
-                      actual=len(actions_after_remove))
 
         # Step 6: Import actions back
         with log.step(6, "Import Management Actions"):

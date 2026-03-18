@@ -10,6 +10,7 @@ from typing import Optional
 
 from azext_edge.edge.util.id_tools import parse_resource_id
 from ...generators import generate_random_string, get_zeroed_subscription
+from ...helpers import run
 
 
 @pytest.fixture()
@@ -26,6 +27,45 @@ def require_namespace_init(require_init):
             "See: az iot ops ns create / az iot ops update"
         )
     yield require_init
+
+
+@pytest.fixture(scope="module")
+def require_namespace_init_module(require_init_module):
+    """Module-scoped version of require_namespace_init for shared fixtures."""
+    if not require_init_module.get("adrNamespaceRef"):
+        pytest.skip(
+            "Instance does not have an ADR namespace reference (adrNamespaceRef). "
+            "Create one and link it to the instance before running namespace tests. "
+            "See: az iot ops ns create / az iot ops update"
+        )
+    yield require_init_module
+
+
+@pytest.fixture(scope="module")
+def shared_device(require_namespace_init_module, tracked_resources):
+    """Single shared device for all tests in this module."""
+    instance_name = require_namespace_init_module["instanceName"]
+    resource_group = require_namespace_init_module["resourceGroup"]
+    device_name = f"dev-{generate_random_string(8, force_lower=True)}"
+    result = run(
+        f"az iot ops ns device create --name {device_name} "
+        f"--instance {instance_name} -g {resource_group}"
+    )
+    if isinstance(result, dict) and "id" in result:
+        tracked_resources.append(result["id"])
+    yield device_name
+
+
+@pytest.fixture(scope="module")
+def endpoint_cache():
+    """Module-scoped cache for endpoint names keyed by (type, address)."""
+    yield {}
+
+
+@pytest.fixture(scope="module")
+def format_test_asset_cache():
+    """Module-scoped cache for assets shared across format variants."""
+    yield {}
 
 
 @pytest.fixture()
