@@ -37,7 +37,13 @@ def _validate_exported_items(log, items: list, expected_names: list, export_form
     """Validate exported items have required fields and no incomplete destinations."""
     log.check(f"exported {len(expected_names)} {item_label}s",
               len(items) == len(expected_names), actual=len(items))
-    actual_names = {item.get("name") for item in items}
+    # CSV uses portal-friendly column names instead of "name"
+    _csv_name_keys = {"event": "EventName", "datapoint": "TagName"}
+    if export_format == "csv":
+        name_key = _csv_name_keys.get(item_label, "name")
+    else:
+        name_key = "name"
+    actual_names = {item.get(name_key) for item in items}
     for name in expected_names:
         log.check(f"{name} in export", name in actual_names)
     # Destination structure checks only apply to JSON/YAML where nested dicts are preserved
