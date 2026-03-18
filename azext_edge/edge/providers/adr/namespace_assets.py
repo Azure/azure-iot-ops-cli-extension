@@ -2878,10 +2878,10 @@ def _process_configs(
         # allowed: datasets, events, mgmt groups (no schema?), destinations must be mqtt
         # not allowed: streams
         result = {
-            "datasetsConfiguration": _process_opcua_dataset_configurations_v1(
+            "datasetsConfiguration": _process_opcua_dataset_configurations_v2(
                 **kwargs
             ),
-            "eventsConfiguration": _process_opcua_event_configurations_v1(
+            "eventsConfiguration": _process_opcua_event_configurations_v2(
                 **kwargs
             ),
             "datasetsDestinations": _build_destination(
@@ -3006,9 +3006,6 @@ def _process_opcua_dataset_configurations_v2(
     opcua_dataset_start_instance: Optional[str] = None,
     **_
 ) -> str:
-    """Processes the OPCUA dataset configurations for version 2.
-
-    This version is not yet supported but will be in the future so will keep the code around for now."""
     from .specs import NAMESPACE_ASSET_OPCUA_DATASET_CONFIGURATION_SCHEMA_V2
     result = json.loads(original_dataset_configuration) if original_dataset_configuration else {}
     if opcua_dataset_publishing_interval is not None:
@@ -3062,9 +3059,6 @@ def _process_opcua_event_configurations_v2(
     opcua_event_filter_clauses: Optional[List[List[str]]] = None,  # path (req), type, field
     **_
 ) -> str:
-    """Processes the OPCUA event configurations for version 2.
-
-    This version is not yet supported but will be in the future so will keep the code around for now."""
     from .specs import NAMESPACE_ASSET_OPCUA_EVENT_CONFIGURATION_SCHEMA_V2
 
     result = json.loads(original_event_configuration) if original_event_configuration else {}
