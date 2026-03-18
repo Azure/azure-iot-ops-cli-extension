@@ -13,7 +13,7 @@ DeviceRegistry and SecretSync resources on the custom location.
 
 from collections import OrderedDict
 from sys import maxsize
-from typing import TYPE_CHECKING, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Dict, List, Optional, Set, Tuple
 from uuid import uuid4
 
 from azure.cli.core.azclierror import ArgumentUsageError, ResourceNotFoundError
@@ -64,6 +64,12 @@ _STEP_DEP_EXTENSIONS = "Dependency Extensions"
 
 # Extension types eligible for --include-deps deletion (excluding ACS, which is version-gated).
 _DEP_EXTENSION_TYPES = frozenset([EXTENSION_TYPE_CM, EXTENSION_TYPE_PLATFORM, EXTENSION_TYPE_SSC])
+
+# All AIO-related extension types — used for type-verified CL identification.
+_AIO_EXTENSION_TYPES = frozenset([EXTENSION_TYPE_OPS, EXTENSION_TYPE_ACS]) | _DEP_EXTENSION_TYPES
+
+# Default Kubernetes namespace for IoT Operations custom locations.
+_AIO_DEFAULT_NAMESPACE = "azure-iot-operations"
 
 # Friendly display labels for CL resource types (keyed by resource_type from parse_resource_id).
 _FRIENDLY_TYPE_LABELS: Dict[str, str] = {
@@ -142,6 +148,7 @@ class DeletionManager:
         self._sync_rules: List[IoTOperationsResource] = []
         self._cl_resource: Optional[IoTOperationsResource] = None
         self._cluster_extensions_client: Optional[ClusterExtensions] = None
+        self._aio_typed_ext_ids: Set[str] = set()
 
     def do_work(self, confirm_yes: Optional[bool] = None, force: Optional[bool] = None) -> None:
         if not any([self.cluster_name, self.instance_name]):
@@ -264,15 +271,17 @@ class DeletionManager:
         self._cluster_name = self.cluster_name
         cluster_id: str = self._cluster_resource["id"]
 
-        # Find CL on this cluster.
+        # Discover extensions first — populates type-verified IDs for CL identification.
+        self._discover_extensions()
+
+        # Find AIO custom location on this cluster using tiered identification.
         custom_locations = CustomLocations(self.cmd)
         all_cls = list(custom_locations.list(resource_group_name=self.resource_group_name))
-        matched_cl = None
-        for cl in all_cls:
-            host_id = cl.get("properties", {}).get("hostResourceId", "")
-            if host_id and host_id.lower() == cluster_id.lower():
-                matched_cl = cl
-                break
+        host_matched_cls = [
+            cl for cl in all_cls
+            if (cl.get("properties", {}).get("hostResourceId", "") or "").lower() == cluster_id.lower()
+        ]
+        matched_cl = self._identify_aio_cl(host_matched_cls)
 
         if matched_cl:
             self._cl_id = matched_cl["id"]
@@ -303,10 +312,38 @@ class DeletionManager:
         if self._instance:
             self._collect_spc_from_instance()
 
-        # Extensions, sync rules, ARG sweep — shared discovery.
-        self._discover_extensions()
+        # Sync rules and ARG sweep — remaining shared discovery.
         self._discover_sync_rules()
         self._run_arg_sweep()
+
+    def _identify_aio_cl(self, host_matched_cls: List[dict]) -> Optional[dict]:
+        """Identify the AIO custom location from CLs on the same cluster.
+
+        Tier 1: Cross-reference CL's clusterExtensionIds against type-verified
+        AIO extensions discovered on the cluster.
+        Tier 2: Match CL namespace against the default AIO namespace.
+        Raises if CLs exist on the host but none can be identified as AIO.
+        """
+        if not host_matched_cls:
+            return None
+
+        # Tier 1: Extension type cross-reference.
+        if self._aio_typed_ext_ids:
+            for cl in host_matched_cls:
+                cl_ext_ids = cl.get("properties", {}).get("clusterExtensionIds", []) or []
+                if any(eid.lower() in self._aio_typed_ext_ids for eid in cl_ext_ids):
+                    return cl
+
+        # Tier 2: Namespace match.
+        for cl in host_matched_cls:
+            ns = cl.get("properties", {}).get("namespace", "")
+            if ns and ns.lower() == _AIO_DEFAULT_NAMESPACE:
+                return cl
+
+        raise ResourceNotFoundError(
+            f"Could not identify an IoT Operations custom location on cluster '{self.cluster_name}'. "
+            "If resources remain, delete them manually."
+        )
 
     # ------------------------------------------------------------------
     # Shared Discovery Helpers
@@ -364,6 +401,10 @@ class DeletionManager:
                     display_name=ext_name,
                     api_version=CLUSTER_EXTENSIONS_API_VERSION,
                 ))
+
+            # Track type-verified extension IDs for CL identification.
+            if ext_type in _AIO_EXTENSION_TYPES:
+                self._aio_typed_ext_ids.add(ext_id.lower())
 
         # Version-gate ACS: only include if AIO version <= threshold.
         if acs_extension and self._should_include_acs(aio_version):
@@ -477,9 +518,6 @@ class DeletionManager:
         if self._instance_resource:
             sections[_STEP_INSTANCE] = [(self._instance_resource.display_name, "found")]
 
-        if self._aio_extension:
-            sections[_STEP_AIO_EXT] = [(self._aio_extension.display_name, "found")]
-
         if self._cl_resources:
             sections[_STEP_CL_RESOURCES] = [
                 (r.display_name, self._cl_resource_label(r.resource_id))
@@ -491,6 +529,9 @@ class DeletionManager:
 
         if self._cl_resource:
             sections[_STEP_CUSTOM_LOCATION] = [(self._cl_resource.display_name, "found")]
+
+        if self._aio_extension:
+            sections[_STEP_AIO_EXT] = [(self._aio_extension.display_name, "found")]
 
         if self.include_dependencies and self._dep_extensions:
             sections[_STEP_DEP_EXTENSIONS] = [(e.display_name, "found") for e in self._dep_extensions]
@@ -511,8 +552,6 @@ class DeletionManager:
 
         if self._instance_resource:
             categories[_STEP_INSTANCE] = [self._instance_resource.display_name]
-        if self._aio_extension:
-            categories[_STEP_AIO_EXT] = [self._aio_extension.display_name]
         if self._cl_resources:
             count = len(self._cl_resources)
             categories[_STEP_CL_RESOURCES] = [f"{count} resource{'s' if count != 1 else ''}"]
@@ -520,6 +559,8 @@ class DeletionManager:
             categories[_STEP_SYNC_RULES] = [r.display_name for r in self._sync_rules]
         if self._cl_resource:
             categories[_STEP_CUSTOM_LOCATION] = [self._cl_resource.display_name]
+        if self._aio_extension:
+            categories[_STEP_AIO_EXT] = [self._aio_extension.display_name]
         if self.include_dependencies and self._dep_extensions:
             categories[_STEP_DEP_EXTENSIONS] = [e.display_name for e in self._dep_extensions]
 
@@ -536,12 +577,6 @@ class DeletionManager:
                         display, _STEP_INSTANCE, self._instance_resource
                     )
 
-                # AIO extension (uses dedicated extensions client for proper LRO).
-                if self._aio_extension:
-                    self._execute_extension_single(
-                        display, _STEP_AIO_EXT, self._aio_extension
-                    )
-
                 # CL resources (SecretSync + DR assets) — collapsed summary step.
                 if self._cl_resources:
                     self._execute_cl_resources(display)
@@ -550,7 +585,7 @@ class DeletionManager:
                 if self._sync_rules:
                     self._execute_step_parallel(display, _STEP_SYNC_RULES, self._sync_rules)
 
-                # Custom location — soft-fail so dep extensions still run.
+                # Custom location — soft-fail so extensions still run.
                 if self._cl_resource:
                     try:
                         self._execute_step_single(
@@ -566,6 +601,12 @@ class DeletionManager:
                             "Resources scoped to it may still exist. "
                             "Re-run with --cluster to discover and clean them up."
                         )
+
+                # AIO extension (uses dedicated extensions client for proper LRO).
+                if self._aio_extension:
+                    self._execute_extension_single(
+                        display, _STEP_AIO_EXT, self._aio_extension
+                    )
 
                 # Dependency extensions (--include-deps only, dedicated client).
                 if self.include_dependencies and self._dep_extensions:
