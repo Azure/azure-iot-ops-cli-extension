@@ -4,16 +4,56 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
+import csv
 import json
 import os
 
 import pytest
+import yaml
 from typing import List
 
 from ...generators import generate_random_string
 from ..._log import TestLog
 
 pytestmark = [pytest.mark.rpsaas, pytest.mark.long_running]
+
+
+def _parse_exported_file(file_path: str, export_format: str) -> list:
+    """Parse an exported file and return the list of items as dicts."""
+    with open(file_path, 'r', encoding='utf-8') as f:
+        if export_format == "json":
+            return json.load(f)
+        elif export_format == "yaml":
+            return yaml.safe_load(f)
+        elif export_format == "csv":
+            # CSV DictReader returns flat string values only;
+            # sufficient for name/dataSource checks but not nested fields.
+            return list(csv.DictReader(f))
+    return []
+
+
+def _validate_exported_items(log, items: list, expected_names: list, export_format: str,
+                             item_label: str = "item"):
+    """Validate exported items have required fields and no incomplete destinations."""
+    log.check(f"exported {len(expected_names)} {item_label}s",
+              len(items) == len(expected_names), actual=len(items))
+    actual_names = {item.get("name") for item in items}
+    for name in expected_names:
+        log.check(f"{name} in export", name in actual_names)
+    # Destination structure checks only apply to JSON/YAML where nested dicts are preserved
+    if export_format in ("json", "yaml"):
+        for item in items:
+            name = item.get("name", "<unknown>")
+            destinations = item.get("destinations")
+            if isinstance(destinations, list):
+                for dest in destinations:
+                    if isinstance(dest, dict) and "target" in dest:
+                        log.check(
+                            f"{name} destination has 'configuration'",
+                            "configuration" in dest,
+                            actual=list(dest.keys())
+                        )
+
 
 # Module-level caches for shared resource reuse
 _shared_device_name = None
@@ -580,13 +620,15 @@ def test_namespace_asset_event_export_import(
             tracked_files.append(exported_file)
             log.check("exported file exists", os.path.exists(exported_file))
 
+            exported_items = _parse_exported_file(exported_file, export_format)
+            _validate_exported_items(
+                log, exported_items, [ev_name_1, ev_name_2],
+                export_format=export_format, item_label="event"
+            )
+
             if export_format == "json":
-                with open(exported_file, 'r', encoding='utf-8') as f:
-                    exported_evs = json.load(f)
-                log.check("exported 2 events", len(exported_evs) == 2, actual=len(exported_evs))
-                ev_dict = {ev["name"]: ev for ev in exported_evs}
+                ev_dict = {ev["name"]: ev for ev in exported_items}
                 for ev_name in [ev_name_1, ev_name_2]:
-                    log.check(f"{ev_name} in export", ev_name in ev_dict)
                     log.check(f"{ev_name} dataSource",
                               ev_dict[ev_name].get("dataSource") == f"events/{ev_name}",
                               actual=ev_dict[ev_name].get("dataSource"))
@@ -608,11 +650,20 @@ def test_namespace_asset_event_export_import(
 
         # Step 6: Import events back
         with log.step(6, "Import Events"):
-            imported_events = log.run_command(
-                f"az iot ops ns asset {asset_type} event import --asset {asset_name} "
-                f"--instance {instance_name} -g {resource_group} --event-group {event_group_name} "
-                f"--input-file {exported_file}"
-            )
+            try:
+                imported_events = log.run_command(
+                    f"az iot ops ns asset {asset_type} event import --asset {asset_name} "
+                    f"--instance {instance_name} -g {resource_group} --event-group {event_group_name} "
+                    f"--input-file {exported_file}"
+                )
+            except Exception as import_err:
+                # Log exported file contents to aid debugging
+                try:
+                    with open(exported_file, 'r', encoding='utf-8') as f:
+                        log.detail(f"Exported file contents:\n{f.read()[:2000]}")
+                except Exception:
+                    pass
+                raise import_err
 
             log.check("imported 2 events", len(imported_events) == 2,
                       actual=len(imported_events))

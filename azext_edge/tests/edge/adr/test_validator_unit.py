@@ -323,11 +323,16 @@ class TestConnectorMetadataValidator(unittest.TestCase):
         with self.assertRaises(ValidationError):
             validator.validate_event(invalid_event)
 
-    def test_validate_event_autofill_destination_single_supported(self):
+    def test_validate_event_no_autofill_destination_when_absent(self):
+        """Event without destinations must not get destinations injected.
+
+        validate_event passes the event dict itself (not parsed config) to
+        _validate_and_apply_destination, so any auto-fill would corrupt the
+        API payload with an incomplete destination object.
+        """
         self.mock_get_metadata.return_value = ONVIF_METADATA
-        mock_cmd = Mock()
         validator = ConnectorMetadataValidator(
-            cmd=mock_cmd,
+            cmd=Mock(),
             resource_group_name="test-rg",
             instance_name="test-instance",
             endpoint_type="Microsoft.Onvif",
@@ -336,8 +341,8 @@ class TestConnectorMetadataValidator(unittest.TestCase):
 
         event = {"name": "test", "eventConfiguration": json.dumps({"filter": "Topic = 'motion'"})}
         validator.validate_event(event)
-        # destinations array should be added to event with Mqtt as target
-        self.assertEqual(event.get("destinations"), [{"target": "Mqtt"}])
+        # destinations should NOT be auto-filled by the validator
+        self.assertNotIn("destinations", event)
 
     def test_validate_event_destination_not_supported(self):
         self.mock_get_metadata.return_value = ONVIF_METADATA
@@ -358,16 +363,15 @@ class TestConnectorMetadataValidator(unittest.TestCase):
         with self.assertRaises(ValidationError):
             validator.validate_event(event)
 
-    def test_validate_event_autofill_destination_prefers_mqtt_when_multiple(self):
+    def test_validate_event_no_autofill_destination_when_multiple_supported(self):
         metadata = copy.deepcopy(ONVIF_METADATA)
         metadata["inboundEndpoints"][0]["eventGroups"]["events"]["destinations"]["supportedDestinations"] = [
             "Storage",
             "Mqtt",
         ]
         self.mock_get_metadata.return_value = metadata
-        mock_cmd = Mock()
         validator = ConnectorMetadataValidator(
-            cmd=mock_cmd,
+            cmd=Mock(),
             resource_group_name="test-rg",
             instance_name="test-instance",
             endpoint_type="Microsoft.Onvif",
@@ -376,8 +380,8 @@ class TestConnectorMetadataValidator(unittest.TestCase):
 
         event = {"name": "test", "eventConfiguration": json.dumps({"filter": "Topic = 'motion'"})}
         validator.validate_event(event)
-        # Should prefer Mqtt when available
-        self.assertEqual(event.get("destinations"), [{"target": "Mqtt"}])
+        # destinations should NOT be auto-filled even with multiple supported types
+        self.assertNotIn("destinations", event)
 
     def test_get_schema_traversal(self):
         self.mock_get_metadata.return_value = ONVIF_METADATA
@@ -841,7 +845,7 @@ class TestValidateDestination(unittest.TestCase):
         metadata["inboundEndpoints"][0]["eventGroups"]["events"]["destinations"] = destinations
         return metadata
 
-    def test_validate_destination_uses_default_destination(self):
+    def test_validate_destination_no_autofill_even_with_default(self):
         metadata = self._create_metadata_with_destinations(
             supported_destinations=["Mqtt", "Storage", "BrokerStateStore"],
             default_destination="Storage"
@@ -858,10 +862,10 @@ class TestValidateDestination(unittest.TestCase):
 
         event = {"name": "test", "eventConfiguration": json.dumps({"filter": "Topic = 'motion'"})}
         validator.validate_event(event)
-        # Should use default destination from metadata
-        self.assertEqual(event.get("destinations"), [{"target": "Storage"}])
+        # Should NOT auto-fill destinations even when defaultDestination is defined
+        self.assertNotIn("destinations", event)
 
-    def test_validate_destination_fallback_first_when_mqtt_absent(self):
+    def test_validate_destination_no_autofill_when_mqtt_absent(self):
         metadata = self._create_metadata_with_destinations(
             supported_destinations=["Storage", "BrokerStateStore"]  # No Mqtt
         )
@@ -877,8 +881,8 @@ class TestValidateDestination(unittest.TestCase):
 
         event = {"name": "test", "eventConfiguration": json.dumps({"filter": "Topic = 'motion'"})}
         validator.validate_event(event)
-        # Should fall back to first supported destination
-        self.assertEqual(event.get("destinations"), [{"target": "Storage"}])
+        # Should NOT auto-fill destinations even when Mqtt is absent
+        self.assertNotIn("destinations", event)
 
     def test_validate_destination_explicit_overrides_default(self):
         metadata = self._create_metadata_with_destinations(
@@ -922,6 +926,61 @@ class TestValidateDestination(unittest.TestCase):
         validator.validate_event(event)
         # No destinations should be added when none defined in metadata
         self.assertIsNone(event.get("destinations"))
+
+    def test_validate_destination_complete_destination_preserved(self):
+        """A destination with both target and configuration should pass through unchanged."""
+        metadata = self._create_metadata_with_destinations(
+            supported_destinations=["Mqtt"]
+        )
+        self.mock_get_metadata.return_value = metadata
+
+        validator = ConnectorMetadataValidator(
+            cmd=Mock(),
+            resource_group_name="test-rg",
+            instance_name="test-instance",
+            endpoint_type="Microsoft.Onvif",
+            endpoint_version="1.0",
+        )
+
+        full_dest = {
+            "target": "Mqtt",
+            "configuration": {"topic": "test/topic", "retain": "Never", "qos": "Qos1", "ttl": 60}
+        }
+        event = {
+            "name": "test",
+            "eventConfiguration": json.dumps({"filter": "Topic = 'motion'"}),
+            "destinations": [full_dest]
+        }
+        validator.validate_event(event)
+        # Complete destination should be preserved as-is
+        self.assertEqual(event["destinations"], [full_dest])
+
+    def test_validate_destination_target_only_accepted(self):
+        """A destination with only target (no configuration) should be accepted by the validator.
+
+        The validator only checks target against supportedDestinations.
+        Whether configuration is required is the API's responsibility.
+        """
+        metadata = self._create_metadata_with_destinations(
+            supported_destinations=["Mqtt"]
+        )
+        self.mock_get_metadata.return_value = metadata
+
+        validator = ConnectorMetadataValidator(
+            cmd=Mock(),
+            resource_group_name="test-rg",
+            instance_name="test-instance",
+            endpoint_type="Microsoft.Onvif",
+            endpoint_version="1.0",
+        )
+
+        event = {
+            "name": "test",
+            "eventConfiguration": json.dumps({"filter": "Topic = 'motion'"}),
+            "destinations": [{"target": "Mqtt"}]
+        }
+        validator.validate_event(event)
+        self.assertEqual(event["destinations"], [{"target": "Mqtt"}])
 
 
 class TestGetEndpointMetadata(unittest.TestCase):

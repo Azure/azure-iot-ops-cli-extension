@@ -46,7 +46,6 @@ class ConnectorMetadataValidator:
     _RESOURCE_KIND_EVENT_GROUPS = "event_groups"
 
     _ENDPOINT_TYPE_OPCUA = "microsoft.opcua"
-    _DEFAULT_DESTINATION_MQTT = "Mqtt"
 
     _SCHEMA_PATHS: Dict[str, Tuple[str, ...]] = {}
 
@@ -619,7 +618,11 @@ class ConnectorMetadataValidator:
         )
 
     def _validate_and_apply_destination(self, resource: Dict[str, Any], resource_kind: str) -> None:
-        """Validate destination and auto-fill if not specified. Modifies resource in-place."""
+        """Validate existing destinations against connector metadata.
+
+        If destinations are present, validates that each target is in the
+        supported list.  If destinations are absent, leaves them unset so
+        that callers (e.g. import fallback) can apply proper defaults."""
         endpoint = self._get_endpoint_metadata()
 
         if resource_kind == self._RESOURCE_KIND_DATASETS:
@@ -663,12 +666,8 @@ class ConnectorMetadataValidator:
                     )
             return
 
-        # No destinations in input - auto-fill with default or preferred
-        target = default_dest
-        if target is None:
-            target = self._DEFAULT_DESTINATION_MQTT if self._DEFAULT_DESTINATION_MQTT in supported else supported[0]
-
-        resource["destinations"] = [{"target": target}]
+        # No destinations specified — leave absent.
+        # Downstream logic (import fallback or API defaults) will handle assignment.
 
     def _validate(self, instance: Dict[str, Any], schema: Dict[str, Any], resource_name: str) -> None:
         import jsonschema
