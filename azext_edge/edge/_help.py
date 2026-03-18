@@ -1877,28 +1877,38 @@ def load_iotops_help():
         type: command
         short-summary: Delete IoT Operations from the cluster.
         long-summary: |
-            The name of either the instance or cluster must be provided.
+            Either --name (instance) or --cluster must be provided.
 
-            The operation uses Azure Resource Graph to determine correlated resources.
-            Resource Graph being eventually consistent does not guarantee a synchronized state at the
-            time of execution.
+            By default the command deletes the IoT Operations instance
+            (cascading to all child resources), the custom location,
+            resource sync rules, and the IoT Operations arc extension.
+
+            Use --include-deps to also remove dependency extensions
+            such as cert manager, secret store, and container
+            storage (when deployed by init).
+
+            Use --cluster when the instance has already been deleted
+            and residual resources need cleanup.
 
         examples:
-        - name: Minimum input for complete deletion.
+        - name: Delete an IoT Operations instance by name.
           text: >
             az iot ops delete -n myinstance -g myresourcegroup
-        - name: Skip confirmation prompt and continue to deletion process. Useful for CI scenarios.
+        - name: Skip the confirmation prompt. Useful for CI.
           text: >
             az iot ops delete -n myinstance -g myresourcegroup -y
-        - name: Force deletion regardless of warnings. May lead to errors.
+        - name: Force deletion when the cluster is disconnected.
           text: >
             az iot ops delete -n myinstance -g myresourcegroup --force
-        - name: Use cluster name instead of instance for lookup.
+        - name: Discover resources via cluster name instead of instance name.
           text: >
             az iot ops delete --cluster mycluster -g myresourcegroup
-        - name: Reverse application of init.
+        - name: Delete instance and dependency extensions.
           text: >
             az iot ops delete -n myinstance -g myresourcegroup --include-deps
+        - name: Full cleanup via cluster name with dependency removal. Recommended for CI teardown.
+          text: >
+            az iot ops delete --cluster mycluster -g myresourcegroup --include-deps --force -y
     """
 
     helps[

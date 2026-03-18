@@ -117,7 +117,7 @@ def get_resources_by_name(
     resource_name: str,
     namespace: str = None,
 ) -> List[dict]:
-    resources: list = api_info.get_resources(kind=kind, namespace=namespace).get("items", [])
+    resources: list = (api_info.get_resources(kind=kind, namespace=namespace) or {}).get("items", [])
     resources = filter_resources_by_name(resources, resource_name)
     return resources
 

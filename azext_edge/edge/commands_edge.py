@@ -309,7 +309,7 @@ def delete(
     force: Optional[bool] = None,
     include_dependencies: Optional[bool] = None,
 ):
-    from .providers.orchestration.deletion import delete_ops_resources
+    from .providers.orchestration.deletion2 import delete_ops_resources
 
     return delete_ops_resources(
         cmd=cmd,

@@ -300,10 +300,10 @@ def wait_for_terminal_state(poller: "LROPoller", wait_sec: int = POLL_WAIT_SEC, 
     # resource client does not handle sigint well
     counter = 0
     while counter < POLL_RETRIES:
-        sleep(wait_sec)
-        counter = counter + 1
         if poller.done():
             break
+        sleep(wait_sec)
+        counter = counter + 1
     return poller.result()
 
 
@@ -312,11 +312,11 @@ def wait_for_terminal_states(
 ) -> Tuple["LROPoller"]:
     counter = 0
     while counter < retries:
-        sleep(wait_sec)
-        counter = counter + 1
         batch_done = all(poller.done() for poller in pollers)
         if batch_done:
             break
+        sleep(wait_sec)
+        counter = counter + 1
 
     return pollers
 
