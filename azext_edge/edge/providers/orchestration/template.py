@@ -754,12 +754,14 @@ TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
 )
 
 TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
-    commit_id="ba30a6e1fcebd80e9d89aad14c2f84fc46317c66",
+    commit_id="57ddebb007e467724aff9890147ec4335bbf5440",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "languageVersion": "2.0",
         "contentVersion": "1.0.0.0",
-        "metadata": {"_generator": {"name": "bicep", "version": "0.41.2.15936", "templateHash": "9677802666518711152"}},
+        "metadata": {
+            "_generator": {"name": "bicep", "version": "0.41.2.15936", "templateHash": "14040756716352095587"}
+        },
         "definitions": {
             "_1.AdvancedConfig": {
                 "type": "object",
@@ -1445,7 +1447,7 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
             "advancedConfig": {"$ref": "#/definitions/_1.AdvancedConfig", "defaultValue": {}},
         },
         "variables": {
-            "VERSIONS": {"iotOperations": "1.3.37"},
+            "VERSIONS": {"iotOperations": "1.3.38"},
             "TRAINS": {"iotOperations": "integration"},
             "HASH": "[coalesce(tryGet(parameters('advancedConfig'), 'resourceSuffix'), take(uniqueString(resourceGroup().id, parameters('clusterName'), parameters('clusterNamespace')), 5))]",
             "AIO_EXTENSION_SUFFIX": "[take(uniqueString(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName'))), 5)]",
