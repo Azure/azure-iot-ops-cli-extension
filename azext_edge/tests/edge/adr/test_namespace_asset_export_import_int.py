@@ -314,7 +314,7 @@ def test_namespace_asset_datapoint_export_import(
                 },
                 run_fn=log.run_command,
             )
-            log.check("2 datapoints added", True)
+            log.detail("2 datapoints added")
 
         # Step 4: Export datapoints
         with log.step(4, f"Export Datapoints ({export_format})"):
@@ -369,7 +369,7 @@ def test_namespace_asset_datapoint_export_import(
                 reissue_on_missing=False,
                 run_fn=log.run_command,
             )
-            log.check("0 datapoints remain", True)
+            log.detail("0 datapoints remain")
 
         # Step 6: Import datapoints back
         with log.step(6, "Import Datapoints"):
@@ -628,7 +628,7 @@ def test_namespace_asset_event_export_import(
                 },
                 run_fn=log.run_command,
             )
-            log.check("2 events added", True)
+            log.detail("2 events added")
 
         # Step 4: Export events
         with log.step(4, f"Export Events ({export_format})"):
@@ -685,7 +685,7 @@ def test_namespace_asset_event_export_import(
                 reissue_on_missing=False,
                 run_fn=log.run_command,
             )
-            log.check("0 events remain", True)
+            log.detail("0 events remain")
 
         # Step 6: Import events back
         with log.step(6, "Import Events"):
@@ -1037,7 +1037,7 @@ def test_namespace_asset_management_action_export_import(
                 },
                 run_fn=log.run_command,
             )
-            log.check("2 actions added", True)
+            log.detail("2 actions added")
 
         # Step 4: Export actions
         with log.step(4, f"Export Management Actions ({export_format})"):
@@ -1092,7 +1092,7 @@ def test_namespace_asset_management_action_export_import(
                 reissue_on_missing=False,
                 run_fn=log.run_command,
             )
-            log.check("0 actions remain", True)
+            log.detail("0 actions remain")
 
         # Step 6: Import actions back
         with log.step(6, "Import Management Actions"):

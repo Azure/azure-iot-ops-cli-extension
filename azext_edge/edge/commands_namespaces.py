@@ -1828,9 +1828,16 @@ def _make_mgmt_action_import_func(method_name: str):
 
 
 # DATASET EXPORT/IMPORT
-for _asset_type in ["custom", "opcua", "rest", "sse", "mqtt"]:
-    globals()[f"export_namespace_{_asset_type}_asset_dataset"] = _make_export_func("export_datasets")
-    globals()[f"import_namespace_{_asset_type}_asset_dataset"] = _make_import_func("import_datasets")
+export_namespace_custom_asset_dataset = _make_export_func("export_datasets")
+export_namespace_opcua_asset_dataset = _make_export_func("export_datasets")
+export_namespace_rest_asset_dataset = _make_export_func("export_datasets")
+export_namespace_sse_asset_dataset = _make_export_func("export_datasets")
+export_namespace_mqtt_asset_dataset = _make_export_func("export_datasets")
+import_namespace_custom_asset_dataset = _make_import_func("import_datasets")
+import_namespace_opcua_asset_dataset = _make_import_func("import_datasets")
+import_namespace_rest_asset_dataset = _make_import_func("import_datasets")
+import_namespace_sse_asset_dataset = _make_import_func("import_datasets")
+import_namespace_mqtt_asset_dataset = _make_import_func("import_datasets")
 
 
 # ASSET DATASET DATAPOINT COMMANDS
@@ -1925,25 +1932,32 @@ def remove_namespace_asset_dataset_point(
 
 
 # DATAPOINT EXPORT/IMPORT
-for _asset_type in ["custom", "opcua"]:
-    globals()[f"export_namespace_{_asset_type}_asset_dataset_point"] = \
-        _make_datapoint_export_func("export_dataset_datapoints")
-    globals()[f"import_namespace_{_asset_type}_asset_dataset_point"] = \
-        _make_datapoint_import_func("import_dataset_datapoints")
+export_namespace_custom_asset_dataset_point = _make_datapoint_export_func("export_dataset_datapoints")
+export_namespace_opcua_asset_dataset_point = _make_datapoint_export_func("export_dataset_datapoints")
+import_namespace_custom_asset_dataset_point = _make_datapoint_import_func("import_dataset_datapoints")
+import_namespace_opcua_asset_dataset_point = _make_datapoint_import_func("import_dataset_datapoints")
 
 
 # EVENT-GROUP EXPORT/IMPORT
-for _asset_type in ["custom", "opcua", "onvif", "sse"]:
-    globals()[f"export_namespace_{_asset_type}_asset_event_group"] = _make_export_func("export_event_groups")
-    globals()[f"import_namespace_{_asset_type}_asset_event_group"] = _make_import_func("import_event_groups")
+export_namespace_custom_asset_event_group = _make_export_func("export_event_groups")
+export_namespace_opcua_asset_event_group = _make_export_func("export_event_groups")
+export_namespace_onvif_asset_event_group = _make_export_func("export_event_groups")
+export_namespace_sse_asset_event_group = _make_export_func("export_event_groups")
+import_namespace_custom_asset_event_group = _make_import_func("import_event_groups")
+import_namespace_opcua_asset_event_group = _make_import_func("import_event_groups")
+import_namespace_onvif_asset_event_group = _make_import_func("import_event_groups")
+import_namespace_sse_asset_event_group = _make_import_func("import_event_groups")
 
 
 # EVENT EXPORT/IMPORT
-for _asset_type in ["custom", "opcua", "onvif", "sse"]:
-    globals()[f"export_namespace_{_asset_type}_asset_event_group_event"] = \
-        _make_event_export_func("export_event_group_events")
-    globals()[f"import_namespace_{_asset_type}_asset_event_group_event"] = \
-        _make_event_import_func("import_event_group_events")
+export_namespace_custom_asset_event_group_event = _make_event_export_func("export_event_group_events")
+export_namespace_opcua_asset_event_group_event = _make_event_export_func("export_event_group_events")
+export_namespace_onvif_asset_event_group_event = _make_event_export_func("export_event_group_events")
+export_namespace_sse_asset_event_group_event = _make_event_export_func("export_event_group_events")
+import_namespace_custom_asset_event_group_event = _make_event_import_func("import_event_group_events")
+import_namespace_opcua_asset_event_group_event = _make_event_import_func("import_event_group_events")
+import_namespace_onvif_asset_event_group_event = _make_event_import_func("import_event_group_events")
+import_namespace_sse_asset_event_group_event = _make_event_import_func("import_event_group_events")
 
 
 # ASSET EVENT GROUP COMMANDS
@@ -2544,9 +2558,10 @@ def remove_namespace_asset_stream(
 
 
 # STREAM EXPORT/IMPORT
-for _asset_type in ["custom", "media"]:
-    globals()[f"export_namespace_{_asset_type}_asset_stream"] = _make_export_func("export_streams")
-    globals()[f"import_namespace_{_asset_type}_asset_stream"] = _make_import_func("import_streams")
+export_namespace_custom_asset_stream = _make_export_func("export_streams")
+export_namespace_media_asset_stream = _make_export_func("export_streams")
+import_namespace_custom_asset_stream = _make_import_func("import_streams")
+import_namespace_media_asset_stream = _make_import_func("import_streams")
 
 
 # MANAGEMENT GROUP COMMANDS
@@ -2762,9 +2777,12 @@ def remove_namespace_asset_management_group(
 
 
 # MANAGEMENT GROUP EXPORT/IMPORT
-for _asset_type in ["custom", "opcua", "onvif"]:
-    globals()[f"export_namespace_{_asset_type}_asset_management_group"] = _make_export_func("export_management_groups")
-    globals()[f"import_namespace_{_asset_type}_asset_management_group"] = _make_import_func("import_management_groups")
+export_namespace_custom_asset_management_group = _make_export_func("export_management_groups")
+export_namespace_opcua_asset_management_group = _make_export_func("export_management_groups")
+export_namespace_onvif_asset_management_group = _make_export_func("export_management_groups")
+import_namespace_custom_asset_management_group = _make_import_func("import_management_groups")
+import_namespace_opcua_asset_management_group = _make_import_func("import_management_groups")
+import_namespace_onvif_asset_management_group = _make_import_func("import_management_groups")
 
 
 # MANAGEMENT GROUP ACTION COMMANDS
@@ -2904,8 +2922,7 @@ def remove_namespace_asset_management_group_action(
 
 
 # MANAGEMENT GROUP ACTION EXPORT/IMPORT
-for _asset_type in ["custom", "opcua"]:
-    globals()[f"export_namespace_{_asset_type}_asset_management_group_action"] = \
-        _make_mgmt_action_export_func("export_management_group_actions")
-    globals()[f"import_namespace_{_asset_type}_asset_management_group_action"] = \
-        _make_mgmt_action_import_func("import_management_group_actions")
+export_namespace_custom_asset_management_group_action = _make_mgmt_action_export_func("export_management_group_actions")
+export_namespace_opcua_asset_management_group_action = _make_mgmt_action_export_func("export_management_group_actions")
+import_namespace_custom_asset_management_group_action = _make_mgmt_action_import_func("import_management_group_actions")
+import_namespace_opcua_asset_management_group_action = _make_mgmt_action_import_func("import_management_group_actions")

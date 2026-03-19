@@ -379,6 +379,7 @@ def wait_for_expected_count(
                     if should_reissue:
                         _run(cmd)
 
-    assert len(result) == expected_count, (
+    assert len(result) == expected_count and names_ok, (
         f"Expected {expected_count} items but got {len(result)} after {max_retries} retries"
     )
+    return result
