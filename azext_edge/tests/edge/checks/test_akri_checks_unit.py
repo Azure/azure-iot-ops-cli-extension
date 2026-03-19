@@ -119,3 +119,22 @@ def test_evaluate_core_service_runtime(
         target[namespace]["conditions"] = [] if not target[namespace]["conditions"] else target[namespace]["conditions"]
         assert_conditions(target[namespace], namespace_conditions)
         assert_evaluations(target[namespace], namespace_evaluations)
+
+
+def test_evaluate_core_service_runtime_no_pods(mocker):
+    """When Akri runtime pods are missing, it is always unexpected.
+    The check should return an error eval with an informative message instead of 0 checks."""
+    mocker.patch(
+        "azext_edge.edge.providers.check.akri.get_namespaced_pods_by_prefix",
+        return_value=[],
+    )
+    result = evaluate_core_service_runtime()
+
+    assert result["name"] == "evalCoreServiceRuntime"
+    target = result["targets"][CoreServiceResourceKinds.RUNTIME_RESOURCE.value]
+    assert "_all_" in target
+    assert target["_all_"]["status"] == "error"
+    assert any(
+        "No Akri runtime pods detected." in str(e.get("value", ""))
+        for e in target["_all_"]["evaluations"]
+    )

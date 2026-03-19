@@ -1078,11 +1078,18 @@ def evaluate_core_service_runtime(
         )
 
     if not operators:
+        no_pods_text = "No Dataflow operator pods detected."
         check_manager.add_target(target_name=CoreServiceResourceKinds.RUNTIME_RESOURCE.value)
+        check_manager.add_target_eval(
+            target_name=CoreServiceResourceKinds.RUNTIME_RESOURCE.value,
+            status=CheckTaskStatus.error.value,
+            value=no_pods_text,
+        )
         check_manager.add_display(
             target_name=CoreServiceResourceKinds.RUNTIME_RESOURCE.value,
-            display=Padding("Unable to fetch pods.", (0, 0, 0, PADDING)),
+            display=Padding(no_pods_text, (0, 0, 0, PADDING)),
         )
+        return check_manager.as_dict(as_list)
     for namespace, pods in get_resources_grouped_by_namespace(operators):
         check_manager.add_target(
             target_name=CoreServiceResourceKinds.RUNTIME_RESOURCE.value,

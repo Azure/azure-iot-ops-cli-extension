@@ -11,6 +11,8 @@ from rich.padding import Padding
 from azext_edge.edge.providers.check.base.pod import evaluate_pod_health
 from azext_edge.edge.providers.edge_api import AKRI_ACTIVE_API
 
+from ...common import CheckTaskStatus
+
 from ..base import get_namespaced_pods_by_prefix
 from ..support.akri import AKRI_NAME_LABEL_V2
 from .base import CheckManager, check_post_deployment, filter_resources_by_name, get_resources_grouped_by_namespace
@@ -65,6 +67,20 @@ def evaluate_core_service_runtime(
                 target_name=CoreServiceResourceKinds.RUNTIME_RESOURCE.value,
                 display=Padding("Unable to fetch pods.", (0, 0, 0, padding + 2)),
             )
+
+    if not akri_runtime_resources:
+        no_pods_text = "No Akri runtime pods detected."
+        check_manager.add_target(target_name=CoreServiceResourceKinds.RUNTIME_RESOURCE.value)
+        check_manager.add_target_eval(
+            target_name=CoreServiceResourceKinds.RUNTIME_RESOURCE.value,
+            status=CheckTaskStatus.error.value,
+            value=no_pods_text,
+        )
+        check_manager.add_display(
+            target_name=CoreServiceResourceKinds.RUNTIME_RESOURCE.value,
+            display=Padding(no_pods_text, (0, 0, 0, padding)),
+        )
+        return check_manager.as_dict(as_list)
 
     for namespace, pods in get_resources_grouped_by_namespace(akri_runtime_resources):
         check_manager.add_target(target_name=CoreServiceResourceKinds.RUNTIME_RESOURCE.value, namespace=namespace)

@@ -1393,6 +1393,25 @@ def test_evaluate_core_service_runtime(
         assert_evaluations(target[namespace], namespace_evaluations)
 
 
+def test_evaluate_core_service_runtime_no_pods(mocker):
+    """When Dataflow operator pods are missing, it is always unexpected.
+    The check should return an error eval with an informative message instead of 0 checks."""
+    mocker.patch(
+        "azext_edge.edge.providers.check.dataflow.get_namespaced_pods_by_prefix",
+        return_value=[],
+    )
+    result = evaluate_core_service_runtime()
+
+    assert result["name"] == "evalCoreServiceRuntime"
+    target = result["targets"][CoreServiceResourceKinds.RUNTIME_RESOURCE.value]
+    assert "_all_" in target
+    assert target["_all_"]["status"] == "error"
+    assert any(
+        "No Dataflow operator pods detected." in str(e.get("value", ""))
+        for e in target["_all_"]["evaluations"]
+    )
+
+
 @pytest.mark.parametrize("detail_level", ResourceOutputDetailLevel.list())
 @pytest.mark.parametrize(
     "registryendpoints, conditions, evaluations",

@@ -105,3 +105,47 @@ def test_evaluate_core_service_runtime(
         target[namespace]["conditions"] = [] if not target[namespace]["conditions"] else target[namespace]["conditions"]
         assert_conditions(target[namespace], namespace_conditions)
         assert_evaluations(target[namespace], namespace_evaluations)
+
+
+def test_evaluate_core_service_runtime_no_pods(mocker):
+    """When OPC UA is enabled but no pods are found, the check should return an error."""
+    mocker.patch(
+        "azext_edge.edge.providers.check.opcua.get_namespaced_pods_by_prefix",
+        return_value=[],
+    )
+    mocker.patch(
+        "azext_edge.edge.providers.check.opcua.get_resources_by_name",
+        return_value=[],
+    )
+    result = evaluate_core_service_runtime()
+
+    assert result["name"] == "evalCoreServiceRuntime"
+    target = result["targets"][CoreServiceResourceKinds.RUNTIME_RESOURCE.value]
+    assert "_all_" in target
+    assert target["_all_"]["status"] == "error"
+    assert any(
+        "No OPC UA broker pods detected." in str(e.get("value", ""))
+        for e in target["_all_"]["evaluations"]
+    )
+
+
+def test_evaluate_core_service_runtime_disabled(mocker):
+    """When OPC UA feature is disabled in the instance spec, the check should return skipped."""
+    mocker.patch(
+        "azext_edge.edge.providers.check.opcua.get_namespaced_pods_by_prefix",
+        return_value=[],
+    )
+    mocker.patch(
+        "azext_edge.edge.providers.check.opcua.get_resources_by_name",
+        return_value=[{"spec": {"features": {"opcua": {"mode": "Disabled"}}}}],
+    )
+    result = evaluate_core_service_runtime()
+
+    assert result["name"] == "evalCoreServiceRuntime"
+    target = result["targets"][CoreServiceResourceKinds.RUNTIME_RESOURCE.value]
+    assert "_all_" in target
+    assert target["_all_"]["status"] == "skipped"
+    assert any(
+        "disabled" in str(e.get("value", "")).lower()
+        for e in target["_all_"]["evaluations"]
+    )
