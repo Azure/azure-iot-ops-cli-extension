@@ -9,7 +9,7 @@ from typing import List
 import pytest
 
 from ...generators import generate_random_string
-from ...helpers import run
+from ...helpers import run, wait_for_expected_count
 from .namespace_helpers import (
     create_config_file, assert_management_group_properties, assert_management_group_action_properties
 )
@@ -183,15 +183,16 @@ def test_namespace_custom_asset_management_group_lifecycle_operations(
     )
 
     # 8. LIST MANAGEMENT GROUP ACTIONS
-    actions_list = run(
-        f"az iot ops ns asset custom mgmt-action list --asset {asset_name} --instance {instance_name} "
-        f"-g {resource_group} --group {mgmt_group_name}"
+    actions_list = wait_for_expected_count(
+        list_cmd=(
+            f"az iot ops ns asset custom mgmt-action list --asset {asset_name} --instance {instance_name} "
+            f"-g {resource_group} --group {mgmt_group_name}"
+        ),
+        expected_count=2,
+        expected_names=[action_name_1, action_name_2],
     )
 
     assert len(actions_list) >= 2
-    action_names = [ac["name"] for ac in actions_list]
-    assert action_name_1 in action_names
-    assert action_name_2 in action_names
 
     # 9. REPLACE MANAGEMENT GROUP ACTION
     replaced_action_target_uri = "/mgmt/device_service?profile=Profile1"

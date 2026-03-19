@@ -7,13 +7,13 @@
 import csv
 import json
 import os
-from time import sleep
 
 import pytest
 import yaml
 from typing import List
 
 from ...generators import generate_random_string
+from ...helpers import wait_for_expected_count
 from ..._log import TestLog
 
 pytestmark = [pytest.mark.rpsaas, pytest.mark.long_running]
@@ -60,53 +60,6 @@ def _validate_exported_items(log, items: list, expected_names: list, export_form
                             "configuration" in dest,
                             actual=list(dest.keys())
                         )
-
-
-def _remove_all_with_retry(
-    log,
-    items: list,
-    remove_cmd_template: str,
-    list_cmd: str,
-    item_label: str = "item",
-    max_retries: int = 6,
-    retry_interval: int = 15,
-):
-    """Remove items sequentially, then poll-verify that 0 remain.
-
-    Accounts for Azure API eventual consistency: after initial removes,
-    polls up to *max_retries* times (sleeping *retry_interval* seconds)
-    and re-issues removes for any stragglers that reappear due to stale
-    reads.
-    """
-    # Issue initial remove for every item.
-    for name in items:
-        log.run_command(remove_cmd_template.format(name=name))
-
-    # Poll until the list is empty or retries are exhausted.
-    for attempt in range(max_retries + 1):
-        remaining = log.run_command(list_cmd)
-        if len(remaining) == 0:
-            log.check(f"0 {item_label}s remain", True)
-            return
-
-        if attempt < max_retries:
-            log.detail(
-                f"{len(remaining)} {item_label}(s) still present "
-                f"(attempt {attempt + 1}/{max_retries}), "
-                f"retrying in {retry_interval}s..."
-            )
-            sleep(retry_interval)
-
-            # Re-issue remove for stragglers (provider handles not-found gracefully).
-            stale_names = {
-                entry.get("name") for entry in remaining if "name" in entry
-            }
-            for name in items:
-                if name in stale_names:
-                    log.run_command(remove_cmd_template.format(name=name))
-
-    # All retries exhausted — assert-fail with the actual count.
-    log.check(f"0 {item_label}s remain", len(remaining) == 0, actual=len(remaining))
 
 
 def _ensure_device_and_endpoint(
@@ -339,18 +292,29 @@ def test_namespace_asset_datapoint_export_import(
 
         # Step 3: Add datapoints
         with log.step(3, "Add Datapoints"):
-            for dp_name in [dp_name_1, dp_name_2]:
-                log.run_command(
-                    f"az iot ops ns asset {asset_type} datapoint add --asset {asset_name} "
-                    f"--instance {instance_name} -g {resource_group} --dataset {dataset_name} "
-                    f"--name {dp_name} --data-source sensor/{dp_name}"
-                )
             log.detail(f"datapoints: {dp_name_1}, {dp_name_2}")
-            dps_after_add = log.run_command(
-                f"az iot ops ns asset {asset_type} datapoint list --asset {asset_name} "
-                f"--instance {instance_name} -g {resource_group} --dataset {dataset_name}"
+            dp_add_tpl = (
+                f"az iot ops ns asset {asset_type} datapoint add --asset {asset_name} "
+                f"--instance {instance_name} -g {resource_group} "
+                f"--dataset {dataset_name} --name {{name}} --data-source sensor/{{name}}"
             )
-            log.check("2 datapoints added", len(dps_after_add) == 2, actual=len(dps_after_add))
+            for dp in [dp_name_1, dp_name_2]:
+                log.run_command(dp_add_tpl.format(name=dp))
+            wait_for_expected_count(
+                list_cmd=(
+                    f"az iot ops ns asset {asset_type} datapoint list --asset {asset_name} "
+                    f"--instance {instance_name} -g {resource_group} "
+                    f"--dataset {dataset_name}"
+                ),
+                expected_count=2,
+                expected_names=[dp_name_1, dp_name_2],
+                reissue_cmds={
+                    dp_name_1: dp_add_tpl.format(name=dp_name_1),
+                    dp_name_2: dp_add_tpl.format(name=dp_name_2),
+                },
+                run_fn=log.run_command,
+            )
+            log.check("2 datapoints added", True)
 
         # Step 4: Export datapoints
         with log.step(4, f"Export Datapoints ({export_format})"):
@@ -383,21 +347,29 @@ def test_namespace_asset_datapoint_export_import(
 
         # Step 5: Remove all datapoints
         with log.step(5, "Remove All Datapoints"):
-            _remove_all_with_retry(
-                log,
-                items=[dp_name_1, dp_name_2],
-                remove_cmd_template=(
-                    f"az iot ops ns asset {asset_type} datapoint remove --asset {asset_name} "
-                    f"--instance {instance_name} -g {resource_group} "
-                    f"--dataset {dataset_name} --name {{name}}"
-                ),
+            dp_rm_tpl = (
+                f"az iot ops ns asset {asset_type} datapoint remove --asset {asset_name} "
+                f"--instance {instance_name} -g {resource_group} "
+                f"--dataset {dataset_name} --name {{name}}"
+            )
+            for dp in [dp_name_1, dp_name_2]:
+                log.run_command(dp_rm_tpl.format(name=dp))
+            wait_for_expected_count(
                 list_cmd=(
                     f"az iot ops ns asset {asset_type} datapoint list --asset {asset_name} "
                     f"--instance {instance_name} -g {resource_group} "
                     f"--dataset {dataset_name}"
                 ),
-                item_label="datapoint",
+                expected_count=0,
+                expected_names=[dp_name_1, dp_name_2],
+                reissue_cmds={
+                    dp_name_1: dp_rm_tpl.format(name=dp_name_1),
+                    dp_name_2: dp_rm_tpl.format(name=dp_name_2),
+                },
+                reissue_on_missing=False,
+                run_fn=log.run_command,
             )
+            log.check("0 datapoints remain", True)
 
         # Step 6: Import datapoints back
         with log.step(6, "Import Datapoints"):
@@ -634,18 +606,29 @@ def test_namespace_asset_event_export_import(
 
         # Step 3: Add events
         with log.step(3, "Add Events"):
-            for ev_name in [ev_name_1, ev_name_2]:
-                log.run_command(
-                    f"az iot ops ns asset {asset_type} event add --asset {asset_name} "
-                    f"--instance {instance_name} -g {resource_group} --event-group {event_group_name} "
-                    f"--name {ev_name} --data-source events/{ev_name}"
-                )
             log.detail(f"events: {ev_name_1}, {ev_name_2}")
-            evs_after_add = log.run_command(
-                f"az iot ops ns asset {asset_type} event list --asset {asset_name} "
-                f"--instance {instance_name} -g {resource_group} --event-group {event_group_name}"
+            ev_add_tpl = (
+                f"az iot ops ns asset {asset_type} event add --asset {asset_name} "
+                f"--instance {instance_name} -g {resource_group} "
+                f"--event-group {event_group_name} --name {{name}} --data-source events/{{name}}"
             )
-            log.check("2 events added", len(evs_after_add) == 2, actual=len(evs_after_add))
+            for ev in [ev_name_1, ev_name_2]:
+                log.run_command(ev_add_tpl.format(name=ev))
+            wait_for_expected_count(
+                list_cmd=(
+                    f"az iot ops ns asset {asset_type} event list --asset {asset_name} "
+                    f"--instance {instance_name} -g {resource_group} "
+                    f"--event-group {event_group_name}"
+                ),
+                expected_count=2,
+                expected_names=[ev_name_1, ev_name_2],
+                reissue_cmds={
+                    ev_name_1: ev_add_tpl.format(name=ev_name_1),
+                    ev_name_2: ev_add_tpl.format(name=ev_name_2),
+                },
+                run_fn=log.run_command,
+            )
+            log.check("2 events added", True)
 
         # Step 4: Export events
         with log.step(4, f"Export Events ({export_format})"):
@@ -680,21 +663,29 @@ def test_namespace_asset_event_export_import(
 
         # Step 5: Remove all events
         with log.step(5, "Remove All Events"):
-            _remove_all_with_retry(
-                log,
-                items=[ev_name_1, ev_name_2],
-                remove_cmd_template=(
-                    f"az iot ops ns asset {asset_type} event remove --asset {asset_name} "
-                    f"--instance {instance_name} -g {resource_group} "
-                    f"--event-group {event_group_name} --name {{name}}"
-                ),
+            ev_rm_tpl = (
+                f"az iot ops ns asset {asset_type} event remove --asset {asset_name} "
+                f"--instance {instance_name} -g {resource_group} "
+                f"--event-group {event_group_name} --name {{name}}"
+            )
+            for ev in [ev_name_1, ev_name_2]:
+                log.run_command(ev_rm_tpl.format(name=ev))
+            wait_for_expected_count(
                 list_cmd=(
                     f"az iot ops ns asset {asset_type} event list --asset {asset_name} "
                     f"--instance {instance_name} -g {resource_group} "
                     f"--event-group {event_group_name}"
                 ),
-                item_label="event",
+                expected_count=0,
+                expected_names=[ev_name_1, ev_name_2],
+                reissue_cmds={
+                    ev_name_1: ev_rm_tpl.format(name=ev_name_1),
+                    ev_name_2: ev_rm_tpl.format(name=ev_name_2),
+                },
+                reissue_on_missing=False,
+                run_fn=log.run_command,
             )
+            log.check("0 events remain", True)
 
         # Step 6: Import events back
         with log.step(6, "Import Events"):
@@ -1024,18 +1015,29 @@ def test_namespace_asset_management_action_export_import(
 
         # Step 3: Add actions
         with log.step(3, "Add Management Actions"):
-            for action_name in [action_name_1, action_name_2]:
-                log.run_command(
-                    f"az iot ops ns asset {asset_type} mgmt-action add --asset {asset_name} "
-                    f"--instance {instance_name} -g {resource_group} --group {group_name} "
-                    f"--name {action_name} --target-uri 'ns=2;s={action_name}'"
-                )
             log.detail(f"actions: {action_name_1}, {action_name_2}")
-            actions_after_add = log.run_command(
-                f"az iot ops ns asset {asset_type} mgmt-action list --asset {asset_name} "
-                f"--instance {instance_name} -g {resource_group} --group {group_name}"
+            act_add_tpl = (
+                f"az iot ops ns asset {asset_type} mgmt-action add --asset {asset_name} "
+                f"--instance {instance_name} -g {resource_group} "
+                f"--group {group_name} --name {{name}} --target-uri 'ns=2;s={{name}}'"
             )
-            log.check("2 actions added", len(actions_after_add) == 2, actual=len(actions_after_add))
+            for act in [action_name_1, action_name_2]:
+                log.run_command(act_add_tpl.format(name=act))
+            wait_for_expected_count(
+                list_cmd=(
+                    f"az iot ops ns asset {asset_type} mgmt-action list --asset {asset_name} "
+                    f"--instance {instance_name} -g {resource_group} "
+                    f"--group {group_name}"
+                ),
+                expected_count=2,
+                expected_names=[action_name_1, action_name_2],
+                reissue_cmds={
+                    action_name_1: act_add_tpl.format(name=action_name_1),
+                    action_name_2: act_add_tpl.format(name=action_name_2),
+                },
+                run_fn=log.run_command,
+            )
+            log.check("2 actions added", True)
 
         # Step 4: Export actions
         with log.step(4, f"Export Management Actions ({export_format})"):
@@ -1068,21 +1070,29 @@ def test_namespace_asset_management_action_export_import(
 
         # Step 5: Remove all actions
         with log.step(5, "Remove All Actions"):
-            _remove_all_with_retry(
-                log,
-                items=[action_name_1, action_name_2],
-                remove_cmd_template=(
-                    f"az iot ops ns asset {asset_type} mgmt-action remove --asset {asset_name} "
-                    f"--instance {instance_name} -g {resource_group} "
-                    f"--group {group_name} --name {{name}}"
-                ),
+            act_rm_tpl = (
+                f"az iot ops ns asset {asset_type} mgmt-action remove --asset {asset_name} "
+                f"--instance {instance_name} -g {resource_group} "
+                f"--group {group_name} --name {{name}}"
+            )
+            for act in [action_name_1, action_name_2]:
+                log.run_command(act_rm_tpl.format(name=act))
+            wait_for_expected_count(
                 list_cmd=(
                     f"az iot ops ns asset {asset_type} mgmt-action list --asset {asset_name} "
                     f"--instance {instance_name} -g {resource_group} "
                     f"--group {group_name}"
                 ),
-                item_label="action",
+                expected_count=0,
+                expected_names=[action_name_1, action_name_2],
+                reissue_cmds={
+                    action_name_1: act_rm_tpl.format(name=action_name_1),
+                    action_name_2: act_rm_tpl.format(name=action_name_2),
+                },
+                reissue_on_missing=False,
+                run_fn=log.run_command,
             )
+            log.check("0 actions remain", True)
 
         # Step 6: Import actions back
         with log.step(6, "Import Management Actions"):

@@ -8,7 +8,7 @@ import pytest
 from typing import List
 
 from ...generators import generate_random_string
-from ...helpers import run
+from ...helpers import run, wait_for_expected_count
 from .namespace_helpers import create_config_file, assert_point_properties, assert_dataset_properties
 
 
@@ -189,14 +189,27 @@ def test_namespace_custom_asset_dataset_lifecycle_operations(
     )
 
     # 7. LIST DATASET DATAPOINTS
-    datapoints_list = run(
-        f"az iot ops ns asset custom datapoint list --asset {asset_name} "
-        f"--instance {instance_name} -g {resource_group} --dataset {dataset_name_1}"
+    datapoints_list = wait_for_expected_count(
+        list_cmd=(
+            f"az iot ops ns asset custom datapoint list --asset {asset_name} "
+            f"--instance {instance_name} -g {resource_group} --dataset {dataset_name_1}"
+        ),
+        expected_count=2,
+        expected_names=[datapoint_name_1, datapoint_name_2],
+        reissue_cmds={
+            datapoint_name_1: (
+                f"az iot ops ns asset custom datapoint add --asset {asset_name} "
+                f"--instance {instance_name} -g {resource_group} --dataset {dataset_name_1} "
+                f"--name {datapoint_name_1} --data-source {datapoint_data_source_1}"
+            ),
+            datapoint_name_2: (
+                f"az iot ops ns asset custom datapoint add --asset {asset_name} "
+                f"--instance {instance_name} -g {resource_group} --dataset {dataset_name_1} "
+                f"--name {datapoint_name_2} --data-source {datapoint_data_source_2}"
+            ),
+        },
     )
 
-    datapoint_names = [dp["name"] for dp in datapoints_list]
-    assert datapoint_name_1 in datapoint_names
-    assert datapoint_name_2 in datapoint_names
     assert len(datapoints_list) >= 2
 
     # 8. TEST DATAPOINT REPLACE FUNCTIONALITY
@@ -426,14 +439,27 @@ def test_namespace_opcua_asset_dataset_lifecycle_operations(require_namespace_in
     )
 
     # 7. LIST DATASET DATAPOINTS
-    datapoints_list = run(
-        f"az iot ops ns asset opcua datapoint list --asset {asset_name} "
-        f"--instance {instance_name} -g {resource_group} --dataset {dataset_name_1}"
+    datapoints_list = wait_for_expected_count(
+        list_cmd=(
+            f"az iot ops ns asset opcua datapoint list --asset {asset_name} "
+            f"--instance {instance_name} -g {resource_group} --dataset {dataset_name_1}"
+        ),
+        expected_count=2,
+        expected_names=[datapoint_name_1, datapoint_name_2],
+        reissue_cmds={
+            datapoint_name_1: (
+                f'az iot ops ns asset opcua datapoint add --asset {asset_name} '
+                f'--instance {instance_name} -g {resource_group} --dataset {dataset_name_1} '
+                f'--name {datapoint_name_1} --data-source "{datapoint_data_source_1}"'
+            ),
+            datapoint_name_2: (
+                f'az iot ops ns asset opcua datapoint add --asset {asset_name} '
+                f'--instance {instance_name} -g {resource_group} --dataset {dataset_name_1} '
+                f'--name {datapoint_name_2} --data-source "{datapoint_data_source_2}"'
+            ),
+        },
     )
 
-    datapoint_names = [dp["name"] for dp in datapoints_list]
-    assert datapoint_name_1 in datapoint_names
-    assert datapoint_name_2 in datapoint_names
     assert len(datapoints_list) >= 2
 
     # 8. TEST DATAPOINT REPLACE FUNCTIONALITY

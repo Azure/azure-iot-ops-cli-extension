@@ -8,7 +8,7 @@ from typing import List
 import pytest
 
 from ...generators import generate_random_string
-from ...helpers import run
+from ...helpers import run, wait_for_expected_count
 from .namespace_helpers import create_config_file, assert_point_properties, assert_event_properties
 
 
@@ -154,15 +154,16 @@ def test_namespace_custom_asset_event_lifecycle_operations(
     )
 
     # 8. LIST EVENT DATAPOINTS
-    datapoints_list = run(
-        f"az iot ops ns asset custom event list --asset {asset_name} --instance {instance_name} "
-        f"-g {resource_group} --event-group {event_group_name}"
+    datapoints_list = wait_for_expected_count(
+        list_cmd=(
+            f"az iot ops ns asset custom event list --asset {asset_name} --instance {instance_name} "
+            f"-g {resource_group} --event-group {event_group_name}"
+        ),
+        expected_count=2,
+        expected_names=[datapoint_name_1, datapoint_name_2],
     )
 
     assert len(datapoints_list) >= 2
-    datapoint_names = [dp["name"] for dp in datapoints_list]
-    assert datapoint_name_1 in datapoint_names
-    assert datapoint_name_2 in datapoint_names
 
     # 9. REPLACE EVENT DATAPOINT
     replaced_datapoint_source = "temperature.severity.replaced"

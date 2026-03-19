@@ -207,6 +207,35 @@ class NamespaceAssets(Queryable):
         self.device_ops: "NamespaceDevicesOperations" = self.deviceregistry_mgmt_client.namespace_devices
         self.resource_ops: "ResourcesOperations" = self.resource_mgmt_client.resources
 
+    def _validate_imported_items(
+        self,
+        items: List[dict],
+        validate_fn,
+        resource_label: str,
+        asset: dict,
+        instance_name: str,
+        instance_resource_group: str,
+    ):
+        """Run connector-metadata validation on items, with graceful fallback."""
+        try:
+            validator = ConnectorMetadataValidator.from_asset(
+                cmd=self.cmd,
+                asset=asset,
+                instance_name=instance_name,
+                instance_resource_group=instance_resource_group,
+            )
+            for item in items:
+                validate_fn(validator, item)
+            logger.info(f"{resource_label} validated successfully.")
+        except ValidationError:
+            raise
+        except Exception as e:
+            logger.warning(
+                f"{resource_label} validation skipped: {e}. "
+                "This may occur if the connector is not deployed or the cluster is not connected. "
+                f"The {resource_label.lower()} will be imported but may fail at runtime."
+            )
+
     def create(  # noqa: C901
         self,
         asset_name: str,
@@ -576,21 +605,14 @@ class NamespaceAssets(Queryable):
         if data_source:
             new_dataset["dataSource"] = data_source
 
-        # Validate the dataset configuration against connector metadata
-        try:
-            validator = ConnectorMetadataValidator.from_asset(
-                self.cmd, asset, instance_name, instance_resource_group
-            )
-            validator.validate_dataset(new_dataset)
-            logger.info(f"Dataset '{dataset_name}' configuration validated successfully.")
-        except ValidationError:
-            raise
-        except Exception as e:
-            logger.warning(
-                f"Dataset validation skipped: {e}. "
-                "This may occur if the connector is not deployed or the cluster is not connected. "
-                "The dataset will be created but may fail at runtime if the configuration is invalid."
-            )
+        self._validate_imported_items(
+            items=[new_dataset],
+            validate_fn=lambda v, d: v.validate_dataset(d),
+            resource_label=f"Dataset '{dataset_name}'",
+            asset=asset,
+            instance_name=instance_name,
+            instance_resource_group=instance_resource_group,
+        )
 
         unmatched_datasets.append(new_dataset)
 
@@ -677,21 +699,14 @@ class NamespaceAssets(Queryable):
         if "datasetsDestinations" in processed_configs:
             dataset["destinations"] = processed_configs["datasetsDestinations"]
 
-        # Validate the updated dataset configuration against connector metadata
-        try:
-            validator = ConnectorMetadataValidator.from_asset(
-                self.cmd, asset, instance_name, instance_resource_group
-            )
-            validator.validate_dataset(dataset)
-            logger.info(f"Updated dataset '{dataset_name}' configuration validated successfully.")
-        except ValidationError:
-            raise
-        except Exception as e:
-            logger.warning(
-                f"Dataset validation skipped: {e}. "
-                "This may occur if the connector is not deployed or the cluster is not connected. "
-                "The dataset will be updated but may fail at runtime if the configuration is invalid."
-            )
+        self._validate_imported_items(
+            items=[dataset],
+            validate_fn=lambda v, d: v.validate_dataset(d),
+            resource_label=f"Updated dataset '{dataset_name}'",
+            asset=asset,
+            instance_name=instance_name,
+            instance_resource_group=instance_resource_group,
+        )
 
         update_payload = {
             "properties": {
@@ -803,26 +818,14 @@ class NamespaceAssets(Queryable):
             replace=replace
         )
 
-        # Validate imported datasets
-        try:
-            validator = ConnectorMetadataValidator.from_asset(
-                cmd=self.cmd,
-                asset=asset,
-                instance_name=instance_name,
-                instance_resource_group=instance_resource_group
-            )
-
-            for dataset in imported_datasets:
-                validator.validate_dataset(dataset)
-            logger.info("Datasets validated successfully.")
-        except ValidationError:
-            raise
-        except Exception as e:
-            logger.warning(
-                f"Dataset validation skipped: {e}. "
-                "This may occur if the connector is not deployed or the cluster is not connected. "
-                "The datasets will be imported but may fail at runtime if the configuration is invalid."
-            )
+        self._validate_imported_items(
+            items=imported_datasets,
+            validate_fn=lambda v, d: v.validate_dataset(d),
+            resource_label="Datasets",
+            asset=asset,
+            instance_name=instance_name,
+            instance_resource_group=instance_resource_group,
+        )
 
         update_payload = {
             "properties": {
@@ -890,21 +893,14 @@ class NamespaceAssets(Queryable):
             type_ref=type_ref
         )
 
-        # Validate the datapoint configuration against connector metadata
-        try:
-            validator = ConnectorMetadataValidator.from_asset(
-                self.cmd, asset, instance_name, instance_resource_group
-            )
-            validator.validate_datapoint(datapoint)
-            logger.info(f"Datapoint '{datapoint_name}' configuration validated successfully.")
-        except ValidationError:
-            raise
-        except Exception as e:
-            logger.warning(
-                f"Datapoint validation skipped: {e}. "
-                "This may occur if the connector is not deployed or the cluster is not connected. "
-                "The datapoint will be created but may fail at runtime if the configuration is invalid."
-            )
+        self._validate_imported_items(
+            items=[datapoint],
+            validate_fn=lambda v, dp: v.validate_datapoint(dp),
+            resource_label=f"Datapoint '{datapoint_name}'",
+            asset=asset,
+            instance_name=instance_name,
+            instance_resource_group=instance_resource_group,
+        )
 
         non_matched_points.append(datapoint)
         dataset["dataPoints"] = non_matched_points
@@ -1075,26 +1071,14 @@ class NamespaceAssets(Queryable):
             csv_converter=_convert_sub_points_from_csv_namespace
         )
 
-        # Validate imported datapoints
-        try:
-            validator = ConnectorMetadataValidator.from_asset(
-                cmd=self.cmd,
-                asset=asset,
-                instance_name=instance_name,
-                instance_resource_group=instance_resource_group
-            )
-
-            for datapoint in imported_datapoints:
-                validator.validate_datapoint(datapoint)
-            logger.info("Datapoints validated successfully.")
-        except ValidationError:
-            raise
-        except Exception as e:
-            logger.warning(
-                f"Datapoint validation skipped: {e}. "
-                "This may occur if the connector is not deployed or the cluster is not connected. "
-                "The datapoints will be imported but may fail at runtime if the configuration is invalid."
-            )
+        self._validate_imported_items(
+            items=imported_datapoints,
+            validate_fn=lambda v, dp: v.validate_datapoint(dp),
+            resource_label="Datapoints",
+            asset=asset,
+            instance_name=instance_name,
+            instance_resource_group=instance_resource_group,
+        )
 
         dataset["dataPoints"] = imported_datapoints
 
@@ -1170,26 +1154,14 @@ class NamespaceAssets(Queryable):
             replace=replace
         )
 
-        # Validate imported event-groups
-        try:
-            validator = ConnectorMetadataValidator.from_asset(
-                cmd=self.cmd,
-                asset=asset,
-                instance_name=instance_name,
-                instance_resource_group=instance_resource_group
-            )
-
-            for event_group in imported_event_groups:
-                validator.validate_event_group(event_group)
-            logger.info("Event-groups validated successfully.")
-        except ValidationError:
-            raise
-        except Exception as e:
-            logger.warning(
-                f"Event-group validation skipped: {e}. "
-                "This may occur if the connector is not deployed or the cluster is not connected. "
-                "The event-groups will be imported but may fail at runtime if the configuration is invalid."
-            )
+        self._validate_imported_items(
+            items=imported_event_groups,
+            validate_fn=lambda v, eg: v.validate_event_group(eg),
+            resource_label="Event-groups",
+            asset=asset,
+            instance_name=instance_name,
+            instance_resource_group=instance_resource_group,
+        )
 
         update_payload = {
             "properties": {
@@ -1300,26 +1272,14 @@ class NamespaceAssets(Queryable):
             csv_converter=_convert_sub_points_from_csv_namespace
         )
 
-        # Validate imported events
-        try:
-            validator = ConnectorMetadataValidator.from_asset(
-                cmd=self.cmd,
-                asset=asset,
-                instance_name=instance_name,
-                instance_resource_group=instance_resource_group
-            )
-
-            for event in imported_events:
-                validator.validate_event(event)
-            logger.info("Events validated successfully.")
-        except ValidationError:
-            raise
-        except Exception as e:
-            logger.warning(
-                f"Event validation skipped: {e}. "
-                "This may occur if the connector is not deployed or the cluster is not connected. "
-                "The events will be imported but may fail at runtime if the configuration is invalid."
-            )
+        self._validate_imported_items(
+            items=imported_events,
+            validate_fn=lambda v, e: v.validate_event(e),
+            resource_label="Events",
+            asset=asset,
+            instance_name=instance_name,
+            instance_resource_group=instance_resource_group,
+        )
 
         # Always auto-assign destinations if not present (required by API)
         for event in imported_events:
@@ -1924,26 +1884,14 @@ class NamespaceAssets(Queryable):
             replace=replace
         )
 
-        # Validate imported streams
-        try:
-            validator = ConnectorMetadataValidator.from_asset(
-                cmd=self.cmd,
-                asset=asset,
-                instance_name=instance_name,
-                instance_resource_group=instance_resource_group
-            )
-
-            for stream in imported_streams:
-                validator.validate_stream(stream)
-            logger.info("Streams validated successfully.")
-        except ValidationError:
-            raise
-        except Exception as e:
-            logger.warning(
-                f"Stream validation skipped: {e}. "
-                "This may occur if the connector is not deployed or the cluster is not connected. "
-                "The streams will be imported but may fail at runtime if the configuration is invalid."
-            )
+        self._validate_imported_items(
+            items=imported_streams,
+            validate_fn=lambda v, s: v.validate_stream(s),
+            resource_label="Streams",
+            asset=asset,
+            instance_name=instance_name,
+            instance_resource_group=instance_resource_group,
+        )
 
         # Always auto-assign destinations if not present (required by API)
         for stream in imported_streams:
@@ -2377,26 +2325,14 @@ class NamespaceAssets(Queryable):
             replace=replace
         )
 
-        # Validate imported management groups
-        try:
-            validator = ConnectorMetadataValidator.from_asset(
-                cmd=self.cmd,
-                asset=asset,
-                instance_name=instance_name,
-                instance_resource_group=instance_resource_group
-            )
-
-            for mgmt_group in imported_mgmt_groups:
-                validator.validate_management_group(mgmt_group)
-            logger.info("Management groups validated successfully.")
-        except ValidationError:
-            raise
-        except Exception as e:
-            logger.warning(
-                f"Management group validation skipped: {e}. "
-                "This may occur if the connector is not deployed or the cluster is not connected. "
-                "The management groups will be imported but may fail at runtime if the configuration is invalid."
-            )
+        self._validate_imported_items(
+            items=imported_mgmt_groups,
+            validate_fn=lambda v, mg: v.validate_management_group(mg),
+            resource_label="Management groups",
+            asset=asset,
+            instance_name=instance_name,
+            instance_resource_group=instance_resource_group,
+        )
 
         # Always preserve existing actions if merging
         for mgmt_group in imported_mgmt_groups:
@@ -2527,26 +2463,14 @@ class NamespaceAssets(Queryable):
             csv_converter=_convert_actions_from_csv
         )
 
-        # Validate imported actions
-        try:
-            validator = ConnectorMetadataValidator.from_asset(
-                cmd=self.cmd,
-                asset=asset,
-                instance_name=instance_name,
-                instance_resource_group=instance_resource_group
-            )
-
-            for action in imported_actions:
-                validator.validate_action(action)
-            logger.info("Actions validated successfully.")
-        except ValidationError:
-            raise
-        except Exception as e:
-            logger.warning(
-                f"Action validation skipped: {e}. "
-                "This may occur if the connector is not deployed or the cluster is not connected. "
-                "The actions will be imported but may fail at runtime if the configuration is invalid."
-            )
+        self._validate_imported_items(
+            items=imported_actions,
+            validate_fn=lambda v, a: v.validate_action(a),
+            resource_label="Actions",
+            asset=asset,
+            instance_name=instance_name,
+            instance_resource_group=instance_resource_group,
+        )
 
         # Always default actionType to 'Call' if not specified
         for action in imported_actions:
