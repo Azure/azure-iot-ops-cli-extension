@@ -316,6 +316,7 @@ def generate_ops_resource(segments: int = 1) -> IoTOperationsResource:
 
     return resource
 
+
 def wait_for_expected_count(
     list_cmd: str,
     expected_count: int,
