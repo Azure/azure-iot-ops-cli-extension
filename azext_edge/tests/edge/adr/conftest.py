@@ -10,6 +10,7 @@ from typing import Optional
 
 from azext_edge.edge.util.id_tools import parse_resource_id
 from ...generators import generate_random_string, get_zeroed_subscription
+from ...helpers import run
 
 
 @pytest.fixture()

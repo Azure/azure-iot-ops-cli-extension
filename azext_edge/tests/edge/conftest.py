@@ -29,6 +29,22 @@ def require_init(init_setup):
     yield init_setup
 
 
+@pytest.fixture(scope="module")
+def require_init_module(init_setup):
+    """Module-scoped variant of require_init for shared fixtures."""
+    if not all([init_setup.get("instanceName"), init_setup.get("resourceGroup")]):
+        pytest.skip("Cannot run this test without knowing the instance information.")
+
+    cluster_result = run(
+        f"az iot ops show -n {init_setup['instanceName']} -g {init_setup['resourceGroup']} "
+    )
+    init_setup["customLocationId"] = cluster_result["extendedLocation"]["name"]
+    init_setup["adrNamespaceRef"] = (
+        cluster_result.get("properties", {}).get("adrNamespaceRef", {}).get("resourceId")
+    )
+    yield init_setup
+
+
 #  Unit testing
 @pytest.fixture
 def mocked_client(mocker):
@@ -167,14 +183,39 @@ def settings_with_rg(settings):
 
 
 @pytest.fixture(scope="session")
-def tracked_resources():
+def tracked_resources(init_setup):
     resources = []
     yield resources
+    instance_name = init_setup.get("instanceName")
+    resource_group = init_setup.get("resourceGroup")
     for res in reversed(resources):
         try:
-            run(f"az resource delete --id {res} -v", timeout=600)
+            delete_cmd = _build_delete_command(res, instance_name, resource_group)
+            run(delete_cmd, timeout=600)
         except Exception:
             logger.error(f"Failed to delete {res}")
+
+
+def _build_delete_command(resource_id: str, instance_name: str = None, resource_group: str = None) -> str:
+    """Build the appropriate CLI delete command for a tracked resource ID."""
+    from azext_edge.edge.util.id_tools import parse_resource_id
+
+    parsed = parse_resource_id(resource_id)
+    resource_type = parsed.get("resource_type", "")
+    resource_name = parsed.get("resource_name", "")
+
+    if resource_type == "assets" and instance_name and resource_group:
+        return (
+            f"az iot ops ns asset delete --name {resource_name} "
+            f"--instance {instance_name} -g {resource_group} -y"
+        )
+    if resource_type == "devices" and instance_name and resource_group:
+        return (
+            f"az iot ops ns device delete --name {resource_name} "
+            f"--instance {instance_name} -g {resource_group} -y"
+        )
+    # Fallback for unrecognized resource types
+    return f"az resource delete --id {resource_id} -v"
 
 
 @pytest.fixture(scope="session")

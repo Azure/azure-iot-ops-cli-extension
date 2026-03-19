@@ -13,6 +13,7 @@ import yaml
 from typing import List
 
 from ...generators import generate_random_string
+from ...helpers import wait_for_expected_count
 from ..._log import TestLog
 
 pytestmark = [pytest.mark.rpsaas, pytest.mark.long_running]
@@ -61,57 +62,41 @@ def _validate_exported_items(log, items: list, expected_names: list, export_form
                         )
 
 
-# Module-level caches for shared resource reuse
-_shared_device_name = None
-_endpoint_cache = {}  # (endpoint_type, endpoint_address) -> endpoint_name
-_format_test_asset_cache = {}
-
-
 def _ensure_device_and_endpoint(
     log, instance_name, resource_group, asset_type, endpoint_type,
-    endpoint_address, tracked_resources,
+    endpoint_address, shared_device, endpoint_cache,
 ):
-    """Create or reuse a single shared device, adding each endpoint type once."""
-    global _shared_device_name
-
-    if _shared_device_name is None:
-        _shared_device_name = f"dev-{generate_random_string(8, force_lower=True)}"
-        log.run_command(
-            f"az iot ops ns device create --name {_shared_device_name} --instance {instance_name} "
-            f"-g {resource_group}",
-            tracked_resources=tracked_resources,
-        )
-    else:
-        log.detail(f"Reusing shared device={_shared_device_name}")
+    """Reuse the shared device and add each endpoint type once via endpoint_cache."""
+    log.detail(f"Reusing shared device={shared_device}")
 
     ep_key = (endpoint_type, endpoint_address)
-    if ep_key in _endpoint_cache:
-        endpoint_name = _endpoint_cache[ep_key]
+    if ep_key in endpoint_cache:
+        endpoint_name = endpoint_cache[ep_key]
         log.detail(f"Reusing endpoint={endpoint_name}")
-        return _shared_device_name, endpoint_name
+        return shared_device, endpoint_name
 
     endpoint_name = f"{asset_type}-{generate_random_string(8)}"
     endpoint_cmd = (
         f"az iot ops ns device endpoint inbound add {endpoint_type} --name {endpoint_name} "
-        f"--instance {instance_name} -g {resource_group} --device {_shared_device_name} "
+        f"--instance {instance_name} -g {resource_group} --device {shared_device} "
         f"--endpoint-address '{endpoint_address}'"
     )
     if endpoint_type == "custom":
         endpoint_cmd += " --endpoint-type custom"
     log.run_command(endpoint_cmd)
 
-    _endpoint_cache[ep_key] = endpoint_name
-    return _shared_device_name, endpoint_name
+    endpoint_cache[ep_key] = endpoint_name
+    return shared_device, endpoint_name
 
 
 def _ensure_asset_for_format_tests(
     log, instance_name, resource_group, asset_type, device_name,
-    endpoint_name, tracked_resources, test_category,
+    endpoint_name, tracked_resources, test_category, format_test_asset_cache,
 ):
     """Create or reuse an asset shared across format variants of the same test_category+asset_type."""
     cache_key = (asset_type, test_category)
-    if cache_key in _format_test_asset_cache:
-        asset_name = _format_test_asset_cache[cache_key]
+    if cache_key in format_test_asset_cache:
+        asset_name = format_test_asset_cache[cache_key]
         log.detail(f"Reusing shared asset={asset_name}")
         return asset_name
 
@@ -122,7 +107,7 @@ def _ensure_asset_for_format_tests(
         tracked_resources=tracked_resources,
     )
 
-    _format_test_asset_cache[cache_key] = asset_name
+    format_test_asset_cache[cache_key] = asset_name
     return asset_name
 
 
@@ -134,8 +119,9 @@ def _ensure_asset_for_format_tests(
     ("mqtt", "mqtt", "aio-broker:18883"),
 ])
 def test_namespace_asset_dataset_export_import(
-    require_namespace_init, tracked_resources: List[str], tracked_files: List[str], tmp_path, asset_type: str,
-    endpoint_type: str, endpoint_address: str
+    require_namespace_init, tracked_resources: List[str], tracked_files: List[str], tmp_path,
+    shared_device: str, endpoint_cache: dict,
+    asset_type: str, endpoint_type: str, endpoint_address: str
 ):
     """Test dataset export and import for all asset types."""
     instance_name = require_namespace_init["instanceName"]
@@ -151,7 +137,7 @@ def test_namespace_asset_dataset_export_import(
         with log.step(1, "Ensure Device + Endpoint"):
             device_name, endpoint_name = _ensure_device_and_endpoint(
                 log, instance_name, resource_group, asset_type, endpoint_type,
-                endpoint_address, tracked_resources,
+                endpoint_address, shared_device, endpoint_cache,
             )
 
         # Step 2: Create asset
@@ -268,6 +254,7 @@ def test_namespace_asset_dataset_export_import(
 @pytest.mark.parametrize("export_format", ["json", "yaml", "csv"])
 def test_namespace_asset_datapoint_export_import(
     require_namespace_init, tracked_resources: List[str], tracked_files: List[str], tmp_path,
+    shared_device: str, endpoint_cache: dict, format_test_asset_cache: dict,
     asset_type: str, endpoint_type: str, endpoint_address: str, export_format: str
 ):
     """Test datapoint export and import for custom and opcua assets."""
@@ -288,14 +275,14 @@ def test_namespace_asset_datapoint_export_import(
         with log.step(1, "Ensure Device + Endpoint"):
             device_name, endpoint_name = _ensure_device_and_endpoint(
                 log, instance_name, resource_group, asset_type, endpoint_type,
-                endpoint_address, tracked_resources,
+                endpoint_address, shared_device, endpoint_cache,
             )
 
         # Step 2: Ensure Asset + Create Dataset
         with log.step(2, f"Ensure {asset_type} Asset + Create Dataset"):
             asset_name = _ensure_asset_for_format_tests(
                 log, instance_name, resource_group, asset_type, device_name,
-                endpoint_name, tracked_resources, "datapoint",
+                endpoint_name, tracked_resources, "datapoint", format_test_asset_cache,
             )
             log.run_command(
                 f"az iot ops ns asset {asset_type} dataset add --asset {asset_name} "
@@ -305,18 +292,29 @@ def test_namespace_asset_datapoint_export_import(
 
         # Step 3: Add datapoints
         with log.step(3, "Add Datapoints"):
-            for dp_name in [dp_name_1, dp_name_2]:
-                log.run_command(
-                    f"az iot ops ns asset {asset_type} datapoint add --asset {asset_name} "
-                    f"--instance {instance_name} -g {resource_group} --dataset {dataset_name} "
-                    f"--name {dp_name} --data-source sensor/{dp_name}"
-                )
             log.detail(f"datapoints: {dp_name_1}, {dp_name_2}")
-            dps_after_add = log.run_command(
-                f"az iot ops ns asset {asset_type} datapoint list --asset {asset_name} "
-                f"--instance {instance_name} -g {resource_group} --dataset {dataset_name}"
+            dp_add_tpl = (
+                f"az iot ops ns asset {asset_type} datapoint add --asset {asset_name} "
+                f"--instance {instance_name} -g {resource_group} "
+                f"--dataset {dataset_name} --name {{name}} --data-source sensor/{{name}}"
             )
-            log.check("2 datapoints added", len(dps_after_add) == 2, actual=len(dps_after_add))
+            for dp in [dp_name_1, dp_name_2]:
+                log.run_command(dp_add_tpl.format(name=dp))
+            wait_for_expected_count(
+                list_cmd=(
+                    f"az iot ops ns asset {asset_type} datapoint list --asset {asset_name} "
+                    f"--instance {instance_name} -g {resource_group} "
+                    f"--dataset {dataset_name}"
+                ),
+                expected_count=2,
+                expected_names=[dp_name_1, dp_name_2],
+                reissue_cmds={
+                    dp_name_1: dp_add_tpl.format(name=dp_name_1),
+                    dp_name_2: dp_add_tpl.format(name=dp_name_2),
+                },
+                run_fn=log.run_command,
+            )
+            log.detail("2 datapoints added")
 
         # Step 4: Export datapoints
         with log.step(4, f"Export Datapoints ({export_format})"):
@@ -349,18 +347,29 @@ def test_namespace_asset_datapoint_export_import(
 
         # Step 5: Remove all datapoints
         with log.step(5, "Remove All Datapoints"):
-            for dp_name in [dp_name_1, dp_name_2]:
-                log.run_command(
-                    f"az iot ops ns asset {asset_type} datapoint remove --asset {asset_name} "
-                    f"--instance {instance_name} -g {resource_group} --dataset {dataset_name} "
-                    f"--name {dp_name}"
-                )
-            datapoints_after_remove = log.run_command(
-                f"az iot ops ns asset {asset_type} datapoint list --asset {asset_name} "
-                f"--instance {instance_name} -g {resource_group} --dataset {dataset_name}"
+            dp_rm_tpl = (
+                f"az iot ops ns asset {asset_type} datapoint remove --asset {asset_name} "
+                f"--instance {instance_name} -g {resource_group} "
+                f"--dataset {dataset_name} --name {{name}}"
             )
-            log.check("0 datapoints remain", len(datapoints_after_remove) == 0,
-                      actual=len(datapoints_after_remove))
+            for dp in [dp_name_1, dp_name_2]:
+                log.run_command(dp_rm_tpl.format(name=dp))
+            wait_for_expected_count(
+                list_cmd=(
+                    f"az iot ops ns asset {asset_type} datapoint list --asset {asset_name} "
+                    f"--instance {instance_name} -g {resource_group} "
+                    f"--dataset {dataset_name}"
+                ),
+                expected_count=0,
+                expected_names=[dp_name_1, dp_name_2],
+                reissue_cmds={
+                    dp_name_1: dp_rm_tpl.format(name=dp_name_1),
+                    dp_name_2: dp_rm_tpl.format(name=dp_name_2),
+                },
+                reissue_on_missing=False,
+                run_fn=log.run_command,
+            )
+            log.detail("0 datapoints remain")
 
         # Step 6: Import datapoints back
         with log.step(6, "Import Datapoints"):
@@ -425,8 +434,9 @@ def test_namespace_asset_datapoint_export_import(
     ("sse", "sse", "https://events.example.com/stream"),
 ])
 def test_namespace_asset_event_group_export_import(
-    require_namespace_init, tracked_resources: List[str], tracked_files: List[str], tmp_path, asset_type: str,
-    endpoint_type: str, endpoint_address: str
+    require_namespace_init, tracked_resources: List[str], tracked_files: List[str], tmp_path,
+    shared_device: str, endpoint_cache: dict,
+    asset_type: str, endpoint_type: str, endpoint_address: str
 ):
     """Test event-group export and import for all asset types."""
     instance_name = require_namespace_init["instanceName"]
@@ -445,7 +455,7 @@ def test_namespace_asset_event_group_export_import(
         with log.step(1, "Ensure Device + Endpoint"):
             device_name, endpoint_name = _ensure_device_and_endpoint(
                 log, instance_name, resource_group, asset_type, endpoint_type,
-                endpoint_address, tracked_resources,
+                endpoint_address, shared_device, endpoint_cache,
             )
 
         # Step 2: Create asset
@@ -558,6 +568,7 @@ def test_namespace_asset_event_group_export_import(
 @pytest.mark.parametrize("export_format", ["json", "yaml", "csv"])
 def test_namespace_asset_event_export_import(
     require_namespace_init, tracked_resources: List[str], tracked_files: List[str], tmp_path,
+    shared_device: str, endpoint_cache: dict, format_test_asset_cache: dict,
     asset_type: str, endpoint_type: str, endpoint_address: str, export_format: str
 ):
     """Test event export and import for custom, opcua, and sse assets."""
@@ -578,14 +589,14 @@ def test_namespace_asset_event_export_import(
         with log.step(1, "Ensure Device + Endpoint"):
             device_name, endpoint_name = _ensure_device_and_endpoint(
                 log, instance_name, resource_group, asset_type, endpoint_type,
-                endpoint_address, tracked_resources,
+                endpoint_address, shared_device, endpoint_cache,
             )
 
         # Step 2: Ensure Asset + Create Event Group
         with log.step(2, f"Ensure {asset_type} Asset + Create Event Group"):
             asset_name = _ensure_asset_for_format_tests(
                 log, instance_name, resource_group, asset_type, device_name,
-                endpoint_name, tracked_resources, "event",
+                endpoint_name, tracked_resources, "event", format_test_asset_cache,
             )
             log.run_command(
                 f"az iot ops ns asset {asset_type} event-group add --asset {asset_name} "
@@ -595,18 +606,29 @@ def test_namespace_asset_event_export_import(
 
         # Step 3: Add events
         with log.step(3, "Add Events"):
-            for ev_name in [ev_name_1, ev_name_2]:
-                log.run_command(
-                    f"az iot ops ns asset {asset_type} event add --asset {asset_name} "
-                    f"--instance {instance_name} -g {resource_group} --event-group {event_group_name} "
-                    f"--name {ev_name} --data-source events/{ev_name}"
-                )
             log.detail(f"events: {ev_name_1}, {ev_name_2}")
-            evs_after_add = log.run_command(
-                f"az iot ops ns asset {asset_type} event list --asset {asset_name} "
-                f"--instance {instance_name} -g {resource_group} --event-group {event_group_name}"
+            ev_add_tpl = (
+                f"az iot ops ns asset {asset_type} event add --asset {asset_name} "
+                f"--instance {instance_name} -g {resource_group} "
+                f"--event-group {event_group_name} --name {{name}} --data-source events/{{name}}"
             )
-            log.check("2 events added", len(evs_after_add) == 2, actual=len(evs_after_add))
+            for ev in [ev_name_1, ev_name_2]:
+                log.run_command(ev_add_tpl.format(name=ev))
+            wait_for_expected_count(
+                list_cmd=(
+                    f"az iot ops ns asset {asset_type} event list --asset {asset_name} "
+                    f"--instance {instance_name} -g {resource_group} "
+                    f"--event-group {event_group_name}"
+                ),
+                expected_count=2,
+                expected_names=[ev_name_1, ev_name_2],
+                reissue_cmds={
+                    ev_name_1: ev_add_tpl.format(name=ev_name_1),
+                    ev_name_2: ev_add_tpl.format(name=ev_name_2),
+                },
+                run_fn=log.run_command,
+            )
+            log.detail("2 events added")
 
         # Step 4: Export events
         with log.step(4, f"Export Events ({export_format})"):
@@ -641,18 +663,29 @@ def test_namespace_asset_event_export_import(
 
         # Step 5: Remove all events
         with log.step(5, "Remove All Events"):
-            for ev_name in [ev_name_1, ev_name_2]:
-                log.run_command(
-                    f"az iot ops ns asset {asset_type} event remove --asset {asset_name} "
-                    f"--instance {instance_name} -g {resource_group} --event-group {event_group_name} "
-                    f"--name {ev_name}"
-                )
-            events_after_remove = log.run_command(
-                f"az iot ops ns asset {asset_type} event list --asset {asset_name} "
-                f"--instance {instance_name} -g {resource_group} --event-group {event_group_name}"
+            ev_rm_tpl = (
+                f"az iot ops ns asset {asset_type} event remove --asset {asset_name} "
+                f"--instance {instance_name} -g {resource_group} "
+                f"--event-group {event_group_name} --name {{name}}"
             )
-            log.check("0 events remain", len(events_after_remove) == 0,
-                      actual=len(events_after_remove))
+            for ev in [ev_name_1, ev_name_2]:
+                log.run_command(ev_rm_tpl.format(name=ev))
+            wait_for_expected_count(
+                list_cmd=(
+                    f"az iot ops ns asset {asset_type} event list --asset {asset_name} "
+                    f"--instance {instance_name} -g {resource_group} "
+                    f"--event-group {event_group_name}"
+                ),
+                expected_count=0,
+                expected_names=[ev_name_1, ev_name_2],
+                reissue_cmds={
+                    ev_name_1: ev_rm_tpl.format(name=ev_name_1),
+                    ev_name_2: ev_rm_tpl.format(name=ev_name_2),
+                },
+                reissue_on_missing=False,
+                run_fn=log.run_command,
+            )
+            log.detail("0 events remain")
 
         # Step 6: Import events back
         with log.step(6, "Import Events"):
@@ -725,6 +758,7 @@ def test_namespace_asset_event_export_import(
 ])
 def test_namespace_asset_stream_export_import(
     require_namespace_init, tracked_resources: List[str], tracked_files: List[str], tmp_path,
+    shared_device: str, endpoint_cache: dict,
     asset_type: str, endpoint_type: str, endpoint_address: str
 ):
     """Test stream export and import for custom and media assets."""
@@ -744,7 +778,7 @@ def test_namespace_asset_stream_export_import(
         with log.step(1, "Ensure Device + Endpoint"):
             device_name, endpoint_name = _ensure_device_and_endpoint(
                 log, instance_name, resource_group, asset_type, endpoint_type,
-                endpoint_address, tracked_resources,
+                endpoint_address, shared_device, endpoint_cache,
             )
 
         # Step 2: Create asset
@@ -829,6 +863,7 @@ def test_namespace_asset_stream_export_import(
 ])
 def test_namespace_asset_management_group_export_import(
     require_namespace_init, tracked_resources: List[str], tracked_files: List[str], tmp_path,
+    shared_device: str, endpoint_cache: dict,
     asset_type: str, endpoint_type: str, endpoint_address: str
 ):
     """Test management group export and import for all asset types."""
@@ -848,7 +883,7 @@ def test_namespace_asset_management_group_export_import(
         with log.step(1, "Ensure Device + Endpoint"):
             device_name, endpoint_name = _ensure_device_and_endpoint(
                 log, instance_name, resource_group, asset_type, endpoint_type,
-                endpoint_address, tracked_resources,
+                endpoint_address, shared_device, endpoint_cache,
             )
 
         # Step 2: Create asset
@@ -942,6 +977,7 @@ def test_namespace_asset_management_group_export_import(
 @pytest.mark.parametrize("export_format", ["json", "yaml", "csv"])
 def test_namespace_asset_management_action_export_import(
     require_namespace_init, tracked_resources: List[str], tracked_files: List[str], tmp_path,
+    shared_device: str, endpoint_cache: dict, format_test_asset_cache: dict,
     asset_type: str, endpoint_type: str, endpoint_address: str, export_format: str
 ):
     """Test management action export and import for custom and opcua assets."""
@@ -962,14 +998,14 @@ def test_namespace_asset_management_action_export_import(
         with log.step(1, "Ensure Device + Endpoint"):
             device_name, endpoint_name = _ensure_device_and_endpoint(
                 log, instance_name, resource_group, asset_type, endpoint_type,
-                endpoint_address, tracked_resources,
+                endpoint_address, shared_device, endpoint_cache,
             )
 
         # Step 2: Ensure Asset + Create Management Group
         with log.step(2, f"Ensure {asset_type} Asset + Create Management Group"):
             asset_name = _ensure_asset_for_format_tests(
                 log, instance_name, resource_group, asset_type, device_name,
-                endpoint_name, tracked_resources, "mgmt_action",
+                endpoint_name, tracked_resources, "mgmt_action", format_test_asset_cache,
             )
             log.run_command(
                 f"az iot ops ns asset {asset_type} mgmt-group add --asset {asset_name} "
@@ -979,18 +1015,29 @@ def test_namespace_asset_management_action_export_import(
 
         # Step 3: Add actions
         with log.step(3, "Add Management Actions"):
-            for action_name in [action_name_1, action_name_2]:
-                log.run_command(
-                    f"az iot ops ns asset {asset_type} mgmt-action add --asset {asset_name} "
-                    f"--instance {instance_name} -g {resource_group} --group {group_name} "
-                    f"--name {action_name} --target-uri 'ns=2;s={action_name}'"
-                )
             log.detail(f"actions: {action_name_1}, {action_name_2}")
-            actions_after_add = log.run_command(
-                f"az iot ops ns asset {asset_type} mgmt-action list --asset {asset_name} "
-                f"--instance {instance_name} -g {resource_group} --group {group_name}"
+            act_add_tpl = (
+                f"az iot ops ns asset {asset_type} mgmt-action add --asset {asset_name} "
+                f"--instance {instance_name} -g {resource_group} "
+                f"--group {group_name} --name {{name}} --target-uri 'ns=2;s={{name}}'"
             )
-            log.check("2 actions added", len(actions_after_add) == 2, actual=len(actions_after_add))
+            for act in [action_name_1, action_name_2]:
+                log.run_command(act_add_tpl.format(name=act))
+            wait_for_expected_count(
+                list_cmd=(
+                    f"az iot ops ns asset {asset_type} mgmt-action list --asset {asset_name} "
+                    f"--instance {instance_name} -g {resource_group} "
+                    f"--group {group_name}"
+                ),
+                expected_count=2,
+                expected_names=[action_name_1, action_name_2],
+                reissue_cmds={
+                    action_name_1: act_add_tpl.format(name=action_name_1),
+                    action_name_2: act_add_tpl.format(name=action_name_2),
+                },
+                run_fn=log.run_command,
+            )
+            log.detail("2 actions added")
 
         # Step 4: Export actions
         with log.step(4, f"Export Management Actions ({export_format})"):
@@ -1023,18 +1070,29 @@ def test_namespace_asset_management_action_export_import(
 
         # Step 5: Remove all actions
         with log.step(5, "Remove All Actions"):
-            for action_name in [action_name_1, action_name_2]:
-                log.run_command(
-                    f"az iot ops ns asset {asset_type} mgmt-action remove --asset {asset_name} "
-                    f"--instance {instance_name} -g {resource_group} --group {group_name} "
-                    f"--name {action_name}"
-                )
-            actions_after_remove = log.run_command(
-                f"az iot ops ns asset {asset_type} mgmt-action list --asset {asset_name} "
-                f"--instance {instance_name} -g {resource_group} --group {group_name}"
+            act_rm_tpl = (
+                f"az iot ops ns asset {asset_type} mgmt-action remove --asset {asset_name} "
+                f"--instance {instance_name} -g {resource_group} "
+                f"--group {group_name} --name {{name}}"
             )
-            log.check("0 actions remain", len(actions_after_remove) == 0,
-                      actual=len(actions_after_remove))
+            for act in [action_name_1, action_name_2]:
+                log.run_command(act_rm_tpl.format(name=act))
+            wait_for_expected_count(
+                list_cmd=(
+                    f"az iot ops ns asset {asset_type} mgmt-action list --asset {asset_name} "
+                    f"--instance {instance_name} -g {resource_group} "
+                    f"--group {group_name}"
+                ),
+                expected_count=0,
+                expected_names=[action_name_1, action_name_2],
+                reissue_cmds={
+                    action_name_1: act_rm_tpl.format(name=action_name_1),
+                    action_name_2: act_rm_tpl.format(name=action_name_2),
+                },
+                reissue_on_missing=False,
+                run_fn=log.run_command,
+            )
+            log.detail("0 actions remain")
 
         # Step 6: Import actions back
         with log.step(6, "Import Management Actions"):

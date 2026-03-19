@@ -7,8 +7,9 @@
 import json
 import os
 from fnmatch import fnmatch
+from time import sleep
 from knack.log import get_logger
-from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Union
 from azure.cli.core.azclierror import CLIInternalError
 import pytest
 
