@@ -4,6 +4,7 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
+import secrets
 import string
 from typing import List, Optional, Union
 from uuid import uuid4
@@ -39,16 +40,12 @@ def insecure_random_string(size: int = 36, force_lower: bool = False) -> str:
 
 def generate_random_string(size: int = 36, force_lower: bool = False):
     """
-    Generates a random string of the specified size.
-    Deterministic per run — relies on the global random seed set in conftest.py
-    so pytest-xdist workers produce identical test IDs during collection.
+    Generates a crytopgraphically strong random string of the specified size.
     """
-    from random import choice
-
     valid_sequence = string.ascii_lowercase + string.digits
     if not force_lower:
         valid_sequence += string.ascii_uppercase
-    return "".join(choice(valid_sequence) for _ in range(size))
+    return "".join(secrets.choice(valid_sequence) for _ in range(size))
 
 
 def generate_resource_id(

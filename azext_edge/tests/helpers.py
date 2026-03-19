@@ -321,27 +321,21 @@ def wait_for_expected_count(
     list_cmd: str,
     expected_count: int,
     expected_names: Optional[List[str]] = None,
-    max_retries: int = 8,
-    initial_interval: int = 3,
-    max_interval: int = 20,
-    backoff_factor: float = 1.5,
+    max_retries: int = 6,
+    retry_interval: int = 15,
     reissue_cmds: Optional[Dict[str, str]] = None,
     reissue_on_missing: bool = True,
     run_fn: Optional[Callable[..., Any]] = None,
 ) -> list:
     """Poll a list command until the expected count (and optionally names) are reached.
 
-    Handles Azure API eventual consistency by retrying with exponential backoff.
-    Default schedule: 3 → 4.5 → 6.75 → 10 → 15 → 20 → 20 → 20s.
+    Handles Azure API eventual consistency by retrying up to *max_retries* times
+    with *retry_interval* seconds between attempts.
 
     Args:
         list_cmd: CLI command that returns a JSON list.
         expected_count: The item count to wait for.
         expected_names: If given, also verify these names appear (or are absent).
-        max_retries: Maximum number of retry attempts.
-        initial_interval: Seconds to wait before the first retry.
-        max_interval: Cap on the retry interval.
-        backoff_factor: Multiplier applied to the interval after each retry.
         reissue_cmds: ``{name: command}`` map.  On each retry, commands are
             re-issued for names that are missing (``reissue_on_missing=True``,
             the default — use for adds) or still present
@@ -352,7 +346,6 @@ def wait_for_expected_count(
     Returns the final list result on success; raises AssertionError on exhaustion.
     """
     _run = run_fn or run
-    interval = initial_interval
 
     for attempt in range(max_retries + 1):
         result = _run(list_cmd)
@@ -372,10 +365,9 @@ def wait_for_expected_count(
         if attempt < max_retries:
             logger.info(
                 "Expected %d items but got %d (attempt %d/%d), retrying in %ds...",
-                expected_count, len(result), attempt + 1, max_retries, interval,
+                expected_count, len(result), attempt + 1, max_retries, retry_interval,
             )
-            sleep(interval)
-            interval = min(interval * backoff_factor, max_interval)
+            sleep(retry_interval)
 
             if reissue_cmds:
                 actual_names = {item.get("name") for item in result if isinstance(item, dict)}
