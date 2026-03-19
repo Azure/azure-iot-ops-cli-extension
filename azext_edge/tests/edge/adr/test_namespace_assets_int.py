@@ -23,27 +23,22 @@ from .namespace_helpers import (
 pytestmark = pytest.mark.rpsaas
 
 
-def test_namespace_asset_smoke_test(require_namespace_init, tracked_resources: List[str], tracked_files: List[str]):
+def test_namespace_asset_smoke_test(
+    require_namespace_init_module, shared_device, tracked_resources: List[str], tracked_files: List[str]
+):
     """Smoke test for namespace asset operations using custom asset type."""
     # 12 put/patch/delete calls
     # Setup test variables
-    instance_name = require_namespace_init["instanceName"]
-    resource_group = require_namespace_init["resourceGroup"]
-    custom_location = require_namespace_init["customLocationId"]
-    device_name = f"dev-{generate_random_string(8, force_lower=True)}"
+    instance_name = require_namespace_init_module["instanceName"]
+    resource_group = require_namespace_init_module["resourceGroup"]
+    custom_location = require_namespace_init_module["customLocationId"]
+    device_name = shared_device
     endpoint_name_custom = f"custom-{generate_random_string(8)}"
     asset_name = f"custom-{generate_random_string(8, force_lower=True)}"
 
     # Tags and attributes
     common_tags = {"env": "test", "purpose": "automation"}
     common_attrs = ["location=building1", "floor=3"]
-
-    # Create Device
-    result = run(
-        f"az iot ops ns device create --name {device_name} --instance {instance_name} "
-        f"-g {resource_group}"
-    )
-    tracked_resources.append(result["id"])
 
     # Create device endpoints
     for endpoint_name, endpoint_type in [
@@ -306,12 +301,14 @@ def test_namespace_asset_smoke_test(require_namespace_init, tracked_resources: L
     )
 
 
-def test_namespace_asset_1p_types(require_namespace_init, tracked_resources: List[str]):
+def test_namespace_asset_1p_types(
+    require_namespace_init_module, shared_device, tracked_resources: List[str]
+):
     # Setup test variables
-    instance_name = require_namespace_init["instanceName"]
-    resource_group = require_namespace_init["resourceGroup"]
-    custom_location = require_namespace_init["customLocationId"]
-    device_name = f"dev-{generate_random_string(8, force_lower=True)}"
+    instance_name = require_namespace_init_module["instanceName"]
+    resource_group = require_namespace_init_module["resourceGroup"]
+    custom_location = require_namespace_init_module["customLocationId"]
+    device_name = shared_device
     endpoint_name_onvif = f"onvif-{generate_random_string(8)}"
     endpoint_name_opcua = f"opcua-{generate_random_string(8)}"
     endpoint_name_media = f"media-{generate_random_string(8)}"
@@ -328,13 +325,6 @@ def test_namespace_asset_1p_types(require_namespace_init, tracked_resources: Lis
     # Tags and attributes
     common_tags = {"env": "test", "purpose": "automation"}
     common_attrs = ["location=building1", "floor=3"]
-
-    # Create Device
-    result = run(
-        f"az iot ops ns device create --name {device_name} --instance {instance_name} "
-        f"-g {resource_group}"
-    )
-    tracked_resources.append(result["id"])
 
     # Create device endpoints
     for endpoint_name, endpoint_type in [

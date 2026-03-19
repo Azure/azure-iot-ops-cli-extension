@@ -314,3 +314,78 @@ def generate_ops_resource(segments: int = 1) -> IoTOperationsResource:
     )
 
     return resource
+
+def wait_for_expected_count(
+    list_cmd: str,
+    expected_count: int,
+    expected_names: Optional[List[str]] = None,
+    max_retries: int = 8,
+    initial_interval: int = 3,
+    max_interval: int = 20,
+    backoff_factor: float = 1.5,
+    reissue_cmds: Optional[Dict[str, str]] = None,
+    reissue_on_missing: bool = True,
+    run_fn: Optional[Callable[..., Any]] = None,
+) -> list:
+    """Poll a list command until the expected count (and optionally names) are reached.
+
+    Handles Azure API eventual consistency by retrying with exponential backoff.
+    Default schedule: 3 → 4.5 → 6.75 → 10 → 15 → 20 → 20 → 20s.
+
+    Args:
+        list_cmd: CLI command that returns a JSON list.
+        expected_count: The item count to wait for.
+        expected_names: If given, also verify these names appear (or are absent).
+        max_retries: Maximum number of retry attempts.
+        initial_interval: Seconds to wait before the first retry.
+        max_interval: Cap on the retry interval.
+        backoff_factor: Multiplier applied to the interval after each retry.
+        reissue_cmds: ``{name: command}`` map.  On each retry, commands are
+            re-issued for names that are missing (``reissue_on_missing=True``,
+            the default — use for adds) or still present
+            (``reissue_on_missing=False`` — use for removes).
+        reissue_on_missing: Direction flag for *reissue_cmds*.
+        run_fn: Callable to execute commands; defaults to ``run()``.
+
+    Returns the final list result on success; raises AssertionError on exhaustion.
+    """
+    _run = run_fn or run
+    interval = initial_interval
+
+    for attempt in range(max_retries + 1):
+        result = _run(list_cmd)
+        result = result if result else []
+
+        names_ok = True
+        if expected_names:
+            actual_names = {item.get("name") for item in result if isinstance(item, dict)}
+            if reissue_on_missing:
+                names_ok = all(n in actual_names for n in expected_names)
+            else:
+                names_ok = not any(n in actual_names for n in expected_names)
+
+        if len(result) == expected_count and names_ok:
+            return result
+
+        if attempt < max_retries:
+            logger.info(
+                "Expected %d items but got %d (attempt %d/%d), retrying in %ds...",
+                expected_count, len(result), attempt + 1, max_retries, interval,
+            )
+            sleep(interval)
+            interval = min(interval * backoff_factor, max_interval)
+
+            if reissue_cmds:
+                actual_names = {item.get("name") for item in result if isinstance(item, dict)}
+                for name, cmd in reissue_cmds.items():
+                    should_reissue = (
+                        (reissue_on_missing and name not in actual_names)
+                        or (not reissue_on_missing and name in actual_names)
+                    )
+                    if should_reissue:
+                        _run(cmd)
+
+    assert len(result) == expected_count and names_ok, (
+        f"Expected {expected_count} items but got {len(result)} after {max_retries} retries"
+    )
+    return result

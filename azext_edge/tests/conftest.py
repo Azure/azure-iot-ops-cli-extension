@@ -5,11 +5,17 @@
 # ----------------------------------------------------------------------------------------------
 
 import os
+import random
 import sys
 from typing import NamedTuple
 
 import pytest
 import responses
+
+# Seed the global random module so that @pytest.mark.parametrize decorators
+# that call random functions (randint, choice, etc.) produce identical test IDs
+# across all pytest-xdist worker processes during collection.
+random.seed(42)
 
 
 class MarkerDefinition(NamedTuple):
@@ -29,6 +35,7 @@ MARKERS = [
     MarkerDefinition("init_scenario_test", "mark tests that will run az iot ops init", True),
     MarkerDefinition("require_wlif_setup", "mark tests that require workload identity trust setup", True),
     MarkerDefinition("long_running", "mark tests that take a long time to run", False),
+    MarkerDefinition("serial", "mark tests that must run serially (not parallelized by xdist)", False),
 ]
 
 
