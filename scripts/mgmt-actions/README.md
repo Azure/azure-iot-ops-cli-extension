@@ -62,11 +62,12 @@ Copy-Item .env.example.ps1 .env.ps1
 
 ## What the Script Does
 
-1. **(Optional)** Creates an Event Grid namespace with topic spaces enabled
-2. **(Optional)** Deploys the OPC PLC simulator pod on the cluster (OPC UA only)
-3. Creates a **device** with an inbound endpoint (protocol-specific)
-4. Creates an **asset** with a management group and action
-5. **Enables management actions** on the IoT Operations instance, which provisions:
+1. Discovers **instance metadata** (location, ADR namespace, extended location)
+2. **(Optional)** Creates an Event Grid namespace with topic spaces enabled
+3. **(Optional)** Deploys the OPC PLC simulator pod on the cluster (OPC UA only)
+4. Creates a **device** with an inbound endpoint (protocol-specific)
+5. Creates an **asset** with a management group and action
+6. **Enables management actions** on the IoT Operations instance, which provisions:
    - **Event Grid namespace**: topic space and permission bindings (pub/sub)
    - **Device Registry namespace**: managed identity and management endpoint entry
    - **IoT Operations instance**: EG dataflow endpoint, dataflow graph, and response dataflow
@@ -114,10 +115,7 @@ only the inbound endpoint command and management groups payload differ by protoc
 
 | Variable (bash) | Variable (PS) | Default | Description |
 |---|---|---|---|
-| `event_grid_resource_id` | `$eventGridResourceId` | *(empty)* | Full ARM resource ID of an existing EG namespace. If empty, the script creates one. |
-| `eg_namespace_name` | `$egNamespaceName` | `my-eg-namespace` | Name for the auto-created EG namespace |
-| `eg_resource_group` | `$egResourceGroup` | `my-resource-group` | Resource group for the auto-created EG namespace |
-| `eg_location` | `$egLocation` | `westus2` | Location for the auto-created EG namespace |
+| `eg_resource_id` | `$egResourceId` | *(empty)* | Full ARM resource ID of an existing EG namespace. If empty, auto-creates `${instance}-egns` in the instance's resource group and location. |
 
 ### Protocol Config
 

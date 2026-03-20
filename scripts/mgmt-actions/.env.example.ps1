@@ -4,13 +4,9 @@
 $instance       = "my-aio-instance"
 $resourceGroup  = "my-resource-group"
 
-# Paste a full ARM resource ID to use an existing EG namespace, or leave empty to create one.
-# $eventGridResourceId = "/subscriptions/.../resourceGroups/.../providers/Microsoft.EventGrid/namespaces/..."
-
-# EG creation settings (only used when $eventGridResourceId is empty):
-# $egNamespaceName = "my-eg-namespace"
-# $egResourceGroup = "my-resource-group"
-# $egLocation      = "westus2"
+# Paste a full ARM resource ID to use an existing EG namespace, or leave empty
+# to auto-create one (named "${instance}-egns" in the instance's RG and location).
+# $egResourceId = "/subscriptions/.../resourceGroups/.../providers/Microsoft.EventGrid/namespaces/..."
 
 # User-assigned managed identity (leave commented out to use system MI):
 # $userAssignedMI = "/subscriptions/.../resourceGroups/.../providers/Microsoft.ManagedIdentity/userAssignedIdentities/..."

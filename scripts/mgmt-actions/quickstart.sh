@@ -6,10 +6,11 @@
 # asset (with management group + action), and enables management actions.
 #
 # Steps:
-#   1. (Optional) Creates an Event Grid namespace
-#   2. (Optional) Deploys the OPC PLC simulator on the cluster
-#   3. Creates device (with endpoint) and asset (with mgmt group + action)
-#   4. Enables management actions on the IoT Operations instance
+#   1. Discovers instance metadata (location, ADR namespace, extended location)
+#   2. (Optional) Creates an Event Grid namespace
+#   3. (Optional) Deploys the OPC PLC simulator on the cluster
+#   4. Creates device (with endpoint) and asset (with mgmt group + action)
+#   5. Enables management actions on the IoT Operations instance
 #
 # Prerequisites:
 #   - An AIO instance must already exist
@@ -45,14 +46,10 @@ instance="${instance:-my-aio-instance}"
 resource_group="${resource_group:-my-resource-group}"
 
 # --- Event Grid namespace ---
-# If you already have an EG namespace, set event_grid_resource_id in .env.sh.
-# If left empty, the script will create one for you using the settings below.
-event_grid_resource_id="${event_grid_resource_id:-}"
-
-# Creation settings (only used when event_grid_resource_id is empty):
-eg_namespace_name="${eg_namespace_name:-my-eg-namespace}"
-eg_resource_group="${eg_resource_group:-my-resource-group}"
-eg_location="${eg_location:-westus2}"
+# If you already have an EG namespace, set eg_resource_id in .env.sh.
+# If left empty, the script auto-creates one in the instance's resource group
+# and location, named "${instance}-egns".
+eg_resource_id="${eg_resource_id:-}"
 
 # --- Insecure broker listener (debugging) ---
 # Set to "true" to add a no-auth listener on port 1883 for debugging.
@@ -105,24 +102,39 @@ adr_api_version="${adr_api_version:-2026-04-01}"
 # EXECUTION — No changes needed below this line
 # =============================================================================
 
+# ---------- Discover instance metadata ----------
+# Extract ADR namespace ID, location, and extended location from the instance.
+# Runs early so location is available for EG auto-creation and asset body.
+# Note: --query "[...]" with -o tsv outputs one element per line.
+echo ""
+echo ">> Discovering instance metadata..."
+instance_meta=$(az iot ops show -n "$instance" -g "$resource_group" \
+    --query "[properties.adrNamespaceRef.resourceId, location, extendedLocation.name]" -o tsv)
+{ read -r ns_id; read -r location; read -r ext_loc_name; } <<< "$instance_meta"
+
+echo "   Namespace:  $ns_id"
+echo "   Location:   $location"
+echo "   ExtLoc:     $ext_loc_name"
+
 # ---------- Event Grid namespace ----------
-if [ -z "$event_grid_resource_id" ]; then
+if [ -z "$eg_resource_id" ]; then
+    eg_name="${instance}-egns"
     az extension add --upgrade -n eventgrid -y
     echo ""
-    echo ">> Creating Event Grid namespace '$eg_namespace_name'..."
+    echo ">> Creating Event Grid namespace '$eg_name'..."
     az eventgrid namespace create \
-        -n "$eg_namespace_name" \
-        -g "$eg_resource_group" \
-        -l "$eg_location" \
+        -n "$eg_name" \
+        -g "$resource_group" \
+        -l "$location" \
         --topic-spaces-configuration '{"state":"Enabled","maximumClientSessionsPerAuthenticationName":8}' \
         --sku '{"name":"Standard","capacity":1}'
 
-    event_grid_resource_id=$(az eventgrid namespace show \
-        -n "$eg_namespace_name" \
-        -g "$eg_resource_group" \
+    eg_resource_id=$(az eventgrid namespace show \
+        -n "$eg_name" \
+        -g "$resource_group" \
         --query id -o tsv)
 
-    echo "   EG namespace: $event_grid_resource_id"
+    echo "   EG namespace: $eg_resource_id"
 fi
 
 # ---------- Insecure broker listener (debugging) ----------
@@ -192,20 +204,6 @@ else
     exit 1
 fi
 
-# ---------- Discover instance metadata ----------
-# Extract ADR namespace ID, location, and extended location from the instance.
-# These values are needed to construct the asset resource body.
-# Note: --query "[...]" with -o tsv outputs one element per line.
-echo ""
-echo ">> Discovering instance metadata for asset creation..."
-instance_meta=$(az iot ops show -n "$instance" -g "$resource_group" \
-    --query "[properties.adrNamespaceRef.resourceId, location, extendedLocation.name]" -o tsv)
-{ read -r ns_id; read -r location; read -r ext_loc_name; } <<< "$instance_meta"
-
-echo "   Namespace:  $ns_id"
-echo "   Location:   $location"
-echo "   ExtLoc:     $ext_loc_name"
-
 # ---------- Asset + management group + action ----------
 echo ""
 echo ">> Creating asset '$asset_name' with management group and action..."
@@ -267,7 +265,7 @@ echo ">> Enabling management actions on instance '$instance'..."
 enable_args=(
     "-i" "$instance"
     "-g" "$resource_group"
-    "--eg-resource-id" "$event_grid_resource_id"
+    "--eg-resource-id" "$eg_resource_id"
 )
 
 if [ -n "$registry_host" ]; then

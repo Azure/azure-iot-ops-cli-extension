@@ -6,10 +6,11 @@
 # asset (with management group + action), and enables management actions.
 #
 # Steps:
-#   1. (Optional) Creates an Event Grid namespace
-#   2. (Optional) Deploys the OPC PLC simulator on the cluster
-#   3. Creates device (with endpoint) and asset (with mgmt group + action)
-#   4. Enables management actions on the IoT Operations instance
+#   1. Discovers instance metadata (location, ADR namespace, extended location)
+#   2. (Optional) Creates an Event Grid namespace
+#   3. (Optional) Deploys the OPC PLC simulator on the cluster
+#   4. Creates device (with endpoint) and asset (with mgmt group + action)
+#   5. Enables management actions on the IoT Operations instance
 #
 # Prerequisites:
 #   - An AIO instance must already exist
@@ -44,14 +45,10 @@ $instance      = "my-aio-instance"
 $resourceGroup = "my-resource-group"
 
 # --- Event Grid namespace ---
-# If you already have an EG namespace, set $eventGridResourceId to its full resource ID.
-# If left empty, the script will create one for you using the settings below.
-$eventGridResourceId = ""
-
-# Creation settings (only used when $eventGridResourceId is empty):
-$egNamespaceName = "my-eg-namespace"
-$egResourceGroup = "my-resource-group"
-$egLocation      = "westus2"
+# If you already have an EG namespace, set $egResourceId to its full resource ID.
+# If left empty, the script auto-creates one in the instance's resource group
+# and location, named "${instance}-egns".
+$egResourceId = ""
 
 # --- Insecure broker listener (debugging) ---
 # Set to $true to add a no-auth listener on port 1883 for debugging.
@@ -127,28 +124,43 @@ function Write-TempJson {
 # EXECUTION — No changes needed below this line
 # =============================================================================
 
+# ---------- Discover instance metadata ----------
+# Extract ADR namespace ID, location, and extended location from the instance.
+# Runs early so location is available for EG auto-creation and asset body.
+Write-Host "`n>> Discovering instance metadata..."
+$meta = (az iot ops show -n $instance -g $resourceGroup `
+    --query "[properties.adrNamespaceRef.resourceId, location, extendedLocation.name]" -o tsv)
+$nsId       = $meta[0]
+$location   = $meta[1]
+$extLocName = $meta[2]
+
+Write-Host "   Namespace:  $nsId"
+Write-Host "   Location:   $location"
+Write-Host "   ExtLoc:     $extLocName"
+
 # ---------- Event Grid namespace ----------
-if (-not $eventGridResourceId) {
+if (-not $egResourceId) {
+    $egName = "${instance}-egns"
     az extension add --upgrade -n eventgrid -y
-    Write-Host "`n>> Creating Event Grid namespace '$egNamespaceName'..."
+    Write-Host "`n>> Creating Event Grid namespace '$egName'..."
     $topicSpacesFile = Write-TempJson '{"state":"Enabled","maximumClientSessionsPerAuthenticationName":8}'
     $skuFile = Write-TempJson '{"name":"Standard","capacity":1}'
 
     az eventgrid namespace create `
-        -n $egNamespaceName `
-        -g $egResourceGroup `
-        -l $egLocation `
+        -n $egName `
+        -g $resourceGroup `
+        -l $location `
         --topic-spaces-configuration "@$topicSpacesFile" `
         --sku "@$skuFile"
 
     Remove-Item $topicSpacesFile, $skuFile -ErrorAction SilentlyContinue
 
-    $eventGridResourceId = (az eventgrid namespace show `
-        -n $egNamespaceName `
-        -g $egResourceGroup `
+    $egResourceId = (az eventgrid namespace show `
+        -n $egName `
+        -g $resourceGroup `
         --query id -o tsv)
 
-    Write-Host "   EG namespace: $eventGridResourceId"
+    Write-Host "   EG namespace: $egResourceId"
 }
 
 # ---------- Insecure broker listener (debugging) ----------
@@ -213,20 +225,6 @@ switch ($protocol) {
     }
 }
 
-# ---------- Discover instance metadata ----------
-# Extract ADR namespace ID, location, and extended location from the instance.
-# These values are needed to construct the asset resource body.
-Write-Host "`n>> Discovering instance metadata for asset creation..."
-$meta = (az iot ops show -n $instance -g $resourceGroup `
-    --query "[properties.adrNamespaceRef.resourceId, location, extendedLocation.name]" -o tsv)
-$nsId       = $meta[0]
-$location   = $meta[1]
-$extLocName = $meta[2]
-
-Write-Host "   Namespace:  $nsId"
-Write-Host "   Location:   $location"
-Write-Host "   ExtLoc:     $extLocName"
-
 # ---------- Asset + management group + action ----------
 Write-Host "`n>> Creating asset '$assetName' with management group and action..."
 
@@ -289,7 +287,7 @@ Write-Host "`n>> Enabling management actions on instance '$instance'..."
 $enableArgs = @(
     "-i", $instance,
     "-g", $resourceGroup,
-    "--eg-resource-id", $eventGridResourceId
+    "--eg-resource-id", $egResourceId
 )
 
 if ($registryHost) {
