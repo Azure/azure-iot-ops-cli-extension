@@ -6,7 +6,7 @@
 # asset (with management group + action), and enables management actions.
 #
 # Steps:
-#   1. Discovers instance metadata (location, ADR namespace, extended location)
+#   1. Discovers instance and ADR namespace metadata (namespace ID, location, extended location)
 #   2. (Optional) Creates an Event Grid namespace
 #   3. (Optional) Deploys the OPC PLC simulator on the cluster
 #   4. Creates device (with endpoint) and asset (with mgmt group + action)
@@ -103,14 +103,17 @@ adr_api_version="${adr_api_version:-2026-04-01}"
 # =============================================================================
 
 # ---------- Discover instance metadata ----------
-# Extract ADR namespace ID, location, and extended location from the instance.
+# Extract ADR namespace ID and extended location from the instance.
+# Location is resolved from the ADR namespace (devices and assets must be co-located).
 # Runs early so location is available for EG auto-creation and asset body.
-# Note: --query "[...]" with -o tsv outputs one element per line.
 echo ""
 echo ">> Discovering instance metadata..."
 instance_meta=$(az iot ops show -n "$instance" -g "$resource_group" \
-    --query "[properties.adrNamespaceRef.resourceId, location, extendedLocation.name]" -o tsv)
-{ read -r ns_id; read -r location; read -r ext_loc_name; } <<< "$instance_meta"
+    --query "[properties.adrNamespaceRef.resourceId, extendedLocation.name]" -o tsv)
+{ read -r ns_id; read -r ext_loc_name; } <<< "$instance_meta"
+
+# ADR namespace location — devices and assets must be co-located
+location=$(az resource show --ids "$ns_id" --query location -o tsv)
 
 echo "   Namespace:  $ns_id"
 echo "   Location:   $location"

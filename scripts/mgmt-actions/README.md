@@ -62,7 +62,7 @@ Copy-Item .env.example.ps1 .env.ps1
 
 ## What the Script Does
 
-1. Discovers **instance metadata** (location, ADR namespace, extended location)
+1. Discovers **instance and ADR namespace metadata** (namespace ID, location, extended location)
 2. **(Optional)** Creates an Event Grid namespace with topic spaces enabled
 3. **(Optional)** Deploys the OPC PLC simulator pod on the cluster (OPC UA only)
 4. Creates a **device** with an inbound endpoint (protocol-specific)

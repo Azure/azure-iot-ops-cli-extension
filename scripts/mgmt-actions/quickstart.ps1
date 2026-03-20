@@ -6,7 +6,7 @@
 # asset (with management group + action), and enables management actions.
 #
 # Steps:
-#   1. Discovers instance metadata (location, ADR namespace, extended location)
+#   1. Discovers instance and ADR namespace metadata (namespace ID, location, extended location)
 #   2. (Optional) Creates an Event Grid namespace
 #   3. (Optional) Deploys the OPC PLC simulator on the cluster
 #   4. Creates device (with endpoint) and asset (with mgmt group + action)
@@ -125,14 +125,17 @@ function Write-TempJson {
 # =============================================================================
 
 # ---------- Discover instance metadata ----------
-# Extract ADR namespace ID, location, and extended location from the instance.
+# Extract ADR namespace ID and extended location from the instance.
+# Location is resolved from the ADR namespace (devices and assets must be co-located).
 # Runs early so location is available for EG auto-creation and asset body.
 Write-Host "`n>> Discovering instance metadata..."
 $meta = (az iot ops show -n $instance -g $resourceGroup `
-    --query "[properties.adrNamespaceRef.resourceId, location, extendedLocation.name]" -o tsv)
+    --query "[properties.adrNamespaceRef.resourceId, extendedLocation.name]" -o tsv)
 $nsId       = $meta[0]
-$location   = $meta[1]
-$extLocName = $meta[2]
+$extLocName = $meta[1]
+
+# ADR namespace location — devices and assets must be co-located
+$location = (az resource show --ids $nsId --query location -o tsv)
 
 Write-Host "   Namespace:  $nsId"
 Write-Host "   Location:   $location"
