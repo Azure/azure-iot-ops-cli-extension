@@ -294,6 +294,8 @@ echo "   az iot ops mgmt-actions show -i $instance -g $resource_group"
 echo ""
 echo "   # Disable management actions (teardown)"
 echo "   az iot ops mgmt-actions disable -i $instance -g $resource_group"
+echo ""
+echo "   Note: Role assignments may take up to a few minutes to propagate."
 
 # ---------- Done ----------
 elapsed=$SECONDS

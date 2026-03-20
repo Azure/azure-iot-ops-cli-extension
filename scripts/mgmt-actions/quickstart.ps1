@@ -315,6 +315,8 @@ Write-Host "   az iot ops mgmt-actions show -i $instance -g $resourceGroup"
 Write-Host ""
 Write-Host "   # Disable management actions (teardown)"
 Write-Host "   az iot ops mgmt-actions disable -i $instance -g $resourceGroup"
+Write-Host ""
+Write-Host "   Note: Role assignments may take up to a few minutes to propagate."
 
 # ---------- Done ----------
 $sw.Stop()
