@@ -122,6 +122,13 @@ def test_init_scenario(init_test_setup: dict, tracked_files: list):
 
     if init_test_setup["redeployment"]:
         run(f"az iot ops delete --name {instance_name} -g {resource_group} -y --no-progress --force")
+
+        # Verify instance was actually removed before redeploying
+        run(
+            f"az iot ops show -n {instance_name} -g {resource_group}",
+            expect_failure=True,
+        )
+
         run(create_command)
 
     # Missing:
