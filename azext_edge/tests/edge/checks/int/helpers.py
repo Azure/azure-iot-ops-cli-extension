@@ -71,7 +71,19 @@ def assert_eval_core_service_runtime(
         else:
             assert not runtime_resource[namespace]["conditions"]
 
-        results = list(set(pod["name"].replace("pod/", "") for pod in evals))
+        # Separate pod evaluations (have "name") from status-only evaluations (no "name")
+        pod_evals = [e for e in evals if "name" in e]
+        status_only_evals = [e for e in evals if "name" not in e]
+
+        if not pod_evals:
+            # No pods matched - fail with a clear message instead of KeyError
+            no_pod_msg = status_only_evals[0].get("value", "unknown") if status_only_evals else "no evaluations"
+            raise AssertionError(
+                f"No {description_name} pods found matching resource_match='{resource_match}'. "
+                f"CLI reported: {no_pod_msg}"
+            )
+
+        results = list(set(pod["name"].replace("pod/", "") for pod in pod_evals))
         assert_extra_or_missing_names(
             resource_type="pods",
             result_names=results,
