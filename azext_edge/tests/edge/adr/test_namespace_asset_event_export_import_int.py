@@ -59,21 +59,19 @@ def test_namespace_asset_event_group_export_import(
                 tracked_resources=tracked_resources,
             )
 
-        base_cmd = (
-            f"az iot ops ns asset {asset_type} event-group"
-            f" --asset {asset_name} --instance {instance_name} -g {resource_group}"
-        )
+        cmd_prefix = f"az iot ops ns asset {asset_type} event-group"
+        cmd_args = f"--asset {asset_name} --instance {instance_name} -g {resource_group}"
 
         with log.step(3, "Add Event Groups"):
             for name in eg_names:
                 log.run_command(
-                    f"{base_cmd} add --name {name} --data-source events/source/{name}"
+                    f"{cmd_prefix} add {cmd_args} --name {name} --data-source events/source/{name}"
                 )
-            result = log.run_command(f"{base_cmd} list")
+            result = log.run_command(f"{cmd_prefix} list {cmd_args}")
             log.check("2 event-groups added", len(result) == 2, actual=len(result))
 
         with log.step(4, "Export Event Groups (JSON)"):
-            export_result = log.run_command(f"{base_cmd} export -f json --output-dir {output_dir}")
+            export_result = log.run_command(f"{cmd_prefix} export {cmd_args} -f json --output-dir {output_dir}")
             exported_file = validate_export_result(
                 log, export_result, "event_group_count", 2, "json", tracked_files,
             )
@@ -84,24 +82,24 @@ def test_namespace_asset_event_group_export_import(
                 )
 
         with log.step(5, "Remove Event Group & Verify"):
-            log.run_command(f"{base_cmd} remove --name {eg_name_1}")
-            result = log.run_command(f"{base_cmd} list")
+            log.run_command(f"{cmd_prefix} remove {cmd_args} --name {eg_name_1}")
+            result = log.run_command(f"{cmd_prefix} list {cmd_args}")
             log.check("1 event-group remains", len(result) == 1, actual=len(result))
 
         with log.step(6, "Import Event Groups"):
-            imported = log.run_command(f"{base_cmd} import --input-file {exported_file}")
+            imported = log.run_command(f"{cmd_prefix} import {cmd_args} --input-file {exported_file}")
             verify_items_by_name(
                 log, imported, eg_names, field_name="dataSource",
                 field_values=field_values, label="imported",
             )
 
         with log.step(7, "Verify Final State"):
-            final = log.run_command(f"{base_cmd} list")
+            final = log.run_command(f"{cmd_prefix} list {cmd_args}")
             log.check("final count == 2", len(final) == 2, actual=len(final))
 
         with log.step(8, "Export Event Groups (YAML)"):
             yaml_result = log.run_command(
-                f"{base_cmd} export -f yaml --replace --output-dir {output_dir}"
+                f"{cmd_prefix} export {cmd_args} -f yaml --replace --output-dir {output_dir}"
             )
             validate_export_result(log, yaml_result, "event_group_count", 2, "yaml", tracked_files)
 
@@ -150,18 +148,18 @@ def test_namespace_asset_event_export_import(
                 f"--data-source events/group1"
             )
 
-        base_cmd = (
-            f"az iot ops ns asset {asset_type} event"
-            f" --asset {asset_name} --instance {instance_name} -g {resource_group}"
+        cmd_prefix = f"az iot ops ns asset {asset_type} event"
+        cmd_args = (
+            f"--asset {asset_name} --instance {instance_name} -g {resource_group}"
             f" --event-group {event_group_name}"
         )
 
         with log.step(3, "Add Events"):
-            add_tpl = f"{base_cmd} add --name {{name}} --data-source events/{{name}}"
+            add_tpl = f"{cmd_prefix} add {cmd_args} --name {{name}} --data-source events/{{name}}"
             for name in ev_names:
                 log.run_command(add_tpl.format(name=name))
             wait_for_expected_count(
-                list_cmd=f"{base_cmd} list",
+                list_cmd=f"{cmd_prefix} list {cmd_args}",
                 expected_count=2, expected_names=ev_names,
                 reissue_cmds={n: add_tpl.format(name=n) for n in ev_names},
                 run_fn=log.run_command,
@@ -169,7 +167,7 @@ def test_namespace_asset_event_export_import(
 
         with log.step(4, f"Export Events ({export_format})"):
             export_result = log.run_command(
-                f"{base_cmd} export -f {export_format} --output-dir {output_dir}"
+                f"{cmd_prefix} export {cmd_args} -f {export_format} --output-dir {output_dir}"
             )
             exported_file = validate_export_result(
                 log, export_result, "event_count", 2, export_format, tracked_files,
@@ -187,30 +185,30 @@ def test_namespace_asset_event_export_import(
                               actual=ev_dict[name].get("dataSource"))
 
         with log.step(5, "Remove All Events"):
-            rm_tpl = f"{base_cmd} remove --name {{name}}"
+            rm_tpl = f"{cmd_prefix} remove {cmd_args} --name {{name}}"
             for name in ev_names:
                 log.run_command(rm_tpl.format(name=name))
             wait_for_expected_count(
-                list_cmd=f"{base_cmd} list",
+                list_cmd=f"{cmd_prefix} list {cmd_args}",
                 expected_count=0, expected_names=ev_names,
                 reissue_cmds={n: rm_tpl.format(name=n) for n in ev_names},
                 reissue_on_missing=False, run_fn=log.run_command,
             )
 
         with log.step(6, "Import Events"):
-            imported = log.run_command(f"{base_cmd} import --input-file {exported_file}")
+            imported = log.run_command(f"{cmd_prefix} import {cmd_args} --input-file {exported_file}")
             verify_items_by_name(
                 log, imported, ev_names, field_name="dataSource",
                 field_values=field_values, label="imported",
             )
 
         with log.step(7, "Verify Final State"):
-            final = log.run_command(f"{base_cmd} list")
+            final = log.run_command(f"{cmd_prefix} list {cmd_args}")
             log.check("final count == 2", len(final) == 2, actual=len(final))
 
         if export_format == "json":
             do_replace_import_test(
                 log, 8, 9, exported_file, tracked_files,
-                import_cmd_base=f"{base_cmd} import",
+                import_cmd_base=f"{cmd_prefix} import {cmd_args}",
                 field_name="dataSource", item_names=ev_names,
             )

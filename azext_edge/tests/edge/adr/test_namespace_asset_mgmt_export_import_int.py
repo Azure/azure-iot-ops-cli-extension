@@ -57,21 +57,19 @@ def test_namespace_asset_mgmt_group_export_import(
                 tracked_resources=tracked_resources,
             )
 
-        base_cmd = (
-            f"az iot ops ns asset {asset_type} mgmt-group"
-            f" --asset {asset_name} --instance {instance_name} -g {resource_group}"
-        )
+        cmd_prefix = f"az iot ops ns asset {asset_type} mgmt-group"
+        cmd_args = f"--asset {asset_name} --instance {instance_name} -g {resource_group}"
 
         with log.step(3, "Add Management Groups"):
             for name in mg_names:
                 log.run_command(
-                    f"{base_cmd} add --name {name} --target-uri mgmt/{name}"
+                    f"{cmd_prefix} add {cmd_args} --name {name} --target-uri mgmt/{name}"
                 )
-            result = log.run_command(f"{base_cmd} list")
+            result = log.run_command(f"{cmd_prefix} list {cmd_args}")
             log.check("2 mgmt-groups added", len(result) == 2, actual=len(result))
 
         with log.step(4, "Export Management Groups (JSON)"):
-            export_result = log.run_command(f"{base_cmd} export -f json --output-dir {output_dir}")
+            export_result = log.run_command(f"{cmd_prefix} export {cmd_args} -f json --output-dir {output_dir}")
             exported_file = validate_export_result(
                 log, export_result, "management_group_count", 2, "json", tracked_files,
             )
@@ -86,19 +84,19 @@ def test_namespace_asset_mgmt_group_export_import(
                           "actions" not in item_dict[name] or not item_dict[name]["actions"])
 
         with log.step(5, "Remove Management Group & Verify"):
-            log.run_command(f"{base_cmd} remove --name {mg_name_1}")
-            result = log.run_command(f"{base_cmd} list")
+            log.run_command(f"{cmd_prefix} remove {cmd_args} --name {mg_name_1}")
+            result = log.run_command(f"{cmd_prefix} list {cmd_args}")
             log.check("1 mgmt-group remains", len(result) == 1, actual=len(result))
 
         with log.step(6, "Import Management Groups"):
-            imported = log.run_command(f"{base_cmd} import --input-file {exported_file}")
+            imported = log.run_command(f"{cmd_prefix} import {cmd_args} --input-file {exported_file}")
             verify_items_by_name(
                 log, imported, mg_names, field_name="targetUri",
                 field_values=field_values, label="imported",
             )
 
         with log.step(7, "Verify Final State"):
-            final = log.run_command(f"{base_cmd} list")
+            final = log.run_command(f"{cmd_prefix} list {cmd_args}")
             log.check("final count == 2", len(final) == 2, actual=len(final))
 
 
@@ -146,18 +144,18 @@ def test_namespace_asset_mgmt_action_export_import(
                 f"--target-uri mgmt/group1"
             )
 
-        base_cmd = (
-            f"az iot ops ns asset {asset_type} mgmt-action"
-            f" --asset {asset_name} --instance {instance_name} -g {resource_group}"
+        cmd_prefix = f"az iot ops ns asset {asset_type} mgmt-action"
+        cmd_args = (
+            f"--asset {asset_name} --instance {instance_name} -g {resource_group}"
             f" --group {mgmt_group_name}"
         )
 
         with log.step(3, "Add Management Actions"):
-            add_tpl = f"{base_cmd} add --name {{name}} --target-uri mgmt/{{name}}"
+            add_tpl = f"{cmd_prefix} add {cmd_args} --name {{name}} --target-uri mgmt/{{name}}"
             for name in act_names:
                 log.run_command(add_tpl.format(name=name))
             wait_for_expected_count(
-                list_cmd=f"{base_cmd} list",
+                list_cmd=f"{cmd_prefix} list {cmd_args}",
                 expected_count=2, expected_names=act_names,
                 reissue_cmds={n: add_tpl.format(name=n) for n in act_names},
                 run_fn=log.run_command,
@@ -165,7 +163,7 @@ def test_namespace_asset_mgmt_action_export_import(
 
         with log.step(4, f"Export Management Actions ({export_format})"):
             export_result = log.run_command(
-                f"{base_cmd} export -f {export_format} --output-dir {output_dir}"
+                f"{cmd_prefix} export {cmd_args} -f {export_format} --output-dir {output_dir}"
             )
             exported_file = validate_export_result(
                 log, export_result, "action_count", 2, export_format, tracked_files,
@@ -178,30 +176,30 @@ def test_namespace_asset_mgmt_action_export_import(
                     )
 
         with log.step(5, "Remove All Actions"):
-            rm_tpl = f"{base_cmd} remove --name {{name}}"
+            rm_tpl = f"{cmd_prefix} remove {cmd_args} --name {{name}}"
             for name in act_names:
                 log.run_command(rm_tpl.format(name=name))
             wait_for_expected_count(
-                list_cmd=f"{base_cmd} list",
+                list_cmd=f"{cmd_prefix} list {cmd_args}",
                 expected_count=0, expected_names=act_names,
                 reissue_cmds={n: rm_tpl.format(name=n) for n in act_names},
                 reissue_on_missing=False, run_fn=log.run_command,
             )
 
         with log.step(6, "Import Management Actions"):
-            imported = log.run_command(f"{base_cmd} import --input-file {exported_file}")
+            imported = log.run_command(f"{cmd_prefix} import {cmd_args} --input-file {exported_file}")
             verify_items_by_name(
                 log, imported, act_names, field_name="targetUri",
                 field_values=field_values, label="imported",
             )
 
         with log.step(7, "Verify Final State"):
-            final = log.run_command(f"{base_cmd} list")
+            final = log.run_command(f"{cmd_prefix} list {cmd_args}")
             log.check("final count == 2", len(final) == 2, actual=len(final))
 
         if export_format == "json":
             do_replace_import_test(
                 log, 8, 9, exported_file, tracked_files,
-                import_cmd_base=f"{base_cmd} import",
+                import_cmd_base=f"{cmd_prefix} import {cmd_args}",
                 field_name="targetUri", item_names=act_names,
             )

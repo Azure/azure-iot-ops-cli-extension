@@ -54,19 +54,17 @@ def test_namespace_asset_stream_export_import(
                 tracked_resources=tracked_resources,
             )
 
-        base_cmd = (
-            f"az iot ops ns asset {asset_type} stream"
-            f" --asset {asset_name} --instance {instance_name} -g {resource_group}"
-        )
+        cmd_prefix = f"az iot ops ns asset {asset_type} stream"
+        cmd_args = f"--asset {asset_name} --instance {instance_name} -g {resource_group}"
 
         with log.step(3, "Add Streams"):
             for name in stream_names:
-                log.run_command(f"{base_cmd} add --name {name}")
-            result = log.run_command(f"{base_cmd} list")
+                log.run_command(f"{cmd_prefix} add {cmd_args} --name {name}")
+            result = log.run_command(f"{cmd_prefix} list {cmd_args}")
             log.check("2 streams added", len(result) == 2, actual=len(result))
 
         with log.step(4, "Export Streams (JSON)"):
-            export_result = log.run_command(f"{base_cmd} export -f json --output-dir {output_dir}")
+            export_result = log.run_command(f"{cmd_prefix} export {cmd_args} -f json --output-dir {output_dir}")
             exported_file = validate_export_result(
                 log, export_result, "stream_count", 2, "json", tracked_files,
             )
@@ -79,14 +77,14 @@ def test_namespace_asset_stream_export_import(
                           "destinations" not in item_dict[name] or not item_dict[name]["destinations"])
 
         with log.step(5, "Remove Stream & Verify"):
-            log.run_command(f"{base_cmd} remove --name {stream_name_1}")
-            result = log.run_command(f"{base_cmd} list")
+            log.run_command(f"{cmd_prefix} remove {cmd_args} --name {stream_name_1}")
+            result = log.run_command(f"{cmd_prefix} list {cmd_args}")
             log.check("1 stream remains", len(result) == 1, actual=len(result))
 
         with log.step(6, "Import & Verify"):
-            imported = log.run_command(f"{base_cmd} import --input-file {exported_file}")
+            imported = log.run_command(f"{cmd_prefix} import {cmd_args} --input-file {exported_file}")
             imported_dict = {s["name"]: s for s in imported}
             for name in stream_names:
                 log.check(f"stream {name} imported", name in imported_dict)
-            final = log.run_command(f"{base_cmd} list")
+            final = log.run_command(f"{cmd_prefix} list {cmd_args}")
             log.check("final count == 2", len(final) == 2, actual=len(final))
