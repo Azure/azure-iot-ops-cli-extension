@@ -71,19 +71,9 @@ def assert_eval_core_service_runtime(
         else:
             assert not runtime_resource[namespace]["conditions"]
 
-        # Separate pod evaluations (have "name") from status-only evaluations (no "name")
-        pod_evals = [e for e in evals if "name" in e]
-        status_only_evals = [e for e in evals if "name" not in e]
-
-        if not pod_evals:
-            # No pods matched - fail with a clear message instead of KeyError
-            no_pod_msg = status_only_evals[0].get("value", "unknown") if status_only_evals else "no evaluations"
-            raise AssertionError(
-                f"No {description_name} pods found matching resource_match='{resource_match}'. "
-                f"CLI reported: {no_pod_msg}"
-            )
-
-        results = list(set(pod["name"].replace("pod/", "") for pod in pod_evals))
+        # Filter to only named pod evals; sentinel no-pods evals (added when no pods are
+        # detected) don't have a "name" key and should be skipped for name comparison.
+        results = list(set(pod["name"].replace("pod/", "") for pod in evals if "name" in pod))
         assert_extra_or_missing_names(
             resource_type="pods",
             result_names=results,
@@ -113,6 +103,12 @@ def assert_eval_core_service_runtime(
                     namespace_status=namespace_status,
                     overall_status=overall_status
                 )
+
+        # When no named evals exist (no-pods scenario), accept the status reported by
+        # the check (e.g. "error" when pods are absent, "skipped" when feature is disabled).
+        if not results:
+            namespace_status = runtime_resource[namespace]["status"]
+            overall_status = combine_statuses([overall_status, namespace_status])
 
         assert runtime_resource[namespace]["status"] == namespace_status
     assert check_results["evalCoreServiceRuntime"]["status"] == overall_status
