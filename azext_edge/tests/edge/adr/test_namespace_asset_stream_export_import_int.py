@@ -21,7 +21,7 @@ pytestmark = [pytest.mark.rpsaas, pytest.mark.long_running]
 
 @pytest.mark.parametrize("asset_type, endpoint_type, endpoint_address", [
     ("custom", "custom", "http://192.168.1.100:8000/custom/service"),
-    ("opcua", "opcua", "opc.tcp://opcuaserver.local:4840"),
+    ("media", "media", "rtsp://mediaserver.local:554/stream"),
 ])
 def test_namespace_asset_stream_export_import(
     require_namespace_init_session, tracked_resources: List[str], tracked_files: List[str], tmp_path,

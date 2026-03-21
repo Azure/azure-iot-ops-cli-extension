@@ -63,7 +63,7 @@ def test_namespace_asset_mgmt_group_export_import(
         with log.step(3, "Add Management Groups"):
             for name in mg_names:
                 log.run_command(
-                    f"{cmd_prefix} add {cmd_args} --name {name} --target-uri mgmt/{name}"
+                    f"{cmd_prefix} add {cmd_args} --name {name} --data-source mgmt/{name}"
                 )
             result = log.run_command(f"{cmd_prefix} list {cmd_args}")
             log.check("2 mgmt-groups added", len(result) == 2, actual=len(result))
@@ -76,7 +76,7 @@ def test_namespace_asset_mgmt_group_export_import(
             with open(exported_file, 'r', encoding='utf-8') as f:
                 items = json.load(f)
             item_dict = verify_items_by_name(
-                log, items, mg_names, field_name="targetUri",
+                log, items, mg_names, field_name="dataSource",
                 field_values=field_values, label="exported",
             )
             for name in mg_names:
@@ -91,7 +91,7 @@ def test_namespace_asset_mgmt_group_export_import(
         with log.step(6, "Import Management Groups"):
             imported = log.run_command(f"{cmd_prefix} import {cmd_args} --input-file {exported_file}")
             verify_items_by_name(
-                log, imported, mg_names, field_name="targetUri",
+                log, imported, mg_names, field_name="dataSource",
                 field_values=field_values, label="imported",
             )
 
@@ -141,7 +141,7 @@ def test_namespace_asset_mgmt_action_export_import(
             log.run_command(
                 f"az iot ops ns asset {asset_type} mgmt-group add --asset {asset_name} "
                 f"--instance {instance_name} -g {resource_group} --name {mgmt_group_name} "
-                f"--target-uri mgmt/group1"
+                f"--data-source mgmt/group1"
             )
 
         cmd_prefix = f"az iot ops ns asset {asset_type} mgmt-action"
