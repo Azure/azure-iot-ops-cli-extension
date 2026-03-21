@@ -6,13 +6,14 @@
 
 import csv
 import json
+import os
 
 import yaml
 
 from ...generators import generate_random_string
 
 
-def _parse_exported_file(file_path: str, export_format: str) -> list:
+def parse_exported_file(file_path: str, export_format: str) -> list:
     """Parse an exported file and return the list of items as dicts."""
     with open(file_path, 'r', encoding='utf-8') as f:
         if export_format == "json":
@@ -26,8 +27,8 @@ def _parse_exported_file(file_path: str, export_format: str) -> list:
     return []
 
 
-def _validate_exported_items(log, items: list, expected_names: list, export_format: str,
-                             item_label: str = "item"):
+def validate_exported_items(log, items: list, expected_names: list, export_format: str,
+                            item_label: str = "item"):
     """Validate exported items have required fields and no incomplete destinations."""
     log.check(f"exported {len(expected_names)} {item_label}s",
               len(items) == len(expected_names), actual=len(items))
@@ -55,7 +56,7 @@ def _validate_exported_items(log, items: list, expected_names: list, export_form
                         )
 
 
-def _ensure_device_and_endpoint(
+def ensure_device_and_endpoint(
     log, instance_name, resource_group, asset_type, endpoint_type,
     endpoint_address, shared_device, endpoint_cache,
 ):
@@ -82,7 +83,7 @@ def _ensure_device_and_endpoint(
     return shared_device, endpoint_name
 
 
-def _ensure_asset_for_format_tests(
+def ensure_asset_for_format_tests(
     log, instance_name, resource_group, asset_type, device_name,
     endpoint_name, tracked_resources, test_category, format_test_asset_cache,
 ):
@@ -102,3 +103,73 @@ def _ensure_asset_for_format_tests(
 
     format_test_asset_cache[cache_key] = asset_name
     return asset_name
+
+
+def validate_export_result(log, export_result, count_key, expected_count, export_format, tracked_files):
+    """Validate an export command result and return the exported file path.
+
+    Checks file_path, count key, file extension, and file existence.
+    """
+    log.check("'file_path' in result", "file_path" in export_result)
+    log.check(f"'{count_key}' in result", count_key in export_result)
+    log.check(f"{count_key} == {expected_count}", export_result[count_key] == expected_count,
+              actual=export_result.get(count_key))
+    log.check(f"file is .{export_format}", f".{export_format}" in export_result["file_path"])
+
+    exported_file = export_result["file_path"]
+    tracked_files.append(exported_file)
+    log.check("exported file exists", os.path.exists(exported_file))
+    return exported_file
+
+
+def verify_items_by_name(log, items, expected_names, field_name=None, field_values=None, label=""):
+    """Verify a list of items matches expected names and optionally check a field value per item.
+
+    ``field_values`` is a dict mapping name → expected value (e.g. dataSource paths).
+    """
+    prefix = f"{label} " if label else ""
+    log.check(f"{prefix}{len(expected_names)} items", len(items) == len(expected_names),
+              actual=len(items))
+    item_dict = {item["name"]: item for item in items}
+    for name in expected_names:
+        log.check(f"{name} present", name in item_dict)
+    if field_name and field_values:
+        for name in expected_names:
+            expected = field_values[name]
+            log.check(f"{name} {field_name}",
+                      item_dict[name].get(field_name) == expected,
+                      actual=item_dict[name].get(field_name))
+    return item_dict
+
+
+def do_replace_import_test(
+    log, step_prepare, step_import, exported_file, tracked_files,
+    import_cmd_base, field_name, item_names,
+):
+    """Run the JSON --replace import test pattern (Steps 8-9 of sub-item tests).
+
+    Modifies the first item's field, imports with --replace, and verifies only
+    the first item changed while others remain unchanged.
+    """
+    with log.step(step_prepare, "Prepare Modified File"):
+        with open(exported_file, 'r', encoding='utf-8') as f:
+            items = json.load(f)
+
+        modified_items = [items[0]]
+        modified_items[0][field_name] = modified_items[0][field_name] + "_modified"
+
+        modified_file = exported_file.replace(".json", "_modified.json")
+        tracked_files.append(modified_file)
+        with open(modified_file, 'w', encoding='utf-8') as f:
+            json.dump(modified_items, f)
+        log.detail(f"modified 1 item: {item_names[0]}")
+
+    with log.step(step_import, "Import with --replace"):
+        replaced = log.run_command(f"{import_cmd_base} --input-file {modified_file} --replace")
+
+        log.check(f"still {len(item_names)} items", len(replaced) == len(item_names),
+                  actual=len(replaced))
+        item_dict = {item["name"]: item for item in replaced}
+        log.check(f"{item_names[0]} modified", "_modified" in item_dict[item_names[0]][field_name])
+        for name in item_names[1:]:
+            log.check(f"{name} unchanged", "_modified" not in item_dict[name][field_name])
