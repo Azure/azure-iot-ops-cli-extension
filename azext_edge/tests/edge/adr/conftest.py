@@ -41,11 +41,23 @@ def require_namespace_init_module(require_init_module):
     yield require_init_module
 
 
-@pytest.fixture(scope="module")
-def shared_device(require_namespace_init_module, tracked_resources):
-    """Single shared device for all tests in this module."""
-    instance_name = require_namespace_init_module["instanceName"]
-    resource_group = require_namespace_init_module["resourceGroup"]
+@pytest.fixture(scope="session")
+def require_namespace_init_session(require_init_session):
+    """Session-scoped version of require_namespace_init for shared fixtures."""
+    if not require_init_session.get("adrNamespaceRef"):
+        pytest.skip(
+            "Instance does not have an ADR namespace reference (adrNamespaceRef). "
+            "Create one and link it to the instance before running namespace tests. "
+            "See: az iot ops ns create / az iot ops update"
+        )
+    yield require_init_session
+
+
+@pytest.fixture(scope="session")
+def shared_device(require_namespace_init_session, tracked_resources):
+    """Single shared device for the entire test session."""
+    instance_name = require_namespace_init_session["instanceName"]
+    resource_group = require_namespace_init_session["resourceGroup"]
     device_name = f"dev-{generate_random_string(8, force_lower=True)}"
     result = run(
         f"az iot ops ns device create --name {device_name} "
@@ -56,9 +68,9 @@ def shared_device(require_namespace_init_module, tracked_resources):
     yield device_name
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="session")
 def endpoint_cache():
-    """Module-scoped cache for endpoint names keyed by (type, address)."""
+    """Session-scoped cache for endpoint names keyed by (type, address)."""
     yield {}
 
 
