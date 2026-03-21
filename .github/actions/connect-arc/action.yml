@@ -48,18 +48,35 @@ runs:
         cluster-name: "${{ inputs.cluster-name }}"
         resource-group: "${{ inputs.resource-group }}"
         custom-locations-oid: ${{ inputs.custom-locations-oid && format('--custom-locations-oid {0}', inputs.custom-locations-oid) || '' }}
-      run: >-
-        az connectedk8s connect
-        -n ${{ env.cluster-name }}
-        -g ${{ env.resource-group }}
-        ${{ env.custom-locations-oid }}
-        ${{ env.ARC_CLUSTER_CONFIG && format('--kube-config {0}', env.ARC_CLUSTER_CONFIG) || '' }}
+      run: |
+        max_retries=3
+        retry_delay=60
 
-        az connectedk8s enable-features --features custom-locations cluster-connect
-        -n ${{ env.cluster-name }}
-        -g ${{ env.resource-group }}
-        ${{ env.custom-locations-oid }}
-        ${{ env.ARC_CLUSTER_CONFIG && format('--kube-config {0}', env.ARC_CLUSTER_CONFIG) || '' }}
+        for attempt in $(seq 1 $max_retries); do
+          echo "Attempt $attempt of $max_retries: Connecting cluster to ARC..."
+          if az connectedk8s connect \
+            -n ${{ env.cluster-name }} \
+            -g ${{ env.resource-group }} \
+            ${{ env.custom-locations-oid }} \
+            ${{ env.ARC_CLUSTER_CONFIG && format('--kube-config {0}', env.ARC_CLUSTER_CONFIG) || '' }}; then
+            echo "Successfully connected cluster to ARC."
+            break
+          fi
+
+          if [ $attempt -eq $max_retries ]; then
+            echo "Failed to connect cluster to ARC after $max_retries attempts."
+            exit 1
+          fi
+
+          echo "Connection attempt failed. Retrying in ${retry_delay}s..."
+          sleep $retry_delay
+        done
+
+        az connectedk8s enable-features --features custom-locations cluster-connect \
+          -n ${{ env.cluster-name }} \
+          -g ${{ env.resource-group }} \
+          ${{ env.custom-locations-oid }} \
+          ${{ env.ARC_CLUSTER_CONFIG && format('--kube-config {0}', env.ARC_CLUSTER_CONFIG) || '' }}
       shell: bash
     - name: "Update cluster to enable workload identity"
       if: inputs.enable-workload-identity
@@ -109,7 +126,22 @@ runs:
 
         sudo k3s server --cluster-init --kube-apiserver-arg service-account-issuer=$account_issuer --kube-apiserver-arg service-account-max-token-expiration=24h &
 
-        sleep 15s
+        # wait for API server to accept connections after restart
+        echo "Waiting for k3s API server after restart..."
+        retry_count=0
+        max_retries=30
+        sleep_interval=10
+        until sudo k3s kubectl get nodes &>/dev/null; do
+          retry_count=$((retry_count + 1))
+          if [ $retry_count -ge $max_retries ]; then
+            echo "k3s API server did not become reachable after $((max_retries * sleep_interval))s."
+            exit 1
+          fi
+          echo "Waiting for API server (attempt $retry_count/$max_retries)..."
+          sleep $sleep_interval
+        done
+        sudo k3s kubectl wait --for=condition=Ready node --all --timeout=300s
+        echo "k3s cluster is ready after restart."
       shell: bash
     - name: "Check OpenID Configuration"
       if: inputs.enable-workload-identity
