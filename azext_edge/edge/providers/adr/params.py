@@ -2022,6 +2022,6 @@ def load_adr_arguments(self, _):
     _register_export_import_args(["custom", "media"], "stream", json_yaml_only=True)
     _register_export_import_args(["custom", "opcua", "onvif"], "mgmt-group", json_yaml_only=True)
     _register_export_import_args(
-        ["custom", "opcua"], "mgmt-action", supports_csv=True,
+        ["custom", "opcua", "onvif"], "mgmt-action", supports_csv=True,
         extra_args={"group_name": {"options_list": ["--group"], "help": "Management group name."}},
     )
