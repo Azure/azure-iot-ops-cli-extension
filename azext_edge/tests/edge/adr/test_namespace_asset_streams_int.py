@@ -188,10 +188,12 @@ def test_namespace_media_asset_stream_lifecycle_operations(asset_factory):
         # Build the command based on stream type
         command = (
             f"az iot ops ns asset media stream add --asset {asset_name} --instance {instance_name} "
-            f"-g {resource_group} --name {test_case['name']} --task-type {test_case['task_type']}"
+            f"-g {resource_group}"
         )
         for param, value in test_case.items():
-            command += f" {param_map.get(param, '')} {value}"
+            cli_flag = param_map.get(param)
+            if cli_flag:
+                command += f" {cli_flag} {value}"
 
         stream_result = run(command)
 
