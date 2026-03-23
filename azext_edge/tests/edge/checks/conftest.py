@@ -59,11 +59,18 @@ def mock_evaluate_opcua_pod_health(mocker):
 
 @pytest.fixture
 def mock_generate_deviceregistry_asset_target_resources(mocker):
+    def _side_effect(api_info, resource_kind):
+        return api_info.group
+
     patched = mocker.patch(
         "azext_edge.edge.providers.check.deviceregistry.generate_target_resource_name",
-        return_value="deviceregistry.microsoft.com",
+        side_effect=_side_effect,
     )
     yield patched
+
+
+# alias so tests can use the more specific name, both patch the same function with the same logic
+mock_generate_deviceregistry_device_target_resources = mock_generate_deviceregistry_asset_target_resources
 
 
 @pytest.fixture
@@ -95,6 +102,7 @@ def mock_resource_types(mocker, ops_service):
         "deviceregistry": {
             "Asset": [{}],
             "AssetEndpointProfile": [{}],
+            "Device": [{}],
         },
         "dataflow": {
             "Dataflow": [{}],
