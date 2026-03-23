@@ -103,7 +103,6 @@ def test_namespace_asset_mgmt_group_export_import(
 @pytest.mark.parametrize("asset_type, endpoint_type, endpoint_address", [
     ("custom", "custom", "http://192.168.1.100:8000/custom/service"),
     ("opcua", "opcua", "opc.tcp://opcuaserver.local:4840"),
-    ("onvif", "onvif", "http://192.168.1.200:8080/onvif"),
 ])
 @pytest.mark.parametrize("export_format", ["json", "yaml"])
 def test_namespace_asset_mgmt_action_export_import(
@@ -111,7 +110,7 @@ def test_namespace_asset_mgmt_action_export_import(
     shared_device: str, endpoint_cache: dict, format_test_asset_cache: dict,
     asset_type: str, endpoint_type: str, endpoint_address: str, export_format: str
 ):
-    """Test management-action export and import for custom, opcua, and onvif assets."""
+    """Test management-action export and import for custom and opcua assets."""
     instance_name = require_namespace_init_session["instanceName"]
     resource_group = require_namespace_init_session["resourceGroup"]
     output_dir = str(tmp_path)

@@ -23,7 +23,6 @@ from azext_edge.edge.commands_namespaces import (
     update_namespace_onvif_asset_management_group,
     add_namespace_custom_asset_management_group_action,
     add_namespace_opcua_asset_management_group_action,
-    add_namespace_onvif_asset_management_group_action,
     list_namespace_asset_management_group_actions,
     remove_namespace_asset_management_group_action
 )
@@ -887,12 +886,6 @@ def test_update_namespace_asset_management_group(
         add_namespace_opcua_asset_management_group_action,
         {}
     ),
-    # ONVIF asset management group action
-    (
-        "onvif",
-        add_namespace_onvif_asset_management_group_action,
-        {}
-    )
 ])
 @pytest.mark.parametrize("has_actions, replace", [
     (False, False),  # No previous actions, no replace

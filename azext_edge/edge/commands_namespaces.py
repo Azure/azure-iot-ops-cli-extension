@@ -2854,6 +2854,7 @@ def add_namespace_opcua_asset_management_group_action(
     )
 
 
+# TODO: not exposed for now but this will be supported in the near future
 def add_namespace_onvif_asset_management_group_action(
     cmd,
     asset_name: str,
@@ -2923,7 +2924,5 @@ def remove_namespace_asset_management_group_action(
 # MANAGEMENT GROUP ACTION EXPORT/IMPORT
 export_namespace_custom_asset_management_group_action = _make_mgmt_action_export_func("export_management_group_actions")
 export_namespace_opcua_asset_management_group_action = _make_mgmt_action_export_func("export_management_group_actions")
-export_namespace_onvif_asset_management_group_action = _make_mgmt_action_export_func("export_management_group_actions")
 import_namespace_custom_asset_management_group_action = _make_mgmt_action_import_func("import_management_group_actions")
 import_namespace_opcua_asset_management_group_action = _make_mgmt_action_import_func("import_management_group_actions")
-import_namespace_onvif_asset_management_group_action = _make_mgmt_action_import_func("import_management_group_actions")
