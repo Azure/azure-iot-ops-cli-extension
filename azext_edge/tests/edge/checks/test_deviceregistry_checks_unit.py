@@ -6,7 +6,11 @@
 
 import pytest
 from azext_edge.edge.providers.check.common import ResourceOutputDetailLevel
-from azext_edge.edge.providers.check.deviceregistry import evaluate_assets, evaluate_asset_endpoint_profiles
+from azext_edge.edge.providers.check.deviceregistry import (
+    evaluate_assets,
+    evaluate_asset_endpoint_profiles,
+    evaluate_devices,
+)
 from azext_edge.edge.providers.edge_api.deviceregistry import DeviceRegistryResourceKinds
 
 from .conftest import (
@@ -24,6 +28,7 @@ from ...generators import generate_random_string
         [],
         [DeviceRegistryResourceKinds.ASSET.value],
         [DeviceRegistryResourceKinds.ASSETENDPOINTPROFILE.value],
+        [DeviceRegistryResourceKinds.DEVICE.value],
         [
             DeviceRegistryResourceKinds.ASSET.value,
             DeviceRegistryResourceKinds.ASSETENDPOINTPROFILE.value,
@@ -37,6 +42,8 @@ def test_check_deviceregistry_by_resource_types(ops_service, mocker, mock_resour
             "azext_edge.edge.providers.check.deviceregistry.evaluate_assets",
         DeviceRegistryResourceKinds.ASSETENDPOINTPROFILE.value:
             "azext_edge.edge.providers.check.deviceregistry.evaluate_asset_endpoint_profiles",
+        DeviceRegistryResourceKinds.DEVICE.value:
+            "azext_edge.edge.providers.check.deviceregistry.evaluate_devices",
     }
 
     assert_check_by_resource_types(ops_service, mocker, resource_kinds, eval_lookup)
@@ -281,7 +288,7 @@ def test_assets_checks(
     detail_level,
     resource_name,
 ):
-    mocker = mocker.patch(
+    mocker.patch(
         "azext_edge.edge.providers.edge_api.base.EdgeResourceApi.get_resources",
         side_effect=[{"items": assets}, {"items": asset_endpoint_profiles}],
     )
@@ -474,7 +481,7 @@ def test_asset_endpoint_profiles_checks(
     detail_level,
     resource_name,
 ):
-    mocker = mocker.patch(
+    mocker.patch(
         "azext_edge.edge.providers.edge_api.base.EdgeResourceApi.get_resources",
         side_effect=[{"items": asset_endpoint_profiles}],
     )
@@ -490,6 +497,153 @@ def test_asset_endpoint_profiles_checks(
 
     for namespace in target:
         assert namespace in result["targets"]["deviceregistry.microsoft.com"]
+
+        target[namespace]["conditions"] = [] if not target[namespace]["conditions"] else target[namespace]["conditions"]
+        assert_conditions(target[namespace], namespace_conditions)
+        assert_evaluations(target[namespace], namespace_evaluations)
+
+
+@pytest.mark.parametrize("detail_level", ResourceOutputDetailLevel.list())
+@pytest.mark.parametrize(
+    "resource_name",
+    [
+        "device-1",
+        "device*",
+    ]
+)
+@pytest.mark.parametrize(
+    "devices, namespace_conditions, namespace_evaluations",
+    [
+        (
+            # devices present, enabled with uuid and inbound endpoints
+            [
+                {
+                    "metadata": {"name": "device-1"},
+                    "spec": {
+                        "enabled": True,
+                        "uuid": "abc-123",
+                        "endpoints": {"inbound": {"ep-1": {"address": "opc.tcp://localhost:4840"}}},
+                    },
+                }
+            ],
+            ["spec.enabled", "spec.uuid", "spec.endpoints.inbound"],
+            [
+                [
+                    ("status", "success"),
+                    ("value/spec.enabled", True),
+                ],
+                [
+                    ("status", "success"),
+                    ("value/spec.uuid", "abc-123"),
+                ],
+                [
+                    ("status", "success"),
+                    ("value/spec.endpoints.inbound", 1),
+                ],
+            ],
+        ),
+        (
+            # devices present, disabled, no inbound endpoints
+            [
+                {
+                    "metadata": {"name": "device-1"},
+                    "spec": {"enabled": False, "uuid": "def-456"},
+                }
+            ],
+            ["spec.enabled", "spec.uuid", "spec.endpoints.inbound"],
+            [
+                [
+                    ("status", "warning"),
+                    ("value/spec.enabled", False),
+                ],
+                [
+                    ("status", "success"),
+                    ("value/spec.uuid", "def-456"),
+                ],
+                [
+                    ("status", "error"),
+                    ("value/spec.endpoints.inbound", 0),
+                ],
+            ],
+        ),
+        (
+            # device with config error in status
+            [
+                {
+                    "metadata": {"name": "device-1"},
+                    "spec": {
+                        "enabled": True,
+                        "uuid": "abc-123",
+                        "endpoints": {"inbound": {"ep-1": {"address": "opc.tcp://localhost:4840"}}},
+                    },
+                    "status": {
+                        "config": {
+                            "error": {
+                                "code": "500",
+                                "message": "connection refused",
+                            }
+                        }
+                    },
+                }
+            ],
+            ["spec.enabled", "spec.uuid", "spec.endpoints.inbound", "status.config.error"],
+            [
+                [
+                    ("status", "success"),
+                    ("value/spec.enabled", True),
+                ],
+                [
+                    ("status", "success"),
+                    ("value/spec.uuid", "abc-123"),
+                ],
+                [
+                    ("status", "success"),
+                    ("value/spec.endpoints.inbound", 1),
+                ],
+                [
+                    ("status", "error"),
+                    ("value/status.config.error", "500"),
+                ],
+            ],
+        ),
+        (
+            # no devices
+            [],
+            [],
+            [
+                [
+                    ("status", "skipped"),
+                    ("value", "Unable to fetch devices in any namespaces."),
+                ],
+            ]
+        ),
+    ]
+)
+def test_devices_checks(
+    mocker,
+    devices,
+    namespace_conditions,
+    namespace_evaluations,
+    mock_generate_deviceregistry_device_target_resources,
+    detail_level,
+    resource_name,
+):
+    mocker.patch(
+        "azext_edge.edge.providers.edge_api.base.EdgeResourceApi.get_resources",
+        side_effect=[{"items": devices}],
+    )
+
+    namespace = generate_random_string()
+    for device in devices:
+        device['metadata']['namespace'] = namespace
+    result = evaluate_devices(detail_level=detail_level, resource_name=resource_name)
+
+    assert result["name"] == "evalDevices"
+    assert result["targets"]["namespaces.deviceregistry.microsoft.com"]
+    target = result["targets"]["namespaces.deviceregistry.microsoft.com"]
+
+    for namespace in target:
+        assert namespace in result["targets"]["namespaces.deviceregistry.microsoft.com"]
 
         target[namespace]["conditions"] = [] if not target[namespace]["conditions"] else target[namespace]["conditions"]
         assert_conditions(target[namespace], namespace_conditions)

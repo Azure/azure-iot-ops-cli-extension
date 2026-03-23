@@ -81,6 +81,7 @@ def mocked_cluster_resources(request, mocker):
         MQ_ACTIVE_API,
         MQTT_BROKER_API_V1,
         DEVICEREGISTRY_API_V1,
+        NAMESPACED_DEVICEREGISTRY_API_V1,
         CLUSTER_CONFIG_API_V1,
         DATAFLOW_ACTIVE_API,
     )
@@ -115,6 +116,12 @@ def mocked_cluster_resources(request, mocker):
         if r == DEVICEREGISTRY_API_V1:
             v1_resources.append(_get_api_resource("Asset"))
             v1_resources.append(_get_api_resource("AssetEndpointProfile"))
+
+        if r == NAMESPACED_DEVICEREGISTRY_API_V1:
+            v1_resources.append(_get_api_resource("Asset"))
+            v1_resources.append(_get_api_resource("Device"))
+            v1_resources.append(_get_api_resource("DiscoveredAsset"))
+            v1_resources.append(_get_api_resource("DiscoveredDevice"))
 
         if r == CLUSTER_CONFIG_API_V1:
             v1_resources.append(_get_api_resource("BillingError"))
