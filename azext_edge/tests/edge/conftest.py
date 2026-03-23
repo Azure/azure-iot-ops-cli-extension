@@ -4,6 +4,8 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
+import os
+
 import pytest
 from copy import deepcopy
 from knack.log import get_logger
@@ -32,6 +34,22 @@ def require_init(init_setup):
 @pytest.fixture(scope="module")
 def require_init_module(init_setup):
     """Module-scoped variant of require_init for shared fixtures."""
+    if not all([init_setup.get("instanceName"), init_setup.get("resourceGroup")]):
+        pytest.skip("Cannot run this test without knowing the instance information.")
+
+    cluster_result = run(
+        f"az iot ops show -n {init_setup['instanceName']} -g {init_setup['resourceGroup']} "
+    )
+    init_setup["customLocationId"] = cluster_result["extendedLocation"]["name"]
+    init_setup["adrNamespaceRef"] = (
+        cluster_result.get("properties", {}).get("adrNamespaceRef", {}).get("resourceId")
+    )
+    yield init_setup
+
+
+@pytest.fixture(scope="session")
+def require_init_session(init_setup):
+    """Session-scoped variant of require_init for shared fixtures."""
     if not all([init_setup.get("instanceName"), init_setup.get("resourceGroup")]):
         pytest.skip("Cannot run this test without knowing the instance information.")
 
@@ -186,6 +204,10 @@ def settings_with_rg(settings):
 def tracked_resources(init_setup):
     resources = []
     yield resources
+    # CI always nukes the entire cluster — skip granular cleanup
+    if os.environ.get("CI"):
+        logger.info(f"CI mode: skipping cleanup of {len(resources)} tracked resources")
+        return
     instance_name = init_setup.get("instanceName")
     resource_group = init_setup.get("resourceGroup")
     for res in reversed(resources):

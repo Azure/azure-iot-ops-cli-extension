@@ -16,42 +16,17 @@ pytestmark = [pytest.mark.rpsaas, pytest.mark.long_running]
 
 
 def test_namespace_custom_asset_event_lifecycle_operations(
-    require_namespace_init, tracked_resources: List[str], tracked_files: List[str]
+    asset_factory, tracked_files: List[str]
 ):
     """Test complete lifecycle of custom asset event-group and datapoint operations."""
-    # Setup test variables
-    instance_name = require_namespace_init["instanceName"]
-    resource_group = require_namespace_init["resourceGroup"]
-    device_name = f"dev-{generate_random_string(8, force_lower=True)}"
-    endpoint_name = f"custom-{generate_random_string(8)}"
-    asset_name = f"custom-{generate_random_string(8, force_lower=True)}"
+    # Setup from shared fixtures
+    info = asset_factory("custom")
+    asset_name = info["name"]
+    instance_name = info["instanceName"]
+    resource_group = info["resourceGroup"]
     event_group_name = f"event-group-{generate_random_string(6, force_lower=True)}"
     datapoint_name_1 = f"dp1-{generate_random_string(6, force_lower=True)}"
     datapoint_name_2 = f"dp2-{generate_random_string(6, force_lower=True)}"
-
-    # Create Device
-    result = run(
-        f"az iot ops ns device create --name {device_name} --instance {instance_name} "
-        f"-g {resource_group}"
-    )
-    tracked_resources.append(result["id"])
-
-    # Create device endpoint
-    run(
-        f"az iot ops ns device endpoint inbound add custom --name {endpoint_name} "
-        f"--instance {instance_name} -g {resource_group} --device {device_name} "
-        f"--endpoint-address 'http://192.168.1.100:8000/custom/service' "
-        "--endpoint-type custom"
-    )
-
-    # Create Custom asset
-    asset_custom = run(
-        f"az iot ops ns asset custom create --name {asset_name} --instance {instance_name} "
-        f"-g {resource_group} --device {device_name} --endpoint {endpoint_name} "
-        f"--description \"Custom Device for Event Testing\" --display \"Multi-Sensor Event\" "
-        f"--model \"Custom-EV100\" --manufacturer \"CustomDevices\""
-    )
-    tracked_resources.append(asset_custom["id"])
 
     # 1. CREATE EVENT GROUP
     custom_config_path, custom_config = create_config_file(tracked_files)
@@ -211,38 +186,14 @@ def test_namespace_custom_asset_event_lifecycle_operations(
     assert event_group_name not in remaining_event_group_names
 
 
-def test_namespace_opcua_asset_event_lifecycle_operations(require_namespace_init, tracked_resources: List[str]):
+def test_namespace_opcua_asset_event_lifecycle_operations(asset_factory):
     """Test complete lifecycle of OPC UA asset event-group operations (events only)."""
-    # Setup test variables
-    instance_name = require_namespace_init["instanceName"]
-    resource_group = require_namespace_init["resourceGroup"]
-    device_name = f"dev-{generate_random_string(8, force_lower=True)}"
-    endpoint_name = f"opcua-{generate_random_string(8)}"
-    asset_name = f"opcua-{generate_random_string(8, force_lower=True)}"
+    # Setup from shared fixtures
+    info = asset_factory("opcua")
+    asset_name = info["name"]
+    instance_name = info["instanceName"]
+    resource_group = info["resourceGroup"]
     event_group_name = f"event-group-{generate_random_string(6, force_lower=True)}"
-
-    # Create Device
-    result = run(
-        f"az iot ops ns device create --name {device_name} --instance {instance_name} "
-        f"-g {resource_group}"
-    )
-    tracked_resources.append(result["id"])
-
-    # Create device endpoint
-    run(
-        f"az iot ops ns device endpoint inbound add opcua --name {endpoint_name} "
-        f"--instance {instance_name} -g {resource_group} --device {device_name} "
-        f"--endpoint-address 'opc.tcp://192.168.1.100:4840' "
-    )
-
-    # Create OPC UA asset
-    asset_opcua = run(
-        f"az iot ops ns asset opcua create --name {asset_name} --instance {instance_name} "
-        f"-g {resource_group} --device {device_name} --endpoint {endpoint_name} "
-        f"--description \"OPC UA Device for Event Testing\" --display \"OPC UA Event Server\" "
-        f"--model \"OPCUA-EV200\" --manufacturer \"OPCDevices\""
-    )
-    tracked_resources.append(asset_opcua["id"])
 
     # 1. CREATE EVENT WITH FULL OPCUA CONFIGURATION
     event_destinations = "topic=factory/opcua/events qos=Qos0 retain=Keep ttl=7200"
@@ -331,38 +282,14 @@ def test_namespace_opcua_asset_event_lifecycle_operations(require_namespace_init
     assert event_group_name not in remaining_event_group_names
 
 
-def test_namespace_onvif_asset_event_lifecycle_operations(require_namespace_init, tracked_resources: List[str]):
+def test_namespace_onvif_asset_event_lifecycle_operations(asset_factory):
     """Test complete lifecycle of ONVIF asset event-group operations (events only)."""
-    # Setup test variables
-    instance_name = require_namespace_init["instanceName"]
-    resource_group = require_namespace_init["resourceGroup"]
-    device_name = f"dev-{generate_random_string(8, force_lower=True)}"
-    endpoint_name = f"onvif-{generate_random_string(8)}"
-    asset_name = f"onvif-{generate_random_string(8, force_lower=True)}"
+    # Setup from shared fixtures
+    info = asset_factory("onvif")
+    asset_name = info["name"]
+    instance_name = info["instanceName"]
+    resource_group = info["resourceGroup"]
     event_group_name = f"event-group-{generate_random_string(6, force_lower=True)}"
-
-    # Create Device
-    result = run(
-        f"az iot ops ns device create --name {device_name} --instance {instance_name} "
-        f"-g {resource_group}"
-    )
-    tracked_resources.append(result["id"])
-
-    # Create device endpoint
-    run(
-        f"az iot ops ns device endpoint inbound add onvif --name {endpoint_name} "
-        f"--instance {instance_name} -g {resource_group} --device {device_name} "
-        f"--endpoint-address 'http://192.168.1.100:8080/onvif/device' "
-    )
-
-    # Create ONVIF asset
-    asset_onvif = run(
-        f"az iot ops ns asset onvif create --name {asset_name} --instance {instance_name} "
-        f"-g {resource_group} --device {device_name} --endpoint {endpoint_name} "
-        f"--description \"ONVIF Device for Event Testing\" --display \"ONVIF Event Camera\" "
-        f"--model \"ONVIF-EV300\" --manufacturer \"ONVIFDevices\""
-    )
-    tracked_resources.append(asset_onvif["id"])
 
     # 1. CREATE EVENT GROUP
     event_destinations = "topic=factory/onvif/events qos=Qos1 retain=Never ttl=1800"
@@ -472,38 +399,14 @@ def test_namespace_onvif_asset_event_lifecycle_operations(require_namespace_init
     assert event_group_name not in remaining_event_group_names
 
 
-def test_namespace_sse_asset_event_lifecycle_operations(require_namespace_init, tracked_resources: List[str]):
+def test_namespace_sse_asset_event_lifecycle_operations(asset_factory):
     """Test complete lifecycle of SSE asset event-group operations (events only)."""
-    # Setup test variables
-    instance_name = require_namespace_init["instanceName"]
-    resource_group = require_namespace_init["resourceGroup"]
-    device_name = f"dev-{generate_random_string(8, force_lower=True)}"
-    endpoint_name = f"sse-{generate_random_string(8)}"
-    asset_name = f"sse-{generate_random_string(8, force_lower=True)}"
+    # Setup from shared fixtures
+    info = asset_factory("sse")
+    asset_name = info["name"]
+    instance_name = info["instanceName"]
+    resource_group = info["resourceGroup"]
     event_group_name = f"event-group-{generate_random_string(6, force_lower=True)}"
-
-    # Create Device
-    result = run(
-        f"az iot ops ns device create --name {device_name} --instance {instance_name} "
-        f"-g {resource_group}"
-    )
-    tracked_resources.append(result["id"])
-
-    # Create device endpoint
-    run(
-        f"az iot ops ns device endpoint inbound add sse --name {endpoint_name} "
-        f"--instance {instance_name} -g {resource_group} --device {device_name} "
-        f"--endpoint-address 'https://events.example.com/stream'"
-    )
-
-    # Create SSE asset
-    asset_sse = run(
-        f"az iot ops ns asset sse create --name {asset_name} --instance {instance_name} "
-        f"-g {resource_group} --device {device_name} --endpoint {endpoint_name} "
-        f"--description \"SSE Event Stream for Testing\" --display \"SSE Event Stream\" "
-        f"--model \"SSE-EV100\" --manufacturer \"EventStreamDevices\""
-    )
-    tracked_resources.append(asset_sse["id"])
 
     # 1. CREATE EVENT GROUP
     event_destinations = "topic=factory/sse/events qos=Qos1 retain=Never ttl=1800"

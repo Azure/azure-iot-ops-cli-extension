@@ -278,7 +278,7 @@ jobs:
         run: |
           PYTEST_ARGS=""
           if [[ "${{ matrix.scenario.parallel }}" == "true" ]]; then
-            PYTEST_ARGS="--dist=loadfile -n auto"
+            PYTEST_ARGS="-n 6 --dist worksteal"
           fi
           tox r -e "${{ matrix.scenario.tox_env }}" --skip-pkg-install -- $PYTEST_ARGS
           tox r -e report

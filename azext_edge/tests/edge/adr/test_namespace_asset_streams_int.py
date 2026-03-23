@@ -18,40 +18,15 @@ pytestmark = [pytest.mark.rpsaas, pytest.mark.long_running]
 
 
 def test_namespace_custom_asset_stream_lifecycle_operations(
-    require_namespace_init, tracked_resources: List[str], tracked_files: List[str]
+    asset_factory, tracked_files: List[str]
 ):
     """Test complete lifecycle of custom asset stream operations."""
-    # Setup test variables
-    instance_name = require_namespace_init["instanceName"]
-    resource_group = require_namespace_init["resourceGroup"]
-    device_name = f"dev-{generate_random_string(8, force_lower=True)}"
-    endpoint_name = f"custom-{generate_random_string(8)}"
-    asset_name = f"custom-{generate_random_string(8, force_lower=True)}"
+    # Setup from shared fixtures
+    info = asset_factory("custom")
+    asset_name = info["name"]
+    instance_name = info["instanceName"]
+    resource_group = info["resourceGroup"]
     stream_name = f"stream-{generate_random_string(6, force_lower=True)}"
-
-    # Create Device
-    result = run(
-        f"az iot ops ns device create --name {device_name} --instance {instance_name} "
-        f"-g {resource_group}"
-    )
-    tracked_resources.append(result["id"])
-
-    # Create device endpoint
-    run(
-        f"az iot ops ns device endpoint inbound add custom --name {endpoint_name} "
-        f"--instance {instance_name} -g {resource_group} --device {device_name} "
-        f"--endpoint-address 'http://192.168.1.100:8000/custom/service' "
-        "--endpoint-type custom"
-    )
-
-    # Create Custom asset
-    asset_custom = run(
-        f"az iot ops ns asset custom create --name {asset_name} --instance {instance_name} "
-        f"-g {resource_group} --device {device_name} --endpoint {endpoint_name} "
-        f"--description \"Custom Device for Stream Testing\" --display \"Multi-Sensor Stream\" "
-        f"--model \"Custom-ST100\" --manufacturer \"CustomDevices\""
-    )
-    tracked_resources.append(asset_custom["id"])
 
     # 1. CREATE STREAM
     custom_config_path, custom_config = create_config_file(tracked_files)
@@ -135,37 +110,13 @@ def test_namespace_custom_asset_stream_lifecycle_operations(
     assert stream_name not in remaining_stream_names
 
 
-def test_namespace_media_asset_stream_lifecycle_operations(require_namespace_init, tracked_resources: List[str]):
+def test_namespace_media_asset_stream_lifecycle_operations(asset_factory):
     """Test complete lifecycle of media asset stream operations with all stream types."""
-    # Setup test variables
-    instance_name = require_namespace_init["instanceName"]
-    resource_group = require_namespace_init["resourceGroup"]
-    device_name = f"dev-{generate_random_string(8, force_lower=True)}"
-    endpoint_name = f"media-{generate_random_string(8)}"
-    asset_name = f"media-{generate_random_string(8, force_lower=True)}"
-
-    # Create Device
-    result = run(
-        f"az iot ops ns device create --name {device_name} --instance {instance_name} "
-        f"-g {resource_group}"
-    )
-    tracked_resources.append(result["id"])
-
-    # Create media device endpoint
-    run(
-        f"az iot ops ns device endpoint inbound add media --name {endpoint_name} "
-        f"--instance {instance_name} -g {resource_group} --device {device_name} "
-        f"--endpoint-address 'rtsp://192.168.1.200:554/stream1'"
-    )
-
-    # Create Media asset
-    asset_media = run(
-        f"az iot ops ns asset media create --name {asset_name} --instance {instance_name} "
-        f"-g {resource_group} --device {device_name} --endpoint {endpoint_name} "
-        f"--description \"Media Device for Stream Testing\" --display \"Security Camera\" "
-        f"--model \"CAM-ST200\" --manufacturer \"MediaDevices\""
-    )
-    tracked_resources.append(asset_media["id"])
+    # Setup from shared fixtures
+    info = asset_factory("media")
+    asset_name = info["name"]
+    instance_name = info["instanceName"]
+    resource_group = info["resourceGroup"]
 
     # Test all media stream types
     stream_test_cases = [
@@ -237,10 +188,12 @@ def test_namespace_media_asset_stream_lifecycle_operations(require_namespace_ini
         # Build the command based on stream type
         command = (
             f"az iot ops ns asset media stream add --asset {asset_name} --instance {instance_name} "
-            f"-g {resource_group} --name {test_case['name']} --task-type {test_case['task_type']}"
+            f"-g {resource_group}"
         )
         for param, value in test_case.items():
-            command += f" {param_map.get(param, '')} {value}"
+            cli_flag = param_map.get(param)
+            if cli_flag:
+                command += f" {cli_flag} {value}"
 
         stream_result = run(command)
 

@@ -9,6 +9,7 @@ from copy import deepcopy
 from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, Union
 
 from azure.cli.core.azclierror import (
+    CLIInternalError,
     InvalidArgumentValueError,
     MutuallyExclusiveArgumentError,
     RequiredArgumentMissingError,
@@ -634,7 +635,12 @@ class NamespaceAssets(Queryable):
                 namespace_name=namespace["name"],
                 resource_group=namespace["resource_group"],
             )["properties"]["datasets"]
-            return next(dset for dset in datasets if dset["name"] == dataset_name)
+            result = next((dset for dset in datasets if dset["name"] == dataset_name), None)
+            if result is None:
+                raise CLIInternalError(
+                    f"Dataset '{dataset_name}' was not found in asset '{asset_name}' after update."
+                )
+            return result
 
     def list_datasets(self, asset_name: str, instance_name: str, instance_resource_group: str) -> List[dict]:
         asset = self.show(
@@ -726,7 +732,12 @@ class NamespaceAssets(Queryable):
                 namespace_name=namespace["name"],
                 resource_group=namespace["resource_group"],
             )["properties"]["datasets"]
-            return next(dset for dset in datasets if dset["name"] == dataset_name)
+            result = next((dset for dset in datasets if dset["name"] == dataset_name), None)
+            if result is None:
+                raise CLIInternalError(
+                    f"Dataset '{dataset_name}' was not found in asset '{asset_name}' after update."
+                )
+            return result
 
     def remove_dataset(
         self, asset_name: str, instance_name: str, instance_resource_group: str, dataset_name: str, **kwargs
@@ -1693,7 +1704,12 @@ class NamespaceAssets(Queryable):
                 namespace_name=namespace["name"],
                 resource_group=namespace["resource_group"],
             )["properties"]["streams"]
-            return next(stream for stream in streams if stream["name"] == stream_name)
+            result = next((stream for stream in streams if stream["name"] == stream_name), None)
+            if result is None:
+                raise CLIInternalError(
+                    f"Stream '{stream_name}' was not found in asset '{asset_name}' after update."
+                )
+            return result
 
     def list_streams(self, asset_name: str, instance_name: str, instance_resource_group: str) -> List[dict]:
         asset = self.show(
@@ -1816,7 +1832,12 @@ class NamespaceAssets(Queryable):
                 namespace_name=namespace["name"],
                 resource_group=namespace["resource_group"],
             )["properties"]["streams"]
-            return next(stream for stream in streams if stream["name"] == stream_name)
+            result = next((stream for stream in streams if stream["name"] == stream_name), None)
+            if result is None:
+                raise CLIInternalError(
+                    f"Stream '{stream_name}' was not found in asset '{asset_name}' after update."
+                )
+            return result
 
     def export_streams(
         self,
@@ -1986,7 +2007,12 @@ class NamespaceAssets(Queryable):
                 namespace_name=namespace["name"],
                 resource_group=namespace["resource_group"],
             )["properties"]["managementGroups"]
-            return next(mgmt for mgmt in mgmt_groups if mgmt["name"] == group_name)
+            result = next((mgmt for mgmt in mgmt_groups if mgmt["name"] == group_name), None)
+            if result is None:
+                raise CLIInternalError(
+                    f"Management group '{group_name}' was not found in asset '{asset_name}' after update."
+                )
+            return result
 
     def list_management_groups(
         self, asset_name: str, instance_name: str, instance_resource_group: str
@@ -2118,7 +2144,12 @@ class NamespaceAssets(Queryable):
                 namespace_name=namespace["name"],
                 resource_group=namespace["resource_group"],
             )["properties"]["managementGroups"]
-            return next(mgmt for mgmt in mgmt_groups if mgmt["name"] == group_name)
+            result = next((mgmt for mgmt in mgmt_groups if mgmt["name"] == group_name), None)
+            if result is None:
+                raise CLIInternalError(
+                    f"Management group '{group_name}' was not found in asset '{asset_name}' after update."
+                )
+            return result
 
     # MANAGEMENT GROUP ACTIONS
     def add_management_group_action(
@@ -2190,7 +2221,12 @@ class NamespaceAssets(Queryable):
                 namespace_name=namespace["name"],
                 resource_group=namespace["resource_group"],
             )["properties"]["managementGroups"]
-            return next(mgmt for mgmt in mgmt_groups if mgmt["name"] == group_name)["actions"]
+            result = next((mgmt for mgmt in mgmt_groups if mgmt["name"] == group_name), None)
+            if result is None:
+                raise CLIInternalError(
+                    f"Management group '{group_name}' was not found in asset '{asset_name}' after update."
+                )
+            return result["actions"]
 
     def list_management_group_actions(
         self, asset_name: str, instance_name: str, instance_resource_group: str, group_name: str
@@ -2252,7 +2288,12 @@ class NamespaceAssets(Queryable):
                 namespace_name=namespace["name"],
                 resource_group=namespace["resource_group"],
             )["properties"]["managementGroups"]
-            return next(mgmt for mgmt in mgmt_groups if mgmt["name"] == group_name)["actions"]
+            result = next((mgmt for mgmt in mgmt_groups if mgmt["name"] == group_name), None)
+            if result is None:
+                raise CLIInternalError(
+                    f"Management group '{group_name}' was not found in asset '{asset_name}' after update."
+                )
+            return result["actions"]
 
     def export_management_groups(
         self,

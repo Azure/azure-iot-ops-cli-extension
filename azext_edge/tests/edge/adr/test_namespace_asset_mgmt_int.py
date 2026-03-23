@@ -19,42 +19,17 @@ pytestmark = [pytest.mark.rpsaas, pytest.mark.long_running]
 
 
 def test_namespace_custom_asset_management_group_lifecycle_operations(
-    require_namespace_init, tracked_resources: List[str], tracked_files: List[str]
+    asset_factory, tracked_files: List[str]
 ):
     """Test complete lifecycle of custom asset management group and action operations."""
-    # Setup test variables
-    instance_name = require_namespace_init["instanceName"]
-    resource_group = require_namespace_init["resourceGroup"]
-    device_name = f"dev-{generate_random_string(8, force_lower=True)}"
-    endpoint_name = f"custom-{generate_random_string(8)}"
-    asset_name = f"custom-{generate_random_string(8, force_lower=True)}"
+    # Setup from shared fixtures
+    info = asset_factory("custom")
+    asset_name = info["name"]
+    instance_name = info["instanceName"]
+    resource_group = info["resourceGroup"]
     mgmt_group_name = f"mgmt-{generate_random_string(6, force_lower=True)}"
     action_name_1 = f"action1-{generate_random_string(6, force_lower=True)}"
     action_name_2 = f"action2-{generate_random_string(6, force_lower=True)}"
-
-    # Create Device
-    result = run(
-        f"az iot ops ns device create --name {device_name} --instance {instance_name} "
-        f"-g {resource_group}"
-    )
-    tracked_resources.append(result["id"])
-
-    # Create device endpoint
-    run(
-        f"az iot ops ns device endpoint inbound add custom --name {endpoint_name} "
-        f"--instance {instance_name} -g {resource_group} --device {device_name} "
-        f"--endpoint-address 'http://192.168.1.100:8000/custom/service' "
-        "--endpoint-type custom"
-    )
-
-    # Create Custom asset
-    asset_custom = run(
-        f"az iot ops ns asset custom create --name {asset_name} --instance {instance_name} "
-        f"-g {resource_group} --device {device_name} --endpoint {endpoint_name} "
-        f"--description \"Custom Device for Management Testing\" --display \"Multi-Sensor Management\" "
-        f"--model \"Custom-MG100\" --manufacturer \"CustomDevices\""
-    )
-    tracked_resources.append(asset_custom["id"])
 
     # 1. CREATE MANAGEMENT GROUP
     default_topic = "factory/custom/management/responses"
@@ -242,40 +217,16 @@ def test_namespace_custom_asset_management_group_lifecycle_operations(
 
 
 def test_namespace_opcua_asset_management_group_lifecycle_operations(
-    require_namespace_init, tracked_resources: List[str]
+    asset_factory,
 ):
     """Test complete lifecycle of OPC UA asset management group operations."""
-    # Setup test variables
-    instance_name = require_namespace_init["instanceName"]
-    resource_group = require_namespace_init["resourceGroup"]
-    device_name = f"dev-{generate_random_string(8, force_lower=True)}"
-    endpoint_name = f"opcua-{generate_random_string(8)}"
-    asset_name = f"opcua-{generate_random_string(8, force_lower=True)}"
+    # Setup from shared fixtures
+    info = asset_factory("opcua")
+    asset_name = info["name"]
+    instance_name = info["instanceName"]
+    resource_group = info["resourceGroup"]
     mgmt_group_name = f"mgmt-{generate_random_string(6, force_lower=True)}"
     action_name = f"action-{generate_random_string(6, force_lower=True)}"
-
-    # Create Device
-    result = run(
-        f"az iot ops ns device create --name {device_name} --instance {instance_name} "
-        f"-g {resource_group}"
-    )
-    tracked_resources.append(result["id"])
-
-    # Create device endpoint
-    run(
-        f"az iot ops ns device endpoint inbound add opcua --name {endpoint_name} "
-        f"--instance {instance_name} -g {resource_group} --device {device_name} "
-        f"--endpoint-address 'opc.tcp://192.168.1.100:4840' "
-    )
-
-    # Create OPC UA asset
-    asset_opcua = run(
-        f"az iot ops ns asset opcua create --name {asset_name} --instance {instance_name} "
-        f"-g {resource_group} --device {device_name} --endpoint {endpoint_name} "
-        f"--description \"OPC UA Device for Management Testing\" --display \"OPC UA Management Server\" "
-        f"--model \"OPCUA-MG200\" --manufacturer \"OPCDevices\""
-    )
-    tracked_resources.append(asset_opcua["id"])
 
     # 1. CREATE MANAGEMENT GROUP WITH ONLY REQUIRED PARAMS (no data-source)
     default_topic = "factory/opcua/management/responses"
@@ -431,39 +382,15 @@ def test_namespace_opcua_asset_management_group_lifecycle_operations(
 
 
 def test_namespace_onvif_asset_management_group_lifecycle_operations(
-    require_namespace_init, tracked_resources: List[str]
+    asset_factory,
 ):
     """Test complete lifecycle of ONVIF asset management group operations."""
-    # Setup test variables
-    instance_name = require_namespace_init["instanceName"]
-    resource_group = require_namespace_init["resourceGroup"]
-    device_name = f"dev-{generate_random_string(8, force_lower=True)}"
-    endpoint_name = f"onvif-{generate_random_string(8)}"
-    asset_name = f"onvif-{generate_random_string(8, force_lower=True)}"
+    # Setup from shared fixtures
+    info = asset_factory("onvif")
+    asset_name = info["name"]
+    instance_name = info["instanceName"]
+    resource_group = info["resourceGroup"]
     mgmt_group_name = f"mgmt-{generate_random_string(6, force_lower=True)}"
-
-    # Create Device
-    result = run(
-        f"az iot ops ns device create --name {device_name} --instance {instance_name} "
-        f"-g {resource_group}"
-    )
-    tracked_resources.append(result["id"])
-
-    # Create device endpoint
-    run(
-        f"az iot ops ns device endpoint inbound add onvif --name {endpoint_name} "
-        f"--instance {instance_name} -g {resource_group} --device {device_name} "
-        f"--endpoint-address 'http://192.168.1.100:8080/onvif/device' "
-    )
-
-    # Create ONVIF asset
-    asset_onvif = run(
-        f"az iot ops ns asset onvif create --name {asset_name} --instance {instance_name} "
-        f"-g {resource_group} --device {device_name} --endpoint {endpoint_name} "
-        f"--description \"ONVIF Device for Management Testing\" --display \"ONVIF Management Camera\" "
-        f"--model \"ONVIF-MG300\" --manufacturer \"ONVIFDevices\""
-    )
-    tracked_resources.append(asset_onvif["id"])
 
     # 1. CREATE MANAGEMENT GROUP
     default_topic = "factory/onvif/management/responses"

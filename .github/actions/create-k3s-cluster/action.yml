@@ -32,8 +32,24 @@ runs:
         # start cluster in background
         sudo k3s server --cluster-init &
 
-        # allow time for cluster to initialize
-        sleep 15s
+        # wait for API server to accept connections
+        echo "Waiting for k3s API server..."
+        retry_count=0
+        max_retries=30
+        sleep_interval=10
+        until sudo k3s kubectl get nodes &>/dev/null; do
+          retry_count=$((retry_count + 1))
+          if [ $retry_count -ge $max_retries ]; then
+            echo "k3s API server did not become reachable after $((max_retries * sleep_interval))s."
+            exit 1
+          fi
+          echo "Waiting for API server (attempt $retry_count/$max_retries)..."
+          sleep $sleep_interval
+        done
+
+        # wait for node to be fully ready
+        sudo k3s kubectl wait --for=condition=Ready node --all --timeout=300s
+        echo "k3s cluster is ready."
       shell: bash
     - name: "Write cluster config"
       run: |
