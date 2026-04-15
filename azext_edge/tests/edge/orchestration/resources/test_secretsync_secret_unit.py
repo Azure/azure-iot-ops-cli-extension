@@ -40,6 +40,7 @@ def _setup_instance_and_spc(
     spc_name: str,
     keyvault_name: str = "mykeyvault",
     spc_objects: Optional[str] = None,
+    mock_vault_url: bool = True,
 ):
     """Helper to set up instance + SPC fetch mocks for set/unset tests."""
     # Instance endpoint
@@ -86,20 +87,17 @@ def _setup_instance_and_spc(
         content_type="application/json",
     )
 
+    # ARG mock for vault URL resolution
+    if mock_vault_url:
+        mocked_responses.add(
+            method=responses.POST,
+            url=ARG_ENDPOINT,
+            json={"data": [{"properties_vaultUri": f"https://{keyvault_name}.vault.azure.net/"}]},
+            status=200,
+            content_type="application/json",
+        )
+
     return instance_record, spc_record
-
-
-@pytest.mark.parametrize("keyvault_dns, expected_url", [
-    (".vault.azure.net", "https://mykeyvault.vault.azure.net/"),
-    ("vault.azure.net", "https://mykeyvault.vault.azure.net/"),  # no leading dot — should be normalized
-])
-def test_vault_url_normalization(keyvault_dns, expected_url):
-    """Verify vault_url is correctly constructed regardless of keyvault_dns leading dot."""
-    vault_suffix = keyvault_dns
-    if vault_suffix and not vault_suffix.startswith("."):
-        vault_suffix = f".{vault_suffix}"
-    vault_url = f"https://mykeyvault{vault_suffix}/"
-    assert vault_url == expected_url
 
 
 # --- secretsync secret set ---
@@ -361,6 +359,7 @@ def test_secretsync_secret_set_invalid_format(
         instance_name=instance_name,
         resource_group_name=resource_group_name,
         spc_name=spc_name,
+        mock_vault_url=False,
     )
 
     with pytest.raises(InvalidArgumentValueError):
@@ -428,6 +427,7 @@ def test_secretsync_secret_list(
         instance_name=instance_name,
         resource_group_name=resource_group_name,
         spc_name=spc_name,
+        mock_vault_url=False,
     )
 
     ss_record = get_mock_secretsync_record(
@@ -471,6 +471,7 @@ def test_secretsync_secret_list_empty(
         instance_name=instance_name,
         resource_group_name=resource_group_name,
         spc_name=spc_name,
+        mock_vault_url=False,
     )
 
     ss_record = get_mock_secretsync_record(

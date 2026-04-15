@@ -548,13 +548,22 @@ class Instances(Queryable):
                     )
                 secret_mappings.append({"akv_name": akv_name, "target_key": target_key})
 
-            # Step 2: Verify each AKV secret exists and detect encoding
+            # Step 2: Resolve vault URL via Resource Graph (authoritative source, cloud-agnostic)
+            kv_result = self.query(
+                query=(
+                    f"Resources | where type == 'microsoft.keyvault/vaults'"
+                    f" | where name == '{keyvault_name}' | project properties.vaultUri"
+                ),
+                first=True,
+            )
+            if not kv_result:
+                raise InvalidArgumentValueError(
+                    f"Key Vault '{keyvault_name}' not found. "
+                    "Ensure it exists and is accessible in the current subscription."
+                )
+            vault_url = kv_result["properties_vaultUri"]
+
             keyvault_client = get_keyvault_client(subscription_id=self.default_subscription_id)
-            vault_suffix = self.cmd.cli_ctx.cloud.suffixes.keyvault_dns
-            # Normalize: ensure suffix starts with a dot (e.g. "vault.azure.net" → ".vault.azure.net")
-            if vault_suffix and not vault_suffix.startswith("."):
-                vault_suffix = f".{vault_suffix}"
-            vault_url = f"https://{keyvault_name}{vault_suffix}/"
             for mapping in secret_mappings:
                 try:
                     secret_response = keyvault_client.get_secret(
