@@ -182,6 +182,81 @@ def convert_file_names(files: List[str]) -> Dict[str, List[Dict[str, str]]]:
     return file_name_objs
 
 
+def check_cluster_label_coverage(
+    prefixes: Union[str, List[str]],
+    expected_label: Tuple[str, str],
+    workload_types: Optional[List[str]] = None,
+    known_exclusions: Optional[List[str]] = None,
+    accepted_labels: Optional[List[str]] = None,
+):
+    """
+    Inverse label check: finds all cluster resources whose names match the given prefixes
+    (without any label filter) and asserts each one carries the expected label.
+
+    This catches resources that exist on the cluster but are missing the label, which means
+    the support bundle CLI would silently skip them. The forward-direction tests (label → bundle)
+    cannot catch these because kubectl returns nothing for unlabeled resources.
+
+    Args:
+        prefixes: Name prefix(es) used to identify resources belonging to this service.
+        expected_label: Tuple of (label_key, label_value) e.g.
+            ("app.kubernetes.io/name", "microsoft-iotoperations-dataflows").
+        workload_types: Resource types to scan. Defaults to WORKLOAD_TYPES.
+        known_exclusions: List of "namespace/name" strings to skip (intentionally unlabeled resources).
+        accepted_labels: Additional label values (for the same key) that are considered valid,
+            e.g. sub-component labels that the support provider captures via a separate label selector.
+    """
+    if isinstance(prefixes, str):
+        prefixes = [prefixes]
+    if workload_types is None:
+        workload_types = WORKLOAD_TYPES
+    if known_exclusions is None:
+        known_exclusions = []
+    if accepted_labels is None:
+        accepted_labels = []
+
+    label_key, label_value = expected_label
+    missing_label_resources = []
+
+    key_to_full_map = {
+        "pvc": "persistentvolumeclaim",
+        "vwc": "validatingwebhookconfiguration",
+        "mwc": "mutatingwebhookconfiguration",
+        "crb": "clusterrolebinding",
+    }
+
+    for resource_type in workload_types:
+        full_type = key_to_full_map.get(resource_type, resource_type)
+        try:
+            kubectl_items = run(f"kubectl get {full_type} -A -o json")
+        except CLIInternalError as e:
+            logger.warning("kubectl get %s failed, skipping label coverage check for this type: %s", full_type, e)
+            continue
+
+        for item in kubectl_items.get("items", []):
+            name = item["metadata"]["name"]
+            namespace = item["metadata"].get("namespace", "")
+            exclusion_key = f"{namespace}/{name}"
+
+            if not any(name.startswith(p) for p in prefixes):
+                continue
+            if exclusion_key in known_exclusions:
+                continue
+
+            actual_label = item["metadata"].get("labels", {}).get(label_key)
+            if actual_label == label_value or actual_label in accepted_labels:
+                continue
+            missing_label_resources.append(
+                f"{full_type} {exclusion_key}: expected {label_key}={label_value}, got {actual_label}"
+            )
+
+    assert not missing_label_resources, (
+        "Resources found on cluster with matching name prefix but missing/wrong label "
+        "(would be silently skipped by support bundle):\n"
+        + "\n".join(missing_label_resources)
+    )
+
+
 def check_custom_resource_files(
     file_objs: Dict[str, List[Dict[str, str]]],
     resource_apis: Union[EdgeResourceApi, Iterable[EdgeResourceApi]],

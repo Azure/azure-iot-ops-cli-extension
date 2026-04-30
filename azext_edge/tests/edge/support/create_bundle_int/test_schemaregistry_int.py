@@ -8,7 +8,7 @@ import pytest
 from knack.log import get_logger
 from azext_edge.edge.common import OpsServiceType
 from ....helpers import get_multi_kubectl_workload_items
-from .helpers import check_workload_resource_files, get_file_map, run_bundle_command
+from .helpers import check_cluster_label_coverage, check_workload_resource_files, get_file_map, run_bundle_command
 
 logger = get_logger(__name__)
 
@@ -38,4 +38,9 @@ def test_create_bundle_schemas(cluster_connection, tracked_files):
         prefixes=SCHEMA_PREFIXES,
         bundle_path=bundle_path,
         expected_label=SCHEMA_LABEL,
+    )
+    check_cluster_label_coverage(
+        prefixes=SCHEMA_PREFIXES,
+        expected_label=SCHEMA_LABEL,
+        workload_types=SCHEMA_WORKLOAD_TYPES,
     )

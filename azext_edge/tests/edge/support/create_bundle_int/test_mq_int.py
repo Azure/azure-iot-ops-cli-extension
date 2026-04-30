@@ -10,6 +10,7 @@ from azext_edge.edge.common import OpsServiceType
 from azext_edge.edge.providers.support_bundle import COMPAT_MQTT_BROKER_APIS
 from ....helpers import get_multi_kubectl_workload_items
 from .helpers import (
+    check_cluster_label_coverage,
     check_custom_resource_files,
     check_workload_resource_files,
     get_all_kinds_from_manager,
@@ -96,6 +97,12 @@ def test_create_bundle_mq(cluster_connection, tracked_files, mq_traces):
         prefixes=MQ_PREFIXES,
         bundle_path=bundle_path,
         expected_label=MQ_LABEL,
+    )
+    check_cluster_label_coverage(
+        prefixes=MQ_PREFIXES,
+        expected_label=MQ_LABEL,
+        workload_types=MQ_WORKLOAD_TYPES,
+        known_exclusions=["azure-iot-operations/aio-broker-generation-id"],
     )
 
 
