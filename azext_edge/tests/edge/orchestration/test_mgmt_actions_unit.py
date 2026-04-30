@@ -905,6 +905,40 @@ class TestSetupEgDataflowEndpoint:
         assert auth["method"] == "SystemAssignedManagedIdentity"
         assert auth["systemAssignedManagedIdentitySettings"]["audience"] == MGMT_ACTIONS_EG_AUDIENCE
 
+    def test_create_new_includes_client_id_prefix(self, mocked_cmd, mocked_responses: responses):
+        """The created MQTT dataflow endpoint sets clientIdPrefix to the AIO instance name."""
+        rg = generate_random_string()
+        instance_name = generate_random_string()
+        instance_rid = _build_eg_resource_id(instance_name, rg)
+        eg_ctx = _make_eg_ctx(resource_group_name=rg)
+        ep_name = get_mgmt_actions_resource_name("eg", instance_rid)
+
+        mocked_responses.add(
+            method=responses.GET,
+            url=_build_iotops_endpoint(instance_name, rg, sub_resource=f"/dataflowEndpoints/{ep_name}"),
+            json={"error": {"code": "ResourceNotFound"}},
+            status=404,
+        )
+        mocked_responses.add(
+            method=responses.PUT,
+            url=_build_iotops_endpoint(instance_name, rg, sub_resource=f"/dataflowEndpoints/{ep_name}"),
+            json={"id": f"/fake/path/dataflowEndpoints/{ep_name}", "name": ep_name},
+            status=200,
+        )
+
+        provider = MgmtActions(cmd=mocked_cmd)
+        provider._setup_eg_dataflow_endpoint(
+            eg_ctx=eg_ctx,
+            instance_name=instance_name,
+            instance_resource_id=instance_rid,
+            resource_group_name=rg,
+            extended_location=MOCK_EXTENDED_LOCATION,
+            wait_sec=0,
+        )
+
+        put_body = json.loads(mocked_responses.calls[1].request.body)
+        assert put_body["properties"]["mqttSettings"]["clientIdPrefix"] == instance_name
+
     def test_create_new_user_assigned(self, mocked_cmd, mocked_responses: responses):
         """When endpoint does not exist and pre-resolved UAMI is provided, creates with UserAssigned MI."""
         ns_name = generate_random_string()
@@ -979,7 +1013,7 @@ class TestSetupEgDataflowEndpoint:
             "method": "SystemAssignedManagedIdentity",
             "systemAssignedManagedIdentitySettings": {"audience": MGMT_ACTIONS_EG_AUDIENCE},
         }
-        # GET returns 200 with matching host and auth
+        # GET returns 200 with matching host, auth, and clientIdPrefix
         mocked_responses.add(
             method=responses.GET,
             url=_build_iotops_endpoint(instance_name, rg, sub_resource=f"/dataflowEndpoints/{ep_name}"),
@@ -989,6 +1023,7 @@ class TestSetupEgDataflowEndpoint:
                 "properties": {
                     "mqttSettings": {
                         "host": eg_ctx.mqtt_hostname,
+                        "clientIdPrefix": instance_name,
                         "authentication": existing_auth,
                     },
                 },
@@ -1012,6 +1047,121 @@ class TestSetupEgDataflowEndpoint:
         assert "updated" not in result
         # Only the GET call, no PUT
         assert len(mocked_responses.calls) == 1
+
+    def test_existing_endpoint_missing_client_id_prefix_updates(
+        self, mocked_cmd, mocked_responses: responses
+    ):
+        """Legacy endpoint without clientIdPrefix is updated to include it (set to instance name)."""
+        rg = generate_random_string()
+        instance_name = generate_random_string()
+        instance_rid = _build_eg_resource_id(instance_name, rg)
+        eg_ctx = _make_eg_ctx(resource_group_name=rg)
+        extended_location = MOCK_EXTENDED_LOCATION
+
+        ep_name = get_mgmt_actions_resource_name("eg", instance_rid)
+
+        existing_auth = {
+            "method": "SystemAssignedManagedIdentity",
+            "systemAssignedManagedIdentitySettings": {"audience": MGMT_ACTIONS_EG_AUDIENCE},
+        }
+        # GET returns 200 with matching host/auth but NO clientIdPrefix (legacy endpoint)
+        mocked_responses.add(
+            method=responses.GET,
+            url=_build_iotops_endpoint(instance_name, rg, sub_resource=f"/dataflowEndpoints/{ep_name}"),
+            json={
+                "id": f"/fake/path/dataflowEndpoints/{ep_name}",
+                "name": ep_name,
+                "properties": {
+                    "mqttSettings": {
+                        "host": eg_ctx.mqtt_hostname,
+                        "authentication": existing_auth,
+                    },
+                },
+            },
+            status=200,
+        )
+        # PUT updates it
+        mocked_responses.add(
+            method=responses.PUT,
+            url=_build_iotops_endpoint(instance_name, rg, sub_resource=f"/dataflowEndpoints/{ep_name}"),
+            json={"id": f"/fake/path/dataflowEndpoints/{ep_name}", "name": ep_name},
+            status=200,
+        )
+
+        provider = MgmtActions(cmd=mocked_cmd)
+        result = provider._setup_eg_dataflow_endpoint(
+            eg_ctx=eg_ctx,
+            instance_name=instance_name,
+            instance_resource_id=instance_rid,
+            resource_group_name=rg,
+            extended_location=extended_location,
+            wait_sec=0,
+        )
+
+        assert result["exists"] is True
+        assert result["updated"] is True
+        assert len(mocked_responses.calls) == 2
+
+        # Verify the PUT payload now includes clientIdPrefix set to the instance name
+        put_body = json.loads(mocked_responses.calls[1].request.body)
+        assert put_body["properties"]["mqttSettings"]["clientIdPrefix"] == instance_name
+
+    def test_existing_endpoint_different_client_id_prefix_updates(
+        self, mocked_cmd, mocked_responses: responses
+    ):
+        """Endpoint with a stale clientIdPrefix is updated to the current instance name."""
+        rg = generate_random_string()
+        instance_name = generate_random_string()
+        instance_rid = _build_eg_resource_id(instance_name, rg)
+        eg_ctx = _make_eg_ctx(resource_group_name=rg)
+        extended_location = MOCK_EXTENDED_LOCATION
+
+        ep_name = get_mgmt_actions_resource_name("eg", instance_rid)
+
+        existing_auth = {
+            "method": "SystemAssignedManagedIdentity",
+            "systemAssignedManagedIdentitySettings": {"audience": MGMT_ACTIONS_EG_AUDIENCE},
+        }
+        # GET returns 200 with matching host/auth but a different clientIdPrefix
+        mocked_responses.add(
+            method=responses.GET,
+            url=_build_iotops_endpoint(instance_name, rg, sub_resource=f"/dataflowEndpoints/{ep_name}"),
+            json={
+                "id": f"/fake/path/dataflowEndpoints/{ep_name}",
+                "name": ep_name,
+                "properties": {
+                    "mqttSettings": {
+                        "host": eg_ctx.mqtt_hostname,
+                        "clientIdPrefix": "stale-prefix",
+                        "authentication": existing_auth,
+                    },
+                },
+            },
+            status=200,
+        )
+        mocked_responses.add(
+            method=responses.PUT,
+            url=_build_iotops_endpoint(instance_name, rg, sub_resource=f"/dataflowEndpoints/{ep_name}"),
+            json={"id": f"/fake/path/dataflowEndpoints/{ep_name}", "name": ep_name},
+            status=200,
+        )
+
+        provider = MgmtActions(cmd=mocked_cmd)
+        result = provider._setup_eg_dataflow_endpoint(
+            eg_ctx=eg_ctx,
+            instance_name=instance_name,
+            instance_resource_id=instance_rid,
+            resource_group_name=rg,
+            extended_location=extended_location,
+            wait_sec=0,
+        )
+
+        assert result["exists"] is True
+        assert result["updated"] is True
+        assert len(mocked_responses.calls) == 2
+
+        put_body = json.loads(mocked_responses.calls[1].request.body)
+        assert put_body["properties"]["mqttSettings"]["clientIdPrefix"] == instance_name
 
     def test_existing_endpoint_different_host(self, mocked_cmd, mocked_responses: responses):
         """When endpoint exists with a different host, updates via PUT."""
