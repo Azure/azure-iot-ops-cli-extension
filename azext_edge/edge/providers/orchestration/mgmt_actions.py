@@ -1582,9 +1582,10 @@ class MgmtActions(Queryable):
         SystemAssigned MI; when mi_resource is provided, a UserAssigned MI is
         configured instead using clientId and tenantId from the resolved UAMI resource.
 
-        When the endpoint already exists, compares host and authentication against the
-        desired state. If either differs (e.g., re-enabling with a different EG namespace
-        or switching between SAMI/UAMI), the endpoint is updated via PUT.
+        When the endpoint already exists, compares host, authentication, and
+        clientIdPrefix against the desired state. If any differ (e.g., re-enabling with
+        a different EG namespace, switching between SAMI/UAMI, or a stale/missing
+        clientIdPrefix), the endpoint is updated via PUT.
         """
         endpoint_name = get_mgmt_actions_resource_name("eg", instance_resource_id)
 
