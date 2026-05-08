@@ -21,7 +21,7 @@ on:
         description: Upload wheel to storage
         type: boolean
         required: false
-        default: false
+        default: true
 jobs:
   security:
     permissions:
