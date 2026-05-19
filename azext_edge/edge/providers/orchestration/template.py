@@ -54,7 +54,7 @@ TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "languageVersion": "2.0",
         "contentVersion": "1.0.0.0",
-        "metadata": {"_generator": {"name": "bicep", "version": "0.36.1.42791", "templateHash": "15536803533032806041"}},
+        "metadata": {"_generator": {"name": "bicep", "version": "0.43.8.12551", "templateHash": "10429247713227659883"}},
         "definitions": {
             "_1.AdvancedConfig": {
                 "type": "object",
@@ -760,7 +760,7 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
         "languageVersion": "2.0",
         "contentVersion": "1.0.0.0",
         "metadata": {
-            "_generator": {"name": "bicep", "version": "0.36.1.42791", "templateHash": "5076302837080998602"}
+            "_generator": {"name": "bicep", "version": "0.43.8.12551", "templateHash": "5208211492871219312"}
         },
         "definitions": {
             "_1.AdvancedConfig": {
