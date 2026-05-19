@@ -49,12 +49,12 @@ class TemplateBlueprint(NamedTuple):
 
 
 TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
-    commit_id="cb318bfe4bc1fcc887fb3f902436110a713fe797",
+    commit_id="c0eedd7b4a50a5e4bc83cd43d3bda34be6e5e19d",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "languageVersion": "2.0",
         "contentVersion": "1.0.0.0",
-        "metadata": {"_generator": {"name": "bicep", "version": "0.42.1.51946", "templateHash": "10665750777960080296"}},
+        "metadata": {"_generator": {"name": "bicep", "version": "0.36.1.42791", "templateHash": "15536803533032806041"}},
         "definitions": {
             "_1.AdvancedConfig": {
                 "type": "object",
@@ -676,7 +676,7 @@ TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
             "advancedConfig": {"$ref": "#/definitions/_1.AdvancedConfig", "defaultValue": {}},
         },
         "variables": {
-            "VERSIONS": {"certManager": "0.11.0", "secretStore": "1.4.0"},
+            "VERSIONS": {"certManager": "0.12.0", "secretStore": "1.4.1"},
             "TRAINS": {"certManager": "stable", "secretStore": "stable"},
         },
         "resources": {
@@ -754,13 +754,13 @@ TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
 )
 
 TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
-    commit_id="f3f0f91039428f78b382b6ef9bdf194a51d8e684",
+    commit_id="10b8355545af3a29f48fafd6e936ef120e4f74c8",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "languageVersion": "2.0",
         "contentVersion": "1.0.0.0",
         "metadata": {
-            "_generator": {"name": "bicep", "version": "0.42.1.51946", "templateHash": "11558826619663515380"}
+            "_generator": {"name": "bicep", "version": "0.36.1.42791", "templateHash": "5076302837080998602"}
         },
         "definitions": {
             "_1.AdvancedConfig": {
@@ -1447,8 +1447,8 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
             "advancedConfig": {"$ref": "#/definitions/_1.AdvancedConfig", "defaultValue": {}},
         },
         "variables": {
-            "VERSIONS": {"iotOperations": "1.3.70"},
-            "TRAINS": {"iotOperations": "stable"},
+            "VERSIONS": {"iotOperations": "1.3.105"},
+            "TRAINS": {"iotOperations": "integration"},
             "HASH": "[coalesce(tryGet(parameters('advancedConfig'), 'resourceSuffix'), take(uniqueString(resourceGroup().id, parameters('clusterName'), parameters('clusterNamespace')), 5))]",
             "AIO_EXTENSION_SUFFIX": "[take(uniqueString(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName'))), 5)]",
             "CUSTOM_LOCATION_NAMESPACE": "[parameters('clusterNamespace')]",
