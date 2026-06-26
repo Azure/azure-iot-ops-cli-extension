@@ -175,3 +175,82 @@ def test_dataflow_endpoint_apply(mocked_cmd, mocked_responses: responses, mocked
     assert create_result == expected_payload
     request_payload = json.loads(put_response.calls[0].request.body)
     assert request_payload["extendedLocation"] == mock_instance_record["extendedLocation"]
+
+
+def _make_endpoint_provider(cloud_name: str):
+    # Bypass the heavy __init__ (which builds mgmt clients); we only need self.cmd
+    # to exercise _get_endpoint_host's cloud-aware construction.
+    from azext_edge.edge.providers.orchestration.resources.dataflows import DataFlowEndpoints
+    from azext_edge.tests.helpers import build_mock_cmd_for_cloud
+
+    provider = DataFlowEndpoints.__new__(DataFlowEndpoints)
+    provider.cmd = build_mock_cmd_for_cloud(cloud_name)
+    return provider
+
+
+@pytest.mark.parametrize(
+    "cloud_name, expected_suffix",
+    [
+        ("AzureCloud", "core.windows.net"),
+        ("AzureUSGovernment", "core.usgovcloudapi.net"),
+        ("AzureChinaCloud", "core.chinacloudapi.cn"),
+    ],
+)
+def test_adls_host_uses_cloud_storage_suffix(cloud_name, expected_suffix):
+    from azext_edge.edge.providers.orchestration.common import DataflowEndpointType
+
+    provider = _make_endpoint_provider(cloud_name)
+    account = generate_random_string()
+
+    host = provider._get_endpoint_host(
+        endpoint_type=DataflowEndpointType.DATALAKESTORAGE.value,
+        storage_account_name=account,
+    )
+
+    assert host == f"https://{account}.blob.{expected_suffix}"
+
+
+@pytest.mark.parametrize(
+    "cloud_name, expected_suffix",
+    [
+        ("AzureCloud", "servicebus.windows.net"),
+        ("AzureUSGovernment", "servicebus.usgovcloudapi.net"),
+        ("AzureChinaCloud", "servicebus.chinacloudapi.cn"),
+    ],
+)
+def test_eventhub_host_uses_cloud_servicebus_suffix(cloud_name, expected_suffix):
+    from azext_edge.edge.providers.orchestration.common import DataflowEndpointType
+
+    provider = _make_endpoint_provider(cloud_name)
+    namespace = generate_random_string()
+
+    host = provider._get_endpoint_host(
+        endpoint_type=DataflowEndpointType.EVENTHUB.value,
+        eventhub_namespace=namespace,
+    )
+
+    assert host == f"{namespace}.{expected_suffix}:9093"
+
+
+def test_fabric_onelake_allowed_in_public():
+    from azext_edge.edge.providers.orchestration.common import DataflowEndpointType
+
+    provider = _make_endpoint_provider("AzureCloud")
+
+    host = provider._get_endpoint_host(endpoint_type=DataflowEndpointType.FABRICONELAKE.value)
+
+    assert host == "https://onelake.dfs.fabric.microsoft.com"
+
+
+@pytest.mark.parametrize("cloud_name", ["AzureUSGovernment", "AzureChinaCloud"])
+def test_fabric_onelake_blocked_in_non_public(cloud_name):
+    from azure.cli.core.azclierror import InvalidArgumentValueError
+    from azext_edge.edge.providers.orchestration.common import DataflowEndpointType
+
+    provider = _make_endpoint_provider(cloud_name)
+
+    with pytest.raises(InvalidArgumentValueError) as exc:
+        provider._get_endpoint_host(endpoint_type=DataflowEndpointType.FABRICONELAKE.value)
+
+    assert "Fabric OneLake" in str(exc.value)
+    assert "Azure Public Cloud" in str(exc.value)

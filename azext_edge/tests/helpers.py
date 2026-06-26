@@ -441,3 +441,59 @@ def wait_for_expected_count(
         f"Expected {expected_count} items but got {len(result)} after {max_retries} retries"
     )
     return result
+
+
+# Representative endpoint/suffix values per cloud, matching what the Azure CLI
+# cloud framework exposes at runtime. Used to build mock cmd objects for
+# government-cloud (Fairfax) and China-cloud readiness tests.
+CLOUD_CONFIG_FIXTURES = {
+    "AzureCloud": {
+        "resource_manager": "https://management.azure.com/",
+        "active_directory_resource_id": "https://management.core.windows.net/",
+        "microsoft_graph_resource_id": "https://graph.microsoft.com/",
+        "storage_endpoint": "core.windows.net",
+        "keyvault_dns": ".vault.azure.net",
+        "acr_login_server_endpoint": ".azurecr.io",
+    },
+    "AzureUSGovernment": {
+        "resource_manager": "https://management.usgovcloudapi.net/",
+        "active_directory_resource_id": "https://management.core.usgovcloudapi.net/",
+        "microsoft_graph_resource_id": "https://graph.microsoft.us/",
+        "storage_endpoint": "core.usgovcloudapi.net",
+        "keyvault_dns": ".vault.usgovcloudapi.net",
+        "acr_login_server_endpoint": ".azurecr.us",
+    },
+    "AzureChinaCloud": {
+        "resource_manager": "https://management.chinacloudapi.cn",
+        "active_directory_resource_id": "https://management.core.chinacloudapi.cn/",
+        "microsoft_graph_resource_id": "https://microsoftgraph.chinacloudapi.cn",
+        "storage_endpoint": "core.chinacloudapi.cn",
+        "keyvault_dns": ".vault.azure.cn",
+        "acr_login_server_endpoint": ".azurecr.cn",
+    },
+}
+
+
+def build_mock_cmd_for_cloud(cloud_name: str):
+    """Build a mock cmd whose cli_ctx.cloud reflects the given cloud's endpoints/suffixes."""
+    from unittest.mock import Mock
+
+    fixture = CLOUD_CONFIG_FIXTURES[cloud_name]
+
+    class _Stub:
+        pass
+
+    cloud = _Stub()
+    cloud.name = cloud_name
+    cloud.endpoints = _Stub()
+    cloud.endpoints.resource_manager = fixture["resource_manager"]
+    cloud.endpoints.active_directory_resource_id = fixture["active_directory_resource_id"]
+    cloud.endpoints.microsoft_graph_resource_id = fixture["microsoft_graph_resource_id"]
+    cloud.suffixes = _Stub()
+    cloud.suffixes.storage_endpoint = fixture["storage_endpoint"]
+    cloud.suffixes.keyvault_dns = fixture["keyvault_dns"]
+    cloud.suffixes.acr_login_server_endpoint = fixture["acr_login_server_endpoint"]
+
+    cmd = Mock()
+    cmd.cli_ctx.cloud = cloud
+    return cmd

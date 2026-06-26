@@ -308,7 +308,7 @@ class OciRegistryClient:
         headers: Dict[str, str] = {}
 
         token = None
-        if self._is_acr_registry(registry):
+        if self._is_acr_registry(registry, cmd=cmd):
             token = self._get_acr_access_token(cmd=cmd, registry=registry, repository=repository)
         if not token:
             token = self._get_anonymous_token(registry, repository)
@@ -359,7 +359,9 @@ class OciRegistryClient:
             return None
 
         try:
-            arm_token = AZURE_CLI_CREDENTIAL.get_token("https://management.azure.com/.default").token
+            from .cloud_config import CloudConfig
+
+            arm_token = AZURE_CLI_CREDENTIAL.get_token(CloudConfig(cmd).arm_endpoint_scope).token
         except Exception as ex:  # pragma: no cover - credential failures
             logger.warning(f"Failed to obtain ARM token for ACR: {ex}")
             return None
@@ -421,8 +423,15 @@ class OciRegistryClient:
         return token_resp.json().get("access_token")
 
     @staticmethod
-    def _is_acr_registry(registry: str) -> bool:
+    def _is_acr_registry(registry: str, cmd=None) -> bool:
         """Check if the registry is an Azure Container Registry."""
+        if cmd is not None:
+            from .cloud_config import CloudConfig
+
+            try:
+                return registry.endswith(CloudConfig(cmd).acr_suffix)
+            except Exception:  # pragma: no cover - cloud ACR suffix not set
+                pass
         return registry.endswith(".azurecr.io")
 
     @staticmethod

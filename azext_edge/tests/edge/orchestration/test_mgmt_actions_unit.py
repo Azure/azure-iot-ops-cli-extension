@@ -5726,3 +5726,43 @@ class TestRemoveManagementEndpoint:
                 confirm_yes=True,
                 wait_sec=0,
             )
+
+
+class TestMgmtActionsCloudGate:
+    """Event Grid MQTT-based management actions are gated by cloud (blocked in China)."""
+
+    @staticmethod
+    def _make_mgmt_actions(cloud_name: str) -> MgmtActions:
+        # Bypass the heavy __init__; enable() applies the cloud gate before using any client.
+        from azext_edge.tests.helpers import build_mock_cmd_for_cloud
+
+        provider = MgmtActions.__new__(MgmtActions)
+        provider.cmd = build_mock_cmd_for_cloud(cloud_name)
+        return provider
+
+    def test_mgmt_actions_enable_blocked_in_china(self):
+        provider = self._make_mgmt_actions("AzureChinaCloud")
+
+        with pytest.raises(ValidationError) as exc:
+            provider.enable(
+                name=generate_random_string(),
+                resource_group_name=generate_random_string(),
+                eg_resource_id=generate_random_string(),
+            )
+
+        assert "not available in this cloud environment" in str(exc.value)
+
+    @pytest.mark.parametrize("cloud_name", ["AzureCloud", "AzureUSGovernment"])
+    def test_mgmt_actions_enable_not_blocked_in_supported_clouds(self, cloud_name):
+        provider = self._make_mgmt_actions(cloud_name)
+
+        # In supported clouds the cloud gate must NOT raise; the call proceeds past the gate
+        # and fails later for an unrelated reason (no mgmt client wired in this lightweight setup).
+        with pytest.raises(Exception) as exc:
+            provider.enable(
+                name=generate_random_string(),
+                resource_group_name=generate_random_string(),
+                eg_resource_id=generate_random_string(),
+            )
+
+        assert "not available in this cloud environment" not in str(exc.value)

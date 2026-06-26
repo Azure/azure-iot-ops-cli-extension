@@ -11,10 +11,6 @@ from .az_client import get_resource_client
 from .resource_graph import ResourceGraph
 from knack.log import get_logger
 
-GRAPH_ENDPOINT = "https://graph.microsoft.com/"
-GRAPH_V1_ENDPOINT = f"{GRAPH_ENDPOINT}v1.0"
-GRAPH_V1_SP_ENDPOINT = f"{GRAPH_V1_ENDPOINT}/servicePrincipals"
-
 
 logger = get_logger(__name__)
 
@@ -66,11 +62,16 @@ class Queryable:
     def get_resource_group(self, name: str) -> dict:
         return self.resource_client.resource_groups.get(resource_group_name=name)
 
-    def get_sp_id(self, app_id: str, token_resource: str = "https://graph.microsoft.com", **kwargs) -> Optional[str]:
+    def get_sp_id(self, app_id: str, token_resource: Optional[str] = None, **kwargs) -> Optional[str]:
         """
         Attempts to fetch the service principal Id by app Id from the Microsoft Graph API.
         """
         from azure.cli.core.util import send_raw_request
+        from .cloud_config import CloudConfig
+
+        cloud_config = CloudConfig(self.cmd)
+        graph_sp_endpoint = f"{cloud_config.graph_endpoint}v1.0/servicePrincipals"
+        token_resource = token_resource or cloud_config.graph_token_resource
 
         # See if we can fetch the RP OID.
         logger.debug(f"Using aud: {token_resource}")
@@ -78,7 +79,7 @@ class Queryable:
             sp_response = send_raw_request(
                 cli_ctx=self.cmd.cli_ctx,
                 method="GET",
-                url=f"{GRAPH_V1_SP_ENDPOINT}(appId='{app_id}')",
+                url=f"{graph_sp_endpoint}(appId='{app_id}')",
                 resource=token_resource,
                 **kwargs,
             ).json()

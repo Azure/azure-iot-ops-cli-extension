@@ -33,7 +33,6 @@ from .common import (
     MGMT_ACTIONS_DEFAULT_EG_CLIENT_GROUP,
     MGMT_ACTIONS_DEFAULT_MQTT_ENDPOINT,
     MGMT_ACTIONS_DEFAULT_REGISTRY_ENDPOINT,
-    MGMT_ACTIONS_EG_AUDIENCE,
     MGMT_ACTIONS_GRAPH_ARTIFACT,
     MGMT_ACTIONS_GRAPH_RULES_VERSION,
     MGMT_ACTIONS_REQUEST_TOPIC_TEMPLATE,
@@ -258,6 +257,13 @@ class MgmtActions(Queryable):
         Bootstraps the management actions infrastructure across Event Grid, ADR, and AIO domains.
         """
         from ...util.machinery import scoped_semver_import
+        from ...util.cloud_config import CloudConfig
+
+        if not CloudConfig(self.cmd).supports_eventgrid_mqtt:
+            raise ValidationError(
+                "Management actions are not available in this cloud environment. This feature relies on "
+                "Event Grid Namespaces with MQTT, which is not supported in the active cloud."
+            )
 
         semver = scoped_semver_import()
 
@@ -1665,22 +1671,24 @@ class MgmtActions(Queryable):
         )
         return {"name": endpoint_name, "authentication": desired_authentication, "exists": False}
 
-    @staticmethod
-    def _build_eg_endpoint_auth(mi_resource: Optional[Dict] = None) -> Dict:
+    def _build_eg_endpoint_auth(self, mi_resource: Optional[Dict] = None) -> Dict:
         """Build the authentication block for the EG MQTT dataflow endpoint."""
+        from ...util.cloud_config import CloudConfig
+
+        eg_audience = CloudConfig(self.cmd).eventgrid_audience
         if mi_resource:
             return {
                 "method": "UserAssignedManagedIdentity",
                 "userAssignedManagedIdentitySettings": {
                     "clientId": mi_resource["properties"]["clientId"],
                     "tenantId": mi_resource["properties"]["tenantId"],
-                    "scope": f"{MGMT_ACTIONS_EG_AUDIENCE}/.default",
+                    "scope": f"{eg_audience}/.default",
                 },
             }
         return {
             "method": "SystemAssignedManagedIdentity",
             "systemAssignedManagedIdentitySettings": {
-                "audience": MGMT_ACTIONS_EG_AUDIENCE,
+                "audience": eg_audience,
             },
         }
 

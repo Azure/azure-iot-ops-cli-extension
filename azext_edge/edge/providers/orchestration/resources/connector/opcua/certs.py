@@ -22,6 +22,7 @@ from ...instances import SECRET_SYNC_RESOURCE_TYPE, Instances
 from .....orchestration.upgrade2 import calculate_config_delta
 from ......util.file_operations import read_file_content, validate_file_extension
 from ......util.queryable import Queryable
+from ......util.cloud_config import CloudConfig
 from ......util.az_client import (
     get_keyvault_client,
     get_ssc_mgmt_client,
@@ -59,6 +60,7 @@ class OpcUACerts(Queryable):
         )
         self.keyvault_client = get_keyvault_client(
             subscription_id=self.default_subscription_id,
+            keyvault_scope=CloudConfig(self.cmd).keyvault_scope,
         )
         self.instance_name = instance_name
         self.resource_group_name = resource_group_name
