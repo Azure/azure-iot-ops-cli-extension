@@ -430,8 +430,8 @@ class OciRegistryClient:
 
             try:
                 return registry.endswith(CloudConfig(cmd).acr_suffix)
-            except Exception:  # pragma: no cover - cloud ACR suffix not set
-                pass
+            except Exception as ex:  # pragma: no cover - cloud ACR suffix not set
+                logger.debug(f"Could not resolve cloud ACR suffix; falling back to default: {ex}")
         return registry.endswith(".azurecr.io")
 
     @staticmethod
