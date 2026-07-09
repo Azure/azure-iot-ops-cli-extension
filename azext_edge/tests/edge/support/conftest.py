@@ -241,10 +241,16 @@ def mocked_namespaced_custom_objects(mocked_client):
 
 @pytest.fixture
 def mocked_list_cron_jobs(mocked_client):
+    from kubernetes.client import Configuration
     from kubernetes.client.models import V1CronJobList, V1CronJob, V1ObjectMeta
+    no_validation = Configuration()
+    no_validation.client_side_validation = False
 
     def _handle_list_cron_jobs(*args, **kwargs):
-        cron_job = V1CronJob(metadata=V1ObjectMeta(namespace="mock_namespace", name="mock_cron_job"))
+        cron_job = V1CronJob(
+            metadata=V1ObjectMeta(namespace="mock_namespace", name="mock_cron_job"),
+            local_vars_configuration=no_validation,
+        )
         cron_job_list = V1CronJobList(items=[cron_job])
 
         return cron_job_list
