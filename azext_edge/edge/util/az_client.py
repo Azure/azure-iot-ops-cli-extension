@@ -8,7 +8,7 @@
 from collections.abc import MutableMapping  # pylint: disable=import-error
 from enum import Enum
 from time import sleep
-from typing import TYPE_CHECKING, Any, NamedTuple, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, Callable, NamedTuple, Optional, Tuple, TypeVar, Union
 
 from azure.cli.core.azclierror import ValidationError
 from knack.log import get_logger
@@ -304,6 +304,97 @@ def wait_for_terminal_state(poller: "LROPoller", wait_sec: int = POLL_WAIT_SEC, 
         sleep(wait_sec)
         counter = counter + 1
     return poller.result()
+
+
+T = TypeVar("T")
+
+# Bounded retry for transient Azure token-acquisition / connection failures.
+TRANSIENT_RETRY_MAX_ATTEMPTS = 3
+TRANSIENT_RETRY_INITIAL_BACKOFF_SEC = 15
+
+# Lower-cased substrings identifying a transient network / token-acquisition
+# failure (e.g. AzureCliCredential shelling out to `az account get-access-token`
+# which fails with 'Connection reset by peer'). These are environmental flakes,
+# not auth misconfiguration or bad requests, so they are safe to retry.
+#
+# HTTP status errors (429/5xx) are intentionally NOT handled here: the azure-core
+# transport already retries them via its RetryPolicy. This helper only covers the
+# connection/token-acquisition failures that occur outside that policy.
+_TRANSIENT_ERROR_MARKERS = (
+    "connection reset",
+    "connection aborted",
+    "connection refused",
+    "reset by peer",
+    "broken pipe",
+    "timed out",
+    "timeout",
+    "temporary failure in name resolution",
+    "failed to establish a new connection",
+    "failed to resolve",
+    "getaddrinfo failed",
+    "connection error",
+    "eof occurred",
+)
+
+
+def is_transient_error(error: Exception) -> bool:
+    """Return True when the error is a transient network / token-acquisition failure
+    that is safe to retry (as opposed to a genuine auth, validation or request error).
+
+    HTTP status errors (429/5xx) are excluded on purpose: the azure-core transport
+    already retries those. This targets the connection reset / token-acquisition
+    failures that abort a command before the transport's retry policy applies.
+    """
+    from azure.core.exceptions import ServiceRequestError, ServiceResponseError
+
+    # azure-core raises these when the request could not be sent or the response was
+    # not received (connection reset, DNS failure, read timeout, etc.).
+    if isinstance(error, (ServiceRequestError, ServiceResponseError)):
+        return True
+
+    # Builtin connection / timeout errors (e.g. surfaced from AzureCliCredential).
+    if isinstance(error, (ConnectionError, TimeoutError)):
+        return True
+
+    # Fall back to inspecting the (possibly wrapped) error text so we also catch
+    # ClientAuthenticationError / CredentialUnavailableError caused by a transient
+    # `az account get-access-token` connection reset, without retrying real auth errors.
+    message = str(getattr(error, "message", "") or error).lower()
+    return any(marker in message for marker in _TRANSIENT_ERROR_MARKERS)
+
+
+def retry_on_transient_error(
+    func: Callable[[], T],
+    *,
+    max_attempts: int = TRANSIENT_RETRY_MAX_ATTEMPTS,
+    initial_backoff_sec: int = TRANSIENT_RETRY_INITIAL_BACKOFF_SEC,
+    context: Optional[str] = None,
+) -> T:
+    """Invoke ``func`` and retry it on transient network / token-acquisition failures.
+
+    Retries use a linear backoff (``initial_backoff_sec`` * attempt). Non-transient
+    errors are raised immediately. ``func`` must be idempotent; all call sites wrap
+    idempotent ARM reads or PUT/DELETE operations, so re-running converges the same
+    state.
+    """
+    attempt = 0
+    while True:
+        attempt += 1
+        try:
+            return func()
+        except Exception as error:  # pylint: disable=broad-except
+            if attempt >= max_attempts or not is_transient_error(error):
+                raise
+            backoff = initial_backoff_sec * attempt
+            logger.warning(
+                "Transient error%s (attempt %d/%d): %s. Retrying in %ds...",
+                f" during {context}" if context else "",
+                attempt,
+                max_attempts,
+                error,
+                backoff,
+            )
+            sleep(backoff)
 
 
 def wait_for_terminal_states(

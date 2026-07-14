@@ -43,6 +43,7 @@ from .migration import SecretSyncMigrationManager
 from .resources import RegistryEndpoints
 from .resources.instances import SECRET_SYNC_RESOURCE_TYPE, SPC_RESOURCE_TYPE, Instances
 from .targets import InitTargets
+from ...util.az_client import retry_on_transient_error
 
 logger = get_logger(__name__)
 
@@ -69,17 +70,23 @@ def upgrade_ops_instance(
     no_cm_install: Optional[bool] = None,
     **kwargs,
 ):
-    upgrade_manager = UpgradeManager(
-        cmd=cmd,
-        instance_name=instance_name,
-        resource_group_name=resource_group_name,
-        adr_namespace_resource_id=adr_namespace_resource_id,
-        no_progress=no_progress,
-        force=force,
-        no_cm_install=no_cm_install,
+    upgrade_manager = retry_on_transient_error(
+        lambda: UpgradeManager(
+            cmd=cmd,
+            instance_name=instance_name,
+            resource_group_name=resource_group_name,
+            adr_namespace_resource_id=adr_namespace_resource_id,
+            no_progress=no_progress,
+            force=force,
+            no_cm_install=no_cm_install,
+        ),
+        context="initializing upgrade",
     )
 
-    upgrade_state = upgrade_manager.analyze_cluster(**kwargs)
+    upgrade_state = retry_on_transient_error(
+        lambda: upgrade_manager.analyze_cluster(**kwargs),
+        context="analyzing cluster",
+    )
 
     if not upgrade_state.has_upgrades():
         logger.warning("Nothing to upgrade :)")
@@ -223,7 +230,12 @@ class UpgradeManager:
             for op_type in [ExtensionOperation.DELETE, ExtensionOperation.CREATE, ExtensionOperation.UPDATE]:
                 for ext in operations.get(op_type, []):
                     try:
-                        result = self._apply_single_operation(ext=ext, op_type=op_type, headers=headers)
+                        result = retry_on_transient_error(
+                            lambda ext=ext, op_type=op_type: self._apply_single_operation(
+                                ext=ext, op_type=op_type, headers=headers
+                            ),
+                            context=f"{op_type.value} extension",
+                        )
                         return_payload.append(result)
                         progress.advance(task)
                     except HttpResponseError:
@@ -233,10 +245,13 @@ class UpgradeManager:
 
             if upgrade_state.instance_upgrade:
                 try:
-                    instance_result = self._apply_instance_update(
-                        needs_adr_update=upgrade_state._check_adr_namespace_update(),
-                        needs_spc_update=upgrade_state._check_spc_reference_update(),
-                        headers=headers,
+                    instance_result = retry_on_transient_error(
+                        lambda: self._apply_instance_update(
+                            needs_adr_update=upgrade_state._check_adr_namespace_update(),
+                            needs_spc_update=upgrade_state._check_spc_reference_update(),
+                            headers=headers,
+                        ),
+                        context="instance update",
                     )
                     return_payload.append(instance_result)
                     progress.advance(task)
@@ -247,7 +262,10 @@ class UpgradeManager:
 
             if upgrade_state.registry_endpoint_needed:
                 try:
-                    registry_result = self._create_default_registry_endpoint(headers)
+                    registry_result = retry_on_transient_error(
+                        lambda: self._create_default_registry_endpoint(headers),
+                        context="registry endpoint creation",
+                    )
                     return_payload.append(registry_result)
                     progress.advance(task)
                 except HttpResponseError:
@@ -257,7 +275,10 @@ class UpgradeManager:
 
             if upgrade_state.secretsync_migration_needed:
                 try:
-                    default_spc = self.secretsync_migration.migrate_to_v2(headers)
+                    default_spc = retry_on_transient_error(
+                        lambda: self.secretsync_migration.migrate_to_v2(headers),
+                        context="secretsync migration",
+                    )
                     return_payload.append(default_spc)
                     progress.advance(task)
                 except HttpResponseError:
