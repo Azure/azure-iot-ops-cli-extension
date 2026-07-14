@@ -11,7 +11,8 @@ import pytest
 from ...generators import generate_random_string
 from ...helpers import run, wait_for_expected_count
 from .namespace_helpers import (
-    create_config_file, assert_management_group_properties, assert_management_group_action_properties
+    create_config_file, assert_management_group_properties, assert_management_group_action_properties,
+    _save_json_to_file, _try_show_template
 )
 
 
@@ -483,3 +484,175 @@ def test_namespace_onvif_asset_management_group_lifecycle_operations(
 
     remaining_mgmt_group_names = [mg["name"] for mg in remaining_mgmt_groups]
     assert mgmt_group_name not in remaining_mgmt_group_names
+
+
+# ---------------------------------------------------------------------------
+# Generalized (connector-agnostic) management group / action commands
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("asset_type", ["opcua", "custom"])
+def test_generalized_management_lifecycle(asset_factory, tracked_files: List[str], asset_type: str):
+    """Full lifecycle of the generalized (connector-agnostic) mgmt-group + mgmt-action commands.
+
+    The connector type is detected automatically from the asset's device endpoint. A connector
+    template must exist for --show-template / --mgmt-group-config / --action-config to resolve
+    connector metadata. When no config schema is available (OPC UA bundles empty management
+    schemas, custom may have no template installed), --show-template returns an empty config and
+    the test exercises the metadata-free path (no config payload).
+    """
+    info = asset_factory(asset_type)
+    asset_name = info["name"]
+    instance_name = info["instanceName"]
+    resource_group = info["resourceGroup"]
+    mg_name = f"gen-mg-{generate_random_string(6, force_lower=True)}"
+    mg_name_2 = f"gen-mg2-{generate_random_string(6, force_lower=True)}"
+    action_name = f"gen-act-{generate_random_string(6, force_lower=True)}"
+    target_uri = (
+        "nsu=http://microsoft.com/Opc/OpcPlc/Boiler;i=7019"
+        if asset_type == "opcua"
+        else "/mgmt/device_service?profile=startmethod"
+    )
+
+    # 1. SHOW-TEMPLATE mgmt-group (may be empty when no config schema is available)
+    mg_template = _try_show_template(
+        f"az iot ops ns asset mgmt-group add --asset {asset_name} "
+        f"--instance {instance_name} -g {resource_group} "
+        f"--name {mg_name} --show-template config"
+    )
+    mg_config_arg = ""
+    if mg_template and mg_template.get("mgmtGroupConfig", {}).get("managementGroupConfiguration"):
+        assert "connectorType" in mg_template
+        mg_config_file = _save_json_to_file(mg_template, tracked_files)
+        mg_config_arg = f"--mgmt-group-config {mg_config_file}"
+
+    # 2. ADD mgmt-group
+    default_topic = "factory/mgmt/responses"
+    default_timeout = 30
+    added_mg = run(
+        f"az iot ops ns asset mgmt-group add --asset {asset_name} "
+        f"--instance {instance_name} -g {resource_group} --name {mg_name} "
+        f"--default-topic '{default_topic}' --default-timeout {default_timeout} {mg_config_arg}"
+    )
+    assert_management_group_properties(
+        added_mg, name=mg_name, default_topic=default_topic, default_timeout=default_timeout
+    )
+
+    # 3. SHOW mgmt-group
+    shown_mg = run(
+        f"az iot ops ns asset mgmt-group show --asset {asset_name} "
+        f"--instance {instance_name} -g {resource_group} --name {mg_name}"
+    )
+    assert_management_group_properties(shown_mg, name=mg_name, default_topic=default_topic)
+
+    # 4. LIST mgmt-groups
+    mg_list = run(
+        f"az iot ops ns asset mgmt-group list --asset {asset_name} "
+        f"--instance {instance_name} -g {resource_group}"
+    )
+    assert any(mg["name"] == mg_name for mg in mg_list)
+
+    # 5. ADD a second mgmt-group (minimal)
+    added_mg_2 = run(
+        f"az iot ops ns asset mgmt-group add --asset {asset_name} "
+        f"--instance {instance_name} -g {resource_group} --name {mg_name_2}"
+    )
+    assert_management_group_properties(added_mg_2, name=mg_name_2)
+    mg_names = [mg["name"] for mg in run(
+        f"az iot ops ns asset mgmt-group list --asset {asset_name} "
+        f"--instance {instance_name} -g {resource_group}"
+    )]
+    assert mg_name in mg_names and mg_name_2 in mg_names
+
+    # 6. UPDATE mgmt-group
+    updated_topic = "factory/mgmt/updated_responses"
+    updated_timeout = 45
+    updated_mg = run(
+        f"az iot ops ns asset mgmt-group update --asset {asset_name} "
+        f"--instance {instance_name} -g {resource_group} --name {mg_name} "
+        f"--default-topic '{updated_topic}' --default-timeout {updated_timeout}"
+    )
+    assert_management_group_properties(
+        updated_mg, name=mg_name, default_topic=updated_topic, default_timeout=updated_timeout
+    )
+
+    # 7. SHOW-TEMPLATE action (may be empty)
+    act_template = _try_show_template(
+        f"az iot ops ns asset mgmt-action add --asset {asset_name} "
+        f"--instance {instance_name} -g {resource_group} --group {mg_name} "
+        f"--name {action_name} --target-uri '{target_uri}' --show-template config"
+    )
+    act_config_arg = ""
+    if act_template and act_template.get("actionConfig", {}).get("actionConfiguration"):
+        assert "connectorType" in act_template
+        act_config_file = _save_json_to_file(act_template, tracked_files)
+        act_config_arg = f"--action-config {act_config_file}"
+
+    # 8. ADD action
+    action_type = "Call"
+    action_timeout = 60
+    added_actions = run(
+        f"az iot ops ns asset mgmt-action add --asset {asset_name} "
+        f"--instance {instance_name} -g {resource_group} --group {mg_name} "
+        f"--name {action_name} --target-uri '{target_uri}' --action-type {action_type} "
+        f"--timeout {action_timeout} {act_config_arg}"
+    )
+    assert_management_group_action_properties(
+        added_actions, name=action_name, target_uri=target_uri,
+        action_type=action_type, timeout=action_timeout,
+    )
+
+    # 9. LIST actions
+    act_list = run(
+        f"az iot ops ns asset mgmt-action list --asset {asset_name} "
+        f"--instance {instance_name} -g {resource_group} --group {mg_name}"
+    )
+    assert any(a["name"] == action_name for a in act_list)
+
+    # 10. REPLACE action
+    replaced_actions = run(
+        f"az iot ops ns asset mgmt-action add --asset {asset_name} "
+        f"--instance {instance_name} -g {resource_group} --group {mg_name} "
+        f"--name {action_name} --target-uri '{target_uri}' --replace"
+    )
+    assert_management_group_action_properties(replaced_actions, name=action_name)
+
+    # 11. EXPORT mgmt-groups
+    mg_export = run(
+        f"az iot ops ns asset mgmt-group export --asset {asset_name} "
+        f"--instance {instance_name} -g {resource_group} --output-dir /tmp --replace"
+    )
+    assert mg_export["management_group_count"] >= 1
+    tracked_files.append(mg_export["file_path"])
+
+    # 12. EXPORT actions
+    act_export = run(
+        f"az iot ops ns asset mgmt-action export --asset {asset_name} "
+        f"--instance {instance_name} -g {resource_group} --group {mg_name} "
+        f"--output-dir /tmp --replace"
+    )
+    assert act_export["action_count"] >= 1
+    tracked_files.append(act_export["file_path"])
+
+    # 13. REMOVE action
+    run(
+        f"az iot ops ns asset mgmt-action remove --asset {asset_name} "
+        f"--instance {instance_name} -g {resource_group} --group {mg_name} --name {action_name}"
+    )
+    act_list_after = run(
+        f"az iot ops ns asset mgmt-action list --asset {asset_name} "
+        f"--instance {instance_name} -g {resource_group} --group {mg_name}"
+    )
+    assert not any(a["name"] == action_name for a in (act_list_after or []))
+
+    # 14. REMOVE mgmt-groups
+    for mg in [mg_name, mg_name_2]:
+        run(
+            f"az iot ops ns asset mgmt-group remove --asset {asset_name} "
+            f"--instance {instance_name} -g {resource_group} --name {mg}"
+        )
+    remaining = [mg["name"] for mg in (run(
+        f"az iot ops ns asset mgmt-group list --asset {asset_name} "
+        f"--instance {instance_name} -g {resource_group}"
+    ) or [])]
+    assert mg_name not in remaining and mg_name_2 not in remaining

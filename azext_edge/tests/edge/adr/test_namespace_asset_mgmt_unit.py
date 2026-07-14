@@ -26,6 +26,11 @@ from azext_edge.edge.commands_namespaces import (
     list_namespace_asset_management_group_actions,
     remove_namespace_asset_management_group_action
 )
+from azext_edge.edge.commands_namespaces import (
+    add_namespace_asset_management_group,
+    update_namespace_asset_management_group,
+    add_namespace_asset_management_group_action,
+)
 
 from .test_namespace_assets_unit import (
     get_namespace_asset_mgmt_uri, get_namespace_asset_record, add_device_get_call
@@ -1679,3 +1684,691 @@ def test_import_namespace_asset_management_group_actions(
     # Verify result is a list of actions
     assert isinstance(result, list)
     assert len(result) > 0
+
+
+# ---------------------------------------------------------------------------
+# Generalized (connector-agnostic) management-group / management-action unit tests
+# ---------------------------------------------------------------------------
+
+
+def _build_asset_with_mgmt_groups(
+    asset_name: str,
+    namespace_name: str,
+    resource_group_name: str,
+    management_groups: Optional[list] = None,
+) -> dict:
+    """Build a mock asset record pre-wired for the generalized management path."""
+    asset = get_namespace_asset_record(
+        asset_name=asset_name,
+        namespace_name=namespace_name,
+        resource_group_name=resource_group_name,
+    )
+    asset["properties"]["managementGroups"] = management_groups or []
+    return asset
+
+
+def _add_device_get_for_generalized_mgmt(
+    mocked_responses: responses,
+    asset: dict,
+    namespace_name: str,
+    resource_group_name: str,
+    connector_type: str,
+) -> None:
+    """Register GET device mock needed by _get_connector_type_and_device and _check_device_props."""
+    device_name = asset["properties"]["deviceRef"]["deviceName"]
+    endpoint_name = asset["properties"]["deviceRef"]["endpointName"]
+    add_device_get_call(
+        mocked_responses,
+        device_name=device_name,
+        namespace_name=namespace_name,
+        resource_group_name=resource_group_name,
+        endpoint_name=endpoint_name,
+        endpoint_type=connector_type,
+    )
+
+
+def _mgmt_metadata(connector_type: str, mg_schema=None, action_schema=None) -> dict:
+    """Build a connector metadata payload for the generalized management path.
+
+    Note: managementGroups have no destinations in the metadata schema.
+    """
+    return {
+        "inboundEndpoints": [{
+            "endpointType": f"Microsoft.{connector_type}",
+            "managementGroups": {
+                "managementGroupConfigurationSchema": mg_schema,
+                "managementGroupActions": {
+                    "actionConfigurationSchema": action_schema,
+                },
+            },
+        }]
+    }
+
+
+# ---------------------------------------------------------------------------
+# add_namespace_asset_management_group (generalized) unit tests
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("has_mgmt_group_config", [False, True])
+@pytest.mark.parametrize("replace, pre_existing", [
+    (False, False),
+    (True, False),
+    (True, True),
+])
+def test_add_namespace_asset_management_group_generalized(
+    mocked_cmd,
+    mocked_responses: responses,
+    mocked_check_cluster_connectivity,
+    mocked_get_namespace_for_instance,
+    mocker,
+    has_mgmt_group_config: bool,
+    replace: bool,
+    pre_existing: bool,
+):
+    asset_name = "gen-asset"
+    group_name = f"mg-{generate_random_string()}"
+    connector_type = "Custom.Test"
+
+    ns_resource = mocked_get_namespace_for_instance.return_value
+    namespace_name = ns_resource["name"]
+    resource_group_name = ns_resource["resource_group"]
+
+    mgmt_group_config_json = json.dumps({
+        "managementGroupConfiguration": {"operationMode": "async"},
+    })
+
+    existing_groups = [generate_management_group(group_name=group_name)] if pre_existing else []
+    asset = _build_asset_with_mgmt_groups(
+        asset_name=asset_name,
+        namespace_name=namespace_name,
+        resource_group_name=resource_group_name,
+        management_groups=existing_groups,
+    )
+
+    # self.show + _get_connector_type_and_device: GET asset + GET device
+    mocked_responses.add(
+        responses.GET,
+        get_namespace_asset_mgmt_uri(namespace_name, resource_group_name, asset_name),
+        json=asset, status=200,
+    )
+    _add_device_get_for_generalized_mgmt(mocked_responses, asset, namespace_name, resource_group_name, connector_type)
+
+    if has_mgmt_group_config:
+        mocker.patch(
+            "azext_edge.edge.providers.adr.namespace_assets.NamespaceAssets._get_connector_metadata",
+            return_value=_mgmt_metadata(connector_type),
+        )
+
+    updated_asset = deepcopy(asset)
+    updated_asset["properties"]["managementGroups"] = [
+        {"name": group_name, "dataSource": "src/test", "actions": []}
+    ]
+    mocked_responses.add(
+        responses.PATCH,
+        get_namespace_asset_mgmt_uri(namespace_name, resource_group_name, asset_name),
+        status=200,
+    )
+    mocked_responses.add(
+        responses.GET,
+        get_namespace_asset_mgmt_uri(namespace_name, resource_group_name, asset_name),
+        json=updated_asset, status=200,
+    )
+
+    result = add_namespace_asset_management_group(
+        cmd=mocked_cmd,
+        asset_name=asset_name,
+        instance_name="inst",
+        instance_resource_group="rg",
+        group_name=group_name,
+        data_source="src/test",
+        replace=replace,
+        mgmt_group_config=mgmt_group_config_json if has_mgmt_group_config else None,
+        wait_sec=0,
+    )
+
+    assert result["name"] == group_name
+
+
+def test_add_namespace_asset_management_group_generalized_raises_on_duplicate(
+    mocked_cmd,
+    mocked_responses: responses,
+    mocked_check_cluster_connectivity,
+    mocked_get_namespace_for_instance,
+    mocker,
+):
+    asset_name = "gen-asset"
+    group_name = "existing-mg"
+    connector_type = "Custom.Test"
+    ns_resource = mocked_get_namespace_for_instance.return_value
+    namespace_name = ns_resource["name"]
+    resource_group_name = ns_resource["resource_group"]
+
+    asset = _build_asset_with_mgmt_groups(
+        asset_name=asset_name,
+        namespace_name=namespace_name,
+        resource_group_name=resource_group_name,
+        management_groups=[generate_management_group(group_name=group_name)],
+    )
+
+    mocked_responses.add(
+        responses.GET,
+        get_namespace_asset_mgmt_uri(namespace_name, resource_group_name, asset_name),
+        json=asset, status=200,
+    )
+    _add_device_get_for_generalized_mgmt(mocked_responses, asset, namespace_name, resource_group_name, connector_type)
+
+    with pytest.raises(InvalidArgumentValueError, match="already exists"):
+        add_namespace_asset_management_group(
+            cmd=mocked_cmd,
+            asset_name=asset_name,
+            instance_name="inst",
+            instance_resource_group="rg",
+            group_name=group_name,
+            replace=False,
+            wait_sec=0,
+        )
+
+
+def test_add_namespace_asset_management_group_generalized_show_template_config(
+    mocked_cmd,
+    mocked_responses: responses,
+    mocked_check_cluster_connectivity,
+    mocked_get_namespace_for_instance,
+    mocker,
+):
+    """show_template=config on add should return a blank template wrapped with connectorType.
+
+    Management groups have no destinations, so the template exposes only
+    managementGroupConfiguration.
+    """
+    asset_name = "gen-asset"
+    connector_type = "Custom.Test"
+    ns_resource = mocked_get_namespace_for_instance.return_value
+    namespace_name = ns_resource["name"]
+    resource_group_name = ns_resource["resource_group"]
+
+    asset = _build_asset_with_mgmt_groups(
+        asset_name=asset_name,
+        namespace_name=namespace_name,
+        resource_group_name=resource_group_name,
+        management_groups=[],
+    )
+
+    mocked_responses.add(
+        responses.GET,
+        get_namespace_asset_mgmt_uri(namespace_name, resource_group_name, asset_name),
+        json=asset, status=200,
+    )
+    _add_device_get_for_generalized_mgmt(mocked_responses, asset, namespace_name, resource_group_name, connector_type)
+
+    mocker.patch(
+        "azext_edge.edge.providers.adr.namespace_assets.NamespaceAssets._get_connector_metadata",
+        return_value=_mgmt_metadata(
+            connector_type,
+            mg_schema={
+                "type": "object",
+                "properties": {"operationMode": {"type": "string", "default": "sync"}},
+            },
+        ),
+    )
+
+    result = add_namespace_asset_management_group(
+        cmd=mocked_cmd,
+        asset_name=asset_name,
+        instance_name="inst",
+        instance_resource_group="rg",
+        group_name="new-mg",
+        show_template="config",
+        wait_sec=0,
+    )
+
+    assert result["connectorType"] == f"Microsoft.{connector_type}"
+    mg_cfg = result["mgmtGroupConfig"]
+    assert "managementGroupConfiguration" in mg_cfg
+    # Management groups have no destinations
+    assert "destinations" not in mg_cfg
+
+
+# ---------------------------------------------------------------------------
+# update_namespace_asset_management_group (generalized) unit tests
+# ---------------------------------------------------------------------------
+
+
+def test_update_namespace_asset_management_group_generalized(
+    mocked_cmd,
+    mocked_responses: responses,
+    mocked_check_cluster_connectivity,
+    mocked_get_namespace_for_instance,
+    mocker,
+):
+    asset_name = "gen-asset"
+    group_name = "sensor-mg"
+    connector_type = "Custom.Test"
+    ns_resource = mocked_get_namespace_for_instance.return_value
+    namespace_name = ns_resource["name"]
+    resource_group_name = ns_resource["resource_group"]
+
+    existing_mg = {
+        "name": group_name,
+        "dataSource": "orig/src",
+        "managementGroupConfiguration": json.dumps({"operationMode": "sync"}),
+        "actions": [],
+        "typeRef": None,
+    }
+    asset = _build_asset_with_mgmt_groups(
+        asset_name=asset_name,
+        namespace_name=namespace_name,
+        resource_group_name=resource_group_name,
+        management_groups=[existing_mg],
+    )
+
+    mgmt_group_config_json = json.dumps({
+        "managementGroupConfiguration": {"operationMode": "async"},
+    })
+
+    mocked_responses.add(
+        responses.GET,
+        get_namespace_asset_mgmt_uri(namespace_name, resource_group_name, asset_name),
+        json=asset, status=200,
+    )
+    _add_device_get_for_generalized_mgmt(mocked_responses, asset, namespace_name, resource_group_name, connector_type)
+
+    mocker.patch(
+        "azext_edge.edge.providers.adr.namespace_assets.NamespaceAssets._get_connector_metadata",
+        return_value=_mgmt_metadata(connector_type),
+    )
+
+    updated_asset = deepcopy(asset)
+    updated_mg = deepcopy(existing_mg)
+    updated_mg["managementGroupConfiguration"] = json.dumps({"operationMode": "async"})
+    updated_asset["properties"]["managementGroups"] = [updated_mg]
+
+    mocked_responses.add(
+        responses.PATCH,
+        get_namespace_asset_mgmt_uri(namespace_name, resource_group_name, asset_name),
+        status=200,
+    )
+    mocked_responses.add(
+        responses.GET,
+        get_namespace_asset_mgmt_uri(namespace_name, resource_group_name, asset_name),
+        json=updated_asset, status=200,
+    )
+
+    result = update_namespace_asset_management_group(
+        cmd=mocked_cmd,
+        asset_name=asset_name,
+        instance_name="inst",
+        instance_resource_group="rg",
+        group_name=group_name,
+        mgmt_group_config=mgmt_group_config_json,
+        wait_sec=0,
+    )
+
+    assert result["name"] == group_name
+    assert json.loads(result["managementGroupConfiguration"])["operationMode"] == "async"
+
+
+def test_update_namespace_asset_management_group_generalized_clears_fields(
+    mocked_cmd,
+    mocked_responses: responses,
+    mocked_check_cluster_connectivity,
+    mocked_get_namespace_for_instance,
+):
+    """defaultTopic is clearable via empty string; data_source / type_ref empty strings are
+    ignored (no-op), consistent with the existing connector-specific mgmt-group update."""
+    asset_name = "gen-asset"
+    group_name = "sensor-mg"
+    connector_type = "Custom.Test"
+    ns_resource = mocked_get_namespace_for_instance.return_value
+    namespace_name = ns_resource["name"]
+    resource_group_name = ns_resource["resource_group"]
+
+    existing_mg = {
+        "name": group_name,
+        "dataSource": "orig/src",
+        "typeRef": "orig-ref",
+        "defaultTopic": "orig/topic",
+        "actions": [],
+    }
+    asset = _build_asset_with_mgmt_groups(
+        asset_name=asset_name,
+        namespace_name=namespace_name,
+        resource_group_name=resource_group_name,
+        management_groups=[existing_mg],
+    )
+
+    mocked_responses.add(
+        responses.GET,
+        get_namespace_asset_mgmt_uri(namespace_name, resource_group_name, asset_name),
+        json=asset, status=200,
+    )
+    _add_device_get_for_generalized_mgmt(mocked_responses, asset, namespace_name, resource_group_name, connector_type)
+
+    mocked_responses.add(
+        responses.PATCH,
+        get_namespace_asset_mgmt_uri(namespace_name, resource_group_name, asset_name),
+        status=200,
+    )
+    mocked_responses.add(
+        responses.GET,
+        get_namespace_asset_mgmt_uri(namespace_name, resource_group_name, asset_name),
+        json=asset, status=200,
+    )
+
+    update_namespace_asset_management_group(
+        cmd=mocked_cmd,
+        asset_name=asset_name,
+        instance_name="inst",
+        instance_resource_group="rg",
+        group_name=group_name,
+        data_source="",
+        type_ref="",
+        default_topic="",
+        wait_sec=0,
+    )
+
+    patch_call = next(c for c in mocked_responses.calls if c.request.method == "PATCH")
+    patched_mg = json.loads(patch_call.request.body)["properties"]["managementGroups"][0]
+    # defaultTopic cleared via empty string
+    assert "defaultTopic" not in patched_mg
+    # data_source / type_ref empty strings are ignored -> original values preserved
+    assert patched_mg["dataSource"] == "orig/src"
+    assert patched_mg["typeRef"] == "orig-ref"
+
+
+def test_update_namespace_asset_management_group_generalized_show_template_config(
+    mocked_cmd,
+    mocked_responses: responses,
+    mocked_check_cluster_connectivity,
+    mocked_get_namespace_for_instance,
+    mocker,
+):
+    """show_template=config on update should pre-fill existing ARM values into the template."""
+    asset_name = "gen-asset"
+    group_name = "sensor-mg"
+    connector_type = "Custom.Test"
+    ns_resource = mocked_get_namespace_for_instance.return_value
+    namespace_name = ns_resource["name"]
+    resource_group_name = ns_resource["resource_group"]
+
+    existing_mg = {
+        "name": group_name,
+        "dataSource": "orig/src",
+        "managementGroupConfiguration": json.dumps({"operationMode": "async", "retries": 3}),
+        "actions": [],
+        "typeRef": None,
+    }
+    asset = _build_asset_with_mgmt_groups(
+        asset_name=asset_name,
+        namespace_name=namespace_name,
+        resource_group_name=resource_group_name,
+        management_groups=[existing_mg],
+    )
+
+    mocked_responses.add(
+        responses.GET,
+        get_namespace_asset_mgmt_uri(namespace_name, resource_group_name, asset_name),
+        json=asset, status=200,
+    )
+    _add_device_get_for_generalized_mgmt(mocked_responses, asset, namespace_name, resource_group_name, connector_type)
+
+    mocker.patch(
+        "azext_edge.edge.providers.adr.namespace_assets.NamespaceAssets._get_connector_metadata",
+        return_value=_mgmt_metadata(
+            connector_type,
+            mg_schema={
+                "type": "object",
+                "properties": {
+                    "operationMode": {"type": "string", "default": "sync"},
+                    "retries": {"type": "integer", "default": 1},
+                },
+            },
+        ),
+    )
+
+    result = update_namespace_asset_management_group(
+        cmd=mocked_cmd,
+        asset_name=asset_name,
+        instance_name="inst",
+        instance_resource_group="rg",
+        group_name=group_name,
+        show_template="config",
+        wait_sec=0,
+    )
+
+    assert result["connectorType"] == f"Microsoft.{connector_type}"
+    mg_cfg = result["mgmtGroupConfig"]["managementGroupConfiguration"]
+    # Existing ARM values should be pre-filled
+    assert mg_cfg["operationMode"] == "async"
+    assert mg_cfg["retries"] == 3
+
+
+def test_update_namespace_asset_management_group_generalized_raises_if_not_found(
+    mocked_cmd,
+    mocked_responses: responses,
+    mocked_check_cluster_connectivity,
+    mocked_get_namespace_for_instance,
+    mocker,
+):
+    asset_name = "gen-asset"
+    connector_type = "Custom.Test"
+    ns_resource = mocked_get_namespace_for_instance.return_value
+    namespace_name = ns_resource["name"]
+    resource_group_name = ns_resource["resource_group"]
+
+    asset = _build_asset_with_mgmt_groups(
+        asset_name=asset_name,
+        namespace_name=namespace_name,
+        resource_group_name=resource_group_name,
+        management_groups=[],
+    )
+
+    mocked_responses.add(
+        responses.GET,
+        get_namespace_asset_mgmt_uri(namespace_name, resource_group_name, asset_name),
+        json=asset, status=200,
+    )
+    _add_device_get_for_generalized_mgmt(mocked_responses, asset, namespace_name, resource_group_name, connector_type)
+
+    with pytest.raises(InvalidArgumentValueError, match="not found"):
+        update_namespace_asset_management_group(
+            cmd=mocked_cmd,
+            asset_name=asset_name,
+            instance_name="inst",
+            instance_resource_group="rg",
+            group_name="missing-mg",
+            show_template="config",
+            wait_sec=0,
+        )
+
+
+# ---------------------------------------------------------------------------
+# add_namespace_asset_management_group_action (generalized) unit tests
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("has_action_config", [False, True])
+def test_add_namespace_asset_management_group_action_generalized(
+    mocked_cmd,
+    mocked_responses: responses,
+    mocked_check_cluster_connectivity,
+    mocked_get_namespace_for_instance,
+    mocker,
+    has_action_config: bool,
+):
+    asset_name = "gen-asset"
+    group_name = "sensor-mg"
+    action_name = "reboot-act"
+    connector_type = "Custom.Test"
+    ns_resource = mocked_get_namespace_for_instance.return_value
+    namespace_name = ns_resource["name"]
+    resource_group_name = ns_resource["resource_group"]
+
+    existing_mg = {
+        "name": group_name,
+        "dataSource": "s/src",
+        "actions": [],
+    }
+    asset = _build_asset_with_mgmt_groups(
+        asset_name=asset_name,
+        namespace_name=namespace_name,
+        resource_group_name=resource_group_name,
+        management_groups=[existing_mg],
+    )
+
+    action_config_json = json.dumps({
+        "actionConfiguration": {"method": "execute", "retries": 2},
+    })
+
+    mocked_responses.add(
+        responses.GET,
+        get_namespace_asset_mgmt_uri(namespace_name, resource_group_name, asset_name),
+        json=asset, status=200,
+    )
+    _add_device_get_for_generalized_mgmt(mocked_responses, asset, namespace_name, resource_group_name, connector_type)
+
+    if has_action_config:
+        mocker.patch(
+            "azext_edge.edge.providers.adr.namespace_assets.NamespaceAssets._get_connector_metadata",
+            return_value=_mgmt_metadata(connector_type),
+        )
+
+    updated_asset = deepcopy(asset)
+    added_action = {"name": action_name, "targetUri": "ns=2;s=Reboot"}
+    if has_action_config:
+        added_action["actionConfiguration"] = json.dumps({"method": "execute", "retries": 2})
+    updated_asset["properties"]["managementGroups"][0]["actions"] = [added_action]
+
+    mocked_responses.add(
+        responses.PATCH,
+        get_namespace_asset_mgmt_uri(namespace_name, resource_group_name, asset_name),
+        status=200,
+    )
+    mocked_responses.add(
+        responses.GET,
+        get_namespace_asset_mgmt_uri(namespace_name, resource_group_name, asset_name),
+        json=updated_asset, status=200,
+    )
+
+    result = add_namespace_asset_management_group_action(
+        cmd=mocked_cmd,
+        asset_name=asset_name,
+        instance_name="inst",
+        instance_resource_group="rg",
+        group_name=group_name,
+        action_name=action_name,
+        target_uri="ns=2;s=Reboot",
+        replace=False,
+        action_config=action_config_json if has_action_config else None,
+        wait_sec=0,
+    )
+
+    assert isinstance(result, list)
+    assert any(a["name"] == action_name for a in result)
+
+
+def test_add_namespace_asset_management_group_action_generalized_raises_on_duplicate(
+    mocked_cmd,
+    mocked_responses: responses,
+    mocked_check_cluster_connectivity,
+    mocked_get_namespace_for_instance,
+    mocker,
+):
+    asset_name = "gen-asset"
+    group_name = "sensor-mg"
+    action_name = "existing-act"
+    connector_type = "Custom.Test"
+    ns_resource = mocked_get_namespace_for_instance.return_value
+    namespace_name = ns_resource["name"]
+    resource_group_name = ns_resource["resource_group"]
+
+    existing_mg = {
+        "name": group_name,
+        "dataSource": "s/src",
+        "actions": [generate_management_group_action(action_name=action_name)],
+    }
+    asset = _build_asset_with_mgmt_groups(
+        asset_name=asset_name,
+        namespace_name=namespace_name,
+        resource_group_name=resource_group_name,
+        management_groups=[existing_mg],
+    )
+
+    mocked_responses.add(
+        responses.GET,
+        get_namespace_asset_mgmt_uri(namespace_name, resource_group_name, asset_name),
+        json=asset, status=200,
+    )
+    _add_device_get_for_generalized_mgmt(mocked_responses, asset, namespace_name, resource_group_name, connector_type)
+
+    with pytest.raises(InvalidArgumentValueError, match="already exists"):
+        add_namespace_asset_management_group_action(
+            cmd=mocked_cmd,
+            asset_name=asset_name,
+            instance_name="inst",
+            instance_resource_group="rg",
+            group_name=group_name,
+            action_name=action_name,
+            target_uri="ns=2;s=Reboot",
+            replace=False,
+            wait_sec=0,
+        )
+
+
+def test_add_namespace_asset_management_group_action_generalized_show_template_config(
+    mocked_cmd,
+    mocked_responses: responses,
+    mocked_check_cluster_connectivity,
+    mocked_get_namespace_for_instance,
+    mocker,
+):
+    """show_template=config on action add should return a template wrapped with connectorType."""
+    asset_name = "gen-asset"
+    group_name = "sensor-mg"
+    connector_type = "Custom.Test"
+    ns_resource = mocked_get_namespace_for_instance.return_value
+    namespace_name = ns_resource["name"]
+    resource_group_name = ns_resource["resource_group"]
+
+    asset = _build_asset_with_mgmt_groups(
+        asset_name=asset_name,
+        namespace_name=namespace_name,
+        resource_group_name=resource_group_name,
+        management_groups=[{"name": group_name, "actions": []}],
+    )
+
+    mocked_responses.add(
+        responses.GET,
+        get_namespace_asset_mgmt_uri(namespace_name, resource_group_name, asset_name),
+        json=asset, status=200,
+    )
+    _add_device_get_for_generalized_mgmt(mocked_responses, asset, namespace_name, resource_group_name, connector_type)
+
+    mocker.patch(
+        "azext_edge.edge.providers.adr.namespace_assets.NamespaceAssets._get_connector_metadata",
+        return_value=_mgmt_metadata(
+            connector_type,
+            action_schema={
+                "type": "object",
+                "properties": {"method": {"type": "string", "default": "execute"}},
+            },
+        ),
+    )
+
+    result = add_namespace_asset_management_group_action(
+        cmd=mocked_cmd,
+        asset_name=asset_name,
+        instance_name="inst",
+        instance_resource_group="rg",
+        group_name=group_name,
+        action_name="new-act",
+        show_template="config",
+        wait_sec=0,
+    )
+
+    assert result["connectorType"] == f"Microsoft.{connector_type}"
+    action_cfg = result["actionConfig"]
+    assert "actionConfiguration" in action_cfg
+    # Management actions have no destinations
+    assert "destinations" not in action_cfg

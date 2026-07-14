@@ -4114,6 +4114,459 @@ class NamespaceAssets(Queryable):
             )
             return asset["properties"].get("streams", [])
 
+    # GENERALIZED MANAGEMENT GROUP / ACTION HELPERS AND METHODS
+    def _handle_management_show_template(
+        self,
+        connector_type: str,
+        instance_name: str,
+        instance_resource_group: str,
+        template_mode: str,
+        config: Optional[str],
+        *,
+        is_action: bool,
+    ) -> dict:
+        """Return a management group/action config or schema template for --show-template and exit early.
+
+        Discovers the relevant *ConfigurationSchema from connector metadata and returns a slimmed
+        template. Management groups and actions have no destinations in the metadata schema. OPC UA
+        uses bundled metadata; all other types require a connector template in the instance.
+        """
+        from .helpers import _slim_schema, _consolidate_warnings
+        from .common import EndpointTemplateMode
+
+        config_arg = "--action-config" if is_action else "--mgmt-group-config"
+        label = "action" if is_action else "management group"
+        config_key = "actionConfiguration" if is_action else "managementGroupConfiguration"
+        result_key = "actionConfig" if is_action else "mgmtGroupConfig"
+
+        if config:
+            raise InvalidArgumentValueError(
+                f"--show-template and {config_arg} cannot be used together. "
+                f"--show-template displays the template and exits without modifying the {label}."
+            )
+
+        metadata = self._get_connector_metadata(
+            connector_type=connector_type,
+            instance_name=instance_name,
+            instance_resource_group=instance_resource_group,
+        )
+        endpoint = _get_metadata_endpoint(metadata, connector_type)
+        mg_section = endpoint.get("managementGroups", {})
+        if is_action:
+            schema = mg_section.get("managementGroupActions", {}).get("actionConfigurationSchema")
+        else:
+            schema = mg_section.get("managementGroupConfigurationSchema")
+
+        config_template: dict = {}
+        all_warnings: List[str] = []
+
+        if schema:
+            warnings: List[str] = []
+            slimmed = _slim_schema(schema, mode=template_mode, _warnings=warnings)
+            all_warnings.extend(warnings)
+            if template_mode == EndpointTemplateMode.SCHEMA.value and isinstance(slimmed, dict):
+                slimmed.pop("$id", None)
+            config_template[config_key] = slimmed
+
+        for w in _consolidate_warnings(all_warnings):
+            logger.warning(w)
+
+        return {"connectorType": connector_type, result_key: config_template}
+
+    def _load_and_validate_management_config(
+        self,
+        config: str,
+        connector_type: str,
+        instance_name: str,
+        instance_resource_group: str,
+        *,
+        is_action: bool,
+    ) -> dict:
+        """Load management group/action config from file/inline JSON, validate against the connector
+        schema, and return ARM-ready values.
+
+        Input JSON is expected to be the 'mgmtGroupConfig'/'actionConfig' dict (output of
+        --show-template), e.g. ``{"managementGroupConfiguration": {...}}``, or the full
+        --show-template output with 'connectorType' and the config wrapper key, which is
+        auto-unwrapped.
+
+        Returns a dict with the serialized configuration JSON string (if present).
+        """
+        from .helpers import strip_nulls as _strip_nulls
+
+        config_arg = "--action-config" if is_action else "--mgmt-group-config"
+        config_type = "action" if is_action else "management group"
+        config_key = "actionConfiguration" if is_action else "managementGroupConfiguration"
+        result_key = "actionConfig" if is_action else "mgmtGroupConfig"
+
+        raw = process_additional_configuration(
+            additional_configuration=config,
+            config_type=config_type,
+        )
+        parsed = json.loads(raw)
+
+        if isinstance(parsed, dict) and result_key in parsed:
+            provided = parsed.get("connectorType")
+            if provided and connector_type and provided.lower() != connector_type.lower():
+                raise InvalidArgumentValueError(
+                    f"Config connectorType '{provided}' does not match asset connectorType '{connector_type}'."
+                )
+            parsed = parsed[result_key]
+
+        if not isinstance(parsed, dict) or config_key not in parsed:
+            raise InvalidArgumentValueError(
+                f"{config_arg} must be a JSON object with a '{config_key}' key."
+            )
+
+        metadata = self._get_connector_metadata(
+            connector_type=connector_type,
+            instance_name=instance_name,
+            instance_resource_group=instance_resource_group,
+        )
+        endpoint = _get_metadata_endpoint(metadata, connector_type) if metadata else None
+        mg_section = endpoint.get("managementGroups", {}) if endpoint else {}
+        if is_action:
+            schema_owner = mg_section.get("managementGroupActions", {}) if mg_section else {}
+            schema_key = "actionConfigurationSchema"
+        else:
+            schema_owner = mg_section
+            schema_key = "managementGroupConfigurationSchema"
+
+        result = {}
+
+        config_data_raw = parsed.get(config_key)
+        if config_data_raw is not None:
+            config_data = _strip_nulls(config_data_raw)
+            schema = schema_owner.get(schema_key) if schema_owner else None
+            if schema:
+                from ...util.schema_validation import check_json_schema, validate_data_against_schema
+                skip_reason = check_json_schema(schema)
+                if skip_reason:
+                    logger.warning("Skipping %s validation: %s", config_key, skip_reason)
+                else:
+                    validate_data_against_schema(schema, config_data, name=config_key)
+            result[config_key] = json.dumps(config_data)
+
+        return result
+
+    def add_management_group_generalized(
+        self,
+        asset_name: str,
+        instance_name: str,
+        instance_resource_group: str,
+        group_name: str,
+        data_source: Optional[str] = None,
+        default_topic: Optional[str] = None,
+        default_timeout: Optional[int] = None,
+        type_ref: Optional[str] = None,
+        replace: bool = False,
+        mgmt_group_config: Optional[str] = None,
+        show_template: Optional[str] = None,
+        **kwargs,
+    ) -> dict:
+        """Generalized add-management-group that detects connector type from the asset.
+
+        Supports --show-template for config/schema discovery and --mgmt-group-config for
+        JSON or file-based connector-specific management-group configuration. For non-OPC UA
+        connectors, a connector template must exist in the instance.
+        """
+        asset = self.show(
+            asset_name=asset_name,
+            instance_name=instance_name,
+            resource_group=instance_resource_group,
+        )
+        connector_type, device = self._get_connector_type_and_device(asset)
+
+        if show_template:
+            return self._handle_management_show_template(
+                connector_type=connector_type,
+                instance_name=instance_name,
+                instance_resource_group=instance_resource_group,
+                template_mode=show_template.lower(),
+                config=mgmt_group_config,
+                is_action=False,
+            )
+
+        _, namespace = self._check_device_props(
+            instance_resource_group=instance_resource_group,
+            instance_name=instance_name,
+            asset_type=connector_type,
+            asset_name=asset_name,
+            asset=asset,
+            device=device,
+        )
+
+        og_mgmt_groups = asset["properties"].get("managementGroups", [])
+        remaining_mgmt_groups = [mgmt for mgmt in og_mgmt_groups if mgmt["name"] != group_name]
+        if len(remaining_mgmt_groups) < len(og_mgmt_groups) and not replace:
+            raise InvalidArgumentValueError(
+                f"Management group '{group_name}' already exists in asset '{asset_name}'. "
+                "Use --replace to overwrite the existing management group."
+            )
+
+        new_mgmt_group: dict = {
+            "name": group_name,
+            "defaultTopic": default_topic,
+            "defaultTimeoutInSeconds": default_timeout,
+            "managementGroupConfiguration": None,
+            "typeRef": type_ref,
+            "actions": [],
+        }
+        if data_source:
+            new_mgmt_group["dataSource"] = data_source
+
+        if mgmt_group_config:
+            config_result = self._load_and_validate_management_config(
+                config=mgmt_group_config,
+                connector_type=connector_type,
+                instance_name=instance_name,
+                instance_resource_group=instance_resource_group,
+                is_action=False,
+            )
+            if "managementGroupConfiguration" in config_result:
+                new_mgmt_group["managementGroupConfiguration"] = config_result["managementGroupConfiguration"]
+
+        remaining_mgmt_groups.append(new_mgmt_group)
+        update_payload = {"properties": {"managementGroups": remaining_mgmt_groups}}
+
+        with console.status(f"Adding management group {group_name} to asset {asset_name}..."):
+            poller = self.ops.begin_update(
+                resource_group_name=namespace["resource_group"],
+                namespace_name=namespace["name"],
+                asset_name=asset_name,
+                properties=update_payload,
+            )
+            wait_for_terminal_state(poller, **kwargs)
+            asset = self.show(
+                asset_name=asset_name,
+                namespace_name=namespace["name"],
+                resource_group=namespace["resource_group"],
+            )
+            return _get_sub_property(asset, group_name, property_key="managementGroups")
+
+    def update_management_group_generalized(
+        self,
+        asset_name: str,
+        instance_name: str,
+        instance_resource_group: str,
+        group_name: str,
+        data_source: Optional[str] = None,
+        default_topic: Optional[str] = None,
+        default_timeout: Optional[int] = None,
+        type_ref: Optional[str] = None,
+        mgmt_group_config: Optional[str] = None,
+        show_template: Optional[str] = None,
+        **kwargs,
+    ) -> dict:
+        """Generalized update-management-group that detects connector type from the asset.
+
+        Supports --show-template for config/schema discovery and --mgmt-group-config for
+        JSON or file-based connector-specific management-group configuration. For non-OPC UA
+        connectors, a connector template must exist in the instance.
+        """
+        asset = self.show(
+            asset_name=asset_name,
+            instance_name=instance_name,
+            resource_group=instance_resource_group,
+        )
+        connector_type, device = self._get_connector_type_and_device(asset)
+
+        if show_template:
+            from .common import EndpointTemplateMode
+            template_mode = show_template.lower()
+            if template_mode == EndpointTemplateMode.CONFIG.value:
+                if mgmt_group_config:
+                    raise InvalidArgumentValueError(
+                        "--show-template and --mgmt-group-config cannot be used together. "
+                        "--show-template displays the template and exits without modifying the management group."
+                    )
+                mgs_existing = asset["properties"].get("managementGroups", [])
+                existing = next((d for d in mgs_existing if d["name"] == group_name), None)
+                if existing is None:
+                    raise InvalidArgumentValueError(
+                        f"Management group '{group_name}' not found in asset '{asset_name}'."
+                    )
+                template_result = self._handle_management_show_template(
+                    connector_type=connector_type,
+                    instance_name=instance_name,
+                    instance_resource_group=instance_resource_group,
+                    template_mode=template_mode,
+                    config=None,
+                    is_action=False,
+                )
+                mg_config_tmpl = template_result.get("mgmtGroupConfig", {})
+                raw_config = existing.get("managementGroupConfiguration")
+                if raw_config:
+                    existing_config = json.loads(raw_config) if isinstance(raw_config, str) else raw_config
+                    tmpl_c = mg_config_tmpl.get("managementGroupConfiguration")
+                    mg_config_tmpl["managementGroupConfiguration"] = (
+                        _deep_merge_template(tmpl_c, existing_config)
+                        if isinstance(tmpl_c, dict)
+                        else existing_config
+                    )
+                return {"connectorType": connector_type, "mgmtGroupConfig": mg_config_tmpl}
+            else:
+                return self._handle_management_show_template(
+                    connector_type=connector_type,
+                    instance_name=instance_name,
+                    instance_resource_group=instance_resource_group,
+                    template_mode=template_mode,
+                    config=mgmt_group_config,
+                    is_action=False,
+                )
+
+        _, namespace = self._check_device_props(
+            instance_resource_group=instance_resource_group,
+            instance_name=instance_name,
+            asset_type=connector_type,
+            asset_name=asset_name,
+            asset=asset,
+            device=device,
+        )
+
+        mgmt_groups = asset["properties"].get("managementGroups", [])
+        group_list = [mgmt for mgmt in mgmt_groups if mgmt["name"] == group_name]
+        if not group_list:
+            raise InvalidArgumentValueError(
+                f"Management group '{group_name}' not found in asset '{asset_name}'."
+            )
+        group = group_list[0]
+
+        if mgmt_group_config is not None:
+            config_result = self._load_and_validate_management_config(
+                config=mgmt_group_config,
+                connector_type=connector_type,
+                instance_name=instance_name,
+                instance_resource_group=instance_resource_group,
+                is_action=False,
+            )
+            if "managementGroupConfiguration" in config_result:
+                group["managementGroupConfiguration"] = config_result["managementGroupConfiguration"]
+
+        if default_topic == "":
+            group.pop("defaultTopic", None)
+        elif default_topic:
+            group["defaultTopic"] = default_topic
+        if default_timeout is not None:
+            group["defaultTimeoutInSeconds"] = default_timeout
+        if data_source:
+            group["dataSource"] = data_source
+        if type_ref:
+            group["typeRef"] = type_ref
+
+        update_payload = {"properties": {"managementGroups": mgmt_groups}}
+        with console.status(f"Updating management group {group_name} in asset {asset_name}..."):
+            poller = self.ops.begin_update(
+                resource_group_name=namespace["resource_group"],
+                namespace_name=namespace["name"],
+                asset_name=asset_name,
+                properties=update_payload,
+            )
+            wait_for_terminal_state(poller, **kwargs)
+            asset = self.show(
+                asset_name=asset_name,
+                namespace_name=namespace["name"],
+                resource_group=namespace["resource_group"],
+            )
+            return _get_sub_property(asset, group_name, property_key="managementGroups")
+
+    def add_management_group_action_generalized(
+        self,
+        asset_name: str,
+        instance_name: str,
+        instance_resource_group: str,
+        group_name: str,
+        action_name: str,
+        target_uri: Optional[str] = None,
+        topic: Optional[str] = None,
+        action_type: Optional[str] = None,
+        timeout: Optional[int] = None,
+        type_ref: Optional[str] = None,
+        replace: bool = False,
+        action_config: Optional[str] = None,
+        show_template: Optional[str] = None,
+        **kwargs,
+    ) -> List[dict]:
+        """Generalized add-management-action that detects connector type from the asset.
+
+        Supports --show-template for config/schema discovery and --action-config for
+        JSON or file-based connector-specific action configuration. For non-OPC UA
+        connectors, a connector template must exist in the instance.
+        """
+        asset = self.show(
+            asset_name=asset_name,
+            instance_name=instance_name,
+            resource_group=instance_resource_group,
+        )
+        connector_type, device = self._get_connector_type_and_device(asset)
+
+        if show_template:
+            return self._handle_management_show_template(
+                connector_type=connector_type,
+                instance_name=instance_name,
+                instance_resource_group=instance_resource_group,
+                template_mode=show_template.lower(),
+                config=action_config,
+                is_action=True,
+            )
+
+        _, namespace = self._check_device_props(
+            instance_resource_group=instance_resource_group,
+            instance_name=instance_name,
+            asset_type=connector_type,
+            asset_name=asset_name,
+            asset=asset,
+            device=device,
+        )
+
+        mgmt_group = _get_sub_property(asset, group_name, property_key="managementGroups")
+        actions = mgmt_group.get("actions", [])
+        unmatched_actions = [action for action in actions if action["name"] != action_name]
+        if len(unmatched_actions) < len(actions) and not replace:
+            raise InvalidArgumentValueError(
+                f"Action '{action_name}' already exists in management group '{group_name}' "
+                f"of asset '{asset_name}'. Use --replace to overwrite the existing action."
+            )
+
+        action: dict = {
+            "name": action_name,
+            "targetUri": target_uri,
+            "topic": topic,
+            "actionType": action_type,
+            "timeoutInSeconds": timeout,
+            "typeRef": type_ref,
+        }
+
+        if action_config:
+            config_result = self._load_and_validate_management_config(
+                config=action_config,
+                connector_type=connector_type,
+                instance_name=instance_name,
+                instance_resource_group=instance_resource_group,
+                is_action=True,
+            )
+            if "actionConfiguration" in config_result:
+                action["actionConfiguration"] = config_result["actionConfiguration"]
+
+        unmatched_actions.append(action)
+        mgmt_group["actions"] = unmatched_actions
+
+        update_payload = {"properties": {"managementGroups": asset["properties"]["managementGroups"]}}
+        with console.status(f"Adding action {action_name} to management group {group_name}..."):
+            poller = self.ops.begin_update(
+                resource_group_name=namespace["resource_group"],
+                namespace_name=namespace["name"],
+                asset_name=asset_name,
+                properties=update_payload,
+            )
+            wait_for_terminal_state(poller, **kwargs)
+            asset = self.show(
+                asset_name=asset_name,
+                namespace_name=namespace["name"],
+                resource_group=namespace["resource_group"],
+            )
+            return _get_sub_property(asset, group_name, property_key="managementGroups")["actions"]
+
     # Management Groups - allowed for opcua, onvif, and custom assets
     def add_management_group(
         self,

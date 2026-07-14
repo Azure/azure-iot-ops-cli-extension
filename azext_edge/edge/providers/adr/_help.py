@@ -2915,6 +2915,260 @@ def load_iotops_adr_help():
     """
 
     helps[
+        "iot ops ns asset mgmt-group"
+    ] = """
+        type: group
+        short-summary: Manage management groups for namespaced assets in an IoT Operations instance.
+        long-summary: >
+            The connector type is detected automatically from the existing asset.
+            For connector-specific parameters use --mgmt-group-config (inline JSON or file).
+            Use --show-template to discover the supported configuration schema for the asset's connector type.
+    """
+
+    helps[
+        "iot ops ns asset mgmt-group add"
+    ] = """
+        type: command
+        short-summary: Add a management group to a namespaced asset in an IoT Operations instance.
+        long-summary: >
+            The connector type is detected from the asset's device endpoint.
+            Connector-specific configuration can be supplied via --mgmt-group-config.
+            Use --show-template to discover the supported config schema. For non-OPC UA connectors,
+            a connector template must exist in the instance.
+
+        examples:
+        - name: Add a basic management group to any asset type
+          text: >
+            az iot ops ns asset mgmt-group add --asset myasset --instance myInstance
+            -g myInstanceResourceGroup --name boilerControls
+
+        - name: Show the management group config template for the asset's connector type
+          text: >
+            az iot ops ns asset mgmt-group add --asset myasset --instance myInstance
+            -g myInstanceResourceGroup --name boilerControls --show-template config
+
+        - name: Add a management group with connector-specific configuration from inline JSON
+          text: >
+            az iot ops ns asset mgmt-group add --asset myasset --instance myInstance
+            -g myInstanceResourceGroup --name boilerControls
+            --mgmt-group-config '{"managementGroupConfiguration": {"maxConcurrentRequests": 5}}'
+
+        - name: Add a management group with configuration from a file
+          text: >
+            az iot ops ns asset mgmt-group add --asset myasset --instance myInstance
+            -g myInstanceResourceGroup --name boilerControls --mgmt-group-config ./mgmt_group_config.json
+
+        - name: Replace an existing management group
+          text: >
+            az iot ops ns asset mgmt-group add --asset myasset --instance myInstance
+            -g myInstanceResourceGroup --name boilerControls --replace
+    """
+
+    helps[
+        "iot ops ns asset mgmt-group update"
+    ] = """
+        type: command
+        short-summary: Update a management group for a namespaced asset in an IoT Operations instance.
+        long-summary: >
+            The connector type is detected from the asset's device endpoint.
+            Use --mgmt-group-config to supply connector-specific configuration.
+            Use --show-template config to see current management group values pre-filled in the full schema
+            structure (ready to edit and pass back via --mgmt-group-config).
+            Use --show-template schema to see the full connector schema with types and constraints.
+
+        examples:
+        - name: Show current management group config pre-filled with existing values (for editing before update)
+          text: >
+            az iot ops ns asset mgmt-group update --asset myasset --instance myInstance
+            -g myInstanceResourceGroup --name boilerControls --show-template config
+
+        - name: Show the management group config schema with types and constraints
+          text: >
+            az iot ops ns asset mgmt-group update --asset myasset --instance myInstance
+            -g myInstanceResourceGroup --name boilerControls --show-template schema
+
+        - name: Update management group configuration from inline JSON
+          text: >
+            az iot ops ns asset mgmt-group update --asset myasset --instance myInstance
+            -g myInstanceResourceGroup --name boilerControls
+            --mgmt-group-config '{"managementGroupConfiguration": {"maxConcurrentRequests": 10}}'
+
+        - name: Update management group data source
+          text: >
+            az iot ops ns asset mgmt-group update --asset myasset --instance myInstance
+            -g myInstanceResourceGroup --name boilerControls --data-source "boiler.controls"
+    """
+
+    helps[
+        "iot ops ns asset mgmt-group list"
+    ] = """
+        type: command
+        short-summary: List management groups for a namespaced asset in an IoT Operations instance.
+
+        examples:
+        - name: List all management groups for an asset
+          text: >
+            az iot ops ns asset mgmt-group list --asset myasset --instance myInstance
+            -g myInstanceResourceGroup
+    """
+
+    helps[
+        "iot ops ns asset mgmt-group remove"
+    ] = """
+        type: command
+        short-summary: Remove a management group from a namespaced asset in an IoT Operations instance.
+
+        examples:
+        - name: Remove a management group from an asset
+          text: >
+            az iot ops ns asset mgmt-group remove --asset myasset --instance myInstance
+            -g myInstanceResourceGroup --name boilerControls
+    """
+
+    helps[
+        "iot ops ns asset mgmt-group show"
+    ] = """
+        type: command
+        short-summary: Show details of a management group for a namespaced asset in an IoT Operations instance.
+
+        examples:
+        - name: Show management group details
+          text: >
+            az iot ops ns asset mgmt-group show --asset myasset --instance myInstance
+            -g myInstanceResourceGroup --name boilerControls
+    """
+
+    helps[
+        "iot ops ns asset mgmt-group export"
+    ] = """
+        type: command
+        short-summary: Export management groups to file.
+
+        examples:
+        - name: Export management groups to JSON
+          text: >
+            az iot ops ns asset mgmt-group export --asset myasset --instance myInstance
+            -g myInstanceResourceGroup
+    """
+
+    helps[
+        "iot ops ns asset mgmt-group import"
+    ] = """
+        type: command
+        short-summary: Import management groups from file.
+
+        examples:
+        - name: Import management groups from a JSON file
+          text: >
+            az iot ops ns asset mgmt-group import --asset myasset --instance myInstance
+            -g myInstanceResourceGroup --input-file ./management_groups.json
+    """
+
+    helps[
+        "iot ops ns asset mgmt-action"
+    ] = """
+        type: group
+        short-summary: Manage actions for asset management groups in IoT Operations namespaces.
+        long-summary: >
+            The connector type is detected automatically from the existing asset.
+            For connector-specific parameters use --action-config (inline JSON or file).
+            Use --show-template to discover the supported configuration schema for the asset's connector type.
+    """
+
+    helps[
+        "iot ops ns asset mgmt-action add"
+    ] = """
+        type: command
+        short-summary: Add an action to an asset management group in an IoT Operations namespace.
+        long-summary: >
+            The connector type is detected from the asset's device endpoint.
+            Connector-specific configuration can be supplied via --action-config. Use --show-template
+            to discover the supported config schema. For non-OPC UA connectors, a connector template
+            must exist in the instance.
+
+        examples:
+        - name: Add a basic action to any asset type
+          text: >
+            az iot ops ns asset mgmt-action add --asset myasset --instance myInstance
+            -g myInstanceResourceGroup --group boilerControls --name restart --target-uri "opc.tcp://boiler/restart"
+
+        - name: Show the action config template for the asset's connector type
+          text: >
+            az iot ops ns asset mgmt-action add --asset myasset --instance myInstance
+            -g myInstanceResourceGroup --group boilerControls --name restart --show-template config
+
+        - name: Add an action with connector-specific configuration from inline JSON
+          text: >
+            az iot ops ns asset mgmt-action add --asset myasset --instance myInstance
+            -g myInstanceResourceGroup --group boilerControls --name restart --target-uri "opc.tcp://boiler/restart"
+            --action-config '{"actionConfiguration": {"retryCount": 3}}'
+
+        - name: Add an action with configuration from a file
+          text: >
+            az iot ops ns asset mgmt-action add --asset myasset --instance myInstance
+            -g myInstanceResourceGroup --group boilerControls --name restart --target-uri "opc.tcp://boiler/restart"
+            --action-config ./action_config.json
+
+        - name: Replace an existing action
+          text: >
+            az iot ops ns asset mgmt-action add --asset myasset --instance myInstance
+            -g myInstanceResourceGroup --group boilerControls --name restart --target-uri "opc.tcp://boiler/restart"
+            --replace
+    """
+
+    helps[
+        "iot ops ns asset mgmt-action list"
+    ] = """
+        type: command
+        short-summary: List actions for an asset management group in an IoT Operations namespace.
+
+        examples:
+        - name: List all actions for a management group
+          text: >
+            az iot ops ns asset mgmt-action list --asset myasset --instance myInstance
+            -g myInstanceResourceGroup --group boilerControls
+    """
+
+    helps[
+        "iot ops ns asset mgmt-action remove"
+    ] = """
+        type: command
+        short-summary: Remove an action from an asset management group in an IoT Operations namespace.
+
+        examples:
+        - name: Remove an action from a management group
+          text: >
+            az iot ops ns asset mgmt-action remove --asset myasset --instance myInstance
+            -g myInstanceResourceGroup --group boilerControls --name restart
+    """
+
+    helps[
+        "iot ops ns asset mgmt-action export"
+    ] = """
+        type: command
+        short-summary: Export management group actions to file.
+
+        examples:
+        - name: Export actions to JSON
+          text: >
+            az iot ops ns asset mgmt-action export --asset myasset --instance myInstance
+            -g myInstanceResourceGroup --group boilerControls
+    """
+
+    helps[
+        "iot ops ns asset mgmt-action import"
+    ] = """
+        type: command
+        short-summary: Import management group actions from file.
+
+        examples:
+        - name: Import actions from a JSON file
+          text: >
+            az iot ops ns asset mgmt-action import --asset myasset --instance myInstance
+            -g myInstanceResourceGroup --group boilerControls --input-file ./actions.json
+    """
+
+    helps[
         "iot ops ns asset stream"
     ] = """
         type: group
