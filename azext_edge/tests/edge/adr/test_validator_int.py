@@ -34,6 +34,8 @@ class TestConnectorMetadataValidatorIntegration:
         cmd.cli_ctx.cloud = Mock()
         cmd.cli_ctx.cloud.endpoints = Mock()
         cmd.cli_ctx.cloud.endpoints.resource_manager = "https://management.azure.com"
+        cmd.cli_ctx.cloud.suffixes = Mock()
+        cmd.cli_ctx.cloud.suffixes.acr_login_server_endpoint = ".azurecr.io"
         cmd.cli_ctx.data = {"subscription_id": "eab4c10d-b020-4cb2-8959-d53cf2df388d"}
         return cmd
 

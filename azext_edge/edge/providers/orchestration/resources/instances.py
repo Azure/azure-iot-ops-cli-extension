@@ -36,6 +36,7 @@ from ....util.common import (
     url_safe_hash_phrase,
 )
 from ....util.queryable import Queryable
+from ....util.cloud_config import CloudConfig
 from ....util.resource_graph import ResourceGraph
 from ..common import (
     AZURE_DEVICE_REGISTRY_ADMINISTRATOR_ROLE_ID,
@@ -571,7 +572,10 @@ class Instances(Queryable):
             vault_url = kv_result["vaultUri"]
             kv_subscription_id = kv_result["subscriptionId"]
 
-            keyvault_client = get_keyvault_client(subscription_id=kv_subscription_id)
+            keyvault_client = get_keyvault_client(
+                subscription_id=kv_subscription_id,
+                keyvault_scope=CloudConfig(self.cmd).keyvault_scope,
+            )
             for mapping in secret_mappings:
                 try:
                     secret_response = keyvault_client.get_secret(

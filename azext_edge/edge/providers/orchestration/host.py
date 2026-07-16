@@ -12,8 +12,6 @@ from azure.cli.core.azclierror import ValidationError
 from knack.log import get_logger
 from rich.console import Console
 
-from .common import ARM_ENDPOINT
-
 logger = get_logger(__name__)
 console = Console(width=88)
 
@@ -91,6 +89,8 @@ def preflight_http_connections(endpoints: List[str]) -> EndpointConnections:
     return EndpointConnections(connect_map=endpoint_connect_map)
 
 
-def verify_cli_client_connections():
-    test_endpoints = [ARM_ENDPOINT]
+def verify_cli_client_connections(cmd):
+    from ...util.cloud_config import CloudConfig
+
+    test_endpoints = [CloudConfig(cmd).arm_endpoint]
     preflight_http_connections(test_endpoints).throw_if_failure(include_cluster=False)

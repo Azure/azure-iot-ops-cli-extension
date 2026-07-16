@@ -17,11 +17,12 @@ from knack.log import get_logger
 from rich.console import Console
 import yaml
 
-from ....common import CUSTOM_LOCATIONS_API_VERSION, EXTENSION_TYPE_OPS, KEYVAULT_URL, X509FileExtension
+from ....common import CUSTOM_LOCATIONS_API_VERSION, EXTENSION_TYPE_OPS, X509FileExtension
 from ...instances import SECRET_SYNC_RESOURCE_TYPE, Instances
 from .....orchestration.upgrade2 import calculate_config_delta
 from ......util.file_operations import read_file_content, validate_file_extension
 from ......util.queryable import Queryable
+from ......util.cloud_config import CloudConfig
 from ......util.az_client import (
     get_keyvault_client,
     get_ssc_mgmt_client,
@@ -57,9 +58,12 @@ class OpcUACerts(Queryable):
         self.ssc_mgmt_client = get_ssc_mgmt_client(
             **self._get_client_kwargs()
         )
+        cloud_config = CloudConfig(self.cmd)
         self.keyvault_client = get_keyvault_client(
             subscription_id=self.default_subscription_id,
+            keyvault_scope=cloud_config.keyvault_scope,
         )
+        self._keyvault_dns_suffix = cloud_config.keyvault_dns_suffix
         self.instance_name = instance_name
         self.resource_group_name = resource_group_name
 
@@ -68,6 +72,10 @@ class OpcUACerts(Queryable):
         self.extended_location = instance["extendedLocation"]
         self.location = instance["location"]
         self.opcua_mode = instance.get("properties", {}).get("features", {}).get("opcua", {}).get("mode")
+
+    def _build_vault_url(self, keyvault_name: str) -> str:
+        """Build the Key Vault data-plane base URL for the active cloud."""
+        return f"https://{keyvault_name}{self._keyvault_dns_suffix}/"
 
     def _assert_opcua_enabled(self) -> None:
         """Raise ValidationError if OPC UA is explicitly disabled on the instance."""
@@ -433,7 +441,7 @@ class OpcUACerts(Queryable):
                     with console.status(f"Deleting and purging secret {name} from keyvault {spc_keyvault_name}..."):
                         self._begin_delete_secret(spc_keyvault_name, name)
                         self.keyvault_client.purge_deleted_secret(
-                            vault_base_url=KEYVAULT_URL.format(keyvaultName=spc_keyvault_name),
+                            vault_base_url=self._build_vault_url(spc_keyvault_name),
                             secret_name=name,
                         )
                 else:
@@ -718,7 +726,7 @@ class OpcUACerts(Queryable):
             )
 
             return self.keyvault_client.set_secret(
-                vault_base_url=KEYVAULT_URL.format(keyvaultName=keyvault_name),
+                vault_base_url=self._build_vault_url(keyvault_name),
                 secret_name=secret_name,
                 parameters=parameters,
             )
@@ -922,13 +930,13 @@ class OpcUACerts(Queryable):
 
     def _get_secret_names(self, keyvault_name: str) -> List[str]:
         secret_iteratable = self.keyvault_client.get_secrets(
-            vault_base_url=KEYVAULT_URL.format(keyvaultName=keyvault_name)
+            vault_base_url=self._build_vault_url(keyvault_name)
         )
         return [secret["id"] for secret in secret_iteratable if "id" in secret]
 
     def _begin_delete_secret(self, keyvault_name: str, secret_name: str):
         # Construct vault URL
-        vault_url = KEYVAULT_URL.format(keyvaultName=keyvault_name)
+        vault_url = self._build_vault_url(keyvault_name)
 
         # Initiate deletion
         pipeline_response = self.keyvault_client.delete_secret(

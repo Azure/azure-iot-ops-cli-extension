@@ -362,7 +362,7 @@ class WorkManager:
         try:
             # Ensure connection to ARM if needed. Show remediation error message otherwise.
             self._render_display()
-            verify_cli_client_connections()
+            verify_cli_client_connections(self.cmd)
             self._process_connected_cluster()
 
             # Determine command name based on workflow type

@@ -14,6 +14,7 @@ from azure.core.exceptions import ResourceNotFoundError
 
 from ....util.common import should_continue_prompt
 from ....util.az_client import wait_for_terminal_state
+from ....util.cloud_config import CloudConfig
 from ....util.queryable import Queryable
 from ..common import (
     ADLS_ENDPOINT_USER_ASSIGNED_DEFAULT_SCOPE,
@@ -571,6 +572,7 @@ class DataFlowEndpoints(Queryable):
         port: Optional[str] = None,
         **_
     ) -> str:
+        cloud_config = CloudConfig(self.cmd)
         processed_host = ""
         if endpoint_type in [
             DataflowEndpointType.DATAEXPLORER.value,
@@ -578,11 +580,16 @@ class DataFlowEndpoints(Queryable):
         ]:
             processed_host = host
         elif endpoint_type == DataflowEndpointType.DATALAKESTORAGE.value:
-            processed_host = f"https://{storage_account_name}.blob.core.windows.net"
+            processed_host = f"https://{storage_account_name}.blob.{cloud_config.storage_suffix}"
         elif endpoint_type == DataflowEndpointType.FABRICONELAKE.value:
+            if not cloud_config.supports_fabric_onelake:
+                raise InvalidArgumentValueError(
+                    "Fabric OneLake dataflow endpoints are not available in this cloud environment. "
+                    "This feature is only supported in Azure Public Cloud."
+                )
             processed_host = "https://onelake.dfs.fabric.microsoft.com"
         elif endpoint_type == DataflowEndpointType.EVENTHUB.value:
-            processed_host = f"{eventhub_namespace}.servicebus.windows.net:9093"
+            processed_host = f"{eventhub_namespace}.{cloud_config.servicebus_suffix}:9093"
         elif endpoint_type in [
             DataflowEndpointType.CUSTOMKAFKA.value,
             DataflowEndpointType.AIOLOCALMQTT.value,

@@ -24,7 +24,6 @@ from azext_edge.edge.providers.orchestration.common import (
     MGMT_ACTIONS_DEFAULT_EG_CLIENT_GROUP,
     MGMT_ACTIONS_DEFAULT_MQTT_ENDPOINT,
     MGMT_ACTIONS_DEFAULT_REGISTRY_ENDPOINT,
-    MGMT_ACTIONS_EG_AUDIENCE,
     MGMT_ACTIONS_GRAPH_ARTIFACT,
     MGMT_ACTIONS_GRAPH_RULES_VERSION,
     MGMT_ACTIONS_REQUEST_TOPIC_TEMPLATE,
@@ -45,10 +44,13 @@ from azext_edge.edge.providers.orchestration.mgmt_actions import (
     _build_graph_rules_config,
     get_mgmt_actions_resource_name,
 )
+from azext_edge.edge.util.cloud_config import CLOUD_AZURE_PUBLIC, EVENTGRID_AUDIENCE_MAP
 
 from ...generators import BASE_URL, generate_random_string, generate_resource_id, get_zeroed_subscription
 
 ZEROED_SUBSCRIPTION = get_zeroed_subscription()
+# Canonical public-cloud Event Grid audience, sourced from the single source of truth in cloud_config.
+MGMT_ACTIONS_EG_AUDIENCE = EVENTGRID_AUDIENCE_MAP[CLOUD_AZURE_PUBLIC]
 DEVICEREGISTRY_RP = "Microsoft.DeviceRegistry"
 DEVICEREGISTRY_API_VERSION = DEFAULT_DEVICEREGISTRY_MGMT_API_VERSION.value
 EVENTGRID_RP = "Microsoft.EventGrid"
@@ -5726,3 +5728,50 @@ class TestRemoveManagementEndpoint:
                 confirm_yes=True,
                 wait_sec=0,
             )
+
+
+class TestMgmtActionsCloudGate:
+    """Event Grid MQTT-based management actions are gated by cloud (blocked in China)."""
+
+    @staticmethod
+    def _make_mgmt_actions(cloud_name: str) -> MgmtActions:
+        # Bypass the heavy __init__; enable() applies the cloud gate before using any client.
+        from azext_edge.tests.helpers import build_mock_cmd_for_cloud
+
+        provider = MgmtActions.__new__(MgmtActions)
+        provider.cmd = build_mock_cmd_for_cloud(cloud_name)
+        return provider
+
+    def test_mgmt_actions_enable_blocked_in_china(self):
+        provider = self._make_mgmt_actions("AzureChinaCloud")
+
+        with pytest.raises(ValidationError) as exc:
+            provider.enable(
+                name=generate_random_string(),
+                resource_group_name=generate_random_string(),
+                eg_resource_id=generate_random_string(),
+            )
+
+        assert "not available in this cloud environment" in str(exc.value)
+
+    @pytest.mark.parametrize("cloud_name", ["AzureCloud", "AzureUSGovernment"])
+    def test_mgmt_actions_enable_not_blocked_in_supported_clouds(self, cloud_name):
+        provider = self._make_mgmt_actions(cloud_name)
+
+        # In supported clouds the cloud gate must NOT raise. To prove we get past the gate,
+        # assert enable() reaches the first client interaction (instance lookup) and fails there
+        # because no mgmt client is wired in this lightweight setup.
+        #
+        # NOTE: This intentionally couples to the internal `iotops_mgmt_client` attribute because
+        # the instance lookup (`self.iotops_mgmt_client.instance.get(...)`) is the first client
+        # interaction after the gate. It assumes the gate check, the semver import, and
+        # WorkflowDisplay setup all run before that lookup. If the enable() flow is reordered so a
+        # different client is touched first, update this assertion to match the new first interaction.
+        with pytest.raises(AttributeError) as exc:
+            provider.enable(
+                name=generate_random_string(),
+                resource_group_name=generate_random_string(),
+                eg_resource_id=generate_random_string(),
+            )
+
+        assert "iotops_mgmt_client" in str(exc.value)

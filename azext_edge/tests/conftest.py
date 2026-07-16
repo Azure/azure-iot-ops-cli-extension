@@ -102,10 +102,16 @@ def mocked_cmd(mocker, mocked_get_subscription_id, mocked_azcli_cred_get_token, 
         pass
 
     cloud = Stub()
+    cloud.name = "AzureCloud"
     cloud.endpoints = Stub()
     cloud.endpoints.resource_manager = "https://management.azure.com/"
     cloud.endpoints.active_directory = "https://login.microsoftonline.com/"
-    cloud.endpoints.active_directory_resource_id = "https://management.azure.com/"
+    cloud.endpoints.active_directory_resource_id = "https://management.core.windows.net/"
+    cloud.endpoints.microsoft_graph_resource_id = "https://graph.microsoft.com/"
+    cloud.suffixes = Stub()
+    cloud.suffixes.storage_endpoint = "core.windows.net"
+    cloud.suffixes.keyvault_dns = ".vault.azure.net"
+    cloud.suffixes.acr_login_server_endpoint = ".azurecr.io"
 
     az_cli_mock = mocker.patch("azure.cli.core.AzCli", autospec=True, **{"data": {"command": "az"}, "cloud": cloud})
     config = {"cli_ctx": az_cli_mock}

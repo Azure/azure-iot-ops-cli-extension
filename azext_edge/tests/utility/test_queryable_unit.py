@@ -303,3 +303,95 @@ class TestQueryableBackwardCompat:
 
         assert q.subscriptions == ["default-sub-id"]
         assert q.default_subscription_id == "default-sub-id"
+
+
+class TestCloudConfig:
+    """Cloud-aware endpoint/suffix/scope resolution for sovereign-cloud readiness."""
+
+    @pytest.mark.parametrize(
+        "cloud_name, expected",
+        [
+            (
+                "AzureCloud",
+                {
+                    "arm_endpoint": "https://management.azure.com/",
+                    "arm_endpoint_scope": "https://management.azure.com/.default",
+                    "graph_endpoint": "https://graph.microsoft.com/",
+                    "graph_token_resource": "https://graph.microsoft.com",
+                    "storage_suffix": "core.windows.net",
+                    "keyvault_scope": "https://vault.azure.net/.default",
+                    "acr_suffix": ".azurecr.io",
+                    "servicebus_suffix": "servicebus.windows.net",
+                    "eventgrid_audience": "https://eventgrid.azure.net",
+                    "supports_fabric_onelake": True,
+                    "supports_eventgrid_mqtt": True,
+                },
+            ),
+            (
+                "AzureUSGovernment",
+                {
+                    "arm_endpoint": "https://management.usgovcloudapi.net/",
+                    "arm_endpoint_scope": "https://management.usgovcloudapi.net/.default",
+                    "graph_endpoint": "https://graph.microsoft.us/",
+                    "graph_token_resource": "https://graph.microsoft.us",
+                    "storage_suffix": "core.usgovcloudapi.net",
+                    "keyvault_scope": "https://vault.usgovcloudapi.net/.default",
+                    "acr_suffix": ".azurecr.us",
+                    "servicebus_suffix": "servicebus.usgovcloudapi.net",
+                    "eventgrid_audience": "https://eventgrid.azure.us",
+                    "supports_fabric_onelake": False,
+                    "supports_eventgrid_mqtt": True,
+                },
+            ),
+            (
+                "AzureChinaCloud",
+                {
+                    "arm_endpoint": "https://management.chinacloudapi.cn",
+                    "arm_endpoint_scope": "https://management.chinacloudapi.cn/.default",
+                    "graph_endpoint": "https://microsoftgraph.chinacloudapi.cn/",
+                    "graph_token_resource": "https://microsoftgraph.chinacloudapi.cn",
+                    "storage_suffix": "core.chinacloudapi.cn",
+                    "keyvault_scope": "https://vault.azure.cn/.default",
+                    "acr_suffix": ".azurecr.cn",
+                    "servicebus_suffix": "servicebus.chinacloudapi.cn",
+                    "eventgrid_audience": "https://eventgrid.azure.cn",
+                    "supports_fabric_onelake": False,
+                    "supports_eventgrid_mqtt": False,
+                },
+            ),
+        ],
+    )
+    def test_cloud_config_resolution(self, cloud_name, expected):
+        from azext_edge.edge.util.cloud_config import CloudConfig
+        from azext_edge.tests.helpers import build_mock_cmd_for_cloud
+
+        config = CloudConfig(build_mock_cmd_for_cloud(cloud_name))
+
+        assert config.name == cloud_name
+        assert config.arm_endpoint == expected["arm_endpoint"]
+        assert config.arm_endpoint_scope == expected["arm_endpoint_scope"]
+        assert config.graph_endpoint == expected["graph_endpoint"]
+        assert config.graph_token_resource == expected["graph_token_resource"]
+        assert config.storage_suffix == expected["storage_suffix"]
+        assert config.keyvault_scope == expected["keyvault_scope"]
+        assert config.acr_suffix == expected["acr_suffix"]
+        assert config.servicebus_suffix == expected["servicebus_suffix"]
+        assert config.eventgrid_audience == expected["eventgrid_audience"]
+        assert config.supports_fabric_onelake == expected["supports_fabric_onelake"]
+        assert config.supports_eventgrid_mqtt == expected["supports_eventgrid_mqtt"]
+
+    def test_cloud_config_unknown_cloud_falls_back_to_public_maps(self):
+        from azext_edge.edge.util.cloud_config import CloudConfig
+        from azext_edge.tests.helpers import build_mock_cmd_for_cloud
+
+        cmd = build_mock_cmd_for_cloud("AzureCloud")
+        cmd.cli_ctx.cloud.name = "SomeCustomCloud"
+
+        config = CloudConfig(cmd)
+
+        # Maps not provided by the framework fall back to public values.
+        assert config.servicebus_suffix == "servicebus.windows.net"
+        assert config.eventgrid_audience == "https://eventgrid.azure.net"
+        # Unknown clouds are treated as not supporting gated features.
+        assert config.supports_fabric_onelake is False
+        assert config.supports_eventgrid_mqtt is False

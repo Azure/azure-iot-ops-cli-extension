@@ -884,3 +884,32 @@ def test_trust_add_accepts_expiration_parameter(mocker):
     call_kwargs = mock_instance.trust_add.call_args[1]
     assert 'expiration_date' in call_kwargs, "expiration_date parameter should be passed to trust_add"
     assert call_kwargs['expiration_date'] is None, "expiration_date should be None when not provided"
+
+
+def _make_opcua_certs_provider(cloud_name: str):
+    # Bypass the heavy __init__ (which builds mgmt/keyvault clients); we only need the
+    # cloud-derived keyvault suffix to exercise _build_vault_url's cloud-aware construction.
+    from azext_edge.edge.providers.orchestration.resources.connector.opcua.certs import OpcUACerts
+    from azext_edge.edge.util.cloud_config import CloudConfig
+    from azext_edge.tests.helpers import build_mock_cmd_for_cloud
+
+    provider = OpcUACerts.__new__(OpcUACerts)
+    provider._keyvault_dns_suffix = CloudConfig(build_mock_cmd_for_cloud(cloud_name)).keyvault_dns_suffix
+    return provider
+
+
+@pytest.mark.parametrize(
+    "cloud_name, expected_suffix",
+    [
+        ("AzureCloud", ".vault.azure.net"),
+        ("AzureUSGovernment", ".vault.usgovcloudapi.net"),
+        ("AzureChinaCloud", ".vault.azure.cn"),
+    ],
+)
+def test_build_vault_url_uses_cloud_keyvault_suffix(cloud_name, expected_suffix):
+    provider = _make_opcua_certs_provider(cloud_name)
+    keyvault_name = generate_random_string()
+
+    vault_url = provider._build_vault_url(keyvault_name)
+
+    assert vault_url == f"https://{keyvault_name}{expected_suffix}/"

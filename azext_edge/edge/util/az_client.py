@@ -281,15 +281,14 @@ def get_authz_client(subscription_id: str, **kwargs) -> "AuthorizationManagement
     )
 
 
-def get_keyvault_client(subscription_id: str, **kwargs) -> "KeyVaultClient":
+def get_keyvault_client(subscription_id: str, keyvault_scope: Optional[str] = None, **kwargs) -> "KeyVaultClient":
     from ..vendor.clients.keyvault import KeyVaultClient
 
-    # TODO: this only supports azure public cloud for now
     client = KeyVaultClient(
         credential=AZURE_CLI_CREDENTIAL,
         subscription_id=subscription_id,
         user_agent_policy=UserAgentPolicy(user_agent=USER_AGENT),
-        credential_scopes=["https://vault.azure.net/.default"],
+        credential_scopes=[keyvault_scope or "https://vault.azure.net/.default"],
         **kwargs,
     )
 
