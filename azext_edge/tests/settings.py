@@ -28,6 +28,8 @@ class EnvironmentVariables(Enum):
     init_redeployment = "azext_edge_init_redeployment"
     schema_registry_id = "azext_edge_schema_registry_id"
     adr_namespace_id = "azext_edge_adr_namespace_id"
+    eg_resource_id = "azext_edge_eg_resource_id"
+    mgmt_actions_skip_opc_plc = "azext_edge_mgmt_actions_skip_opc_plc"
     upgrade_args = "azext_edge_upgrade_args"
     acr_name = "azext_edge_acr_name"
     acr_artifact = "azext_edge_acr_artifact"

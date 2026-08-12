@@ -32,6 +32,11 @@ scenarios:
     tox_env: python-upgrade-int
     parallel: false
 
+  - name: mgmtactions
+    description: "Management actions tests"
+    tox_env: python-mgmtactions-int
+    parallel: false
+
   - name: redeploy
     description: "Redeployment tests"
     test_redeploy: true
