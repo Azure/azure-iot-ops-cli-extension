@@ -883,6 +883,7 @@ def test_sanitize_methods():
                 "dataflowProfile",
                 "dataflowEndpoint",
                 "artifactRegistryEndpoint",
+                "opcUaConnectorTemplate",
             },
             {"aioExtension", "cluster", "customLocation", "aioInstance"},  # All base resources marked as existing
         ),
@@ -898,6 +899,7 @@ def test_sanitize_methods():
                 "dataflowProfile",
                 "dataflowEndpoint",
                 "artifactRegistryEndpoint",
+                "opcUaConnectorTemplate",
                 "cluster",
                 "customLocation",
             },

@@ -72,7 +72,7 @@ from ...generators import (
     get_zeroed_subscription,
 )
 from .resources.conftest import RequestKPIs, get_request_kpis
-from .test_template_unit import EXPECTED_EXTENSION_RESOURCE_KEYS
+from .test_template_unit import EXPECTED_EXTENSION_RESOURCE_KEYS, EXPECTED_INSTANCE_RESOURCE_KEYS
 
 ZEROED_SUBSCRIPTION = get_zeroed_subscription()
 
@@ -1534,9 +1534,7 @@ def assert_create_displays(spy_work_displays: Dict[str, Mock], target_scenario: 
 def get_expected_keys_for(phase: InstancePhase) -> Tuple[set[str], set[str]]:
     ext_keys = {"cluster", "aioExtension"}
     instance_keys = ext_keys.union({"customLocation", "aioInstance"})
-    resource_keys = instance_keys.union(
-        {"broker", "brokerAuthn", "brokerListener", "dataflowProfile", "dataflowEndpoint", "artifactRegistryEndpoint"}
-    )
+    resource_keys = set(EXPECTED_INSTANCE_RESOURCE_KEYS)
     if phase == InstancePhase.EXT:
         return ext_keys, {}
     if phase == InstancePhase.INSTANCE:
