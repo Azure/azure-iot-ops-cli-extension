@@ -44,6 +44,7 @@ EXPECTED_INSTANCE_RESOURCE_KEYS = frozenset(
         "dataflowProfile",
         "dataflowEndpoint",
         "artifactRegistryEndpoint",
+        "opcUaConnectorTemplate",
     ]
 )
 
@@ -150,11 +151,11 @@ def test_template_blueprint(content: dict):
 
 EXTENSION_CONFIGS = {
     "enablement": [
-        (EXTENSION_TYPE_CM, "0.14.0", "stable"),
-        (EXTENSION_TYPE_SSC, "1.5.1", "stable"),
+        (EXTENSION_TYPE_CM, "1.0.0", "stable"),
+        (EXTENSION_TYPE_SSC, "1.5.2", "stable"),
     ],
     "instance": [
-        (EXTENSION_TYPE_OPS, "1.4.41", "stable"),
+        (EXTENSION_TYPE_OPS, "1.4.72", "integration"),
     ],
 }
 

@@ -49,12 +49,12 @@ class TemplateBlueprint(NamedTuple):
 
 
 TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
-    commit_id="18e6821d7dac3e85dbf6ff4d0bba1510aaf3aab0",
+    commit_id="51dff082e4e1fbdb156c650f79917774cb4c0062",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "languageVersion": "2.0",
         "contentVersion": "1.0.0.0",
-        "metadata": {"_generator": {"name": "bicep", "version": "0.45.15.27210", "templateHash": "381872897952304332"}},
+        "metadata": {"_generator": {"name": "bicep", "version": "0.46.1.21595", "templateHash": "6829492317291626106"}},
         "definitions": {
             "_1.AdvancedConfig": {
                 "type": "object",
@@ -95,6 +95,11 @@ TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
                             "train": {"type": "string", "nullable": True},
                             "configurationSettingsOverride": {"type": "object", "nullable": True},
                         },
+                        "nullable": True,
+                    },
+                    "connectors": {
+                        "type": "object",
+                        "properties": {"version": {"type": "string", "nullable": True}},
                         "nullable": True,
                     },
                     "secretSyncController": {
@@ -684,7 +689,7 @@ TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
             "advancedConfig": {"$ref": "#/definitions/_1.AdvancedConfig", "defaultValue": {}},
         },
         "variables": {
-            "VERSIONS": {"certManager": "0.14.0", "secretStore": "1.5.1"},
+            "VERSIONS": {"certManager": "1.0.0", "secretStore": "1.5.2"},
             "TRAINS": {"certManager": "stable", "secretStore": "stable"},
         },
         "resources": {
@@ -764,13 +769,13 @@ TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
 )
 
 TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
-    commit_id="8e8643fb4af5ae0724f4987e8bf85c094b6cee6f",
+    commit_id="4a3ede7ce58e52e8eafb780adce8238d7e34b8cb",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "languageVersion": "2.0",
         "contentVersion": "1.0.0.0",
         "metadata": {
-            "_generator": {"name": "bicep", "version": "0.45.15.27210", "templateHash": "10091655467238651388"}
+            "_generator": {"name": "bicep", "version": "0.46.1.21595", "templateHash": "13088597049132920403"}
         },
         "definitions": {
             "_1.AdvancedConfig": {
@@ -812,6 +817,11 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
                             "train": {"type": "string", "nullable": True},
                             "configurationSettingsOverride": {"type": "object", "nullable": True},
                         },
+                        "nullable": True,
+                    },
+                    "connectors": {
+                        "type": "object",
+                        "properties": {"version": {"type": "string", "nullable": True}},
                         "nullable": True,
                     },
                     "secretSyncController": {
@@ -1462,18 +1472,686 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
             "brokerConfig": {"$ref": "#/definitions/_1.BrokerConfig", "nullable": True},
             "trustConfig": {"$ref": "#/definitions/_1.TrustConfig", "defaultValue": {"source": "SelfSigned"}},
             "defaultDataflowInstanceCount": {"type": "int", "defaultValue": 1},
+            "enableGdsManager": {"type": "bool", "defaultValue": True},
             "advancedConfig": {"$ref": "#/definitions/_1.AdvancedConfig", "defaultValue": {}},
         },
         "variables": {
-            "VERSIONS": {"iotOperations": "1.4.41"},
-            "TRAINS": {"iotOperations": "stable"},
+            "$fxv#0": {
+                "environment": "PROD",
+                "Azure": {
+                    "OperationId": "",
+                    "Extension": {"Name": "", "ResourceId": ""},
+                    "Cluster": {"ResourceId": "", "Region": ""},
+                    "Identity": {"isEnabled": False},
+                    "proxySettings": {
+                        "isProxyEnabled": False,
+                        "httpProxy": "",
+                        "httpsProxy": "",
+                        "noProxy": "",
+                        "proxyCert": "",
+                        "isCustomCert": False,
+                    },
+                },
+                "global": {"azure": {"identity": {"isEnabled": False}}},
+                "validation": {"hardwareRequirements": {"enabled": True}},
+                "billing": {
+                    "service": {
+                        "image": {
+                            "registry": "symphonycr.azurecr.io",
+                            "repository": "aio-billing",
+                            "tag": "latest",
+                            "pullPolicy": "IfNotPresent",
+                        }
+                    },
+                    "securityContext": {
+                        "enabled": True,
+                        "container": {
+                            "runAsNonRoot": True,
+                            "readOnlyRootFilesystem": True,
+                            "allowPrivilegeEscalation": False,
+                            "privileged": False,
+                            "runAsUser": 1000,
+                            "runAsGroup": 1000,
+                            "capabilities": {"drop": ["ALL"]},
+                            "seccompProfile": {"type": "RuntimeDefault"},
+                        },
+                    },
+                },
+                "otlpInsecureGrpc": False,
+                "otlpInsecureHttp": False,
+                "otlpLogsEndpointGrpc": "",
+                "otlpLogsEndpointHttp": "",
+                "otlpMetricsEndpointGrpc": "",
+                "otlpMetricsEndpointHttp": "",
+                "otlpTracesEndpointGrpc": "",
+                "otlpTracesEndpointHttp": "",
+                "otlpTrustBundle": {
+                    "configMap": {"name": "arc-diagnostics-extension-trust-bundle", "key": "root-certs.pem"},
+                    "mount": {
+                        "path": "/etc/pki/ca-trust/arc-diagnostics-extension-trust-bundle",
+                        "name": "ca-certificates.pem",
+                    },
+                },
+                "k8s": {"ratelimit": {"qps": 30, "burst": 50}},
+                "observability": {
+                    "metrics": {
+                        "openTelemetryCollectorAddress": "",
+                        "exportIntervalSeconds": 60,
+                        "enabled": True,
+                        "podFormat": "OFF",
+                    },
+                    "traces": {"podFormat": "OFF"},
+                    "firstparty": {
+                        "useAIOOtlpEndpoints": True,
+                        "aioSettings": {
+                            "serviceName": "aio-observability",
+                            "grpcPort": "4317",
+                            "httpPort": "4318",
+                            "otlpTrustBundle": {
+                                "configMap": {
+                                    "name": "azure-iot-operations-observability-trust-bundle",
+                                    "key": "root-certs.pem",
+                                },
+                                "mount": {
+                                    "path": "/etc/pki/ca-trust/azure-iot-operations-observability-trust-bundle",
+                                    "name": "ca-certificates.pem",
+                                },
+                            },
+                        },
+                        "metrics": {"exportIntervalSeconds": 60, "enabled": True},
+                        "logs": {"enabled": True, "level": "INFO"},
+                        "traces": {"enabled": False},
+                    },
+                },
+                "trustSource": "SelfSigned",
+                "trustBundleSettings": {
+                    "issuer": {"name": "", "kind": ""},
+                    "configMap": {"name": "", "key": ""},
+                    "selfSigned": {
+                        "enabled": True,
+                        "trustManager": {"trustNamespace": "cert-manager"},
+                        "clusterIssuer": {
+                            "name": "azure-iot-operations-aio-selfsigned-root",
+                            "spec": {"selfSigned": {}},
+                        },
+                        "clusterIssuerCa": {
+                            "name": "azure-iot-operations-aio-certificate-issuer",
+                            "spec": {"ca": {"secretName": "azure-iot-operations-aio-ca-certificate"}},
+                        },
+                        "caCertificate": {
+                            "name": "azure-iot-operations-aio-selfsigned-root",
+                            "spec": {
+                                "isCA": True,
+                                "commonName": "Azure IoT Operations Quickstart Root CA - Not for Production",
+                                "subject": {"organizations": ["Microsoft"]},
+                                "secretName": "azure-iot-operations-aio-ca-certificate",
+                                "duration": "8760h",
+                                "renewBefore": "240h",
+                                "privateKey": {
+                                    "algorithm": "RSA",
+                                    "rotationPolicy": "Never",
+                                    "encoding": "PKCS1",
+                                    "size": 2048,
+                                },
+                                "usages": ["crl sign", "cert sign"],
+                            },
+                        },
+                        "trustBundle": {
+                            "name": "azure-iot-operations-aio-ca-trust-bundle",
+                            "spec": {
+                                "sources": [
+                                    {"secret": {"name": "azure-iot-operations-aio-ca-certificate", "key": "tls.crt"}}
+                                ],
+                                "target": {"configMap": {"key": "ca.crt"}},
+                            },
+                        },
+                    },
+                },
+                "profiling": {"pprof": {"enabled": False, "port": 6060}, "pyroscope": {"enabled": False, "port": 4040}},
+                "admin": {"rbac": {"clusterAdmin": {"enabled": False}}},
+                "aioCommon": {"global": {"configMap": {"name": "aio-global"}}},
+                "operator": {
+                    "enabled": True,
+                    "labels": {"app.kubernetes.io/part-of": "aio", "app.kubernetes.io/name": "microsoft-iotoperations"},
+                    "securityContext": {
+                        "enabled": True,
+                        "container": {
+                            "runAsNonRoot": True,
+                            "readOnlyRootFilesystem": True,
+                            "allowPrivilegeEscalation": False,
+                            "capabilities": {"drop": ["ALL"]},
+                            "seccompProfile": {"type": "RuntimeDefault"},
+                        },
+                    },
+                    "leaderElect": {"enabled": True},
+                    "container": {"terminationGracePeriod": "6m"},
+                    "service": {
+                        "name": "aio-operator",
+                        "image": {
+                            "registry": "symphonycr.azurecr.io",
+                            "repository": "aio-operator",
+                            "tag": "latest",
+                            "pullPolicy": "IfNotPresent",
+                        },
+                    },
+                    "heartbeat": {"interval": "10m"},
+                    "webhook": {
+                        "serverPort": 9443,
+                        "issuerName": "aio-trust-bundle",
+                        "certificateName": "aio-operator-serving-cert",
+                        "certificateSecretName": "aio-operator-webhook-server-cert",
+                        "certificateMountPath": "/tmp/k8s-webhook-server/serving-certs",
+                        "certificateTlsCrtName": "tls.crt",
+                        "certificateTlsKeyName": "tls.key",
+                        "validation": {"minCapacityMemoryGB": 10, "minCapacityCPU": 4, "minAvailablePods": 25},
+                    },
+                    "manager": {
+                        "gracefulShutdownTimeout": "30m",
+                        "instance": {
+                            "operation": {"timeout": "2h"},
+                            "reconcile": {"requeueAfter": "2m", "timeout": "2h", "retries": 3},
+                        },
+                    },
+                    "serviceaccount": {"name": "aio-operator-sa"},
+                    "config": {"name": "aio-operator-config"},
+                    "proxy": {
+                        "cert": {"name": "aio-operator-proxy-cert"},
+                        "config": {"name": "aio-operator-proxy-config"},
+                    },
+                    "secretSyncController": {"enabled": True, "serviceAccountName": "aio-ssc-sa"},
+                    "resources": {
+                        "limits": {"cpu": "500m", "memory": "256Mi"},
+                        "requests": {"cpu": "5m", "memory": "64Mi"},
+                    },
+                },
+                "helm": {"maxHistory": 10, "release": {"wait": {"timeout": "2m", "pollInterval": "10s"}}},
+                "adr": {
+                    "name": "adr",
+                    "enabled": True,
+                    "preview": False,
+                    "image": {
+                        "registry": "mcr.microsoft.com",
+                        "repository": "azureiotoperations/helm/adr/assets-arc-extension",
+                        "tag": "1.2.2",
+                    },
+                    "serviceAccount": {"name": ""},
+                    "azureExtensionIdentity": {"enabled": False},
+                    "features": [{"name": "preview"}],
+                    "upgradePolicy": {"reinstallIf": ""},
+                    "helm": {
+                        "filter": {"values": None},
+                        "install": {
+                            "atomic": True,
+                            "timeout": 600,
+                            "wait": True,
+                            "disableHooks": False,
+                            "waitForJobs": True,
+                        },
+                        "upgrade": {
+                            "atomic": True,
+                            "timeout": 1800,
+                            "wait": True,
+                            "disableHooks": False,
+                            "waitForJobs": True,
+                        },
+                        "uninstall": {"atomic": True, "timeout": 600, "wait": True, "disableHooks": False},
+                    },
+                    "values": {},
+                },
+                "aioDiagnostics": {
+                    "name": "aioDiagnostics",
+                    "enabled": False,
+                    "preview": False,
+                    "image": {
+                        "registry": "azureiotoperations.azurecr.io",
+                        "repository": "aio-diagnostics-platform/dev/helm/aio-diagnostics-operator",
+                        "tag": "0.0.141",
+                    },
+                    "serviceAccount": {"name": "aio-diagnostics-agent-sa"},
+                    "azureExtensionIdentity": {"enabled": True},
+                    "upgradePolicy": {"reinstallIf": ""},
+                    "helm": {
+                        "filter": {"values": None},
+                        "install": {
+                            "atomic": True,
+                            "timeout": 600,
+                            "wait": True,
+                            "disableHooks": False,
+                            "waitForJobs": True,
+                        },
+                        "upgrade": {
+                            "atomic": True,
+                            "timeout": 1800,
+                            "wait": True,
+                            "disableHooks": False,
+                            "waitForJobs": True,
+                        },
+                        "uninstall": {"atomic": True, "timeout": 600, "wait": True, "disableHooks": False},
+                    },
+                    "values": {},
+                },
+                "akri": {
+                    "name": "akri",
+                    "enabled": True,
+                    "preview": True,
+                    "image": {
+                        "registry": "mcr.microsoft.com",
+                        "repository": "azureiotoperations/helm/microsoft-managed-akri",
+                        "tag": "1.2.2",
+                    },
+                    "serviceAccount": {"name": ""},
+                    "azureExtensionIdentity": {"enabled": False},
+                    "features": [{"name": "preview"}],
+                    "upgradePolicy": {"reinstallIf": "<0.8.0"},
+                    "helm": {
+                        "filter": {"values": None},
+                        "install": {
+                            "atomic": True,
+                            "timeout": 600,
+                            "wait": True,
+                            "disableHooks": False,
+                            "waitForJobs": True,
+                        },
+                        "upgrade": {
+                            "atomic": True,
+                            "timeout": 1800,
+                            "wait": True,
+                            "disableHooks": False,
+                            "waitForJobs": True,
+                        },
+                        "uninstall": {"atomic": True, "timeout": 600, "wait": True, "disableHooks": False},
+                    },
+                    "values": {"operator": {"resources": {"cpuLimit": "200m"}}},
+                },
+                "connectors": {
+                    "name": "connectors",
+                    "enabled": True,
+                    "preview": False,
+                    "image": {
+                        "registry": "mcr.microsoft.com",
+                        "repository": "azureiotoperations/aio-connectors/helmchart/microsoft-aio-connectors",
+                        "tag": "1.4.10",
+                    },
+                    "serviceAccount": {"name": ""},
+                    "azureExtensionIdentity": {"enabled": False},
+                    "features": [{"name": "preview"}],
+                    "upgradePolicy": {"reinstallIf": ""},
+                    "helm": {
+                        "filter": {"values": None},
+                        "install": {
+                            "atomic": True,
+                            "timeout": 600,
+                            "wait": True,
+                            "disableHooks": False,
+                            "waitForJobs": True,
+                        },
+                        "upgrade": {
+                            "atomic": True,
+                            "timeout": 1800,
+                            "wait": True,
+                            "disableHooks": False,
+                            "waitForJobs": True,
+                        },
+                        "uninstall": {"atomic": True, "timeout": 600, "wait": True, "disableHooks": False},
+                    },
+                    "values": {
+                        "nameOverride": "microsoft-iotoperations-opcuabroker",
+                        "mqttBroker": {
+                            "address": "mqtts://aio-broker.azure-iot-operations:18883",
+                            "authenticationMethod": "serviceAccountToken",
+                            "serviceAccountTokenAudience": "aio-internal",
+                            "connectUserProperties": {"metriccategory": "aio-opc"},
+                        },
+                        "openTelemetry": {"enabled": True},
+                        "secrets": {"kind": "k8s"},
+                    },
+                },
+                "dataFlows": {
+                    "name": "dataFlows",
+                    "enabled": True,
+                    "preview": False,
+                    "image": {
+                        "registry": "mcr.microsoft.com",
+                        "repository": "azureiotoperations/helm/dataflows",
+                        "tag": "1.5.5",
+                    },
+                    "serviceAccount": {"name": "aio-dataflow"},
+                    "azureExtensionIdentity": {"enabled": True},
+                    "features": [{"name": "preview"}],
+                    "upgradePolicy": {"reinstallIf": ""},
+                    "helm": {
+                        "filter": {"values": None},
+                        "install": {
+                            "atomic": True,
+                            "timeout": 600,
+                            "wait": True,
+                            "disableHooks": False,
+                            "waitForJobs": True,
+                        },
+                        "upgrade": {
+                            "atomic": True,
+                            "timeout": 1800,
+                            "wait": True,
+                            "disableHooks": False,
+                            "waitForJobs": True,
+                        },
+                        "uninstall": {"atomic": True, "timeout": 600, "wait": True, "disableHooks": False},
+                    },
+                    "values": {},
+                },
+                "mqttBroker": {
+                    "name": "mqttBroker",
+                    "enabled": True,
+                    "preview": False,
+                    "image": {
+                        "registry": "mcr.microsoft.com",
+                        "repository": "azureiotoperations/helm/aio-broker",
+                        "tag": "1.5.3",
+                    },
+                    "serviceAccount": {"name": ""},
+                    "azureExtensionIdentity": {"enabled": False},
+                    "features": [{"name": "preview"}],
+                    "upgradePolicy": {"reinstallIf": ""},
+                    "helm": {
+                        "filter": {"values": None},
+                        "install": {
+                            "atomic": True,
+                            "timeout": 600,
+                            "wait": True,
+                            "disableHooks": False,
+                            "waitForJobs": True,
+                        },
+                        "upgrade": {
+                            "atomic": True,
+                            "timeout": 1800,
+                            "wait": True,
+                            "disableHooks": False,
+                            "waitForJobs": True,
+                        },
+                        "uninstall": {"atomic": True, "timeout": 600, "wait": True, "disableHooks": False},
+                    },
+                    "values": {"global": {"quickstart": False}, "operator": {"firstPartyMetricsOn": True}},
+                },
+                "schemaRegistry": {
+                    "name": "schemaRegistry",
+                    "enabled": True,
+                    "preview": False,
+                    "image": {
+                        "registry": "mcr.microsoft.com",
+                        "repository": "azureiotoperations/helm/adr/schema-registry",
+                        "tag": "1.3.18",
+                    },
+                    "serviceAccount": {"name": "adr-schema-registry"},
+                    "azureExtensionIdentity": {"enabled": True},
+                    "features": [{"name": "preview"}],
+                    "upgradePolicy": {"reinstallIf": ""},
+                    "helm": {
+                        "filter": {"values": None},
+                        "install": {
+                            "atomic": True,
+                            "timeout": 600,
+                            "wait": True,
+                            "disableHooks": False,
+                            "waitForJobs": True,
+                        },
+                        "upgrade": {
+                            "atomic": True,
+                            "timeout": 1800,
+                            "wait": True,
+                            "disableHooks": False,
+                            "waitForJobs": True,
+                        },
+                        "uninstall": {"atomic": True, "timeout": 600, "wait": True, "disableHooks": False},
+                    },
+                    "values": {"resourceId": None, "mqttBroker": {"tlsEnabled": True}},
+                },
+                "aioObservabilityOperator": {
+                    "name": "aio-observability-operator",
+                    "enabled": True,
+                    "preview": False,
+                    "image": {
+                        "registry": "mcr.microsoft.com/azureiotoperations",
+                        "repository": "helm/meso/aio-observability-operator",
+                        "tag": "0.2.48",
+                    },
+                    "serviceAccount": {"name": ""},
+                    "azureExtensionIdentity": {"enabled": False},
+                    "helm": {
+                        "install": {
+                            "atomic": True,
+                            "timeout": 600,
+                            "wait": True,
+                            "disableHooks": False,
+                            "waitForJobs": True,
+                        },
+                        "upgrade": {
+                            "atomic": True,
+                            "timeout": 600,
+                            "wait": True,
+                            "disableHooks": False,
+                            "waitForJobs": True,
+                        },
+                        "uninstall": {"atomic": True, "timeout": 600, "wait": True, "disableHooks": False},
+                    },
+                    "values": {
+                        "operator": {
+                            "service": {
+                                "image": {
+                                    "registry": "mcr.microsoft.com/azureiotoperations",
+                                    "repository": "aio-observability-operator",
+                                    "tag": "0.2.48",
+                                }
+                            }
+                        },
+                        "hooks": {
+                            "service": {
+                                "image": {
+                                    "registry": "mcr.microsoft.com/azureiotoperations",
+                                    "repository": "aio-observability-operator-hooks",
+                                    "tag": "0.2.48",
+                                }
+                            }
+                        },
+                    },
+                },
+                "hooks": {
+                    "enabled": True,
+                    "internalResourcePrefix": "aio-deployment-lifecycle-hook",
+                    "dependency": None,
+                    "config": {"name": "aio-operator-hooks-config"},
+                    "securityContext": {
+                        "enabled": True,
+                        "container": {
+                            "runAsNonRoot": True,
+                            "readOnlyRootFilesystem": True,
+                            "allowPrivilegeEscalation": False,
+                            "capabilities": {"drop": ["ALL"]},
+                            "seccompProfile": {"type": "RuntimeDefault"},
+                        },
+                    },
+                    "preInstallInit": {
+                        "backoffLimit": 3,
+                        "enabled": True,
+                        "timeout": "5m",
+                        "resources": {
+                            "limits": {"cpu": "500m", "memory": "1Gi"},
+                            "requests": {"cpu": "5m", "memory": "64Mi"},
+                        },
+                    },
+                    "preInstallObservabilities": {
+                        "backoffLimit": 3,
+                        "enabled": True,
+                        "timeout": "15m",
+                        "resources": {
+                            "limits": {"cpu": "500m", "memory": "1Gi"},
+                            "requests": {"cpu": "5m", "memory": "64Mi"},
+                        },
+                    },
+                    "preInstall": {
+                        "backoffLimit": 3,
+                        "enabled": True,
+                        "timeout": "5m",
+                        "resources": {
+                            "limits": {"cpu": "500m", "memory": "1Gi"},
+                            "requests": {"cpu": "5m", "memory": "64Mi"},
+                        },
+                    },
+                    "preUpgradeObservabilities": {
+                        "backoffLimit": 3,
+                        "enabled": True,
+                        "timeout": "15m",
+                        "resources": {
+                            "limits": {"cpu": "500m", "memory": "1Gi"},
+                            "requests": {"cpu": "5m", "memory": "64Mi"},
+                        },
+                    },
+                    "preUpgrade": {
+                        "backoffLimit": 3,
+                        "enabled": True,
+                        "timeout": "5m",
+                        "resources": {
+                            "limits": {"cpu": "500m", "memory": "1Gi"},
+                            "requests": {"cpu": "5m", "memory": "64Mi"},
+                        },
+                    },
+                    "preDelete": {
+                        "backoffLimit": 3,
+                        "enabled": True,
+                        "timeout": "5m",
+                        "resources": {
+                            "limits": {"cpu": "500m", "memory": "1Gi"},
+                            "requests": {"cpu": "5m", "memory": "64Mi"},
+                        },
+                    },
+                    "postInstall": {
+                        "backoffLimit": 3,
+                        "enabled": True,
+                        "timeout": "5m",
+                        "resources": {
+                            "limits": {"cpu": "500m", "memory": "1Gi"},
+                            "requests": {"cpu": "5m", "memory": "64Mi"},
+                        },
+                    },
+                    "postUpgrade": {
+                        "backoffLimit": 0,
+                        "enabled": True,
+                        "timeout": "2h",
+                        "instance": {"upgrade": {"pollInterval": "15s"}},
+                        "resources": {
+                            "limits": {"cpu": "500m", "memory": "1Gi"},
+                            "requests": {"cpu": "5m", "memory": "64Mi"},
+                        },
+                    },
+                    "postDeleteObservabilities": {
+                        "backoffLimit": 3,
+                        "enabled": True,
+                        "timeout": "5m",
+                        "resources": {
+                            "limits": {"cpu": "500m", "memory": "1Gi"},
+                            "requests": {"cpu": "5m", "memory": "64Mi"},
+                        },
+                    },
+                    "postDelete": {
+                        "backoffLimit": 3,
+                        "enabled": True,
+                        "timeout": "5m",
+                        "resources": {
+                            "limits": {"cpu": "500m", "memory": "1Gi"},
+                            "requests": {"cpu": "5m", "memory": "64Mi"},
+                        },
+                    },
+                    "cleanup": {
+                        "garbageCollection": {
+                            "resources": [
+                                {
+                                    "group": "batch",
+                                    "version": "v1",
+                                    "kind": "Job",
+                                    "namespace": "",
+                                    "names": [
+                                        "aio-pre-install-observabilities-job",
+                                        "aio-post-delete-observabilities-job",
+                                        "aio-pre-upgrade-observabilities-job",
+                                        "aio-post-delete-job",
+                                        "aio-post-install-job",
+                                        "aio-post-upgrade-job",
+                                        "aio-pre-delete-job",
+                                        "aio-pre-install-init-job",
+                                        "aio-pre-install-job",
+                                        "aio-pre-upgrade-job",
+                                    ],
+                                }
+                            ]
+                        },
+                        "backoffLimit": 3,
+                        "enabled": True,
+                        "timeout": "5m",
+                        "resources": {
+                            "limits": {"cpu": "500m", "memory": "1Gi"},
+                            "requests": {"cpu": "5m", "memory": "64Mi"},
+                        },
+                    },
+                    "service": {
+                        "name": "aio-operator-hooks",
+                        "image": {
+                            "registry": "symphonycr.azurecr.io",
+                            "repository": "aio-operator-hooks",
+                            "tag": "latest",
+                            "pullPolicy": "IfNotPresent",
+                        },
+                    },
+                    "proxy": {
+                        "cert": {"name": "aio-operator-hooks-proxy-cert"},
+                        "config": {"name": "aio-operator-hooks-proxy-config"},
+                    },
+                },
+                "aio_promoter": {
+                    "dependency_meta": [
+                        {
+                            "name": "aio-operator",
+                            "repository": "aio-operator",
+                            "version": "latest",
+                            "replacements": [
+                                {"targets": [".operator.service.image.registry"], "value": "$REGISTRY"},
+                                {"targets": [".operator.service.image.repository"], "value": "$REPO"},
+                                {"targets": [".operator.service.image.tag"], "value": "$TAG"},
+                            ],
+                        },
+                        {
+                            "name": "aio-operator-hooks",
+                            "repository": "aio-operator-hooks",
+                            "version": "latest",
+                            "replacements": [
+                                {"targets": [".hooks.service.image.registry"], "value": "$REGISTRY"},
+                                {"targets": [".hooks.service.image.repository"], "value": "$REPO"},
+                                {"targets": [".hooks.service.image.tag"], "value": "$TAG"},
+                            ],
+                        },
+                        {
+                            "name": "aio-billing",
+                            "repository": "aio-billing",
+                            "version": "latest",
+                            "replacements": [
+                                {"targets": [".billing.service.image.registry"], "value": "$REGISTRY"},
+                                {"targets": [".billing.service.image.repository"], "value": "$REPO"},
+                                {"targets": [".billing.service.image.tag"], "value": "$TAG"},
+                            ],
+                        },
+                    ]
+                },
+            },
+            "VERSIONS": {"iotOperations": "1.4.72"},
+            "TRAINS": {"iotOperations": "integration"},
             "HASH": "[coalesce(tryGet(parameters('advancedConfig'), 'resourceSuffix'), take(uniqueString(resourceGroup().id, parameters('clusterName'), parameters('clusterNamespace')), 5))]",
             "AIO_EXTENSION_SUFFIX": "[take(uniqueString(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName'))), 5)]",
             "CUSTOM_LOCATION_NAMESPACE": "[parameters('clusterNamespace')]",
+            "AIO_EXTENSION_VALUES": "[variables('$fxv#0')]",
             "AIO_EXTENSION_SCOPE": {"cluster": {"releaseNamespace": "[parameters('clusterNamespace')]"}},
             "customerManagedTrust": "[equals(parameters('trustConfig').source, 'CustomerManaged')]",
             "ISSUER_NAME": "[if(variables('customerManagedTrust'), parameters('trustConfig').settings.issuerName, format('{0}-aio-certificate-issuer', parameters('clusterNamespace')))]",
             "TRUST_CONFIG_MAP": "[if(variables('customerManagedTrust'), parameters('trustConfig').settings.configMapName, format('{0}-aio-ca-trust-bundle', parameters('clusterNamespace')))]",
+            "TRUST_CONFIG_MAP_KEY": "[if(variables('customerManagedTrust'), parameters('trustConfig').settings.configMapKey, 'ca.crt')]",
+            "OPCUA_CONNECTOR_VERSION": "[coalesce(tryGet(tryGet(parameters('advancedConfig'), 'connectors'), 'version'), variables('AIO_EXTENSION_VALUES').connectors.image.tag)]",
             "MQTT_SETTINGS": {
                 "brokerListenerServiceName": "aio-broker",
                 "brokerListenerPort": 18883,
@@ -1497,9 +2175,12 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
                 "connectors.values.mqttBroker.serviceAccountTokenAudience": "[variables('MQTT_SETTINGS').serviceAccountAudience]",
                 "connectors.values.securityPki.applicationUri": "[format('urn:microsoft.com:aio:opc:ua:broker:{0}', variables('AIO_EXTENSION_SUFFIX'))]",
                 "connectors.values.securityPki.subjectName": "[format('CN=aio-opc-opcuabroker-{0}', variables('AIO_EXTENSION_SUFFIX'))]",
+                "connectors.values.gdsManager.enabled": "[if(parameters('enableGdsManager'), 'true', 'false')]",
                 "dataFlows.values.tinyKube.mqttBroker.hostName": "[variables('MQTT_SETTINGS').brokerListenerHost]",
                 "dataFlows.values.tinyKube.mqttBroker.port": "[variables('MQTT_SETTINGS').brokerListenerPort]",
                 "dataFlows.values.tinyKube.mqttBroker.authentication.serviceAccountTokenAudience": "[variables('MQTT_SETTINGS').serviceAccountAudience]",
+                "dataFlows.values.wasmGraphController.mqttBroker.caCertConfigMapRef": "[variables('TRUST_CONFIG_MAP')]",
+                "dataFlows.values.wasmGraphController.mqttBroker.caCertFileName": "[variables('TRUST_CONFIG_MAP_KEY')]",
                 "observability.metrics.enabled": "[format('{0}', coalesce(tryGet(tryGet(parameters('advancedConfig'), 'observability'), 'enabled'), false()))]",
                 "observability.metrics.openTelemetryCollectorAddress": "[if(coalesce(tryGet(tryGet(parameters('advancedConfig'), 'observability'), 'enabled'), false()), format('{0}', tryGet(tryGet(parameters('advancedConfig'), 'observability'), 'otelCollectorAddress')), '')]",
                 "trustSource": "[parameters('trustConfig').source]",
@@ -1514,6 +2195,7 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
                 "name": "[resourceId('Microsoft.ExtendedLocation/customLocations', coalesce(parameters('customLocationName'), format('location-{0}', variables('HASH'))))]",
                 "type": "CustomLocation",
             },
+            "opcUaConnectorTemplateName": "[format('azureiotoperationsconnectorforopcua-{0}', substring(uniqueString(resourceId('Microsoft.IoTOperations/instances', coalesce(parameters('aioInstanceName'), format('aio-{0}', variables('HASH'))))), 0, 4))]",
         },
         "resources": {
             "cluster": {
@@ -1672,6 +2354,35 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
                 "properties": {
                     "host": "mcr.microsoft.com",
                     "authentication": {"method": "Anonymous", "anonymousSettings": {}},
+                },
+                "dependsOn": ["aioInstance", "customLocation"],
+            },
+            "opcUaConnectorTemplate": {
+                "type": "Microsoft.IoTOperations/instances/akriConnectorTemplates",
+                "apiVersion": "2026-07-01",
+                "name": "[format('{0}/{1}', coalesce(parameters('aioInstanceName'), format('aio-{0}', variables('HASH'))), variables('opcUaConnectorTemplateName'))]",
+                "extendedLocation": "[variables('extendedLocation')]",
+                "properties": {
+                    "connectorMetadataRef": "[format('mcr.microsoft.com/azureiotoperations/aio-connectors/opcua-metadata:{0}', variables('OPCUA_CONNECTOR_VERSION'))]",
+                    "aioMetadata": {"aioMinVersion": "1.2.100"},
+                    "runtimeConfiguration": {
+                        "runtimeConfigurationType": "ManagedConfiguration",
+                        "managedConfigurationSettings": {
+                            "managedConfigurationType": "ImageConfiguration",
+                            "imageConfigurationSettings": {
+                                "registrySettings": {
+                                    "registrySettingsType": "ContainerRegistry",
+                                    "containerRegistrySettings": {"registry": "mcr.microsoft.com"},
+                                },
+                                "imageName": "azureiotoperations/aio-connectors/supervisor",
+                                "tagDigestSettings": {
+                                    "tagDigestType": "Tag",
+                                    "tag": "[variables('OPCUA_CONNECTOR_VERSION')]",
+                                },
+                            },
+                        },
+                    },
+                    "deviceInboundEndpointTypes": [{"endpointType": "Microsoft.OpcUa"}],
                 },
                 "dependsOn": ["aioInstance", "customLocation"],
             },
