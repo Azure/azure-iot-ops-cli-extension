@@ -58,6 +58,7 @@ from azext_edge.edge.providers.orchestration.common import (
     SECRET_SYNC_API_VERSION,
 )
 from azext_edge.edge.util.az_client import (
+    DEFAULT_IOTOPS_MGMT_API_VERSION,
     DeviceRegistryMgmtApiVersion,
     IoTOpsMgmtApiVersion,
 )
@@ -496,8 +497,8 @@ class CloneScenario:
             self.resource_configs["adrNamespaceId"] = mock_instance_record["properties"]["adrNamespaceRef"][
                 "resourceId"
             ]
-        instance_fetch_by_apis = [IoTOpsMgmtApiVersion.V20260301.value]
-        if not self.api_config.v2_enabled:
+        instance_fetch_by_apis = [DEFAULT_IOTOPS_MGMT_API_VERSION.value]
+        if self.api_config.iotops_mgmt_api not in instance_fetch_by_apis:
             instance_fetch_by_apis.append(self.api_config.iotops_mgmt_api)
         for api_version in instance_fetch_by_apis:
             self.responses.add(
@@ -1006,6 +1007,7 @@ def test_clone_manager(
 @pytest.mark.parametrize("add_ns_devices", [0, 5])
 @pytest.mark.parametrize("add_ns_assets", [0, 5])
 @pytest.mark.parametrize("include_container_storage", [False, True])
+@pytest.mark.parametrize("instance_version", ["1.3.0", "1.4.0"])
 def test_clone_manager_instance_v2(
     mocked_cmd: Mock,
     mocked_responses: responses,
@@ -1018,6 +1020,7 @@ def test_clone_manager_instance_v2(
     add_ns_devices: int,
     add_ns_assets: int,
     include_container_storage: bool,
+    instance_version: str,
 ):
     model_cluster_name = generate_random_string()
     model_instance_name = generate_random_string()
@@ -1041,7 +1044,7 @@ def test_clone_manager_instance_v2(
         instance_name=model_instance_name,
         cluster_name=model_cluster_name,
         add_resources_map=add_resources_map,
-        instance_version="1.3.0",
+        instance_version=instance_version,
     )
 
     clone_manager = CloneManager(
@@ -1063,10 +1066,10 @@ def test_clone_manager_instance_v2(
         {"version": "1.1.50"},
         {"version": "1.1.19"},
         {"version": "1.0.34"},
-        {"version": "1.4.0", "error": ValidationError},
+        {"version": "1.5.0", "error": ValidationError},
         {"version": "2.0.0", "error": ValidationError},
         {"version": "1.0.9", "error": ValidationError},
-        {"version": "1.4.0", "force": True},
+        {"version": "1.5.0", "force": True},
         {"version": "1.0.9", "force": True},
     ],
 )
@@ -1940,6 +1943,9 @@ class CloneAssertor:
             target_adr_api = DeviceRegistryMgmtApiVersion.V20251001
         elif parsed_version < semver.parse("1.4.0"):
             target_iotops_api = IoTOpsMgmtApiVersion.V20260301
+            target_adr_api = DeviceRegistryMgmtApiVersion.V20260401
+        else:
+            target_iotops_api = IoTOpsMgmtApiVersion.V20260701
             target_adr_api = DeviceRegistryMgmtApiVersion.V20260401
 
         assert target_iotops_api.value == self.api_config.iotops_mgmt_api

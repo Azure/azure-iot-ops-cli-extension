@@ -49,12 +49,12 @@ class TemplateBlueprint(NamedTuple):
 
 
 TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
-    commit_id="18e6821d7dac3e85dbf6ff4d0bba1510aaf3aab0",
+    commit_id="51dff082e4e1fbdb156c650f79917774cb4c0062",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "languageVersion": "2.0",
         "contentVersion": "1.0.0.0",
-        "metadata": {"_generator": {"name": "bicep", "version": "0.45.15.27210", "templateHash": "381872897952304332"}},
+        "metadata": {"_generator": {"name": "bicep", "version": "0.46.1.21595", "templateHash": "6829492317291626106"}},
         "definitions": {
             "_1.AdvancedConfig": {
                 "type": "object",
@@ -95,6 +95,11 @@ TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
                             "train": {"type": "string", "nullable": True},
                             "configurationSettingsOverride": {"type": "object", "nullable": True},
                         },
+                        "nullable": True,
+                    },
+                    "connectors": {
+                        "type": "object",
+                        "properties": {"version": {"type": "string", "nullable": True}},
                         "nullable": True,
                     },
                     "secretSyncController": {
@@ -684,7 +689,7 @@ TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
             "advancedConfig": {"$ref": "#/definitions/_1.AdvancedConfig", "defaultValue": {}},
         },
         "variables": {
-            "VERSIONS": {"certManager": "0.14.0", "secretStore": "1.5.1"},
+            "VERSIONS": {"certManager": "1.0.0", "secretStore": "1.5.2"},
             "TRAINS": {"certManager": "stable", "secretStore": "stable"},
         },
         "resources": {
@@ -764,13 +769,13 @@ TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
 )
 
 TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
-    commit_id="8e8643fb4af5ae0724f4987e8bf85c094b6cee6f",
+    commit_id="4a3ede7ce58e52e8eafb780adce8238d7e34b8cb",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "languageVersion": "2.0",
         "contentVersion": "1.0.0.0",
         "metadata": {
-            "_generator": {"name": "bicep", "version": "0.45.15.27210", "templateHash": "10091655467238651388"}
+            "_generator": {"name": "bicep", "version": "0.46.1.21595", "templateHash": "17709006562362117864"}
         },
         "definitions": {
             "_1.AdvancedConfig": {
@@ -812,6 +817,11 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
                             "train": {"type": "string", "nullable": True},
                             "configurationSettingsOverride": {"type": "object", "nullable": True},
                         },
+                        "nullable": True,
+                    },
+                    "connectors": {
+                        "type": "object",
+                        "properties": {"version": {"type": "string", "nullable": True}},
                         "nullable": True,
                     },
                     "secretSyncController": {
@@ -1465,8 +1475,8 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
             "advancedConfig": {"$ref": "#/definitions/_1.AdvancedConfig", "defaultValue": {}},
         },
         "variables": {
-            "VERSIONS": {"iotOperations": "1.4.41"},
-            "TRAINS": {"iotOperations": "stable"},
+            "VERSIONS": {"iotOperations": "1.4.72"},
+            "TRAINS": {"iotOperations": "integration"},
             "HASH": "[coalesce(tryGet(parameters('advancedConfig'), 'resourceSuffix'), take(uniqueString(resourceGroup().id, parameters('clusterName'), parameters('clusterNamespace')), 5))]",
             "AIO_EXTENSION_SUFFIX": "[take(uniqueString(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName'))), 5)]",
             "CUSTOM_LOCATION_NAMESPACE": "[parameters('clusterNamespace')]",
@@ -1474,6 +1484,8 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
             "customerManagedTrust": "[equals(parameters('trustConfig').source, 'CustomerManaged')]",
             "ISSUER_NAME": "[if(variables('customerManagedTrust'), parameters('trustConfig').settings.issuerName, format('{0}-aio-certificate-issuer', parameters('clusterNamespace')))]",
             "TRUST_CONFIG_MAP": "[if(variables('customerManagedTrust'), parameters('trustConfig').settings.configMapName, format('{0}-aio-ca-trust-bundle', parameters('clusterNamespace')))]",
+            "TRUST_CONFIG_MAP_KEY": "[if(variables('customerManagedTrust'), parameters('trustConfig').settings.configMapKey, 'ca.crt')]",
+            "OPCUA_CONNECTOR_VERSION": "[coalesce(tryGet(tryGet(parameters('advancedConfig'), 'connectors'), 'version'), '1.4.10')]",
             "MQTT_SETTINGS": {
                 "brokerListenerServiceName": "aio-broker",
                 "brokerListenerPort": 18883,
@@ -1500,6 +1512,8 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
                 "dataFlows.values.tinyKube.mqttBroker.hostName": "[variables('MQTT_SETTINGS').brokerListenerHost]",
                 "dataFlows.values.tinyKube.mqttBroker.port": "[variables('MQTT_SETTINGS').brokerListenerPort]",
                 "dataFlows.values.tinyKube.mqttBroker.authentication.serviceAccountTokenAudience": "[variables('MQTT_SETTINGS').serviceAccountAudience]",
+                "dataFlows.values.wasmGraphController.mqttBroker.caCertConfigMapRef": "[variables('TRUST_CONFIG_MAP')]",
+                "dataFlows.values.wasmGraphController.mqttBroker.caCertFileName": "[variables('TRUST_CONFIG_MAP_KEY')]",
                 "observability.metrics.enabled": "[format('{0}', coalesce(tryGet(tryGet(parameters('advancedConfig'), 'observability'), 'enabled'), false()))]",
                 "observability.metrics.openTelemetryCollectorAddress": "[if(coalesce(tryGet(tryGet(parameters('advancedConfig'), 'observability'), 'enabled'), false()), format('{0}', tryGet(tryGet(parameters('advancedConfig'), 'observability'), 'otelCollectorAddress')), '')]",
                 "trustSource": "[parameters('trustConfig').source]",
@@ -1514,6 +1528,7 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
                 "name": "[resourceId('Microsoft.ExtendedLocation/customLocations', coalesce(parameters('customLocationName'), format('location-{0}', variables('HASH'))))]",
                 "type": "CustomLocation",
             },
+            "opcUaConnectorTemplateName": "[format('azureiotoperationsconnectorforopcua-{0}', substring(uniqueString(resourceId('Microsoft.IoTOperations/instances', coalesce(parameters('aioInstanceName'), format('aio-{0}', variables('HASH'))))), 0, 4))]",
         },
         "resources": {
             "cluster": {
@@ -1672,6 +1687,35 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
                 "properties": {
                     "host": "mcr.microsoft.com",
                     "authentication": {"method": "Anonymous", "anonymousSettings": {}},
+                },
+                "dependsOn": ["aioInstance", "customLocation"],
+            },
+            "opcUaConnectorTemplate": {
+                "type": "Microsoft.IoTOperations/instances/akriConnectorTemplates",
+                "apiVersion": "2026-07-01",
+                "name": "[format('{0}/{1}', coalesce(parameters('aioInstanceName'), format('aio-{0}', variables('HASH'))), variables('opcUaConnectorTemplateName'))]",
+                "extendedLocation": "[variables('extendedLocation')]",
+                "properties": {
+                    "connectorMetadataRef": "[format('mcr.microsoft.com/azureiotoperations/aio-connectors/opcua-metadata:{0}', variables('OPCUA_CONNECTOR_VERSION'))]",
+                    "aioMetadata": {"aioMinVersion": "1.2.100"},
+                    "runtimeConfiguration": {
+                        "runtimeConfigurationType": "ManagedConfiguration",
+                        "managedConfigurationSettings": {
+                            "managedConfigurationType": "ImageConfiguration",
+                            "imageConfigurationSettings": {
+                                "registrySettings": {
+                                    "registrySettingsType": "ContainerRegistry",
+                                    "containerRegistrySettings": {"registry": "mcr.microsoft.com"},
+                                },
+                                "imageName": "azureiotoperations/aio-connectors/supervisor",
+                                "tagDigestSettings": {
+                                    "tagDigestType": "Tag",
+                                    "tag": "[variables('OPCUA_CONNECTOR_VERSION')]",
+                                },
+                            },
+                        },
+                    },
+                    "deviceInboundEndpointTypes": [{"endpointType": "Microsoft.OpcUa"}],
                 },
                 "dependsOn": ["aioInstance", "customLocation"],
             },

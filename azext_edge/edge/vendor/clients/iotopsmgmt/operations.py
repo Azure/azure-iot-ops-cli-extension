@@ -5,7 +5,7 @@
 # ----------------------------------------------------------------------------------------------
 
 
-from .v20260301.operations import (
+from .v20260701.operations import (
     AkriConnectorOperations,
     AkriConnectorTemplateOperations,
     AkriServiceOperations,

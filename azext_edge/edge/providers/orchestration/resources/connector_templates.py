@@ -20,6 +20,8 @@ import re
 import shutil
 import tarfile
 import tempfile
+from contextlib import nullcontext
+import hashlib
 from typing import TYPE_CHECKING, List, Optional
 
 from azure.cli.core.azclierror import (
@@ -206,6 +208,102 @@ class ConnectorTemplates(Queryable):
                 resource=template_resource,
             )
             return wait_for_terminal_state(poller=poller, logger=logger)
+
+    def create_default_opcua_template(
+        self,
+        resource_group_name: str,
+        instance_name: str,
+        connector_version: str,
+        template_name: Optional[str] = None,
+        headers: Optional[dict] = None,
+        no_status: Optional[bool] = None,
+    ) -> dict:
+        """
+        Create the default OPC UA ``akriConnectorTemplates`` resource for an instance.
+
+        OPC UA is supervisor-managed, so the template is built directly to mirror the product
+        Bicep rather than derived from OCI metadata: the connector image is the supervisor image
+        and the endpoint type is ``Microsoft.OpcUa``. The supervisor discovers it by name prefix.
+
+        Args:
+            resource_group_name: Instance resource group name.
+            instance_name: IoT Operations instance name.
+            connector_version: Connectors image tag to stamp on the template.
+            template_name: Optional explicit template name. Defaults to a prefixed, instance-derived name.
+            headers: Optional request headers (e.g. correlation id) forwarded to the service.
+            no_status: Suppress the console status spinner (e.g. when already inside a progress bar).
+
+        Returns:
+            dict: The created connector template resource.
+        """
+        from ..common import (
+            OPCUA_CONNECTOR_AIO_MIN_VERSION,
+            OPCUA_CONNECTOR_ENDPOINT_TYPE,
+            OPCUA_CONNECTOR_METADATA_REF,
+            OPCUA_CONNECTOR_REGISTRY,
+            OPCUA_CONNECTOR_SUPERVISOR_IMAGE_NAME,
+        )
+
+        if not template_name:
+            template_name = self.default_opcua_template_name(instance_name)
+
+        template_resource = {
+            "extendedLocation": self.instances.get_ext_loc(
+                name=instance_name,
+                resource_group_name=resource_group_name,
+            ),
+            "properties": {
+                "connectorMetadataRef": f"{OPCUA_CONNECTOR_METADATA_REF}:{connector_version}",
+                "aioMetadata": {"aioMinVersion": OPCUA_CONNECTOR_AIO_MIN_VERSION},
+                "runtimeConfiguration": {
+                    "runtimeConfigurationType": "ManagedConfiguration",
+                    "managedConfigurationSettings": {
+                        "managedConfigurationType": "ImageConfiguration",
+                        "imageConfigurationSettings": {
+                            "registrySettings": {
+                                "registrySettingsType": "ContainerRegistry",
+                                "containerRegistrySettings": {"registry": OPCUA_CONNECTOR_REGISTRY},
+                            },
+                            "imageName": OPCUA_CONNECTOR_SUPERVISOR_IMAGE_NAME,
+                            "tagDigestSettings": {"tagDigestType": "Tag", "tag": connector_version},
+                        },
+                    },
+                },
+                "deviceInboundEndpointTypes": [{"endpointType": OPCUA_CONNECTOR_ENDPOINT_TYPE}],
+            },
+        }
+
+        logger.info(
+            "Creating default OPC UA connector template '%s' in instance '%s'",
+            template_name,
+            instance_name,
+        )
+
+        status_context = nullcontext() if no_status else console.status(f"Creating {template_name}...")
+        with status_context:
+            poller = self.ops.begin_create_or_update(
+                resource_group_name=resource_group_name,
+                instance_name=instance_name,
+                akri_connector_template_name=template_name,
+                resource=template_resource,
+                headers=headers or {},
+            )
+            return wait_for_terminal_state(poller=poller, logger=logger)
+
+    @staticmethod
+    def default_opcua_template_name(instance_name: str) -> str:
+        """
+        Build the default OPC UA connector template name.
+
+        The OPC UA supervisor adopts a template by the ``azureiotoperationsconnectorforopcua-``
+        prefix, so only the prefix matters for adoption and the suffix just needs to be stable per
+        instance. A short deterministic hash of the instance name is used here; the product Bicep
+        derives its suffix from the instance resource id, but the exact suffix is not significant.
+        """
+        from ..common import OPCUA_CONNECTOR_TEMPLATE_NAME_PREFIX
+
+        suffix = hashlib.sha256((instance_name or "").encode("utf-8")).hexdigest()[:4]
+        return f"{OPCUA_CONNECTOR_TEMPLATE_NAME_PREFIX}{suffix}"
 
     def update(  # noqa: C901
         self,

@@ -34,13 +34,19 @@ from .common import (
     EXTENSION_TYPE_PLATFORM,
     EXTENSION_TYPE_TO_MONIKER_MAP,
     MIN_INSTANCE_VERSION_FOR_CM_MIGRATE,
+    MIN_INSTANCE_VERSION_FOR_OPCUA_CONNECTOR_TEMPLATE,
     MIN_INSTANCE_VERSION_V1_FOR_V2_UPGRADE,
     MIN_INSTANCE_VERSION_V2,
+    OPCUA_CONNECTOR_ENDPOINT_TYPE,
+    OPCUA_CONNECTOR_TEMPLATE_NAME_PREFIX,
+    OPCUA_CONNECTOR_VERSION,
+    PROVISIONING_STATE_FAILED,
     PROVISIONING_STATE_SUCCESS,
     ConfigSyncModeType,
 )
 from .migration import SecretSyncMigrationManager
 from .resources import RegistryEndpoints
+from .resources.connector_templates import ConnectorTemplates
 from .resources.instances import SECRET_SYNC_RESOURCE_TYPE, SPC_RESOURCE_TYPE, Instances
 from .targets import InitTargets
 
@@ -114,6 +120,9 @@ class UpgradeManager:
         self.no_cm_install = no_cm_install
         self.instances = Instances(self.cmd)
         self.registry_endpoints = RegistryEndpoints(self.cmd)
+        self.connector_templates = ConnectorTemplates(self.cmd)
+        # Name of an existing failed OPC UA template to repair in place (set during the check).
+        self._opcua_template_name_to_repair = None
         self.instance_record = self.instances.show(
             name=self.instance_name, resource_group_name=self.resource_group_name
         )
@@ -170,6 +179,7 @@ class UpgradeManager:
                 instance=self.instance_record,
                 adr_namespace_resource_id=self.targets.adr_namespace_resource_id,
                 registry_endpoint_check=self._check_default_registry_needed,
+                connector_template_check=self._check_opcua_connector_template_needed,
                 secretsync_migration=self.secretsync_migration,
                 force=self.force,
                 no_cm_install=self.no_cm_install,
@@ -188,6 +198,46 @@ class UpgradeManager:
         except HttpResponseError as e:
             logger.debug(f"Error checking registry endpoints: {e}")
             return False
+
+    def _check_opcua_connector_template_needed(self) -> Tuple[bool, Optional[str]]:
+        """Return (needed, repair_name) for the default OPC UA connector template.
+
+        The OPC UA supervisor requires a default ``akriConnectorTemplates`` resource (2608+) that
+        no CLI install path created historically. A prefix-matching template that exists but is in
+        a terminal ``Failed`` state is repaired in place by reusing its name (``repair_name``);
+        transient states (e.g. Accepted/Updating/Deleting) are left alone to avoid racing an
+        in-flight provisioning.
+        """
+        self._opcua_template_name_to_repair = None
+        try:
+            existing_templates = self.connector_templates.list(
+                instance_name=self.instance_name, resource_group_name=self.resource_group_name
+            )
+            for template in existing_templates:
+                if not (template.get("name") or "").lower().startswith(OPCUA_CONNECTOR_TEMPLATE_NAME_PREFIX):
+                    continue
+                if (template.get("provisioningState") or "").lower() == PROVISIONING_STATE_FAILED.lower():
+                    # Repair the existing resource in place by reusing its name.
+                    self._opcua_template_name_to_repair = template.get("name")
+                    logger.debug("Default OPC UA connector template exists but failed; will repair in place.")
+                    return True, self._opcua_template_name_to_repair
+                # Succeeded or a transient state: leave it alone.
+                logger.debug("Default OPC UA connector template already exists.")
+                return False, None
+            return True, None
+        except HttpResponseError as e:
+            logger.debug(f"Error checking OPC UA connector template: {e}")
+            return False, None
+
+    def _create_default_opcua_connector_template(self, headers: dict) -> dict:
+        return self.connector_templates.create_default_opcua_template(
+            resource_group_name=self.resource_group_name,
+            instance_name=self.instance_name,
+            template_name=self._opcua_template_name_to_repair,
+            connector_version=OPCUA_CONNECTOR_VERSION,
+            headers=headers,
+            no_status=True,
+        )
 
     def apply_upgrades(
         self,
@@ -209,6 +259,7 @@ class UpgradeManager:
             for aux_upgrade in [
                 upgrade_state.instance_upgrade,
                 upgrade_state.registry_endpoint_needed,
+                upgrade_state.connector_template_needed,
                 upgrade_state.secretsync_migration_needed,
             ]:
                 if aux_upgrade:
@@ -253,6 +304,16 @@ class UpgradeManager:
                 except HttpResponseError:
                     progress.stop()
                     logger.error(f"Correlation Id for failed registry endpoint creation: {correlation_id}")
+                    raise
+
+            if upgrade_state.connector_template_needed:
+                try:
+                    connector_template_result = self._create_default_opcua_connector_template(headers)
+                    return_payload.append(connector_template_result)
+                    progress.advance(task)
+                except HttpResponseError:
+                    progress.stop()
+                    logger.error(f"Correlation Id for failed OPC UA connector template creation: {correlation_id}")
                     raise
 
             if upgrade_state.secretsync_migration_needed:
@@ -597,6 +658,33 @@ def render_upgrade_table(upgrade_state: "ClusterUpgradeState"):  # noqa: C901
             except Exception as e:
                 logger.debug(f"Error adding registry row: {e}")
 
+        # Add OPC UA connector template row if needed
+        if upgrade_state.connector_template_needed:
+            try:
+                repair_name = getattr(upgrade_state, "connector_template_repair_name", None)
+                if repair_name:
+                    table.add_row(
+                        "opc-ua connector template",
+                        f"[bold]{repair_name}[/bold]\n[red]Failed[/red]",
+                        "[yellow]Replaced[/yellow]",
+                        f"[yellow]•[/yellow] Replace failed template [bold]{repair_name}[/bold]\n"
+                        f"[yellow]•[/yellow] Existing template settings are reset to defaults\n"
+                        f"[green]•[/green] Endpoint: [bold]{OPCUA_CONNECTOR_ENDPOINT_TYPE}[/bold]\n"
+                        f"[green]•[/green] Version: [bold]{OPCUA_CONNECTOR_VERSION}[/bold]",
+                    )
+                else:
+                    table.add_row(
+                        "opc-ua connector template",
+                        "[dim]Not configured[/dim]",
+                        "[green]Created[/green]",
+                        f"[green]•[/green] Create default OPC UA connector template\n"
+                        f"[green]•[/green] Endpoint: [bold]{OPCUA_CONNECTOR_ENDPOINT_TYPE}[/bold]\n"
+                        f"[green]•[/green] Version: [bold]{OPCUA_CONNECTOR_VERSION}[/bold]",
+                    )
+                table.add_section()
+            except Exception as e:
+                logger.debug(f"Error adding connector template row: {e}")
+
         # Add secretsync migration row if needed
         if upgrade_state.secretsync_migration_needed:
             try:
@@ -660,6 +748,7 @@ class ClusterUpgradeState:
         instance: Optional[dict] = None,
         adr_namespace_resource_id: Optional[str] = None,
         registry_endpoint_check: Optional[callable] = None,
+        connector_template_check: Optional[callable] = None,
         secretsync_migration: Optional["SecretSyncMigrationManager"] = None,
         force: Optional[bool] = None,
         no_cm_install: Optional[bool] = None,
@@ -671,13 +760,16 @@ class ClusterUpgradeState:
         self.instance = instance
         self.adr_namespace_resource_id = adr_namespace_resource_id
         self.registry_endpoint_check = registry_endpoint_check
+        self.connector_template_check = connector_template_check
         self.secretsync_migration = secretsync_migration
         self.force = force
         self.no_cm_install = no_cm_install
         self.semver = scoped_semver_import()
+        self.connector_template_repair_name = None
         self.extension_upgrades = self._refresh_upgrade_state()
         self.instance_upgrade = self._check_instance_upgrade()
         self.registry_endpoint_needed = self._check_registry_endpoint_needed()
+        self.connector_template_needed = self._check_connector_template_needed()
         self.secretsync_migration_needed = self._check_secretsync_migration_needed()
 
     def has_upgrades(self) -> bool:
@@ -685,6 +777,7 @@ class ClusterUpgradeState:
             any(ext_state.can_upgrade() for ext_state in self.extension_upgrades)
             or bool(self.instance_upgrade)
             or bool(self.registry_endpoint_needed)
+            or bool(self.connector_template_needed)
             or bool(self.secretsync_migration_needed)
         )
 
@@ -769,6 +862,25 @@ class ClusterUpgradeState:
         # Check if the registry endpoint check function was provided and what it returns
         if self.registry_endpoint_check:
             return self.registry_endpoint_check()
+
+        return False
+
+    def _check_connector_template_needed(self) -> bool:
+        """Check if the default OPC UA connector template needs to be created or repaired.
+
+        Returns True when the target IoT Operations version is at/above
+        MIN_INSTANCE_VERSION_FOR_OPCUA_CONNECTOR_TEMPLATE and the template is missing or failed.
+        When repairing a failed template, ``connector_template_repair_name`` holds its name.
+        """
+        self.connector_template_repair_name = None
+
+        if not self._is_target_version_at_least(MIN_INSTANCE_VERSION_FOR_OPCUA_CONNECTOR_TEMPLATE):
+            return False
+
+        if self.connector_template_check:
+            needed, repair_name = self.connector_template_check()
+            self.connector_template_repair_name = repair_name
+            return needed
 
         return False
 
@@ -901,25 +1013,30 @@ class ClusterUpgradeState:
         return self._is_target_version_above_migration_threshold()
 
     def _is_target_version_above_migration_threshold(self) -> bool:
+        return self._is_target_version_at_least(MIN_INSTANCE_VERSION_FOR_CM_MIGRATE)
+
+    def _get_target_ops_version(self) -> Optional[str]:
         ops_extension = self.extensions_map.get(EXTENSION_TYPE_OPS)
         if not ops_extension:
-            return False
+            return None
 
         ops_override = self.override_map.get(EXTENSION_MONIKER_OPS) or ConfigOverride()
 
         # Priority: override > init_version_map > current version
-        target_version = (
+        return (
             ops_override.version
             or self.init_version_map.get(EXTENSION_MONIKER_OPS, {}).get("version")
             or ops_extension.get("properties", {}).get("version")
         )
 
+    def _is_target_version_at_least(self, min_version: str) -> bool:
+        target_version = self._get_target_ops_version()
         if not target_version:
             return False
 
         target_semver = self.semver.parse(target_version)
-        min_migration_semver = self.semver.parse(MIN_INSTANCE_VERSION_FOR_CM_MIGRATE)
-        return target_semver >= min_migration_semver
+        min_semver = self.semver.parse(min_version)
+        return target_semver >= min_semver
 
 
 class ExtensionUpgradeState:

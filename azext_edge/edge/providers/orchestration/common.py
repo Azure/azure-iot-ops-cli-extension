@@ -344,7 +344,7 @@ DATAFLOW_OPERATION_TYPE_SETTINGS = {
 X509_ISSUER_REF_KEYS = ["group", "kind", "name"]
 
 # Clone
-CLONE_INSTANCE_VERS_MAX = "1.4.0"
+CLONE_INSTANCE_VERS_MAX = "1.5.0"
 CLONE_INSTANCE_VERS_MIN = "1.0.34"
 
 
@@ -429,6 +429,22 @@ DATAFLOW_GRAPH_ANNOTATION_DESCRIPTION = "org.opencontainers.artifact.description
 MIN_INSTANCE_VERSION_V2 = "1.2.36"
 MIN_INSTANCE_VERSION_V1_FOR_V2_UPGRADE = "1.1.59"
 MIN_INSTANCE_VERSION_FOR_CM_MIGRATE = "1.2.83"
+# Target version at/above which `az iot ops upgrade` backfills the default OPC UA
+# akriConnectorTemplates resource. The requirement landed in 2608 (1.4.72)
+MIN_INSTANCE_VERSION_FOR_OPCUA_CONNECTOR_TEMPLATE = "1.4.72"
+
+# Default OPC UA connector template values, mirroring the product Bicep. OPC UA is
+# supervisor-managed: the supervisor adopts the template by name prefix and the connector image
+# is the supervisor image.
+OPCUA_CONNECTOR_TEMPLATE_NAME_PREFIX = "azureiotoperationsconnectorforopcua-"
+OPCUA_CONNECTOR_ENDPOINT_TYPE = "Microsoft.OpcUa"
+OPCUA_CONNECTOR_REGISTRY = "mcr.microsoft.com"
+OPCUA_CONNECTOR_SUPERVISOR_IMAGE_NAME = "azureiotoperations/aio-connectors/supervisor"
+OPCUA_CONNECTOR_METADATA_REF = "mcr.microsoft.com/azureiotoperations/aio-connectors/opcua-metadata"
+OPCUA_CONNECTOR_AIO_MIN_VERSION = "1.2.100"
+# Connectors component image tag stamped on the template (distinct from the AIO extension
+# version). Bump per release from the publishing capture step's connectors.image.tag.
+OPCUA_CONNECTOR_VERSION = "1.4.10"
 
 # Management Actions
 EG_TOPICSPACES_PUBLISHER_ROLE_ID = "a12b0b94-b317-4dcd-84a8-502ce99884c6"

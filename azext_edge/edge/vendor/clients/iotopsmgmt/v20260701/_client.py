@@ -8,6 +8,7 @@
 
 from copy import deepcopy
 from typing import Any, TYPE_CHECKING
+from typing_extensions import Self
 
 from azure.core.pipeline import policies
 from azure.core.rest import HttpRequest, HttpResponse
@@ -34,49 +35,48 @@ from .operations import (
 )
 
 if TYPE_CHECKING:
-    # pylint: disable=unused-import,ungrouped-imports
     from azure.core.credentials import TokenCredential
 
 
-class MicrosoftIoTOperationsManagementService:  # pylint: disable=client-accepts-api-version-keyword,too-many-instance-attributes
+class MicrosoftIoTOperationsManagementService:  # pylint: disable=too-many-instance-attributes
     """Microsoft.IoTOperations Resource Provider management API.
 
     :ivar operations: Operations operations
-    :vartype operations: iotopsmgmt.20260301.operations.Operations
+    :vartype operations: iotopsmgmt.20260701.operations.Operations
     :ivar instance: InstanceOperations operations
-    :vartype instance: iotopsmgmt.20260301.operations.InstanceOperations
+    :vartype instance: iotopsmgmt.20260701.operations.InstanceOperations
     :ivar akri_connector_template: AkriConnectorTemplateOperations operations
     :vartype akri_connector_template:
-     iotopsmgmt.20260301.operations.AkriConnectorTemplateOperations
+     iotopsmgmt.20260701.operations.AkriConnectorTemplateOperations
     :ivar akri_connector: AkriConnectorOperations operations
-    :vartype akri_connector: iotopsmgmt.20260301.operations.AkriConnectorOperations
+    :vartype akri_connector: iotopsmgmt.20260701.operations.AkriConnectorOperations
     :ivar akri_service: AkriServiceOperations operations
-    :vartype akri_service: iotopsmgmt.20260301.operations.AkriServiceOperations
+    :vartype akri_service: iotopsmgmt.20260701.operations.AkriServiceOperations
     :ivar broker: BrokerOperations operations
-    :vartype broker: iotopsmgmt.20260301.operations.BrokerOperations
+    :vartype broker: iotopsmgmt.20260701.operations.BrokerOperations
     :ivar broker_authentication: BrokerAuthenticationOperations operations
-    :vartype broker_authentication: iotopsmgmt.20260301.operations.BrokerAuthenticationOperations
+    :vartype broker_authentication: iotopsmgmt.20260701.operations.BrokerAuthenticationOperations
     :ivar broker_authorization: BrokerAuthorizationOperations operations
-    :vartype broker_authorization: iotopsmgmt.20260301.operations.BrokerAuthorizationOperations
+    :vartype broker_authorization: iotopsmgmt.20260701.operations.BrokerAuthorizationOperations
     :ivar broker_listener: BrokerListenerOperations operations
-    :vartype broker_listener: iotopsmgmt.20260301.operations.BrokerListenerOperations
+    :vartype broker_listener: iotopsmgmt.20260701.operations.BrokerListenerOperations
     :ivar dataflow_endpoint: DataflowEndpointOperations operations
-    :vartype dataflow_endpoint: iotopsmgmt.20260301.operations.DataflowEndpointOperations
+    :vartype dataflow_endpoint: iotopsmgmt.20260701.operations.DataflowEndpointOperations
     :ivar dataflow_profile: DataflowProfileOperations operations
-    :vartype dataflow_profile: iotopsmgmt.20260301.operations.DataflowProfileOperations
+    :vartype dataflow_profile: iotopsmgmt.20260701.operations.DataflowProfileOperations
     :ivar dataflow_graph: DataflowGraphOperations operations
-    :vartype dataflow_graph: iotopsmgmt.20260301.operations.DataflowGraphOperations
+    :vartype dataflow_graph: iotopsmgmt.20260701.operations.DataflowGraphOperations
     :ivar dataflow: DataflowOperations operations
-    :vartype dataflow: iotopsmgmt.20260301.operations.DataflowOperations
+    :vartype dataflow: iotopsmgmt.20260701.operations.DataflowOperations
     :ivar registry_endpoint: RegistryEndpointOperations operations
-    :vartype registry_endpoint: iotopsmgmt.20260301.operations.RegistryEndpointOperations
+    :vartype registry_endpoint: iotopsmgmt.20260701.operations.RegistryEndpointOperations
     :param credential: Credential needed for the client to connect to Azure. Required.
     :type credential: ~azure.core.credentials.TokenCredential
     :param subscription_id: The ID of the target subscription. The value must be an UUID. Required.
     :type subscription_id: str
     :param endpoint: Service URL. Default value is "https://management.azure.com".
     :type endpoint: str
-    :keyword api_version: Api Version. Default value is "2026-03-01". Note that overriding this
+    :keyword api_version: Api Version. Default value is "2026-07-01". Note that overriding this
      default value may result in unsupported behavior.
     :paramtype api_version: str
     :keyword int polling_interval: Default waiting time between two polls for LRO operations if no
@@ -168,7 +168,7 @@ class MicrosoftIoTOperationsManagementService:  # pylint: disable=client-accepts
     def close(self) -> None:
         self._client.close()
 
-    def __enter__(self) -> "MicrosoftIoTOperationsManagementService":
+    def __enter__(self) -> Self:
         self._client.__enter__()
         return self
 

@@ -1800,8 +1800,13 @@ class VersionGuru:
                 iotops_mgmt_api=IoTOpsMgmtApiVersion.V20251001.value,
                 registry_mgmt_api=DeviceRegistryMgmtApiVersion.V20251001.value,
             )
+        if self.parsed_version < self.semver.parse("1.4.0"):
+            return InstanceApiConfig(
+                iotops_mgmt_api=IoTOpsMgmtApiVersion.V20260301.value,
+                registry_mgmt_api=DeviceRegistryMgmtApiVersion.V20260401.value,
+            )
         return InstanceApiConfig(
-            iotops_mgmt_api=IoTOpsMgmtApiVersion.V20260301.value,
+            iotops_mgmt_api=IoTOpsMgmtApiVersion.V20260701.value,
             registry_mgmt_api=DeviceRegistryMgmtApiVersion.V20260401.value,
         )
 
@@ -1812,7 +1817,11 @@ class InstanceApiConfig:
         self._registry_mgmt_api = registry_mgmt_api
         self.v2_enabled = False
 
-        if self._iotops_mgmt_api in [IoTOpsMgmtApiVersion.V20251001.value, IoTOpsMgmtApiVersion.V20260301.value]:
+        if self._iotops_mgmt_api in [
+            IoTOpsMgmtApiVersion.V20251001.value,
+            IoTOpsMgmtApiVersion.V20260301.value,
+            IoTOpsMgmtApiVersion.V20260701.value,
+        ]:
             self.v2_enabled = True
 
     @property

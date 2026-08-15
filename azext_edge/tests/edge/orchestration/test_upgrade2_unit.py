@@ -27,6 +27,10 @@ from azext_edge.edge.providers.orchestration.common import (
     EXTENSION_TYPE_SSC,
     EXTENSION_TYPE_TO_MONIKER_MAP,
     MIN_INSTANCE_VERSION_FOR_CM_MIGRATE,
+    MIN_INSTANCE_VERSION_FOR_OPCUA_CONNECTOR_TEMPLATE,
+    OPCUA_CONNECTOR_ENDPOINT_TYPE,
+    OPCUA_CONNECTOR_TEMPLATE_NAME_PREFIX,
+    OPCUA_CONNECTOR_VERSION,
     PROVISIONING_STATE_FAILED,
     PROVISIONING_STATE_SUCCESS,
     ClusterConnectStatus,
@@ -37,6 +41,7 @@ from azext_edge.edge.providers.orchestration.resources.instances import (
     SPC_RESOURCE_TYPE,
 )
 from azext_edge.edge.providers.orchestration.targets import InitTargets
+from azext_edge.edge.providers.orchestration.template import TEMPLATE_BLUEPRINT_INSTANCE
 from azext_edge.edge.util import parse_kvp_nargs
 from azext_edge.edge.util.machinery import scoped_semver_import
 
@@ -51,6 +56,9 @@ from .resources.conftest import (
 )
 from .resources.registry_endpoint.test_registry_endpoints_unit import (
     get_registry_endpoint_endpoint,
+)
+from .resources.connector.akri.test_connector_templates_unit import (
+    get_connector_template_endpoint,
 )
 from .resources.test_instances_unit import (
     get_instance_endpoint,
@@ -83,8 +91,32 @@ expected_default_registry = {
     },
 }
 
+expected_default_opcua_template = {
+    "name": "azureiotoperationsconnectorforopcua-abcd",
+    "type": "Microsoft.IoTOperations/instances/akriConnectorTemplates",
+    "properties": {
+        "connectorMetadataRef": (
+            f"mcr.microsoft.com/azureiotoperations/aio-connectors/opcua-metadata:{OPCUA_CONNECTOR_VERSION}"
+        ),
+        "runtimeConfiguration": {
+            "runtimeConfigurationType": "ManagedConfiguration",
+            "managedConfigurationSettings": {
+                "managedConfigurationType": "ImageConfiguration",
+                "imageConfigurationSettings": {
+                    "imageName": "azureiotoperations/aio-connectors/supervisor",
+                    "tagDigestSettings": {"tagDigestType": "Tag", "tag": OPCUA_CONNECTOR_VERSION},
+                },
+            },
+        },
+        "deviceInboundEndpointTypes": [{"endpointType": OPCUA_CONNECTOR_ENDPOINT_TYPE}],
+        "provisioningState": "Succeeded",
+    },
+}
+
 # Fine in testing context.
 semver = scoped_semver_import()
+# The CLI's pinned iotOperations target; a default upgrade (no --ops-version) resolves this.
+PINNED_IOTOPS_VERSION = TEMPLATE_BLUEPRINT_INSTANCE.content["variables"]["VERSIONS"]["iotOperations"]
 
 
 def build_spc_resource_id(resource_group_name: str, spc_name: str) -> str:
@@ -110,6 +142,30 @@ def expects_registry_creation(target_scenario: "UpgradeScenario") -> bool:
         and semver.parse(target_scenario.user_kwargs.get("ops_version", ""))
         >= semver.parse(MIN_INSTANCE_VERSION_FOR_CM_MIGRATE)
     )
+
+
+def expects_connector_template_creation(target_scenario: "UpgradeScenario") -> bool:
+    if not hasattr(target_scenario, "aux_kwargs"):
+        return False
+    aux = target_scenario.aux_kwargs
+    # A list error is swallowed, so no creation is attempted.
+    if aux.get("connector_template_list_error"):
+        return False
+    # Satisfied only if a prefix-named template exists and is not in a terminal failed state; a
+    # failed template is repaired, and an OPC UA template under a non-adopt name is not counted.
+    exists = aux.get("opcua_connector_template_exists", True)
+    name = aux.get("opcua_connector_template_name", expected_default_opcua_template["name"])
+    state = aux.get("opcua_connector_template_provisioning_state", PROVISIONING_STATE_SUCCESS)
+    satisfied = (
+        exists
+        and name.lower().startswith(OPCUA_CONNECTOR_TEMPLATE_NAME_PREFIX)
+        and state.lower() != PROVISIONING_STATE_FAILED.lower()
+    )
+    if satisfied:
+        return False
+    # A default upgrade (no --ops-version) resolves the pinned manifest as the target.
+    target_version = target_scenario.user_kwargs.get("ops_version") or PINNED_IOTOPS_VERSION
+    return semver.parse(target_version) >= semver.parse(MIN_INSTANCE_VERSION_FOR_OPCUA_CONNECTOR_TEMPLATE)
 
 
 def expects_secretsync_migration(target_scenario: "UpgradeScenario") -> bool:
@@ -467,6 +523,7 @@ class UpgradeScenario:
         # The upgrade code checks registry endpoints when target version >= migration version
         if EXTENSION_TYPE_OPS in self.extensions:
             self._setup_registry_endpoint_mocks(mocked_responses, instance_name, resource_group_name)
+            self._setup_connector_template_mocks(mocked_responses, instance_name, resource_group_name)
 
         self._setup_secretsync_mocks(mocked_responses, resource_group_name)
 
@@ -728,6 +785,76 @@ class UpgradeScenario:
             callback=registry_create_callback,
         )
 
+    def _setup_connector_template_mocks(
+        self, mocked_responses: responses, instance_name: str, resource_group_name: str
+    ):
+        """Set up default OPC UA connector template mocks for tests."""
+        list_endpoint = get_connector_template_endpoint(
+            instance_name=instance_name, resource_group_name=resource_group_name
+        )
+        base_list_url = list_endpoint.split("?")[0]
+
+        template_list_error = self.aux_kwargs.get("connector_template_list_error", False)
+        opcua_exists = self.aux_kwargs.get("opcua_connector_template_exists", True)
+        opcua_name = self.aux_kwargs.get("opcua_connector_template_name", expected_default_opcua_template["name"])
+        opcua_state = self.aux_kwargs.get("opcua_connector_template_provisioning_state", PROVISIONING_STATE_SUCCESS)
+
+        if template_list_error:
+            mocked_responses.add(
+                method=responses.GET,
+                url=list_endpoint,
+                status=500,
+                json={"error": {"message": "Failed to list connector templates", "code": "InternalServerError"}},
+                content_type="application/json",
+            )
+        else:
+            existing_templates = []
+            if opcua_exists:
+                template = deepcopy(expected_default_opcua_template)
+                template["name"] = opcua_name
+                template["id"] = f"{base_list_url}/{opcua_name}"
+                template["properties"]["provisioningState"] = opcua_state
+                existing_templates.append(template)
+
+            mocked_responses.add(
+                method=responses.GET,
+                url=list_endpoint,
+                json={"value": existing_templates},
+                status=200,
+                content_type="application/json",
+            )
+
+        # Always add PUT mock for creation attempts (name is instance-derived).
+        create_endpoint = re.compile(re.escape(base_list_url) + r"/azureiotoperationsconnectorforopcua-[a-z0-9]+")
+
+        def connector_template_create_callback(request):
+            assert_upgrade_headers(request.headers)
+            self.last_correlation_id = request.headers.get("x-ms-correlation-request-id")
+
+            body = json.loads(request.body)
+            assert "properties" in body
+            props = body["properties"]
+            assert props["deviceInboundEndpointTypes"][0]["endpointType"] == OPCUA_CONNECTOR_ENDPOINT_TYPE
+            image_settings = props["runtimeConfiguration"]["managedConfigurationSettings"][
+                "imageConfigurationSettings"
+            ]
+            assert image_settings["imageName"] == "azureiotoperations/aio-connectors/supervisor"
+            assert image_settings["tagDigestSettings"]["tag"] == OPCUA_CONNECTOR_VERSION
+
+            template_name = request.path_url.split("?")[0].split("/")[-1]
+            response_body = deepcopy(body)
+            response_body["type"] = "Microsoft.IoTOperations/instances/akriConnectorTemplates"
+            response_body["name"] = template_name
+            response_body["id"] = f"{base_list_url}/{template_name}"
+            response_body["properties"]["provisioningState"] = "Succeeded"
+            return (200, STANDARD_HEADERS, json.dumps(response_body))
+
+        mocked_responses.add_callback(
+            method=responses.PUT,
+            url=create_endpoint,
+            callback=connector_template_create_callback,
+        )
+
     def delete_extension_response(self, request: requests.PreparedRequest) -> Optional[tuple]:
         ext_moniker = request.path_url.split("?")[0].split("/")[-1]
         assert_upgrade_headers(request.headers)
@@ -827,7 +954,7 @@ def assert_retry_count(mock_response, expected_count: int = DEFAULT_RETRY_COUNT)
     assert len(mock_response.calls) == expected_count
 
 
-def assert_operation_order(target_scenario: UpgradeScenario, upgrade_result: List[dict]):
+def assert_operation_order(target_scenario: UpgradeScenario, upgrade_result: List[dict]):  # noqa: C901
     """Assert operations happen in correct order:
     DELETE -> CREATE -> UPDATE -> INSTANCE_UPDATE -> REGISTRY_CREATE -> SECRETSYNC_MIGRATION.
     Also validates extension type order within each operation group."""
@@ -838,6 +965,7 @@ def assert_operation_order(target_scenario: UpgradeScenario, upgrade_result: Lis
     updates = []
     instance_updates = []
     registry_creates = []
+    connector_template_creates = []
     secretsync_migrations = []
 
     for result in upgrade_result:
@@ -850,6 +978,11 @@ def assert_operation_order(target_scenario: UpgradeScenario, upgrade_result: Lis
             and result.get("type") == "Microsoft.IoTOperations/instances/registryEndpoints"
         ):
             registry_creates.append(result)
+            continue
+
+        # Check if this is an OPC UA connector template creation
+        if result.get("type") == "Microsoft.IoTOperations/instances/akriConnectorTemplates":
+            connector_template_creates.append(result)
             continue
 
         # Check if this is a secretsync migration result (patched default SPC)
@@ -888,25 +1021,36 @@ def assert_operation_order(target_scenario: UpgradeScenario, upgrade_result: Lis
     # Verify registry and secretsync ordering at the end of operations
     expects_registry = expects_registry_creation(target_scenario)
     expects_secretsync = expects_secretsync_migration(target_scenario)
+    expects_connector_template = expects_connector_template_creation(target_scenario)
 
     if expects_registry:
         assert len(registry_creates) == 1, "Expected exactly one registry endpoint creation"
 
+    if expects_connector_template:
+        assert len(connector_template_creates) == 1, "Expected exactly one connector template creation"
+
     if expects_secretsync:
         assert len(secretsync_migrations) == 1, "Expected exactly one secretsync migration"
 
-    # Check ordering of final operations (registry and/or secretsync)
-    if len(upgrade_result) > 0:
-        if expects_registry and expects_secretsync:
-            # Both registry and secretsync: secretsync should be last, registry second to last
-            assert upgrade_result[-1] in secretsync_migrations, "SecretSync migration should be last operation"
-            assert upgrade_result[-2] in registry_creates, "Registry creation should be before secretsync migration"
-        elif expects_secretsync:
-            # Only secretsync: should be last
-            assert upgrade_result[-1] in secretsync_migrations, "SecretSync migration should be last operation"
-        elif expects_registry:
-            # Only registry: should be last
-            assert upgrade_result[-1] in registry_creates, "Registry endpoint creation should be last operation"
+    # Aux operations run in a fixed tail order: registry -> connector template -> secretsync.
+    # Assert relative ordering of whichever are present, and that the last present one is last overall.
+    aux_pipeline = []
+    if expects_registry:
+        aux_pipeline.append(("registry endpoint", registry_creates[0]))
+    if expects_connector_template:
+        aux_pipeline.append(("connector template", connector_template_creates[0]))
+    if expects_secretsync:
+        aux_pipeline.append(("secretsync migration", secretsync_migrations[0]))
+
+    if aux_pipeline:
+        positions = [upgrade_result.index(item) for _, item in aux_pipeline]
+        assert positions == sorted(positions), (
+            "Aux operations out of order; expected registry -> connector template -> secretsync, got "
+            f"{[name for name, _ in aux_pipeline]} at positions {positions}"
+        )
+        assert (
+            upgrade_result[-1] == aux_pipeline[-1][1]
+        ), f"Expected '{aux_pipeline[-1][0]}' to be the last operation"
 
     # Build the actual operation sequence (non-empty groups only)
     operation_sequence = []
@@ -1635,6 +1779,120 @@ def assert_operation_order(target_scenario: UpgradeScenario, upgrade_result: Lis
                 ),
             },
         ),
+        # ========== OPC UA Connector Template Backfill (>= MIN_INSTANCE_VERSION_FOR_OPCUA_CONNECTOR_TEMPLATE) ====
+        (
+            UpgradeScenario("OPC UA Template: Create default when missing on 2608+ upgrade")
+            .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.4.0")
+            .set_user_kwargs(ops_version=MIN_INSTANCE_VERSION_FOR_OPCUA_CONNECTOR_TEMPLATE)
+            .set_auxiliary_kwargs(opcua_connector_template_exists=False),
+            {
+                EXTENSION_TYPE_OPS: build_extension_props(
+                    EXTENSION_TYPE_OPS, version=MIN_INSTANCE_VERSION_FOR_OPCUA_CONNECTOR_TEMPLATE
+                ),
+            },
+        ),
+        (
+            UpgradeScenario("OPC UA Template: Create on default upgrade (no --ops-version)")
+            .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.4.0")
+            .set_auxiliary_kwargs(opcua_connector_template_exists=False),
+            {
+                EXTENSION_TYPE_OPS: build_extension_props(EXTENSION_TYPE_OPS, version=BUILT_IN_VALUE),
+            },
+        ),
+        (
+            UpgradeScenario("OPC UA Template: Repair when existing template failed to provision")
+            .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.4.0")
+            .set_user_kwargs(ops_version=MIN_INSTANCE_VERSION_FOR_OPCUA_CONNECTOR_TEMPLATE)
+            .set_auxiliary_kwargs(
+                opcua_connector_template_exists=True,
+                # A prefix-matching name the CLI's sha256 4-hex suffix could never derive, so the
+                # assertion below only passes if the repair reuses this discovered ARM name.
+                opcua_connector_template_name="azureiotoperationsconnectorforopcua-repairtarget",
+                opcua_connector_template_provisioning_state=PROVISIONING_STATE_FAILED,
+            ),
+            {
+                EXTENSION_TYPE_OPS: build_extension_props(
+                    EXTENSION_TYPE_OPS, version=MIN_INSTANCE_VERSION_FOR_OPCUA_CONNECTOR_TEMPLATE
+                ),
+            },
+        ),
+        (
+            UpgradeScenario("OPC UA Template: Create when existing template lacks adopt prefix")
+            .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.4.0")
+            .set_user_kwargs(ops_version=MIN_INSTANCE_VERSION_FOR_OPCUA_CONNECTOR_TEMPLATE)
+            .set_auxiliary_kwargs(
+                opcua_connector_template_exists=True,
+                opcua_connector_template_name="my-custom-opcua-template",
+            ),
+            {
+                EXTENSION_TYPE_OPS: build_extension_props(
+                    EXTENSION_TYPE_OPS, version=MIN_INSTANCE_VERSION_FOR_OPCUA_CONNECTOR_TEMPLATE
+                ),
+            },
+        ),
+        (
+            UpgradeScenario("OPC UA Template: Skip when existing template is provisioning (transient)")
+            .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.4.0")
+            .set_user_kwargs(ops_version=MIN_INSTANCE_VERSION_FOR_OPCUA_CONNECTOR_TEMPLATE)
+            .set_auxiliary_kwargs(
+                opcua_connector_template_exists=True,
+                opcua_connector_template_provisioning_state="Accepted",
+            ),
+            {
+                EXTENSION_TYPE_OPS: build_extension_props(
+                    EXTENSION_TYPE_OPS, version=MIN_INSTANCE_VERSION_FOR_OPCUA_CONNECTOR_TEMPLATE
+                ),
+            },
+        ),
+        (
+            UpgradeScenario("OPC UA Template: Skip creation when template already exists")
+            .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.4.0")
+            .set_user_kwargs(ops_version=MIN_INSTANCE_VERSION_FOR_OPCUA_CONNECTOR_TEMPLATE)
+            .set_auxiliary_kwargs(opcua_connector_template_exists=True),
+            {
+                EXTENSION_TYPE_OPS: build_extension_props(
+                    EXTENSION_TYPE_OPS, version=MIN_INSTANCE_VERSION_FOR_OPCUA_CONNECTOR_TEMPLATE
+                ),
+            },
+        ),
+        (
+            UpgradeScenario("OPC UA Template: No creation when version < threshold")
+            .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.2.0")
+            .set_user_kwargs(ops_version="1.4.0")
+            .set_auxiliary_kwargs(opcua_connector_template_exists=False),
+            {
+                EXTENSION_TYPE_OPS: build_extension_props(EXTENSION_TYPE_OPS, version="1.4.0"),
+            },
+        ),
+        (
+            UpgradeScenario("OPC UA Template: Handle error gracefully when checking template")
+            .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.4.0")
+            .set_user_kwargs(ops_version=MIN_INSTANCE_VERSION_FOR_OPCUA_CONNECTOR_TEMPLATE)
+            .set_auxiliary_kwargs(connector_template_list_error=True),
+            {
+                EXTENSION_TYPE_OPS: build_extension_props(
+                    EXTENSION_TYPE_OPS, version=MIN_INSTANCE_VERSION_FOR_OPCUA_CONNECTOR_TEMPLATE
+                ),
+            },
+        ),
+        (
+            UpgradeScenario("Combined: registry + OPC UA template + secretsync ordering")
+            .set_extension(ext_type=EXTENSION_TYPE_PLATFORM, ext_vers="1.0.0")
+            .set_extension(ext_type=EXTENSION_TYPE_CM, remove=True)
+            .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.4.0")
+            .set_user_kwargs(ops_version=MIN_INSTANCE_VERSION_FOR_OPCUA_CONNECTOR_TEMPLATE)
+            .set_auxiliary_kwargs(
+                secretsync_migration_needed=True,
+                default_registry_exists=False,
+                opcua_connector_template_exists=False,
+            ),
+            {
+                EXTENSION_TYPE_CM: build_extension_props(EXTENSION_TYPE_CM, version=BUILT_IN_VALUE),
+                EXTENSION_TYPE_OPS: build_extension_props(
+                    EXTENSION_TYPE_OPS, version=MIN_INSTANCE_VERSION_FOR_OPCUA_CONNECTOR_TEMPLATE
+                ),
+            },
+        ),
         # ========== SecretSync Migration (>= MIN_INSTANCE_VERSION_FOR_CM_MIGRATE) ==========
         (
             UpgradeScenario("SecretSync: Migrate opc-ua-connector SPC to default")
@@ -1953,9 +2211,18 @@ def test_ops_upgrade(
     )
     instance_count = int(target_scenario.expect_instance_update)
     registry_count = int(expects_registry_creation(target_scenario))
+    connector_template_count = int(expects_connector_template_creation(target_scenario))
     secretsync_count = int(expects_secretsync_migration(target_scenario))
 
-    expected_count = delete_count + create_count + update_count + instance_count + registry_count + secretsync_count
+    expected_count = (
+        delete_count
+        + create_count
+        + update_count
+        + instance_count
+        + registry_count
+        + connector_template_count
+        + secretsync_count
+    )
 
     assert len(upgrade_result) == expected_count
     assert len(mocked_confirm.ask.mock_calls) == int(not target_scenario.confirm_yes)
@@ -2081,6 +2348,39 @@ def assert_secretsync_migration(target_scenario: UpgradeScenario):
     assert len(tracker["delete_spc"]) == 1, f"Expected 1 DELETE SPC call, got {len(tracker['delete_spc'])}"
 
 
+def assert_connector_template_result(target_scenario: UpgradeScenario, connector_templates: List[dict]):
+    """Validate OPC UA connector template creation/repair in the upgrade result."""
+    if not expects_connector_template_creation(target_scenario):
+        assert not connector_templates, f"Unexpected connector template(s) in results. Found {len(connector_templates)}"
+        return
+
+    assert connector_templates, "Expected OPC UA connector template creation but none found in results"
+    assert len(connector_templates) == 1, f"Expected exactly 1 connector template, found {len(connector_templates)}"
+    template = connector_templates[0]
+
+    endpoint_types = template["properties"]["deviceInboundEndpointTypes"]
+    assert endpoint_types[0]["endpointType"] == OPCUA_CONNECTOR_ENDPOINT_TYPE
+    image_settings = template["properties"]["runtimeConfiguration"]["managedConfigurationSettings"][
+        "imageConfigurationSettings"
+    ]
+    assert image_settings["imageName"] == "azureiotoperations/aio-connectors/supervisor"
+    assert image_settings["tagDigestSettings"]["tag"] == OPCUA_CONNECTOR_VERSION
+
+    # When repairing a discovered failed template, the create must reuse that exact ARM name
+    # rather than deriving a new CLI name (otherwise it would orphan the failed resource).
+    aux = target_scenario.aux_kwargs
+    is_repair = (
+        aux.get("opcua_connector_template_exists")
+        and (aux.get("opcua_connector_template_provisioning_state") or "").lower() == PROVISIONING_STATE_FAILED.lower()
+        and (aux.get("opcua_connector_template_name") or "").lower().startswith(OPCUA_CONNECTOR_TEMPLATE_NAME_PREFIX)
+    )
+    if is_repair:
+        assert template["name"] == aux["opcua_connector_template_name"], (
+            f"Repair must reuse the discovered template name '{aux['opcua_connector_template_name']}', "
+            f"got '{template['name']}'"
+        )
+
+
 def assert_result(
     target_scenario: UpgradeScenario, upgrade_result: List[dict], expected_types: Optional[Dict[str, dict]] = None
 ):
@@ -2093,6 +2393,7 @@ def assert_result(
     created_extensions = {}
     instance_updates = []
     registry_endpoints = []
+    connector_templates = []
     secretsync_migrations = []
 
     for result in upgrade_result:
@@ -2105,6 +2406,11 @@ def assert_result(
             and result.get("type") == "Microsoft.IoTOperations/instances/registryEndpoints"
         ):
             registry_endpoints.append(result)
+            continue
+
+        # Check if this is an OPC UA connector template creation
+        if result.get("type") == "Microsoft.IoTOperations/instances/akriConnectorTemplates":
+            connector_templates.append(result)
             continue
 
         # Check if this is a secretsync migration result (patched default SPC)
@@ -2174,6 +2480,8 @@ def assert_result(
         assert endpoint["properties"]["authentication"] == expected_default_registry["properties"]["authentication"]
     else:
         assert not registry_endpoints, f"Unexpected registry endpoint(s) in results. Found {len(registry_endpoints)}"
+
+    assert_connector_template_result(target_scenario, connector_templates)
 
     # Validate secretsync migration
     if expects_secretsync_migration(target_scenario):
@@ -2455,3 +2763,40 @@ def test_spc_resource_id_extraction(mocked_cmd: Mock):
     assert manager3.spc_opcua is None
     assert manager3.spc_default is None
     assert manager3.has_v1_spc() is False
+
+
+def test_opcua_connector_template_backfill_active_by_default():
+    """Guard the alignment between the OPC UA backfill gate and the pinned manifest version.
+
+    A default `az iot ops upgrade` (no --ops-version) resolves the pinned
+    TEMPLATE_BLUEPRINT_INSTANCE iotOperations version as the target, so the backfill is active by
+    default only while that pinned version is at/above MIN_INSTANCE_VERSION_FOR_OPCUA_CONNECTOR_TEMPLATE.
+    This fails if a manifest regression drops below the gate and silently makes the backfill inert.
+    """
+    assert semver.parse(PINNED_IOTOPS_VERSION) >= semver.parse(MIN_INSTANCE_VERSION_FOR_OPCUA_CONNECTOR_TEMPLATE), (
+        f"Pinned iotOperations manifest ({PINNED_IOTOPS_VERSION}) is below the OPC UA connector template "
+        f"gate ({MIN_INSTANCE_VERSION_FOR_OPCUA_CONNECTOR_TEMPLATE}); a default upgrade would skip the "
+        "backfill. Re-align the gate or the manifest."
+    )
+
+
+def test_opcua_connector_version_matches_template_tag():
+    """Guard that the upgrade-side OPCUA_CONNECTOR_VERSION matches the tag stamped by the template.
+
+    `az iot ops create` stamps the connectors tag from the OPCUA_CONNECTOR_VERSION ARM variable in
+    TEMPLATE_BLUEPRINT_INSTANCE, while `az iot ops upgrade` stamps the OPCUA_CONNECTOR_VERSION
+    constant. Nothing else couples them, so this fails if a template regeneration bumps one without
+    the other (which would otherwise stamp two different tags on the same release).
+    """
+    import re
+
+    opcua_var = TEMPLATE_BLUEPRINT_INSTANCE.content["variables"].get("OPCUA_CONNECTOR_VERSION")
+    assert opcua_var, "OPCUA_CONNECTOR_VERSION variable missing from the instance template."
+    # The connectors tag is the coalesce fallback literal, i.e. the last single-quoted token.
+    quoted_literals = re.findall(r"'([^']*)'", opcua_var)
+    template_tag = quoted_literals[-1] if quoted_literals else None
+    assert template_tag == OPCUA_CONNECTOR_VERSION, (
+        f"OPCUA_CONNECTOR_VERSION constant ({OPCUA_CONNECTOR_VERSION}) does not match the connectors "
+        f"tag stamped by the instance template ({template_tag}); update the constant during the "
+        "release bump so create and upgrade stamp the same tag."
+    )
