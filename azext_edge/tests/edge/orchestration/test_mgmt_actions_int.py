@@ -79,6 +79,12 @@ EXECUTE_MAX_INTERVAL = 90
 # a terminal state would otherwise block the whole job rather than fail. The action
 # itself carries a 300 second timeout, so this only trips on a stuck poll.
 EXECUTE_COMMAND_TIMEOUT = 420
+# Attempt count alone does not bound wall clock. Twelve attempts each burning the
+# command timeout is roughly 98 minutes per auth mode, and the CI job sets no
+# timeout of its own, so a persistently stuck action would consume the runner
+# rather than fail it. The deadline is checked between attempts, so the effective
+# ceiling is this budget plus at most one command timeout, around 37 minutes.
+EXECUTE_TOTAL_TIMEOUT = 1800
 
 
 def _wait_for_action_schema(ns_id: str, asset_name: str, device_name: str) -> Optional[Dict]:
@@ -173,6 +179,7 @@ def _execute_with_retry(command: str) -> Dict:
     A per attempt timeout is required because this is a long running operation.
     An action that never reaches a terminal state would otherwise hang the job
     instead of failing, since the retry budget bounds failures and not hangs.
+    An overall deadline bounds the case where every attempt burns that timeout.
 
     Returns the first result reporting ``Succeeded``.
     """
@@ -180,27 +187,44 @@ def _execute_with_retry(command: str) -> Dict:
 
     from azure.cli.core.azclierror import CLIInternalError
 
+    deadline = time() + EXECUTE_TOTAL_TIMEOUT
     interval = EXECUTE_INITIAL_INTERVAL
     last_outcome = None
     for attempt in range(1, EXECUTE_MAX_ATTEMPTS + 1):
         try:
             result = run(command, timeout=EXECUTE_COMMAND_TIMEOUT)
-            if str(result.get("status", "")).casefold() == "succeeded":
-                return result
+            # `run` returns a str when stdout is not JSON and None when there is no
+            # stdout, so guard before treating the result as the action payload.
+            if isinstance(result, dict):
+                if str(result.get("status", "")).casefold() == "succeeded":
+                    return result
+                logger.info(
+                    "execute attempt %s/%s returned status=%s error=%s",
+                    attempt,
+                    EXECUTE_MAX_ATTEMPTS,
+                    result.get("status"),
+                    result.get("error"),
+                )
+            else:
+                logger.info(
+                    "execute attempt %s/%s returned an unexpected payload: %r",
+                    attempt,
+                    EXECUTE_MAX_ATTEMPTS,
+                    result,
+                )
             last_outcome = result
-            logger.info(
-                "execute attempt %s/%s returned status=%s error=%s",
-                attempt,
-                EXECUTE_MAX_ATTEMPTS,
-                result.get("status"),
-                result.get("error"),
-            )
         except subprocess.TimeoutExpired:
             last_outcome = f"timed out after {EXECUTE_COMMAND_TIMEOUT}s without reaching a terminal state"
             logger.info("execute attempt %s/%s %s", attempt, EXECUTE_MAX_ATTEMPTS, last_outcome)
         except CLIInternalError as e:
             last_outcome = e
             logger.info("execute attempt %s/%s raised: %s", attempt, EXECUTE_MAX_ATTEMPTS, e)
+
+        if time() >= deadline:
+            raise AssertionError(
+                f"Management action did not reach Succeeded before the {EXECUTE_TOTAL_TIMEOUT}s budget "
+                f"was exhausted, after {attempt} attempts. Last outcome: {last_outcome}"
+            )
 
         if attempt < EXECUTE_MAX_ATTEMPTS:
             sleep(interval)
