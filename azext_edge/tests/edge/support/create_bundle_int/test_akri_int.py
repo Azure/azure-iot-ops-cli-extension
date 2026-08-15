@@ -23,6 +23,12 @@ AKRI_PREFIXES = [
     "rest-connector-template",
     "sse-connector-template"
 ]
+# The default OPC UA connector template (and its connector) is captured by the akri bundle via the
+# akri CRD APIs (AkriConnectorTemplate/AkriConnector), not by the akri name label. So it shows up as
+# an accepted "extra" in the bundle contents but must be excluded from the label-coverage check,
+# which asserts label presence for label-collected resources only.
+OPCUA_CONNECTOR_PREFIX = "azureiotoperationsconnectorforopcua"
+AKRI_BUNDLE_PREFIXES = AKRI_PREFIXES + [OPCUA_CONNECTOR_PREFIX]
 AKRI_WORKLOAD_TYPES = [
     "deployment",
     "pod",
@@ -55,7 +61,7 @@ def test_create_bundle_akri(cluster_connection, tracked_files):
     check_workload_resource_files(
         file_objs=file_map,
         pre_bundle_items=pre_bundle_workload_items,
-        prefixes=AKRI_PREFIXES,
+        prefixes=AKRI_BUNDLE_PREFIXES,
         bundle_path=bundle_path,
         expected_label=AKRI_LABEL,
     )
