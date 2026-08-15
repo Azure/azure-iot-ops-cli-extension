@@ -149,7 +149,7 @@ jobs:
       - name: "Checkout Source"
         uses: actions/checkout@v7
       - name: "Setup python"
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.13"
       - name: "Setup test suite"
@@ -197,7 +197,7 @@ jobs:
           echo "CLUSTER_NAME=${{ env.CLUSTER_NAME }}" >> $GITHUB_OUTPUT
           echo "INSTANCE_NAME=${{ env.INSTANCE_NAME }}" >> $GITHUB_OUTPUT
       - name: "Setup python"
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.13"
       - name: "Checkout extension source for build"
@@ -221,7 +221,7 @@ jobs:
             tox r -vv -e "${{ matrix.scenario.tox_env }}" --notest
           fi
       - name: "Az CLI login"
-        uses: azure/login@v2
+        uses: azure/login@v3
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
@@ -234,7 +234,7 @@ jobs:
           custom-locations-oid: ${{ env.CUSTOM_LOCATIONS_OID }}
           enable-workload-identity: ${{ matrix.scenario.needs_trust && 'true' || 'false' }}
       - name: "Az CLI login"
-        uses: azure/login@v2
+        uses: azure/login@v3
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
@@ -376,7 +376,7 @@ jobs:
       - name: "Checkout source"
         uses: actions/checkout@v7
       - name: "Download all coverage artifacts"
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: coverage-*
           path: ./coverage_parts

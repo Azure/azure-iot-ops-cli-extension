@@ -27,7 +27,7 @@ jobs:
     steps:
       - name: Download wheel
         id: wheel
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: azure-iot-ops-cli-ext
           path: ./
@@ -36,7 +36,7 @@ jobs:
           curl -so azcopy.tar.gz -L 'https://aka.ms/downloadazcopy-v10-linux'
           tar -zxvf azcopy.tar.gz --strip 1
       - name: "Az CLI login"
-        uses: azure/login@v2
+        uses: azure/login@v3
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
