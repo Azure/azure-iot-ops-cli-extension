@@ -83,7 +83,7 @@ EXECUTE_COMMAND_TIMEOUT = 420
 # command timeout is roughly 98 minutes per auth mode, and the CI job sets no
 # timeout of its own, so a persistently stuck action would consume the runner
 # rather than fail it. The deadline is checked between attempts, so the effective
-# ceiling is this budget plus at most one command timeout, around 37 minutes.
+# ceiling is this budget plus one backoff interval and one command timeout.
 EXECUTE_TOTAL_TIMEOUT = 1800
 
 
@@ -608,6 +608,18 @@ def test_mgmt_actions_lifecycle(request, mgmt_actions_setup, auth_mode: str) -> 
     # --- Baseline ---
     before = run(f"az iot ops mgmt-actions show {common}")
     assert before["enabled"] is False, "expected a clean baseline, mgmt-actions reported enabled"
+
+    # The fixture is module scoped and this test is parametrized, so a failure after
+    # enable would leave the next auth mode facing a dirty baseline. It would then
+    # fail on the assertion above rather than running, losing all coverage of that
+    # mode and reporting the wrong cause.
+    def _ensure_disabled() -> None:
+        try:
+            run(f"az iot ops mgmt-actions disable {common} -y")
+        except Exception:
+            logger.error(f"Failed to disable mgmt-actions after the {auth_mode} lifecycle test.")
+
+    request.addfinalizer(_ensure_disabled)
 
     # --- Enable ---
     enable_result = run(enable_command)
