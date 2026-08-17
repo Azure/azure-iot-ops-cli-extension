@@ -39,6 +39,7 @@ There are, however, some prerequisites and caveats that users should be made awa
   - **insecure-listener**: Tests with insecure listener deployment
   - **rpsaas**: Cloud-side (RPSaaS) tests
   - **upgrade**: Azure IoT Operations upgrade tests (runs serially)
+  - **mgmtactions**: Azure IoT Operations management actions tests (runs serially)
   - **redeploy**: Tests cluster redeployment functionality
   - **trustbundle**: Workload identity federation tests
 
