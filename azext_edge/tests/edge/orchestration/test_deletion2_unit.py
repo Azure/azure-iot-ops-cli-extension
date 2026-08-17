@@ -116,6 +116,14 @@ def _build_extensions_list_endpoint(rg: str, cluster_name: str) -> str:
     )
 
 
+def _build_connector_templates_list_endpoint(rg: str, instance_name: str) -> str:
+    return (
+        f"{BASE_URL}/subscriptions/{ZEROED_SUBSCRIPTION}/resourceGroups/{rg}"
+        f"/providers/Microsoft.IoTOperations/instances/{instance_name}"
+        f"/akriConnectorTemplates?api-version={IOTOPS_API_VERSION}"
+    )
+
+
 def _build_extension_delete_endpoint(rg: str, cluster_name: str, ext_name: str) -> str:
     return (
         f"{BASE_URL}/subscriptions/{ZEROED_SUBSCRIPTION}/resourceGroups/{rg}"
@@ -149,6 +157,7 @@ def _register_instance_discovery(
     version: str = "1.2.0",
     spc_id: str = "",
     connectivity: str = "Connected",
+    connector_templates: Optional[List[dict]] = None,
 ) -> None:
     """Register GET mocks for the instance-name discovery path: instance → CL → cluster."""
     rsps.assert_all_requests_are_fired = False
@@ -168,6 +177,11 @@ def _register_instance_discovery(
         url=_build_cluster_endpoint(_RG, "mycluster"),
         json={"id": _CLUSTER_ID, "properties": {"connectivityStatus": connectivity}},
         status=200,
+    )
+    _register_connector_templates(
+        rsps,
+        templates=connector_templates,
+        instance_name=name,
     )
 
 
@@ -212,13 +226,36 @@ def _register_cl_list(
 
 
 def _register_instances_list(
-    rsps: responses.RequestsMock, instances: Optional[List[dict]] = None,
+    rsps: responses.RequestsMock,
+    instances: Optional[List[dict]] = None,
+    connector_templates: Optional[List[dict]] = None,
 ) -> None:
     """Register instances list GET mock."""
+    instance_list = instances or []
     rsps.add(
         method=responses.GET,
         url=_build_instances_list_endpoint(_RG),
-        json={"value": instances or []},
+        json={"value": instance_list},
+        status=200,
+    )
+    for instance in instance_list:
+        _register_connector_templates(
+            rsps,
+            templates=connector_templates,
+            instance_name=instance["name"],
+        )
+
+
+def _register_connector_templates(
+    rsps: responses.RequestsMock,
+    templates: Optional[List[dict]] = None,
+    instance_name: str = "myinst",
+) -> None:
+    """Register connector template list GET mock."""
+    rsps.add(
+        method=responses.GET,
+        url=_build_connector_templates_list_endpoint(_RG, instance_name),
+        json={"value": templates or []},
         status=200,
     )
 
@@ -249,12 +286,14 @@ def _register_arg_sweep(
 
 
 def _register_delete_handler(rsps: responses.RequestsMock) -> None:
-    """Register a catch-all DELETE handler returning 200 (success).
+    """Register a catch-all DELETE handler returning a valid success response.
 
     Uses add_callback so it persists across multiple DELETE calls.
     For error simulation, register a specific DELETE mock BEFORE this handler.
     """
     def _handle_delete(request):
+        if "/akriConnectorTemplates/" in request.url:
+            return (204, {}, "")
         return (200, {"content-type": "application/json"}, json.dumps({}))
 
     rsps.add_callback(method=responses.DELETE, url=_DELETE_ENDPOINT_RE, callback=_handle_delete)
@@ -375,6 +414,19 @@ def _build_extension(
     }
 
 
+def _build_connector_template(name: str = "opcua-template", rg: str = "rg1", instance: str = "myinst") -> dict:
+    template_id = generate_resource_id(
+        resource_group_name=rg,
+        resource_provider="Microsoft.IoTOperations",
+        resource_path=f"/instances/{instance}/akriConnectorTemplates/{name}",
+    )
+    return {
+        "id": template_id,
+        "name": name,
+        "properties": {"provisioningState": "Succeeded"},
+    }
+
+
 def _build_sync_rule(name: str = "aio-sync", rg: str = "rg1", cl_name: str = "mycl") -> dict:
     rule_id = generate_resource_id(
         resource_group_name=rg,
@@ -416,7 +468,7 @@ class TestDeleteOpsResourcesEntryPoint:
         # Verify instance GET was made.
         instance_gets = [
             c for c in mocked_responses.calls
-            if c.request.method == "GET" and "instances/myinstance" in c.request.url
+            if c.request.method == "GET" and c.request.url == _build_instance_endpoint("myinstance", _RG)
         ]
         assert len(instance_gets) == 1
 
@@ -516,6 +568,7 @@ class TestInstanceNamePath:
         )
         # Extensions, sync rules, and ARG are still attempted after CL resolution failure.
         # Note: _discover_extensions() returns early (cluster_name is None).
+        _register_connector_templates(mocked_responses)
         _register_sync_rules(mocked_responses)
         _register_arg_sweep(mocked_responses)
         _register_delete_handler(mocked_responses)
@@ -1224,8 +1277,13 @@ class TestDeletionOrder:
         mocked_responses,
         mocked_should_continue_prompt,
     ):
-        """Full 6-step ordering: instance → CL resources → sync rules → CL → AIO ext → dep ext."""
-        _register_instance_discovery(mocked_responses, spc_id=_SPC_ID)
+        """Full ordering: templates → instance → CL resources → sync rules → CL → extensions."""
+        connector_template = _build_connector_template()
+        _register_instance_discovery(
+            mocked_responses,
+            spc_id=_SPC_ID,
+            connector_templates=[connector_template],
+        )
 
         # Extensions: AIO + CM dep.
         aio_ext = _build_extension(name="aio-ext", extension_type=EXTENSION_TYPE_OPS, version="1.2.0")
@@ -1253,7 +1311,11 @@ class TestDeletionOrder:
         def find_idx(substring: str) -> int:
             return next(i for i, url in enumerate(delete_urls) if substring in url.lower())
 
-        instance_idx = find_idx("instances/myinst")
+        template_idx = find_idx("akriconnectortemplates/opcua-template")
+        instance_idx = next(
+            i for i, url in enumerate(delete_urls)
+            if "/instances/myinst?" in url.lower()
+        )
         spc_idx = find_idx("azurekeyvaultsecretproviderclasses")
         sync_idx = find_idx("resourcesyncrules")
         cl_idx = next(
@@ -1264,6 +1326,7 @@ class TestDeletionOrder:
         dep_ext_idx = find_idx("/extensions/cm-ext")
 
         # Verify strict step ordering.
+        assert template_idx < instance_idx, "Connector templates must be before the instance"
         assert instance_idx < spc_idx, "Instance must be before CL resources"
         assert spc_idx < sync_idx, "CL resources must be before sync rules"
         assert sync_idx < cl_idx, "Sync rules must be before CL"

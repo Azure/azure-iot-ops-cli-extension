@@ -46,6 +46,7 @@ from .common import (
 from .resource_map import IoTOperationsResource
 from .resources import ConnectedClusters, Instances
 from .resources.clusters import ClusterExtensions
+from .resources.connector_templates import ConnectorTemplates
 from .resources.custom_locations import CustomLocations
 
 logger = get_logger(__name__)
@@ -55,6 +56,7 @@ if TYPE_CHECKING:
     from azure.core.polling import LROPoller
 
 # Step labels used as WorkflowDisplay categories and render_summary section headers.
+_STEP_CONNECTOR_TEMPLATES = "Connector Templates"
 _STEP_INSTANCE = "Instance"
 _STEP_AIO_EXT = "Ops Extension"
 _STEP_CL_RESOURCES = "CL Resources"
@@ -138,6 +140,7 @@ class DeletionManager:
         # Discovered state — populated during discovery phase.
         self._instance: Optional[dict] = None
         self._instance_resource: Optional[IoTOperationsResource] = None
+        self._connector_templates: List[IoTOperationsResource] = []
         self._cl_id: Optional[str] = None
         self._cl_name: Optional[str] = None
         self._cluster_resource: Optional[dict] = None
@@ -148,6 +151,7 @@ class DeletionManager:
         self._sync_rules: List[IoTOperationsResource] = []
         self._cl_resource: Optional[IoTOperationsResource] = None
         self._cluster_extensions_client: Optional[ClusterExtensions] = None
+        self._connector_templates_client: Optional[ConnectorTemplates] = None
         self._aio_typed_ext_ids: Set[str] = set()
 
     def do_work(self, confirm_yes: Optional[bool] = None, force: Optional[bool] = None) -> None:
@@ -253,7 +257,8 @@ class DeletionManager:
         # SPC from instance properties.
         self._collect_spc_from_instance()
 
-        # Extensions, sync rules, ARG sweep — shared discovery.
+        # Connector templates, extensions, sync rules, ARG sweep — shared discovery.
+        self._discover_connector_templates()
         self._discover_extensions()
         self._discover_sync_rules()
         self._run_arg_sweep()
@@ -311,6 +316,7 @@ class DeletionManager:
         # SPC from instance properties (if instance found).
         if self._instance:
             self._collect_spc_from_instance()
+            self._discover_connector_templates()
 
         # Sync rules and ARG sweep — remaining shared discovery.
         self._discover_sync_rules()
@@ -348,6 +354,32 @@ class DeletionManager:
     # ------------------------------------------------------------------
     # Shared Discovery Helpers
     # ------------------------------------------------------------------
+
+    def _discover_connector_templates(self) -> None:
+        """Discover connector templates so their controllers stop before instance deletion."""
+        if not self._instance_resource:
+            return
+
+        instance_name = self._instance_resource.display_name
+        self._connector_templates_client = ConnectorTemplates(self.cmd)
+        try:
+            templates = self._connector_templates_client.ops.list_by_instance_resource(
+                resource_group_name=self.resource_group_name,
+                instance_name=instance_name,
+            )
+            for template in templates:
+                template_name = template.get("name", "")
+                template_id = template.get("id") or (
+                    f"{self._instance_resource.resource_id}/akriConnectorTemplates/{template_name}"
+                )
+                self._connector_templates.append(IoTOperationsResource(
+                    resource_id=template_id,
+                    display_name=template_name,
+                    api_version=DEFAULT_IOTOPS_MGMT_API_VERSION.value,
+                ))
+        except HttpResponseError as e:
+            if e.status_code != 404:
+                raise
 
     def _collect_spc_from_instance(self) -> None:
         """Extract the default SPC resource ID from instance properties."""
@@ -492,6 +524,7 @@ class DeletionManager:
 
     def _has_work(self) -> bool:
         return any([
+            self._connector_templates,
             self._instance_resource,
             self._aio_extension,
             self._cl_resources,
@@ -514,6 +547,11 @@ class DeletionManager:
     def _display_summary(self) -> None:
         """Render a pre-deletion confirmation summary to stderr."""
         sections: Dict[str, list] = OrderedDict()
+
+        if self._connector_templates:
+            sections[_STEP_CONNECTOR_TEMPLATES] = [
+                (template.display_name, "found") for template in self._connector_templates
+            ]
 
         if self._instance_resource:
             sections[_STEP_INSTANCE] = [(self._instance_resource.display_name, "found")]
@@ -550,6 +588,10 @@ class DeletionManager:
         """Execute deletion in strict step order with WorkflowDisplay progress."""
         categories: Dict[str, List[str]] = OrderedDict()
 
+        if self._connector_templates:
+            categories[_STEP_CONNECTOR_TEMPLATES] = [
+                template.display_name for template in self._connector_templates
+            ]
         if self._instance_resource:
             categories[_STEP_INSTANCE] = [self._instance_resource.display_name]
         if self._cl_resources:
@@ -571,6 +613,11 @@ class DeletionManager:
             no_progress=not self._render_progress,
         ) as display:
             try:
+                # Connector templates first, so their controllers cannot recreate children
+                # while the instance cascade deletion is in progress.
+                for template in self._connector_templates:
+                    self._execute_connector_template_single(display, template)
+
                 # Instance (cascade).
                 if self._instance_resource:
                     self._execute_step_single(
@@ -617,6 +664,34 @@ class DeletionManager:
                     f"Correlation Id for failed deletion: {self.headers['x-ms-correlation-request-id']}"
                 )
                 raise
+
+    def _execute_connector_template_single(
+        self, display: WorkflowDisplay, resource: IoTOperationsResource
+    ) -> None:
+        """Delete a connector template and wait for its controller to stop."""
+        if not self._connector_templates_client or not self._instance_resource:
+            raise RuntimeError("Connector template client is not initialized.")
+
+        with display.step_scope(_STEP_CONNECTOR_TEMPLATES, resource.display_name):
+            try:
+                poller = self._connector_templates_client.ops.begin_delete(
+                    resource_group_name=self.resource_group_name,
+                    instance_name=self._instance_resource.display_name,
+                    akri_connector_template_name=resource.display_name,
+                    headers=self.headers,
+                )
+                wait_for_terminal_state(poller)
+            except HttpResponseError as e:
+                if e.status_code == 404:
+                    logger.debug(f"Connector template already deleted: {resource.resource_id}")
+                else:
+                    raise
+            display.update_step(
+                _STEP_CONNECTOR_TEMPLATES,
+                resource.display_name,
+                StepState.COMPLETE,
+                "removed",
+            )
 
     def _execute_step_single(
         self, display: WorkflowDisplay, category: str, resource: IoTOperationsResource
