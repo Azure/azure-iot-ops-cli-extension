@@ -177,7 +177,8 @@ class DataFlowGraphs(Queryable):
                     )
                 except Exception as ex:  # best-effort: skip validation on any fetch failure
                     logger.warning(
-                        "Failed to fetch OCI artifact '%s' — skipping client-side config validation. %s",
+                        "Skipped optional client-side validation for OCI artifact '%s' (could not fetch); "
+                        "resource creation is unaffected. Details: %s",
                         image_ref,
                         ex,
                     )
