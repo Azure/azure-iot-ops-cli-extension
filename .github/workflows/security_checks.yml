@@ -26,18 +26,17 @@ jobs:
       id-token: write
       contents: read
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
 
       # Install dotnet, used by MSDO
-    - uses: actions/setup-dotnet@v4
+    - uses: actions/setup-dotnet@v6
       with:
-        dotnet-version: |
-          5.0.x
-          6.0.x
+        dotnet-version: 6.0.x
 
       # Run analyzers
+    # The v1 tag still targets Node.js 20; pin the current Node.js 24 implementation.
     - name: Run Microsoft Security DevOps Analysis
-      uses: microsoft/security-devops-action@v1
+      uses: microsoft/security-devops-action@241d09d34a00dc03aad8b1e8cf988a6f66ecd3f5
       id: msdo
       env:
         # file path to analyze
@@ -46,13 +45,13 @@ jobs:
 
       # Upload alerts to the Security tab
     - name: Upload alerts to Security tab
-      uses: github/codeql-action/upload-sarif@v3
+      uses: github/codeql-action/upload-sarif@v4
       with:
         sarif_file: ${{ steps.msdo.outputs.sarifFile }}
 
       # Upload alerts file as a workflow artifact
     - name: Upload alerts artifact
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:  
         name: alerts
         path: ${{ steps.msdo.outputs.sarifFile }}

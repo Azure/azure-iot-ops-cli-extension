@@ -171,7 +171,7 @@ First, create a local cluster and store the kubeconfig in an environment variabl
 Next, login to azure and connect your local cluster to ARC using inputs named `resource-group` and `cluster-name` (as well as your custom locations OID and a reference to your kubeconfig environment variable):
 ```yaml
 - name: "Azure login"
-  uses: azure/login@v2
+  uses: azure/login@v3
   with:
     client-id: ${{ secrets.AZURE_CLIENT_ID }}
     tenant-id: ${{ secrets.AZURE_TENANT_ID }}
