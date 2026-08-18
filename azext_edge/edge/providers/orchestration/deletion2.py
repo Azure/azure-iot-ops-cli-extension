@@ -367,19 +367,26 @@ class DeletionManager:
                 resource_group_name=self.resource_group_name,
                 instance_name=instance_name,
             )
+            discovered_templates = []
             for template in templates:
                 template_name = template.get("name", "")
                 template_id = template.get("id") or (
                     f"{self._instance_resource.resource_id}/akriConnectorTemplates/{template_name}"
                 )
-                self._connector_templates.append(IoTOperationsResource(
+                discovered_templates.append(IoTOperationsResource(
                     resource_id=template_id,
                     display_name=template_name,
                     api_version=DEFAULT_IOTOPS_MGMT_API_VERSION.value,
                 ))
+            self._connector_templates.extend(discovered_templates)
         except HttpResponseError as e:
-            if e.status_code != 404:
-                raise
+            if e.status_code == 404:
+                logger.debug(f"Connector templates not found for instance: {instance_name}")
+            else:
+                logger.warning(
+                    f"Could not discover connector templates for instance '{instance_name}': {e}. "
+                    "Continuing with instance deletion."
+                )
 
     def _collect_spc_from_instance(self) -> None:
         """Extract the default SPC resource ID from instance properties."""
@@ -685,7 +692,17 @@ class DeletionManager:
                 if e.status_code == 404:
                     logger.debug(f"Connector template already deleted: {resource.resource_id}")
                 else:
-                    raise
+                    display.update_step(
+                        _STEP_CONNECTOR_TEMPLATES,
+                        resource.display_name,
+                        StepState.FAILED,
+                        "failed",
+                    )
+                    logger.warning(
+                        f"Could not delete connector template '{resource.display_name}': {e}. "
+                        "Continuing with instance deletion."
+                    )
+                    return
             display.update_step(
                 _STEP_CONNECTOR_TEMPLATES,
                 resource.display_name,

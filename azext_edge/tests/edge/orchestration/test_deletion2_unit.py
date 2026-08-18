@@ -124,6 +124,14 @@ def _build_connector_templates_list_endpoint(rg: str, instance_name: str) -> str
     )
 
 
+def _build_connector_template_endpoint(rg: str, instance_name: str, template_name: str) -> str:
+    return (
+        f"{BASE_URL}/subscriptions/{ZEROED_SUBSCRIPTION}/resourceGroups/{rg}"
+        f"/providers/Microsoft.IoTOperations/instances/{instance_name}"
+        f"/akriConnectorTemplates/{template_name}?api-version={IOTOPS_API_VERSION}"
+    )
+
+
 def _build_extension_delete_endpoint(rg: str, cluster_name: str, ext_name: str) -> str:
     return (
         f"{BASE_URL}/subscriptions/{ZEROED_SUBSCRIPTION}/resourceGroups/{rg}"
@@ -158,6 +166,7 @@ def _register_instance_discovery(
     spc_id: str = "",
     connectivity: str = "Connected",
     connector_templates: Optional[List[dict]] = None,
+    connector_templates_status: int = 200,
 ) -> None:
     """Register GET mocks for the instance-name discovery path: instance → CL → cluster."""
     rsps.assert_all_requests_are_fired = False
@@ -182,6 +191,7 @@ def _register_instance_discovery(
         rsps,
         templates=connector_templates,
         instance_name=name,
+        status=connector_templates_status,
     )
 
 
@@ -250,13 +260,18 @@ def _register_connector_templates(
     rsps: responses.RequestsMock,
     templates: Optional[List[dict]] = None,
     instance_name: str = "myinst",
+    status: int = 200,
 ) -> None:
     """Register connector template list GET mock."""
     rsps.add(
         method=responses.GET,
         url=_build_connector_templates_list_endpoint(_RG, instance_name),
-        json={"value": templates or []},
-        status=200,
+        json=(
+            {"value": templates or []}
+            if status == 200
+            else {"error": {"code": "TemplateListError", "message": "Template list failed"}}
+        ),
+        status=status,
     )
 
 
@@ -1332,6 +1347,88 @@ class TestDeletionOrder:
         assert sync_idx < cl_idx, "Sync rules must be before CL"
         assert cl_idx < aio_ext_idx, "CL must be before AIO extension"
         assert aio_ext_idx < dep_ext_idx, "AIO extension must be before dep extensions"
+
+    def test_connector_template_list_failure_continues_to_instance(
+        self,
+        mocker,
+        mocked_cmd,
+        mocked_responses,
+        mocked_should_continue_prompt,
+    ):
+        """Template list failure warns and does not block instance deletion."""
+        _register_instance_discovery(mocked_responses, connector_templates_status=403)
+        _register_extensions(mocked_responses)
+        _register_sync_rules(mocked_responses)
+        _register_arg_sweep(mocked_responses)
+        _register_delete_handler(mocked_responses)
+        mock_logger = mocker.patch("azext_edge.edge.providers.orchestration.deletion2.logger")
+
+        manager = DeletionManager(
+            cmd=mocked_cmd, instance_name="myinst", resource_group_name=_RG, no_progress=True
+        )
+        manager.do_work(confirm_yes=True)
+
+        assert not manager._connector_templates
+        warning_messages = [str(call.args[0]) for call in mock_logger.warning.call_args_list]
+        assert any("discover connector templates" in message.lower() for message in warning_messages)
+        instance_deletes = [
+            call for call in mocked_responses.calls
+            if call.request.method == "DELETE"
+            and call.request.url == _build_instance_endpoint("myinst", _RG)
+        ]
+        assert len(instance_deletes) == 1
+
+    def test_connector_template_delete_failure_continues_to_instance(
+        self,
+        mocker,
+        mocked_cmd,
+        mocked_responses,
+        mocked_should_continue_prompt,
+    ):
+        """Template DELETE failure warns and does not block instance deletion."""
+        connector_template = _build_connector_template()
+        _register_instance_discovery(
+            mocked_responses,
+            connector_templates=[connector_template],
+        )
+        _register_extensions(mocked_responses)
+        _register_sync_rules(mocked_responses)
+        _register_arg_sweep(mocked_responses)
+        for _ in range(4):
+            mocked_responses.add(
+                method=responses.DELETE,
+                url=_build_connector_template_endpoint(_RG, "myinst", "opcua-template"),
+                status=500,
+                json={
+                    "error": {
+                        "code": "InternalServerError",
+                        "message": "Template delete failed",
+                    }
+                },
+            )
+        _register_delete_handler(mocked_responses)
+        mock_logger = mocker.patch("azext_edge.edge.providers.orchestration.deletion2.logger")
+
+        manager = DeletionManager(
+            cmd=mocked_cmd, instance_name="myinst", resource_group_name=_RG, no_progress=True
+        )
+        manager.do_work(confirm_yes=True)
+
+        template_delete_statuses = [
+            call.response.status_code for call in mocked_responses.calls
+            if call.request.method == "DELETE"
+            and "/akriConnectorTemplates/opcua-template" in call.request.url
+        ]
+        assert template_delete_statuses
+        assert all(status == 500 for status in template_delete_statuses)
+        warning_messages = [str(call.args[0]) for call in mock_logger.warning.call_args_list]
+        assert any("delete connector template" in message.lower() for message in warning_messages)
+        instance_deletes = [
+            call for call in mocked_responses.calls
+            if call.request.method == "DELETE"
+            and call.request.url == _build_instance_endpoint("myinst", _RG)
+        ]
+        assert len(instance_deletes) == 1
 
     def test_cl_delete_failure_continues_to_aio_extension(
         self,
