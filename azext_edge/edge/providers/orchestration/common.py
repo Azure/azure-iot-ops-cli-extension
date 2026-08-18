@@ -430,8 +430,8 @@ MIN_INSTANCE_VERSION_V2 = "1.2.36"
 MIN_INSTANCE_VERSION_V1_FOR_V2_UPGRADE = "1.1.59"
 MIN_INSTANCE_VERSION_FOR_CM_MIGRATE = "1.2.83"
 # Target version at/above which `az iot ops upgrade` backfills the default OPC UA
-# akriConnectorTemplates resource. The requirement landed in 2608 (1.4.72)
-MIN_INSTANCE_VERSION_FOR_OPCUA_CONNECTOR_TEMPLATE = "1.4.72"
+# akriConnectorTemplates resource.
+MIN_INSTANCE_VERSION_FOR_OPCUA_CONNECTOR_TEMPLATE = "1.4.73"
 
 # Default OPC UA connector template values, mirroring the product Bicep. OPC UA is
 # supervisor-managed: the supervisor adopts the template by name prefix and the connector image
