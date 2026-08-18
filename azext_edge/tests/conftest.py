@@ -32,6 +32,7 @@ MARKERS = [
     MarkerDefinition("e2e", "mark end-to-end containerized tests (support bundles, checks)", False),
     MarkerDefinition("rpsaas", "mark tests that are cloud-side", True),
     MarkerDefinition("upgrade", "mark tests that will run az iot ops upgrade", True),
+    MarkerDefinition("mgmtactions", "mark tests that exercise az iot ops mgmt-actions end to end", True),
     MarkerDefinition("init_scenario_test", "mark tests that will run az iot ops init", True),
     MarkerDefinition("require_wlif_setup", "mark tests that require workload identity trust setup", True),
     MarkerDefinition("long_running", "mark tests that take a long time to run", False),

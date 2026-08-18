@@ -12,12 +12,13 @@ Our [current tox config](../tox.ini) contains the following environments, and ca
 - **python, py3\***: Runs unit tests using a specific python version. `python` will run the default version from your `PATH`
   - Command: `pytest -k _unit ./azext_edge/tests`
 
-- **python-{init,e2e,rpsaas,upgrade,long,wlif,edge,all}-int**: Runs integration tests for specific scenarios.
+- **python-{init,e2e,rpsaas,upgrade,mgmtactions,long,wlif,edge,all}-int**: Runs integration tests for specific scenarios.
   - Scenarios:
     - `python-init-int`: Tests for `ops init`/create.
     - `python-e2e-int`: End-to-end pipeline tests.
     - `python-rpsaas-int`: RPSaaS (cloud side) only.
     - `python-upgrade-int`: Azure IoT Operations upgrade tests.
+    - `python-mgmtactions-int`: Azure IoT Operations management actions tests.
     - `python-long-int`: Long-running tests.
     - `python-wlif-int`: Workload identity setup required.
     - `python-edge-int`: All non-RPSaaS tests (edge).
