@@ -55,11 +55,11 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - name: "Setup python"
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: "3.10"
       - name: "Checkout extension source for build"
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
       - name: "Build and install local IoT Ops extension from source"
         run: |
           pip install -r dev_requirements.txt

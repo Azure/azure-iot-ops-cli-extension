@@ -27,7 +27,7 @@ jobs:
     steps:
       - name: Download wheel
         id: wheel
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: azure-iot-ops-cli-ext
           path: ./
