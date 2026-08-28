@@ -129,7 +129,7 @@ jobs:
       matrix: ${{ steps.matrix.outputs.matrix }}
     steps:
       - name: "Checkout for config"
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           sparse-checkout: |
             .github
@@ -147,9 +147,9 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - name: "Checkout Source"
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: "Setup python"
-        uses: actions/setup-python@v7
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.13"
       - name: "Setup test suite"
@@ -160,7 +160,7 @@ jobs:
         run: tox r --skip-pkg-install
       - name: "Upload coverage report"
         if: ${{ always() }}
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: coverage-unit
           path: ./.coverage
@@ -197,11 +197,11 @@ jobs:
           echo "CLUSTER_NAME=${{ env.CLUSTER_NAME }}" >> $GITHUB_OUTPUT
           echo "INSTANCE_NAME=${{ env.INSTANCE_NAME }}" >> $GITHUB_OUTPUT
       - name: "Setup python"
-        uses: actions/setup-python@v7
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.13"
       - name: "Checkout extension source for build"
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: "Build and install local IoT Ops extension from source"
         run: |
           pip install -r dev_requirements.txt
@@ -221,7 +221,7 @@ jobs:
             tox r -vv -e "${{ matrix.scenario.tox_env }}" --notest
           fi
       - name: "Az CLI login"
-        uses: azure/login@v3
+        uses: azure/login@7ddb5af1ef8758cf1353cf3b42f940aee27ba21c # v3.0.2
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
@@ -234,7 +234,7 @@ jobs:
           custom-locations-oid: ${{ env.CUSTOM_LOCATIONS_OID }}
           enable-workload-identity: ${{ matrix.scenario.needs_trust && 'true' || 'false' }}
       - name: "Az CLI login"
-        uses: azure/login@v3
+        uses: azure/login@7ddb5af1ef8758cf1353cf3b42f940aee27ba21c # v3.0.2
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
@@ -284,7 +284,7 @@ jobs:
           tox r -e report
       - name: "Upload coverage artifacts"
         if: ${{ always() }}
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: coverage-${{ matrix.scenario.name }}
           path: ./.coverage
@@ -374,9 +374,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: "Checkout source"
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: "Download all coverage artifacts"
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           pattern: coverage-*
           path: ./coverage_parts
@@ -387,7 +387,7 @@ jobs:
           coverage report
           coverage html --directory ./htmlcov --title "AIO CLI Combined Coverage Report"
       - name: "Upload combined coverage artifact"
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: combined-coverage
           path: ./htmlcov
