@@ -1900,3 +1900,186 @@ def test_dataflow_graph_apply_config_entry_whitespace_key(
                 wait_sec=0.1,
             )
         assert "requires configuration parameter(s)" in exc.value.args[0]
+
+
+# ---------------------------------------------------------------------------
+# apply - transform / runtime version compatibility
+# ---------------------------------------------------------------------------
+
+def _artifact_yaml_with_runtime(runtime_version: Optional[str], required_param: bool = False) -> str:
+    """Build a transform manifest YAML with an optional moduleRequirements.runtimeVersion."""
+    lines = []
+    if runtime_version is not None:
+        lines.append("moduleRequirements:")
+        lines.append(f"  runtimeVersion: '{runtime_version}'")
+    lines.append("moduleConfigurations:")
+    lines.append("  - name: mymodule")
+    lines.append("    parameters:")
+    lines.append("      rules:")
+    lines.append("        name: rules")
+    lines.append(f"        required: {'true' if required_param else 'false'}")
+    return "\n".join(lines) + "\n"
+
+
+def _add_instance_mock(mocked_responses, instance_name, resource_group_name, version, drop_version=False):
+    record = get_mock_instance_record(
+        name=instance_name, resource_group_name=resource_group_name, version=version
+    )
+    if drop_version:
+        record["properties"].pop("version", None)
+    mocked_responses.add(
+        method=responses.GET,
+        url=get_instance_endpoint(
+            resource_group_name=resource_group_name,
+            instance_name=instance_name,
+        ),
+        json=record,
+        status=200,
+    )
+
+
+def test_dataflow_graph_apply_transform_runtime_incompatible(
+    mocked_cmd,
+    mocked_responses: responses,
+    mocked_get_file_config,
+    mocker,
+):
+    """Apply is blocked when the transform requires a newer runtime than the instance."""
+
+    graph_name = generate_random_string()
+    profile_name = generate_random_string()
+    instance_name = "myinstance"
+    resource_group_name = "myresourcegroup"
+
+    graph_properties = copy.deepcopy(_GRAPH_NODE_BASE_PROPERTIES)
+    file_payload = {"properties": graph_properties}
+    mocked_get_file_config.return_value = json.dumps(file_payload)
+
+    _add_instance_mock(mocked_responses, instance_name, resource_group_name, version="1.3.137")
+    _setup_graph_node_apply_mocks(mocked_responses, instance_name, resource_group_name, "myregistry")
+    _mock_oci_client(mocker, _artifact_yaml_with_runtime("1.99.0"))
+
+    with pytest.raises(InvalidArgumentValueError) as exc:
+        apply_dataflow_graph(
+            cmd=mocked_cmd,
+            dataflow_graph_name=graph_name,
+            profile_name=profile_name,
+            instance_name=instance_name,
+            resource_group_name=resource_group_name,
+            config_file="config.json",
+            wait_sec=0.1,
+        )
+
+    msg = exc.value.args[0]
+    # Failure identifies the transform, selected version, required runtime, and instance version.
+    assert "myartifact" in msg
+    assert "1.0" in msg  # selected version (artifact 'myartifact:1.0')
+    assert "1.99.0" in msg  # required runtime
+    assert "1.3.137" in msg  # current instance version
+
+
+@pytest.mark.parametrize("required_runtime", ["1.0.0", "1.3.0", "1.3.137"])
+def test_dataflow_graph_apply_transform_runtime_compatible(
+    mocked_cmd,
+    mocked_responses: responses,
+    mocked_get_file_config,
+    mocker,
+    required_runtime: str,
+):
+    """Apply succeeds when the instance runtime is >= the transform's required runtime."""
+
+    graph_name = generate_random_string()
+    profile_name = generate_random_string()
+    instance_name = "myinstance"
+    resource_group_name = "myresourcegroup"
+
+    graph_properties = copy.deepcopy(_GRAPH_NODE_BASE_PROPERTIES)
+    file_payload = {"properties": graph_properties}
+    mocked_get_file_config.return_value = json.dumps(file_payload)
+
+    _add_instance_mock(mocked_responses, instance_name, resource_group_name, version="1.3.137")
+    _setup_graph_node_apply_mocks(mocked_responses, instance_name, resource_group_name, "myregistry")
+    _mock_oci_client(mocker, _artifact_yaml_with_runtime(required_runtime))
+    mocked_responses.add(
+        method=responses.PUT,
+        url=get_dataflow_graph_endpoint(
+            profile_name=profile_name,
+            instance_name=instance_name,
+            resource_group_name=resource_group_name,
+            graph_name=graph_name,
+        ),
+        json=file_payload,
+        status=200,
+    )
+
+    result = apply_dataflow_graph(
+        cmd=mocked_cmd,
+        dataflow_graph_name=graph_name,
+        profile_name=profile_name,
+        instance_name=instance_name,
+        resource_group_name=resource_group_name,
+        config_file="config.json",
+        wait_sec=0.1,
+    )
+    assert result == file_payload
+
+
+@pytest.mark.parametrize(
+    "runtime_version, drop_instance_version",
+    [
+        (None, False),          # manifest declares no moduleRequirements.runtimeVersion
+        ("not-a-version", False),  # malformed required runtime
+        ("1.99.0", True),       # instance version cannot be determined
+    ],
+    ids=["missing_required", "malformed_required", "unknown_instance_version"],
+)
+def test_dataflow_graph_apply_transform_runtime_fail_open(
+    mocked_cmd,
+    mocked_responses: responses,
+    mocked_get_file_config,
+    mocker,
+    runtime_version: Optional[str],
+    drop_instance_version: bool,
+):
+    """Missing or malformed versions fail open — apply proceeds and defers to runtime enforcement."""
+
+    graph_name = generate_random_string()
+    profile_name = generate_random_string()
+    instance_name = "myinstance"
+    resource_group_name = "myresourcegroup"
+
+    graph_properties = copy.deepcopy(_GRAPH_NODE_BASE_PROPERTIES)
+    file_payload = {"properties": graph_properties}
+    mocked_get_file_config.return_value = json.dumps(file_payload)
+
+    _add_instance_mock(
+        mocked_responses,
+        instance_name,
+        resource_group_name,
+        version="1.3.137",
+        drop_version=drop_instance_version,
+    )
+    _setup_graph_node_apply_mocks(mocked_responses, instance_name, resource_group_name, "myregistry")
+    _mock_oci_client(mocker, _artifact_yaml_with_runtime(runtime_version))
+    mocked_responses.add(
+        method=responses.PUT,
+        url=get_dataflow_graph_endpoint(
+            profile_name=profile_name,
+            instance_name=instance_name,
+            resource_group_name=resource_group_name,
+            graph_name=graph_name,
+        ),
+        json=file_payload,
+        status=200,
+    )
+
+    result = apply_dataflow_graph(
+        cmd=mocked_cmd,
+        dataflow_graph_name=graph_name,
+        profile_name=profile_name,
+        instance_name=instance_name,
+        resource_group_name=resource_group_name,
+        config_file="config.json",
+        wait_sec=0.1,
+    )
+    assert result == file_payload

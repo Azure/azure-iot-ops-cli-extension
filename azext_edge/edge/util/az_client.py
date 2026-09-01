@@ -27,6 +27,8 @@ AZURE_CLI_CREDENTIAL = AzureCliCredential()
 
 POLL_RETRIES = 240
 POLL_WAIT_SEC = 15
+_LRO_FAILURE_STATUSES = frozenset({"failed", "canceled", "cancelled"})
+_INVALID_STATUS_MESSAGE = "Operation returned an invalid status"
 
 logger = get_logger(__name__)
 
@@ -297,6 +299,8 @@ def get_keyvault_client(subscription_id: str, keyvault_scope: Optional[str] = No
 
 
 def wait_for_terminal_state(poller: "LROPoller", wait_sec: int = POLL_WAIT_SEC, **_) -> JSON:
+    from azure.core.exceptions import HttpResponseError
+
     # resource client does not handle sigint well
     counter = 0
     while counter < POLL_RETRIES:
@@ -304,7 +308,86 @@ def wait_for_terminal_state(poller: "LROPoller", wait_sec: int = POLL_WAIT_SEC, 
             break
         sleep(wait_sec)
         counter = counter + 1
-    return poller.result()
+    try:
+        return poller.result()
+    except HttpResponseError as e:
+        message = _get_lro_failure_message(e)
+        if message:
+            e.message = message
+            e.args = (message,)
+        raise
+
+
+def _get_lro_failure_message(exception: "HttpResponseError") -> Optional[str]:
+    """Format terminal LRO failures that Azure SDK reports as an invalid 2xx status."""
+    response = exception.response
+    status_code = exception.status_code
+    if (
+        response is None
+        or not isinstance(status_code, int)
+        or not 200 <= status_code <= 299
+        or exception.error
+        or not exception.message.startswith(_INVALID_STATUS_MESSAGE)
+    ):
+        return None
+
+    try:
+        payload = response.json()
+    except (AttributeError, TypeError, ValueError):
+        return None
+
+    if not isinstance(payload, MutableMapping):
+        return None
+
+    operation_status = str(payload.get("status", ""))
+    if operation_status.lower() not in _LRO_FAILURE_STATUSES:
+        return None
+
+    lines = [f"Long-running operation failed with status '{operation_status}'."]
+    error = payload.get("error")
+    if isinstance(error, MutableMapping):
+        code = error.get("code")
+        message = error.get("message")
+        has_error_details = False
+        if code:
+            lines.append(f"Code: {code}")
+            has_error_details = True
+        if message:
+            lines.append(f"Message: {message}")
+            has_error_details = True
+
+        details = error.get("details")
+        if details:
+            detail_items = details if isinstance(details, list) else [details]
+            formatted_details = [_format_lro_error_detail(detail) for detail in detail_items]
+            lines.append("Details:")
+            lines.extend(f"  - {detail}" for detail in formatted_details)
+            has_error_details = True
+        if not has_error_details:
+            lines.append("The service returned no error details.")
+    elif error:
+        lines.append(f"Error: {error}")
+    else:
+        lines.append("The service returned no error details.")
+
+    headers = getattr(response, "headers", None)
+    if hasattr(headers, "get"):
+        request_id = headers.get("x-ms-request-id") or headers.get("x-ms-correlation-request-id")
+        if request_id:
+            lines.append(f"Request ID: {request_id}")
+
+    return "\n".join(lines)
+
+
+def _format_lro_error_detail(detail: Any) -> str:
+    if not isinstance(detail, MutableMapping):
+        return str(detail)
+
+    code = detail.get("code")
+    message = detail.get("message")
+    if code and message:
+        return f"{code}: {message}"
+    return str(code or message or dict(detail))
 
 
 def wait_for_terminal_states(

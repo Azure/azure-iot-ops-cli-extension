@@ -31,13 +31,11 @@ jobs:
       # Install dotnet, used by MSDO
     - uses: actions/setup-dotnet@v6
       with:
-        dotnet-version: |
-          5.0.x
-          6.0.x
+        dotnet-version: 6.0.x
 
       # Run analyzers
+    # The v1 tag still targets Node.js 20; pin the current Node.js 24 implementation.
     - name: Run Microsoft Security DevOps Analysis
-      # The v1 branch still targets Node.js 20; pin the current Node.js 24 implementation.
       uses: microsoft/security-devops-action@241d09d34a00dc03aad8b1e8cf988a6f66ecd3f5
       id: msdo
       env:

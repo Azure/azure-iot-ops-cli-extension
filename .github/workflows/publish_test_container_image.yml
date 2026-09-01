@@ -32,7 +32,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: "Checkout GitHub Action"
-        uses: actions/checkout@main
+        uses: actions/checkout@v7
       - name: "Az CLI login"
         uses: azure/login@v3
         with:

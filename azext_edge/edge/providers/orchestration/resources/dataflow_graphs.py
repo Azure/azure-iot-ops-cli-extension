@@ -16,6 +16,7 @@ from azure.core.exceptions import ResourceNotFoundError
 
 from ....util.az_client import wait_for_terminal_state
 from ....util.common import should_continue_prompt
+from ....util.machinery import scoped_semver_import
 from ....util.oci_client import get_oci_client
 from ....util.queryable import Queryable
 from ..common import DataflowEndpointType, KAFKA_ENDPOINT_TYPE, MQTT_ENDPOINT_TYPE
@@ -177,14 +178,37 @@ class DataFlowGraphs(Queryable):
                     )
                 except Exception as ex:  # best-effort: skip validation on any fetch failure
                     logger.warning(
-                        "Failed to fetch OCI artifact '%s' — skipping client-side config validation. %s",
+                        "Skipped optional client-side validation for OCI artifact '%s' (could not fetch); "
+                        "resource creation is unaffected. Details: %s",
                         image_ref,
                         ex,
                     )
                     artifact_info_cache[image_ref] = None
             return artifact_info_cache[image_ref]
 
-        self._validate_graph_nodes(graph_nodes, get_registry_endpoint_cached, get_artifact_info_cached)
+        # The target instance's installed runtime version is only needed when the graph
+        # contains transform (Graph) nodes. Fetch it lazily to avoid an extra API call.
+        instance_version = (
+            self._get_instance_version(instance_name, resource_group_name) if graph_nodes else None
+        )
+
+        self._validate_graph_nodes(
+            graph_nodes, get_registry_endpoint_cached, get_artifact_info_cached, instance_version
+        )
+
+    def _get_instance_version(self, instance_name: str, resource_group_name: str) -> Optional[str]:
+        """Return the target instance's installed AIO runtime version, or None if it cannot be determined."""
+        try:
+            instance = self.instances.show(name=instance_name, resource_group_name=resource_group_name)
+            return (instance or {}).get("properties", {}).get("version")
+        except Exception as ex:  # best-effort: skip transform runtime compatibility check on any failure
+            logger.debug(
+                "Could not determine runtime version for instance '%s' — skipping transform runtime "
+                "compatibility check. %s",
+                instance_name,
+                ex,
+            )
+            return None
 
     def _validate_nodes(self, graph_config: dict):
         nodes = graph_config.get("nodes", [])
@@ -336,7 +360,13 @@ class DataFlowGraphs(Queryable):
                     f"{', '.join(sorted(_GRAPH_SUPPORTED_ENDPOINT_TYPES))}."
                 )
 
-    def _validate_graph_nodes(self, graph_nodes: list, get_registry_endpoint_cached, get_artifact_info_cached):
+    def _validate_graph_nodes(
+        self,
+        graph_nodes: list,
+        get_registry_endpoint_cached,
+        get_artifact_info_cached,
+        instance_version: Optional[str] = None,
+    ):
         for node in graph_nodes:
             graph_settings = node.get("graphSettings", {})
             if not isinstance(graph_settings, dict):
@@ -368,7 +398,7 @@ class DataFlowGraphs(Queryable):
                 )
             image_ref = f"{registry_host.strip().rstrip('/')}/{artifact}"
             self._validate_graph_node_artifact_config(
-                node, graph_settings, image_ref, get_artifact_info_cached
+                node, graph_settings, image_ref, get_artifact_info_cached, instance_version
             )
 
     @staticmethod
@@ -392,12 +422,15 @@ class DataFlowGraphs(Queryable):
         graph_settings: dict,
         image_ref: str,
         get_artifact_info_cached,
+        instance_version: Optional[str] = None,
     ):
-        """Fetch the OCI artifact YAML layer and validate that all required parameters are provided.
+        """Fetch the OCI artifact YAML layer and validate the transform against the target instance.
 
-        The YAML layer contains moduleConfigurations[*].parameters where each entry has a
-        'required' field. Each required parameter must appear as a {"key": ..., "value": ...}
-        entry in graphSettings.configuration.
+        Two client-side checks are performed against the transform manifest:
+          1. Runtime compatibility — the manifest's moduleRequirements.runtimeVersion must not be
+             newer than the target instance's installed AIO runtime version.
+          2. Required parameters — moduleConfigurations[*].parameters entries marked 'required'
+             must each appear as a {"key": ..., "value": ...} entry in graphSettings.configuration.
 
         This is a best-effort, client-side check. If the OCI artifact cannot be fetched (e.g.,
         due to network issues, auth failure, or an invalid reference), a warning is logged and
@@ -422,6 +455,8 @@ class DataFlowGraphs(Queryable):
                 image_ref,
             )
             return
+
+        self._validate_transform_runtime_compatibility(node, graph_settings, yaml_data, instance_version)
 
         required_params: set = set()
         module_configurations = yaml_data.get("moduleConfigurations") or []
@@ -459,6 +494,65 @@ class DataFlowGraphs(Queryable):
                     "'graphSettings.configuration'. Each required parameter must be supplied as a "
                     '{"key": "<param-name>", "value": "<value>"} entry.'
                 )
+
+    def _validate_transform_runtime_compatibility(
+        self,
+        node: dict,
+        graph_settings: dict,
+        yaml_data: dict,
+        instance_version: Optional[str],
+    ):
+        """Ensure the transform's required runtime is not newer than the target instance.
+
+        The transform manifest declares its minimum runtime via
+        moduleRequirements.runtimeVersion. If the target instance is running an older
+        AIO runtime than the transform requires, the graph is incompatible and the apply
+        is blocked — mirroring the UX (isRuntimeVersionCompatible in runtimeCompatibility.ts).
+
+        This check deliberately fails open: if the required runtime or the instance version
+        is missing or malformed (unparseable), validation is skipped and enforcement is
+        deferred to the runtime. This handles both built-in and custom transforms.
+        """
+        module_requirements = yaml_data.get("moduleRequirements")
+        if not isinstance(module_requirements, dict):
+            return
+        required_runtime = module_requirements.get("runtimeVersion")
+        # Fail open when the transform does not declare a required runtime version.
+        if not isinstance(required_runtime, str) or not required_runtime.strip():
+            return
+        # Fail open when the target instance version cannot be determined.
+        if not isinstance(instance_version, str) or not instance_version.strip():
+            logger.debug(
+                "Target instance runtime version is unknown — skipping runtime compatibility "
+                "check for graph node '%s'.",
+                node.get("name"),
+            )
+            return
+
+        semver = scoped_semver_import()
+        try:
+            parsed_required = semver.parse(required_runtime.strip(), optional_minor_and_patch=True)
+            parsed_instance = semver.parse(instance_version.strip(), optional_minor_and_patch=True)
+        except ValueError as ex:
+            # Fail open on malformed versions; defer to runtime enforcement.
+            logger.debug(
+                "Could not compare runtime versions (required '%s', instance '%s') for graph node "
+                "'%s' — skipping runtime compatibility check. %s",
+                required_runtime,
+                instance_version,
+                node.get("name"),
+                ex,
+            )
+            return
+
+        if parsed_instance < parsed_required:
+            artifact = graph_settings.get("artifact", "")
+            raise InvalidArgumentValueError(
+                f"Graph node '{node.get('name')}' transform '{artifact}' requires Azure IoT "
+                f"Operations runtime version '{required_runtime}' or newer, but the target "
+                f"instance is running '{instance_version}'. Select a transform version "
+                "compatible with the installed runtime, or upgrade the instance."
+            )
 
     def _get_endpoint(
         self,
