@@ -38,9 +38,7 @@ from .common import (
     MIN_INSTANCE_VERSION_V1_FOR_V2_UPGRADE,
     MIN_INSTANCE_VERSION_V2,
     OPCUA_CONNECTOR_ENDPOINT_TYPE,
-    OPCUA_CONNECTOR_TEMPLATE_NAME_PREFIX,
     OPCUA_CONNECTOR_VERSION,
-    PROVISIONING_STATE_FAILED,
     PROVISIONING_STATE_SUCCESS,
     ConfigSyncModeType,
 )
@@ -212,11 +210,8 @@ class UpgradeManager:
     def _check_opcua_connector_template_needed(self) -> Tuple[bool, Optional[str]]:
         """Return (needed, repair_name) for the default OPC UA connector template.
 
-        The OPC UA supervisor requires a default ``akriConnectorTemplates`` resource (2608+) that
-        no CLI install path created historically. A prefix-matching template that exists but is in
-        a terminal ``Failed`` state is repaired in place by reusing its name (``repair_name``);
-        transient states (e.g. Accepted/Updating/Deleting) are left alone to avoid racing an
-        in-flight provisioning.
+        Skips entirely when OPC UA is disabled on the instance; otherwise delegates the prefix and
+        provisioning-state decision to the shared ConnectorTemplates helper.
         """
         self._opcua_template_name_to_repair = None
         # features (and its nested objects) may be absent or explicitly null on the record.
@@ -225,25 +220,11 @@ class UpgradeManager:
         # Disabled: no supervisor reconciles the template, so its PUT never reaches a terminal state.
         if opcua_mode == "Disabled":
             return False, None
-        try:
-            existing_templates = self.connector_templates.list(
-                instance_name=self.instance_name, resource_group_name=self.resource_group_name
-            )
-            for template in existing_templates:
-                if not (template.get("name") or "").lower().startswith(OPCUA_CONNECTOR_TEMPLATE_NAME_PREFIX):
-                    continue
-                if (template.get("provisioningState") or "").lower() == PROVISIONING_STATE_FAILED.lower():
-                    # Repair the existing resource in place by reusing its name.
-                    self._opcua_template_name_to_repair = template.get("name")
-                    logger.debug("Default OPC UA connector template exists but failed; will repair in place.")
-                    return True, self._opcua_template_name_to_repair
-                # Succeeded or a transient state: leave it alone.
-                logger.debug("Default OPC UA connector template already exists.")
-                return False, None
-            return True, None
-        except HttpResponseError as e:
-            logger.debug(f"Error checking OPC UA connector template: {e}")
-            return False, None
+        needed, repair_name = self.connector_templates.check_default_opcua_template_needed(
+            instance_name=self.instance_name, resource_group_name=self.resource_group_name
+        )
+        self._opcua_template_name_to_repair = repair_name
+        return needed, repair_name
 
     def _create_default_opcua_connector_template(self, headers: dict) -> dict:
         return self.connector_templates.create_default_opcua_template(

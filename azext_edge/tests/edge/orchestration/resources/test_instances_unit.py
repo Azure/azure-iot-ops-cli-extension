@@ -631,15 +631,23 @@ def test_instance_update_opcua_mode(
         content_type="application/json",
     )
 
-    prior_opcua_mode = (initial_feat_state or {}).get("opcua", {}).get("mode")
+    # Enabling OPC UA triggers a backfill: list existing templates, create the default if absent.
     new_opcua_mode = features_scenario["expected"].get("opcua", {}).get("mode")
-    expects_backfill = prior_opcua_mode == "Disabled" and new_opcua_mode not in (None, "Disabled")
+    expects_backfill = new_opcua_mode not in (None, "Disabled")
     if expects_backfill:
-        # Re-enabling OPC UA backfills the default connector template that create omitted while disabled.
-        connector_put_re = re.compile(re.escape(instance_endpoint.split("?")[0]) + r"/akriConnectorTemplates/[^/?]+")
+        base_url = instance_endpoint.split("?")[0]
+        list_re = re.compile(re.escape(base_url) + r"/akriConnectorTemplates(\?|$)")
+        mocked_responses.add(
+            method=responses.GET,
+            url=list_re,
+            json={"value": []},
+            status=200,
+            content_type="application/json",
+        )
+        create_re = re.compile(re.escape(base_url) + r"/akriConnectorTemplates/[^/?]+")
         mocked_responses.add(
             method=responses.PUT,
-            url=connector_put_re,
+            url=create_re,
             json={
                 "name": "azureiotoperationsconnectorforopcua-abcd",
                 "properties": {"provisioningState": "Succeeded"},

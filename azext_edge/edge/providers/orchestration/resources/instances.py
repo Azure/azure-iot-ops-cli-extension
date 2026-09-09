@@ -273,17 +273,16 @@ class Instances(Queryable):
         if description:
             instance["properties"]["description"] = description
 
-        opcua_needs_backfill = False
+        opcua_backfill_requested = False
         if features:
             desired_features = parse_feature_kvp_nargs(features, strict=True)
             current_features: dict = instance["properties"].get("features", {}) or {}
-            prior_opcua_mode = (current_features.get("opcua") or {}).get("mode")
             current_features.update(desired_features)
             instance["properties"]["features"] = current_features
-            new_opcua_mode = (current_features.get("opcua") or {}).get("mode")
-            # Enabling OPC UA from Disabled needs the default connector template the create path skips
-            # while disabled; without it the supervisor has nothing to reconcile.
-            opcua_needs_backfill = prior_opcua_mode == "Disabled" and new_opcua_mode not in (None, "Disabled")
+            requested_opcua_mode = (desired_features.get("opcua") or {}).get("mode")
+            # Enabling OPC UA needs the default connector template the create path skips while
+            # disabled; running on any enable request also lets a repeat repair a partial attempt.
+            opcua_backfill_requested = requested_opcua_mode not in (None, "Disabled")
 
         if adr_namespace_resource_id:
             instance["properties"]["adrNamespaceRef"] = {"resourceId": adr_namespace_resource_id}
@@ -303,17 +302,23 @@ class Instances(Queryable):
                 **operation_kwargs,
             )
             result = wait_for_terminal_state(poller, **kwargs)
-            if opcua_needs_backfill:
+            if opcua_backfill_requested:
                 from .connector_templates import ConnectorTemplates
                 from ..common import OPCUA_CONNECTOR_VERSION
 
-                ConnectorTemplates(self.cmd).create_default_opcua_template(
-                    resource_group_name=resource_group_name,
-                    instance_name=name,
-                    connector_version=OPCUA_CONNECTOR_VERSION,
-                    headers=headers,
-                    no_status=no_status,
+                connector_templates = ConnectorTemplates(self.cmd)
+                needed, repair_name = connector_templates.check_default_opcua_template_needed(
+                    instance_name=name, resource_group_name=resource_group_name
                 )
+                if needed:
+                    connector_templates.create_default_opcua_template(
+                        resource_group_name=resource_group_name,
+                        instance_name=name,
+                        connector_version=OPCUA_CONNECTOR_VERSION,
+                        template_name=repair_name,
+                        headers=headers,
+                        no_status=no_status,
+                    )
             return result
 
     def remove_mi_user_assigned(
