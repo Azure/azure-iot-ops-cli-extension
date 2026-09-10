@@ -3403,18 +3403,18 @@ class TestDisable:
 
         # instance GET + ADR GET + graph detect GET + ep detect GET +
         # EG ts GET + EG pub GET + EG sub GET +
-        # resp DELETE + graph DELETE + ep DELETE + ADR PUT +
-        # pub DELETE + sub DELETE + ts DELETE = 14
+        # resp DELETE + graph DELETE + ep DELETE +
+        # pub DELETE + sub DELETE + ts DELETE + ADR PUT = 14
         assert len(mocked_responses.calls) == 14
 
-        # Verify full call sequence: discovery GETs → AIO DELETEs → ADR PUT → EG DELETEs
+        # Verify full call sequence: discovery GETs → AIO DELETEs → EG DELETEs → ADR PUT
         call_methods = [c.request.method for c in mocked_responses.calls]
         assert call_methods == [
             "GET", "GET", "GET", "GET",     # instance, ADR, graph detect, ep detect
             "GET", "GET", "GET",             # EG ts, pub, sub existence
             "DELETE", "DELETE", "DELETE",    # resp dataflow, graph, endpoint
-            "PUT",                           # ADR namespace update (full replace)
             "DELETE", "DELETE", "DELETE",    # pub binding, sub binding, topic space
+            "PUT",                           # ADR namespace update (full replace) — removed last
         ]
 
         # Verify mutation calls target expected resources
@@ -3426,10 +3426,10 @@ class TestDisable:
         assert f"/dataflows/{f['resp_name']}" in mut_paths[0]
         assert f"/dataflowGraphs/{f['graph_name']}" in mut_paths[1]
         assert f"/dataflowEndpoints/{f['ep_name']}" in mut_paths[2]
-        assert f"/providers/{DEVICEREGISTRY_RP}/namespaces/{f['adr_ns_name']}" in mut_paths[3]
-        assert f"/permissionBindings/{f['pub_name']}" in mut_paths[4]
-        assert f"/permissionBindings/{f['sub_name']}" in mut_paths[5]
-        assert f"/topicSpaces/{f['ts_name']}" in mut_paths[6]
+        assert f"/permissionBindings/{f['pub_name']}" in mut_paths[3]
+        assert f"/permissionBindings/{f['sub_name']}" in mut_paths[4]
+        assert f"/topicSpaces/{f['ts_name']}" in mut_paths[5]
+        assert f"/providers/{DEVICEREGISTRY_RP}/namespaces/{f['adr_ns_name']}" in mut_paths[6]
 
     def test_confirmation_cancel(self, mocked_cmd, mocked_responses: responses, mocker):
         """Cancellation via should_continue_prompt stops all deletions."""

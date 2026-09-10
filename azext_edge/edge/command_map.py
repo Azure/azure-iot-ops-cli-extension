@@ -17,6 +17,7 @@ registry_endpoint_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge
 edge_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_edge#{}")
 secretsync_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_secretsync#{}")
 mgmt_actions_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_mgmt_actions#{}")
+live_data_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_live_data#{}")
 asset_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_assets#{}")
 aep_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_asset_endpoint_profiles#{}")
 namespace_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_namespaces#{}")
@@ -76,6 +77,15 @@ def load_iotops_commands(self, _):
         cmd_group.command("disable", "mgmt_actions_disable")
         cmd_group.show_command("show", "mgmt_actions_show")
         cmd_group.command("execute", "mgmt_actions_execute")
+
+    with self.command_group(
+        "iot ops live-data",
+        command_type=live_data_resource_ops,
+        is_preview=True,
+    ) as cmd_group:
+        cmd_group.command("enable", "live_data_enable")
+        cmd_group.command("disable", "live_data_disable")
+        cmd_group.show_command("show", "live_data_show")
 
     with self.command_group(
         "iot ops support",

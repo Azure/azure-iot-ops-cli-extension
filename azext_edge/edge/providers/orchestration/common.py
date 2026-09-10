@@ -461,3 +461,16 @@ MGMT_ACTIONS_ADR_ENDPOINT_TYPE = "Microsoft.EventGrid/Namespaces"
 MGMT_ACTIONS_GRAPH_ARTIFACT = "azureiotoperations/graph-dataflow-map:1.0.0"
 MGMT_ACTIONS_GRAPH_RULES_VERSION = "1.0.0"
 MIN_EG_CLIENT_SESSIONS_PER_AUTH_NAME = 4
+
+# Live Data
+LIVE_DATA_ADR_API_VERSION = "2026-11-02-preview"
+LIVE_DATA_PROFILE_NAME = "live-data-profile"
+LIVE_DATA_ENDPOINT_NAME = "live-data-endpoint"
+LIVE_DATA_TOPICSPACE_PREFIX = "live-data-ts"
+LIVE_DATA_TOPIC_TEMPLATE = "aio/observabilitySessions/{scope_id}/#"
+LIVE_DATA_ADR_ENDPOINT_TYPE = "Microsoft.EventGrid/namespaces"
+
+
+class LiveDataRoleScope(Enum):
+    NAMESPACE = "namespace"
+    TOPIC_SPACE = "topic-space"

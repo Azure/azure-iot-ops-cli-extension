@@ -40,6 +40,7 @@ from .providers.orchestration.common import (
     KafkaCompressionType,
     KafkaPartitionStrategyType,
     ListenerProtocol,
+    LiveDataRoleScope,
     MqMemoryProfile,
     MqServiceType,
     MqttRetainType,
@@ -1709,6 +1710,51 @@ def load_iotops_arguments(self, _):
             options_list=["--show-schema"],
             help="Resolve and display the action's request schema. No action is executed.",
             action="store_true",
+        )
+
+    with self.argument_context("iot ops live-data") as context:
+        context.argument(
+            "instance_name",
+            options_list=["--instance", "-i", "-n"],
+            help="IoT Operations instance name.",
+        )
+
+    with self.argument_context("iot ops live-data enable") as context:
+        context.argument(
+            "eg_resource_id",
+            options_list=["--eg-resource-id"],
+            help="Event Grid Namespace ARM resource Id.",
+        )
+        context.argument(
+            "mi_user_assigned",
+            options_list=["--mi-user-assigned"],
+            help="User-assigned managed identity resource Id for the EG dataflow endpoint and ADR "
+            "namespace outbound identity. Default: system-assigned managed identity.",
+        )
+        context.argument(
+            "ra_scope",
+            options_list=["--ra-scope"],
+            arg_type=get_enum_type(LiveDataRoleScope),
+            help="Scope for Event Grid role assignments. 'namespace' (default) assigns at the EG "
+            "namespace and is preserved on disable; 'topic-space' assigns at the topic-space "
+            "resource (least privilege) and is removed with the topic space on disable.",
+            arg_group="Role Assignment",
+        )
+        context.argument(
+            "adr_role_ids",
+            options_list=["--adr-role-ids"],
+            nargs="+",
+            help="Custom role Ids for the ADR namespace identity (Subscriber) against the EG namespace. "
+            "Default: 'Event Grid TopicSpaces Subscriber'.",
+            arg_group="Role Assignment",
+        )
+        context.argument(
+            "ops_role_ids",
+            options_list=["--ops-role-ids"],
+            nargs="+",
+            help="Custom role Ids for the AIO instance identity (Publisher) against the EG namespace. "
+            "Default: 'Event Grid TopicSpaces Publisher'.",
+            arg_group="Role Assignment",
         )
 
     with self.argument_context("iot ops schema") as context:
