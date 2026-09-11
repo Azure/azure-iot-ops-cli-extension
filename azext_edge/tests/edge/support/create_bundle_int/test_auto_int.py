@@ -9,7 +9,6 @@ from os import mkdir, path
 from knack.log import get_logger
 from typing import Dict, List, Optional, Tuple
 from azext_edge.edge.common import OpsServiceType
-from azext_edge.edge.providers.support.arcagents import ARC_AGENTS
 from .helpers import (
     assert_file_names,
     process_top_levels,
@@ -113,7 +112,14 @@ def test_create_bundle(cluster_connection, ops_service, bundle_dir, mq_traces, t
 
     # Level 2 and 3 - bottom
     is_billing_included = OpsServiceType.billing.value in expected_services
-    actual_walk_result = len(expected_services) + int(is_billing_included) + len(ARC_AGENTS)
+    arc_agent_count = 0
+    if arc_namespace:
+        arc_agent_path = path.join(BASE_ZIP_PATH, arc_namespace, "arcagents")
+        arc_agent_count = sum(
+            directory.startswith(f"{arc_agent_path}{path.sep}")
+            for directory in walk_result
+        )
+    actual_walk_result = len(expected_services) + int(is_billing_included) + arc_agent_count
 
     assert len(walk_result) == actual_walk_result
 

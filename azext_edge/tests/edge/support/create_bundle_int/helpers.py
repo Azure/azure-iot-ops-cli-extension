@@ -12,7 +12,7 @@ import pytest
 from azure.cli.core.azclierror import CLIInternalError
 from azext_edge.edge.common import OpsServiceType
 from azext_edge.edge.providers.edge_api.base import EdgeApiManager, EdgeResourceApi
-from azext_edge.edge.providers.support.arcagents import ARC_AGENTS
+from azext_edge.edge.providers.support.arcagents import ARC_AGENTS, ARC_TELEMETRY_AGENTS
 from ....helpers import (
     PLURAL_KEY,
     find_extra_or_missing_names,
@@ -487,7 +487,7 @@ def get_file_map(  # noqa: C901
     file_map = {"__namespaces__": {}}
 
     # by default, there will be arc agents, meta and meso in every bundle
-    num_additional_services = len(ARC_AGENTS)
+    num_additional_services = 0
     meta_path = path.join(BASE_ZIP_PATH, aio_namespace, "meta")
     meso_path = path.join(BASE_ZIP_PATH, aio_namespace, "meso")
     if meta_path in walk_result:
@@ -500,7 +500,9 @@ def get_file_map(  # noqa: C901
         file_map["__namespaces__"]["arc"] = arc_namespace
         for agent, _ in ARC_AGENTS:
             agent_path = path.join(BASE_ZIP_PATH, arc_namespace, "arcagents", agent)
-            file_map["arc"][agent] = convert_file_names(walk_result[agent_path]["files"])
+            if agent_path in walk_result:
+                file_map["arc"][agent] = convert_file_names(walk_result[agent_path]["files"])
+        num_additional_services += len(file_map["arc"])
 
     # TODO: explain the magic numbers (1, 2 better). Might need some refactoring too
     if mq_traces and path.join(ops_path, "traces") in walk_result:
@@ -875,7 +877,14 @@ def _clean_up_folders(
         assert not level_2["files"]
     if arc_namespace:
         level_2 = walk_result.pop(path.join(BASE_ZIP_PATH, arc_namespace, "arcagents"))
-        assert level_2["folders"] == [agent[0] for agent in ARC_AGENTS], f"Mismatch; folders: [{level_2['folders']}]"
+        actual_agents = set(level_2["folders"])
+        expected_agents = {agent[0] for agent in ARC_AGENTS}
+        required_agents = expected_agents - set(ARC_TELEMETRY_AGENTS)
+        assert required_agents.issubset(actual_agents), f"Mismatch; folders: [{level_2['folders']}]"
+        assert actual_agents.issubset(expected_agents), f"Unexpected folders: [{level_2['folders']}]"
+        assert actual_agents.intersection(ARC_TELEMETRY_AGENTS), (
+            f"Expected one of {ARC_TELEMETRY_AGENTS}; folders: [{level_2['folders']}]"
+        )
         assert not level_2["files"]
 
 
