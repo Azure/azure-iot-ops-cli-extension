@@ -19,6 +19,7 @@ from azext_edge.edge.providers.orchestration.common import (
     EXTENSION_TYPE_CM,
     EXTENSION_TYPE_OPS,
     EXTENSION_TYPE_SSC,
+    OPCUA_CONNECTOR_TEMPLATE_NAME_PREFIX,
 )
 
 from ....generators import generate_random_string
@@ -220,6 +221,7 @@ def assert_aio_instance(
     location: Optional[str] = None,
     tags: Optional[str] = None,
     trust_settings: Optional[dict] = None,
+    feature: Optional[str] = None,
     **_,
 ):
     # check extensions installed
@@ -281,6 +283,18 @@ def assert_aio_instance(
     assert expected_custom_location in tree
     if not trust_settings:
         assert "cert-manager" in tree
+
+    # OPC UA disabled: the instance must reflect it and no default connector template should exist.
+    if feature and "opcua.mode=disabled" in str(feature).lower():
+        assert instance_props.get("features", {}).get("opcua", {}).get("mode") == "Disabled"
+        templates = run(f"az iot ops connector template list -g {resource_group} --instance {instance_name}") or []
+        default_templates = [
+            t for t in templates if str(t.get("name", "")).startswith(OPCUA_CONNECTOR_TEMPLATE_NAME_PREFIX)
+        ]
+        assert not default_templates, (
+            "Expected no default OPC UA connector template while OPC UA is disabled, found: "
+            f"{[t.get('name') for t in default_templates]}"
+        )
 
 
 def assert_broker_args(

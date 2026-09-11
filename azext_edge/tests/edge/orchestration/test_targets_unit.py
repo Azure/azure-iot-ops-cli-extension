@@ -495,6 +495,62 @@ def test_init_targets_opcua_mode(target_scenario: dict):
 
 
 @pytest.mark.parametrize(
+    "instance_features",
+    [
+        ["opcua.mode=Disabled"],
+    ],
+)
+def test_init_targets_opcua_disabled_omits_connector_template(instance_features):
+    """When opcua.mode=Disabled, the OPC UA akriConnectorTemplates resource must be omitted from
+    the full and RESOURCES templates. With the feature off the OPC UA supervisor is never deployed,
+    so the resource would never reach a terminal provisioning state and would hang `az iot ops create`.
+    """
+    targets = InitTargets(
+        cluster_name=generate_random_string(),
+        resource_group_name=generate_random_string(),
+        schema_registry_resource_id=get_schema_registry_id(),
+        adr_namespace_resource_id=get_ns_resource_id(),
+        instance_name=generate_random_string(),
+        instance_features=instance_features,
+    )
+    extension_ids = [generate_random_string()]
+
+    for phase in (None, InstancePhase.RESOURCES):
+        template, _ = targets.get_ops_instance_template(extension_ids, phase=phase)
+        assert "opcUaConnectorTemplate" not in template["resources"], (
+            f"Phase {phase}: opcUaConnectorTemplate must be omitted when opcua.mode=Disabled."
+        )
+
+
+@pytest.mark.parametrize(
+    "instance_features",
+    [
+        None,
+        ["opcua.mode=Stable"],
+    ],
+)
+def test_init_targets_opcua_enabled_keeps_connector_template(instance_features):
+    """OPC UA enabled (default or Stable) must still deploy the connector template; the disabled
+    guard must not over-remove it.
+    """
+    targets = InitTargets(
+        cluster_name=generate_random_string(),
+        resource_group_name=generate_random_string(),
+        schema_registry_resource_id=get_schema_registry_id(),
+        adr_namespace_resource_id=get_ns_resource_id(),
+        instance_name=generate_random_string(),
+        instance_features=instance_features,
+    )
+    extension_ids = [generate_random_string()]
+
+    for phase in (None, InstancePhase.RESOURCES):
+        template, _ = targets.get_ops_instance_template(extension_ids, phase=phase)
+        assert "opcUaConnectorTemplate" in template["resources"], (
+            f"Phase {phase}: opcUaConnectorTemplate must be present when opcua is enabled."
+        )
+
+
+@pytest.mark.parametrize(
     "cm_config, expected_config",
     [
         (None, get_default_cm_config()),

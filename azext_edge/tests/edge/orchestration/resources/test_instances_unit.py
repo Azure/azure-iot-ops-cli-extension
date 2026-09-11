@@ -631,6 +631,31 @@ def test_instance_update_opcua_mode(
         content_type="application/json",
     )
 
+    # Enabling OPC UA triggers a backfill: list existing templates, create the default if absent.
+    new_opcua_mode = features_scenario["expected"].get("opcua", {}).get("mode")
+    expects_backfill = new_opcua_mode not in (None, "Disabled")
+    if expects_backfill:
+        base_url = instance_endpoint.split("?")[0]
+        list_re = re.compile(re.escape(base_url) + r"/akriConnectorTemplates(\?|$)")
+        mocked_responses.add(
+            method=responses.GET,
+            url=list_re,
+            json={"value": []},
+            status=200,
+            content_type="application/json",
+        )
+        create_re = re.compile(re.escape(base_url) + r"/akriConnectorTemplates/[^/?]+")
+        mocked_responses.add(
+            method=responses.PUT,
+            url=create_re,
+            json={
+                "name": "azureiotoperationsconnectorforopcua-abcd",
+                "properties": {"provisioningState": "Succeeded"},
+            },
+            status=200,
+            content_type="application/json",
+        )
+
     result = update_instance(
         cmd=mocked_cmd,
         instance_name=instance_name,
@@ -638,11 +663,16 @@ def test_instance_update_opcua_mode(
         instance_features=features_scenario["inputs"],
         wait_sec=0,
     )
-    assert len(mocked_responses.calls) == 2
 
     update_request = json.loads(mocked_responses.calls[1].request.body)
     assert update_request["properties"]["features"] == features_scenario["expected"]
     assert result == updated_record
+
+    if expects_backfill:
+        put_paths = [c.request.url for c in mocked_responses.calls if c.request.method == "PUT"]
+        assert any("/akriConnectorTemplates/" in p for p in put_paths), "expected connector template backfill PUT"
+    else:
+        assert len(mocked_responses.calls) == 2
 
 
 @pytest.mark.parametrize(
