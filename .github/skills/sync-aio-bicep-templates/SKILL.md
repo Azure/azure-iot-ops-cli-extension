@@ -600,6 +600,13 @@ After editing:
    echo "===== INSTANCE (azure-iot-operations-instance.bicep) ====="
    jq '{ _generator: .metadata._generator, VERSIONS: .variables.VERSIONS, TRAINS: .variables.TRAINS }' temp-instance.json
 
+  # ---- OPC UA connectors image tag -> common.OPCUA_CONNECTOR_VERSION ----
+  # Key-agnostic: the tag lives under a Bicep-mangled loadJsonContent variable ($fxv#N),
+  # so search all objects for connectors.image.tag instead of hard-coding the key name.
+  echo
+  echo "===== OPC UA CONNECTOR VERSION (-> OPCUA_CONNECTOR_VERSION in common.py) ====="
+  jq -r 'first(.. | objects | select(.connectors?.image?.tag) | .connectors.image.tag) // "NOT FOUND"' temp-instance.json
+
    echo
    echo "===== ENABLEMENT (azure-iot-operations-enablement.bicep) ====="
    jq '{ _generator: .metadata._generator, VERSIONS: .variables.VERSIONS, TRAINS: .variables.TRAINS }' temp-enablement.json
