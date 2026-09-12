@@ -7,6 +7,8 @@ updates:
       interval: "weekly"
     commit-message:
       prefix: "chore(actions-deps)"
+    cooldown:
+      default-days: 7
 
   # Enable daily version updates for pip
   - package-ecosystem: "pip"
