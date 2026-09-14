@@ -87,6 +87,16 @@ def upgrade_ops_instance(
 
     upgrade_state = upgrade_manager.analyze_cluster(**kwargs)
 
+    stale_monikers = upgrade_state.get_stale_cli_extensions()
+    if stale_monikers:
+        logger.warning(
+            "This azure-iot-ops CLI extension has no newer version to offer for: %s. "
+            "The version deployed on the cluster is newer than the version built into this CLI. "
+            "No deployed version of the listed extensions will be changed. "
+            "Run 'az extension update --name azure-iot-ops' to pick up newer versions.",
+            ", ".join(stale_monikers),
+        )
+
     if not upgrade_state.has_upgrades():
         logger.warning("Nothing to upgrade :)")
         return
@@ -480,17 +490,27 @@ def format_extension_row(ext: "ExtensionUpgradeState") -> Tuple[str, str, str]:
 
         # UPDATE operation
         current = format_version_with_train(ext.current_version[0], ext.current_version[1]) + status_indicator
-        desired = f"[cyan]{format_version_with_train(ext.desired_version[0], ext.desired_version[1])}[/cyan]"
 
         patch = ext.get_patch()
+        props = patch.get("properties", {})
+
+        desired_state = format_version_with_train(
+            props.get("version", ext.current_version[0]),
+            props.get("releaseTrain", ext.current_version[1]),
+        )
+        desired_style = "cyan" if ("version" in props or "releaseTrain" in props) else "dim"
+        desired = f"[{desired_style}]{desired_state}[/{desired_style}]"
+
         if not patch or "properties" not in patch:
             return current, desired, "[dim]No changes[/dim]"
 
-        props = patch.get("properties", {})
         action_lines = []
 
         if "version" in props:
-            action_lines.append(f"[cyan]•[/cyan] Update version to [bold]{props['version']}[/bold]")
+            if props["version"] == ext.current_version[0]:
+                action_lines.append(f"[cyan]•[/cyan] Reconcile at version [bold]{props['version']}[/bold]")
+            else:
+                action_lines.append(f"[cyan]•[/cyan] Update version to [bold]{props['version']}[/bold]")
 
         if "releaseTrain" in props:
             action_lines.append(f"[cyan]•[/cyan] Change release train to [bold]{props['releaseTrain']}[/bold]")
@@ -780,6 +800,9 @@ class ClusterUpgradeState:
             or bool(self.connector_template_needed)
             or bool(self.secretsync_migration_needed)
         )
+
+    def get_stale_cli_extensions(self) -> List[str]:
+        return [ext_state.moniker for ext_state in self.extension_upgrades if ext_state.is_cli_behind_cluster()]
 
     def _check_instance_upgrade(self) -> bool:
         """Check if instance needs updates.
@@ -1089,6 +1112,23 @@ class ExtensionUpgradeState:
             return "N/A"
         return self.extension.get("properties", {}).get("provisioningState", "Unknown")
 
+    def is_cli_behind_cluster(self) -> bool:
+        if self.operation_type != ExtensionOperation.UPDATE:
+            return False
+
+        # An explicit --ops-version, not the built-in default, decides what gets sent.
+        if self.override.version:
+            return False
+
+        built_in_version = self.desired_version_map.get("version")
+        if not built_in_version or not self.current_version[0]:
+            return False
+
+        try:
+            return self.semver.parse(built_in_version) < self.semver.parse(self.current_version[0])
+        except (ValueError, TypeError):
+            return False
+
     def can_upgrade(self) -> bool:
         if self.operation_type in [ExtensionOperation.CREATE, ExtensionOperation.DELETE]:
             return True
@@ -1118,9 +1158,10 @@ class ExtensionUpgradeState:
             "properties": {},
         }
 
-        if self._has_delta_in_version() or self._has_non_success_state():
-            self._validate_version_upgrade()
-            payload["properties"]["version"] = self.desired_version[0]
+        target_version = self._validate_and_resolve_version()
+        if target_version:
+            payload["properties"]["version"] = target_version
+
         if self._has_delta_in_train():
             payload["properties"]["releaseTrain"] = self.desired_version[1]
         if self._has_delta_in_config():
@@ -1155,10 +1196,36 @@ class ExtensionUpgradeState:
         Raises:
             ValidationError: If the upgrade is not valid (e.g., downgrade, incompatible versions).
         """
-        # Always validate if there's an override version (user explicitly requested upgrade)
-        # or if there's a version delta or non-success state
-        if self._has_delta_in_version() or self._has_non_success_state():
+        if self.operation_type != ExtensionOperation.UPDATE:
+            return
+
+        self._validate_and_resolve_version()
+
+    def _validate_and_resolve_version(self) -> Optional[str]:
+        if self._has_delta_in_version():
             self._validate_version_upgrade()
+            return self.desired_version[0]
+
+        if self._has_non_success_state():
+            reconcile_version = self._get_reconcile_version()
+            if not reconcile_version:
+                raise ValidationError(
+                    f"Unable to determine installed version for {self.moniker} extension. "
+                    "Cannot validate upgrade path."
+                )
+            # A failed extension can have a version but no releaseTrain. Calling _validate_version_upgrade()
+            # unconditionally then raises "Unable to determine release train" even though the patch only
+            # reapplies the current version and sends no train.
+            if self._has_delta_in_train():
+                self._validate_version_upgrade(target_version=reconcile_version)
+            return reconcile_version
+
+        return None
+
+    def _get_reconcile_version(self) -> Optional[str]:
+        if self.current_version[0]:
+            return self.current_version[0]
+        return self.desired_version[0] if self.force else None
 
     def _should_migrate_mqtt_config(self) -> bool:
         if not self.extension:
@@ -1300,7 +1367,7 @@ class ExtensionUpgradeState:
         """
         return self.provisioning_state.lower() != PROVISIONING_STATE_SUCCESS.lower()
 
-    def _validate_version_upgrade(self):
+    def _validate_version_upgrade(self, target_version: Optional[str] = None):
         # Skip validation for CREATE/DELETE operations
         if self.operation_type in [ExtensionOperation.CREATE, ExtensionOperation.DELETE]:
             return
@@ -1308,12 +1375,14 @@ class ExtensionUpgradeState:
         if self.force:
             return
 
+        target_version = target_version or self.desired_version[0]
+
         # Validate required fields are present
         if not self.current_version[0]:
             raise ValidationError(
                 f"Unable to determine installed version for {self.moniker} extension. Cannot validate upgrade path."
             )
-        if not self.desired_version[0]:
+        if not target_version:
             raise ValidationError(
                 f"Unable to determine target version for {self.moniker} extension. Cannot validate upgrade path."
             )
@@ -1329,7 +1398,7 @@ class ExtensionUpgradeState:
             )
 
         parsed_current = self.semver.parse(self.current_version[0])
-        parsed_desired = self.semver.parse(self.desired_version[0])
+        parsed_desired = self.semver.parse(target_version)
 
         current_is_preview = self.current_version[1].lower() != "stable"
         desired_is_preview = self.desired_version[1].lower() != "stable"
@@ -1338,7 +1407,7 @@ class ExtensionUpgradeState:
         if parsed_desired < parsed_current:
             raise ValidationError(
                 f"Installed {self.moniker} extension version is {self.current_version[0]}.\n"
-                f"The desired {self.desired_version[0]} version is a downgrade which is not supported."
+                f"The desired {target_version} version is a downgrade which is not supported."
             )
 
         if self.moniker != EXTENSION_MONIKER_OPS:
@@ -1348,14 +1417,14 @@ class ExtensionUpgradeState:
         if parsed_desired.major != parsed_current.major:
             raise ValidationError(
                 f"Installed {self.moniker} extension version is {self.current_version[0]}.\n"
-                f"The desired {self.desired_version[0]} version is incompatible (different major version)."
+                f"The desired {target_version} version is incompatible (different major version)."
             )
 
         minor_diff = parsed_desired.minor - parsed_current.minor
         if minor_diff > 2:
             raise ValidationError(
                 f"Installed {self.moniker} extension version is {self.current_version[0]}.\n"
-                f"The desired {self.desired_version[0]} version is incompatible (more than 2 minor versions ahead)."
+                f"The desired {target_version} version is incompatible (more than 2 minor versions ahead)."
             )
 
         min_v2_semver_broker_upgrade = self.semver.parse(MIN_INSTANCE_VERSION_V1_FOR_V2_UPGRADE)
@@ -1363,7 +1432,7 @@ class ExtensionUpgradeState:
         if parsed_current < min_v2_semver_broker_upgrade and parsed_desired >= min_v2_semver:
             raise ValidationError(
                 f"Installed {self.moniker} extension version is {self.current_version[0]}.\n"
-                f"The desired {self.desired_version[0]} version is incompatible "
+                f"The desired {target_version} version is incompatible "
                 f"(min compatible upgrade version {min_v2_semver_broker_upgrade}).\n"
                 f"Please first upgrade to at least {min_v2_semver_broker_upgrade}/AIO2506. "
                 "See https://aka.ms/aio-versions for version details."

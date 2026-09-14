@@ -947,7 +947,7 @@ def assert_upgrade_headers(headers: Dict[str, str]):
 
 def assert_no_upgrades_performed(upgrade_result, logger_mock):
     assert upgrade_result is None
-    logger_mock.warning.assert_called_once_with(DEFAULT_LOG_WARNING_MESSAGE)
+    logger_mock.warning.assert_called_with(DEFAULT_LOG_WARNING_MESSAGE)
 
 
 def assert_retry_count(mock_response, expected_count: int = DEFAULT_RETRY_COUNT):
@@ -1284,6 +1284,12 @@ def assert_operation_order(target_scenario: UpgradeScenario, upgrade_result: Lis
         (
             UpgradeScenario("Failed state: Re-apply current version").with_failed_extension(EXTENSION_TYPE_OPS),
             {EXTENSION_TYPE_OPS: build_extension_props(EXTENSION_TYPE_OPS, version=BUILT_IN_VALUE)},
+        ),
+        (
+            UpgradeScenario("Failed state: Re-apply current version with a stale CLI").set_extension(
+                ext_type=EXTENSION_TYPE_OPS, ext_vers="9.9.9", provisioning_state=PROVISIONING_STATE_FAILED
+            ),
+            {EXTENSION_TYPE_OPS: build_extension_props(EXTENSION_TYPE_OPS, version="9.9.9")},
         ),
         (
             UpgradeScenario("Failed state: With version upgrade")
@@ -2799,4 +2805,348 @@ def test_opcua_connector_version_matches_template_tag():
         f"OPCUA_CONNECTOR_VERSION constant ({OPCUA_CONNECTOR_VERSION}) does not match the connectors "
         f"tag stamped by the instance template ({template_tag}); update the constant during the "
         "release bump so create and upgrade stamp the same tag."
+    )
+
+
+def build_ext_upgrade_state(
+    ext_type: str = EXTENSION_TYPE_CM,
+    current_version: Optional[str] = "1.4.73",
+    current_train: Optional[str] = "stable",
+    built_in_version: Optional[str] = "1.3.105",
+    built_in_train: Optional[str] = "stable",
+    provisioning_state: str = PROVISIONING_STATE_SUCCESS,
+    version_override: Optional[str] = None,
+    train_override: Optional[str] = None,
+    desired_config: Optional[Dict[str, str]] = None,
+    force: bool = False,
+    operation_type=None,
+):
+    """Build an ExtensionUpgradeState directly, bypassing cluster discovery."""
+    from azext_edge.edge.providers.orchestration.upgrade2 import ConfigOverride, ExtensionUpgradeState
+
+    props: Dict[str, str] = {"extensionType": ext_type, "provisioningState": provisioning_state}
+    if current_version:
+        props["version"] = current_version
+    if current_train:
+        props["releaseTrain"] = current_train
+
+    return ExtensionUpgradeState(
+        extension={"name": generate_random_string(), "properties": props},
+        desired_version_map={"version": built_in_version, "train": built_in_train},
+        desired_config=desired_config,
+        override=ConfigOverride(version=version_override, train=train_override),
+        force=force,
+        operation_type=operation_type,
+    )
+
+
+def test_desired_state_ignores_built_in_target_when_no_version_is_sent():
+    """Only configuration is sent, so Desired State must report the version that stays deployed."""
+    from azext_edge.edge.providers.orchestration.upgrade2 import format_extension_row
+
+    ext = build_ext_upgrade_state(desired_config={"a": "b"})
+    current, desired, action = format_extension_row(ext)
+
+    assert "version" not in ext.get_patch()["properties"]
+    assert "1.4.73" in current
+    assert "1.4.73" in desired
+    assert "1.3.105" not in desired
+    assert "[dim]" in desired
+    assert "cyan" not in desired
+    assert "Set a: [bold]b[/bold]" in action
+
+
+def test_desired_state_version_only_patch_keeps_current_train():
+    """A user supplied version suppresses the train delta, so the train must not come from the map."""
+    from azext_edge.edge.providers.orchestration.upgrade2 import format_extension_row
+
+    ext = build_ext_upgrade_state(built_in_version="1.5.0", built_in_train="preview", version_override="1.6.0")
+    _, desired, _ = format_extension_row(ext)
+
+    assert "releaseTrain" not in ext.get_patch()["properties"]
+    assert "1.6.0" in desired
+    assert "stable" in desired
+    assert "preview" not in desired
+
+
+@pytest.mark.parametrize(
+    "built_in_version,provisioning_state,expected_action,rejected_action",
+    [
+        pytest.param(
+            "1.3.105",
+            PROVISIONING_STATE_FAILED,
+            "Reconcile at version [bold]1.4.73[/bold]",
+            "Update version to",
+            id="same-version retry reads as reconcile",
+        ),
+        pytest.param(
+            "1.5.0",
+            PROVISIONING_STATE_SUCCESS,
+            "Update version to [bold]1.5.0[/bold]",
+            "Reconcile at version",
+            id="real upgrade still reads as update",
+        ),
+    ],
+)
+def test_action_distinguishes_reconcile_from_update(
+    built_in_version, provisioning_state, expected_action, rejected_action
+):
+    from azext_edge.edge.providers.orchestration.upgrade2 import format_extension_row
+
+    ext = build_ext_upgrade_state(built_in_version=built_in_version, provisioning_state=provisioning_state)
+    _, desired, action = format_extension_row(ext)
+
+    assert expected_action in action
+    assert rejected_action not in action
+    assert "1.3.105" not in desired
+
+
+def test_failed_non_ops_extension_no_longer_renders_unknown():
+    from azext_edge.edge.providers.orchestration.upgrade2 import format_extension_row
+
+    ext = build_ext_upgrade_state(ext_type=EXTENSION_TYPE_CM, provisioning_state=PROVISIONING_STATE_FAILED)
+
+    assert ext.can_upgrade() is True
+    current, desired, action = format_extension_row(ext)
+
+    assert "Unknown" not in current + desired + action
+    assert "Check configuration" not in action
+    assert ext.get_patch()["properties"]["version"] == "1.4.73"
+
+
+@pytest.mark.parametrize(
+    "built_in_version,provisioning_state,force,expected_version",
+    [
+        pytest.param("1.5.0", PROVISIONING_STATE_SUCCESS, False, "1.5.0", id="real upgrade"),
+        pytest.param("1.5.0", PROVISIONING_STATE_FAILED, False, "1.5.0", id="real upgrade over a failed state"),
+        pytest.param(
+            "1.3.105",
+            PROVISIONING_STATE_FAILED,
+            False,
+            "1.4.73",
+            id="stale CLI repairs a failed extension",
+        ),
+        pytest.param("1.4.73", PROVISIONING_STATE_FAILED, False, "1.4.73", id="same-version retry"),
+        pytest.param("1.3.105", PROVISIONING_STATE_FAILED, True, "1.4.73", id="force alone never downgrades"),
+        pytest.param("1.3.105", PROVISIONING_STATE_SUCCESS, True, None, id="force alone sends nothing"),
+    ],
+)
+def test_get_patch_version_selection(built_in_version, provisioning_state, force, expected_version):
+    ext = build_ext_upgrade_state(built_in_version=built_in_version, provisioning_state=provisioning_state, force=force)
+
+    ext.validate_upgrade()
+    assert ext.get_patch().get("properties", {}).get("version") == expected_version
+
+
+def test_failed_extension_without_installed_version_is_bypassed_by_force():
+    ext = build_ext_upgrade_state(current_version=None, provisioning_state=PROVISIONING_STATE_FAILED, force=True)
+
+    ext.validate_upgrade()
+    assert ext.get_patch()["properties"]["version"] == "1.3.105"
+
+
+def test_failed_extension_never_emits_a_null_version():
+    """Extensions absent from the built-in map must raise rather than patch "version": None."""
+    ext = build_ext_upgrade_state(
+        current_version=None,
+        built_in_version=None,
+        provisioning_state=PROVISIONING_STATE_FAILED,
+        force=True,
+    )
+
+    with pytest.raises(ValidationError, match="Unable to determine installed version"):
+        ext.validate_upgrade()
+    with pytest.raises(ValidationError, match="Unable to determine installed version"):
+        ext.get_patch()
+
+
+@pytest.mark.parametrize("op_type_name", ["CREATE", "DELETE"])
+def test_validate_upgrade_skips_non_update_operations(op_type_name):
+    from azext_edge.edge.providers.orchestration.upgrade2 import ExtensionOperation
+
+    ext = build_ext_upgrade_state(
+        current_version=None,
+        provisioning_state=PROVISIONING_STATE_FAILED,
+        operation_type=getattr(ExtensionOperation, op_type_name),
+    )
+
+    ext.validate_upgrade()
+    assert not ext.get_patch()
+
+
+@pytest.mark.parametrize(
+    "built_in_train,train_override",
+    [
+        pytest.param("preview", None, id="train delta from built-in target"),
+        pytest.param("stable", "preview", id="train delta from --ops-train override"),
+    ],
+)
+def test_reconcile_cannot_bypass_release_train_guard(built_in_train, train_override):
+    """Both routes are covered: an --ops-train override short circuits before the version compare."""
+    ext = build_ext_upgrade_state(
+        ext_type=EXTENSION_TYPE_OPS,
+        built_in_version="1.4.73",
+        built_in_train=built_in_train,
+        train_override=train_override,
+        provisioning_state=PROVISIONING_STATE_FAILED,
+    )
+
+    with pytest.raises(ValidationError, match="non-stable release trains are not supported"):
+        ext.validate_upgrade()
+    with pytest.raises(ValidationError, match="non-stable release trains are not supported"):
+        ext.get_patch()
+
+
+def test_reconcile_train_delta_validates_the_version_the_patch_sends():
+    # A train override re-runs the guard, it must compare the reconcile version, not the stale built-in.
+    ext = build_ext_upgrade_state(
+        ext_type=EXTENSION_TYPE_OPS,
+        current_version="1.4.73",
+        built_in_version="1.3.105",
+        train_override="stable",
+        provisioning_state=PROVISIONING_STATE_FAILED,
+    )
+
+    ext.validate_upgrade()
+
+    assert ext.get_patch()["properties"]["version"] == "1.4.73"
+
+
+def test_reconcile_repairs_a_failed_extension_on_a_preview_train():
+    ext = build_ext_upgrade_state(
+        ext_type=EXTENSION_TYPE_OPS,
+        current_version="1.4.73",
+        current_train="preview",
+        built_in_version="1.3.105",
+        built_in_train="preview",
+        provisioning_state=PROVISIONING_STATE_FAILED,
+    )
+
+    ext.validate_upgrade()
+
+    assert ext.get_patch()["properties"]["version"] == "1.4.73"
+
+
+@pytest.mark.parametrize("provisioning_state", [PROVISIONING_STATE_SUCCESS, PROVISIONING_STATE_FAILED])
+def test_explicit_downgrade_still_blocked(provisioning_state):
+    ext = build_ext_upgrade_state(version_override="1.0.0", provisioning_state=provisioning_state)
+
+    with pytest.raises(ValidationError, match="downgrade which is not supported"):
+        ext.validate_upgrade()
+    with pytest.raises(ValidationError, match="downgrade which is not supported"):
+        ext.get_patch()
+
+
+@pytest.mark.parametrize("provisioning_state", [PROVISIONING_STATE_SUCCESS, PROVISIONING_STATE_FAILED])
+def test_explicit_downgrade_allowed_with_force(provisioning_state):
+    ext = build_ext_upgrade_state(version_override="1.0.0", provisioning_state=provisioning_state, force=True)
+
+    ext.validate_upgrade()
+    assert ext.get_patch()["properties"]["version"] == "1.0.0"
+
+
+@pytest.mark.parametrize(
+    "built_in_version,current_version,version_override,operation_type_name,expected",
+    [
+        ("1.3.105", "1.4.73", None, None, True),
+        ("1.5.0", "1.4.73", None, None, False),
+        ("1.4.73", "1.4.73", None, None, False),
+        # An explicit version override decides what is sent, so a stale built-in must not warn.
+        ("1.4.73", "1.4.73", "1.0.0", None, False),
+        ("1.4.73", "1.4.90", "1.5.0", None, False),
+        ("1.3.105", "1.4.73", "1.4.73", None, False),
+        (None, "1.4.73", None, None, False),
+        ("1.3.105", None, None, None, False),
+        ("1.3.105", "not-a-version", None, None, False),
+        ("1.3.105", "1.4.73", None, "DELETE", False),
+        ("1.3.105", "1.4.73", None, "CREATE", False),
+    ],
+)
+def test_is_cli_behind_cluster(built_in_version, current_version, version_override, operation_type_name, expected):
+    from azext_edge.edge.providers.orchestration.upgrade2 import ExtensionOperation
+
+    ext = build_ext_upgrade_state(
+        built_in_version=built_in_version,
+        current_version=current_version,
+        version_override=version_override,
+        operation_type=getattr(ExtensionOperation, operation_type_name) if operation_type_name else None,
+    )
+    assert ext.is_cli_behind_cluster() is expected
+
+
+@pytest.mark.parametrize("bad_version", [1.4, 14073, ["1.4.73"]])
+def test_stale_cli_check_is_best_effort_on_a_malformed_version(bad_version):
+    ext = build_ext_upgrade_state(current_version=bad_version)
+    assert ext.is_cli_behind_cluster() is False
+
+
+def test_stale_cli_warning_precedes_no_op_return(
+    mocked_cmd: Mock,
+    mocked_responses: responses,
+    mocked_logger: Mock,
+    mocked_sleep: Mock,
+    spy_upgrade_displays: Dict[str, Mock],
+    mocked_confirm: Mock,
+    mocked_upgrade_manager: Mock,
+):
+    from azext_edge.edge.commands_edge import upgrade_instance
+
+    resource_group_name = generate_random_string()
+    instance_name = generate_random_string()
+
+    target_scenario = UpgradeScenario("Stale CLI: deployed version ahead of built-in target").set_extension(
+        ext_type=EXTENSION_TYPE_CM, ext_vers="9.9.9"
+    )
+    target_scenario.set_instance_mock(
+        mocked_responses=mocked_responses, instance_name=instance_name, resource_group_name=resource_group_name
+    )
+
+    assert (
+        upgrade_instance(
+            cmd=mocked_cmd,
+            resource_group_name=resource_group_name,
+            instance_name=instance_name,
+            no_progress=True,
+            confirm_yes=True,
+        )
+        is None
+    )
+
+    warning_calls = mocked_logger.warning.call_args_list
+    assert len(warning_calls) == 2
+    advisory = warning_calls[0].args[0]
+    assert "newer than the version built into this CLI" in advisory
+    assert "No deployed version of the listed extensions will be changed" in advisory
+    assert "--force" not in advisory
+    assert warning_calls[0].args[1] == EXTENSION_TYPE_TO_MONIKER_MAP[EXTENSION_TYPE_CM]
+    assert warning_calls[1].args[0] == DEFAULT_LOG_WARNING_MESSAGE
+
+
+@pytest.mark.parametrize("ext_type", [EXTENSION_TYPE_OPS, EXTENSION_TYPE_CM])
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        pytest.param({"version_override": "1.0.0"}, id="downgrade"),
+        pytest.param({"built_in_version": "1.5.0"}, id="upgrade"),
+        pytest.param({"provisioning_state": PROVISIONING_STATE_FAILED}, id="reconcile"),
+        pytest.param(
+            {"provisioning_state": PROVISIONING_STATE_FAILED, "built_in_train": "preview"}, id="train-guard"
+        ),
+        pytest.param(
+            {"provisioning_state": PROVISIONING_STATE_FAILED, "current_version": None}, id="no-installed-version"
+        ),
+    ],
+)
+def test_validate_upgrade_and_get_patch_have_same_validation_outcome(ext_type, kwargs):
+    """Both entry points resolve the target through the same helper, so their validation must agree."""
+
+    def outcome(call) -> Optional[str]:
+        try:
+            call()
+            return None
+        except ValidationError as e:
+            return str(e)
+
+    assert outcome(build_ext_upgrade_state(ext_type=ext_type, **kwargs).validate_upgrade) == outcome(
+        build_ext_upgrade_state(ext_type=ext_type, **kwargs).get_patch
     )
