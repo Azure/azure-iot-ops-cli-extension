@@ -676,6 +676,125 @@ def test_instance_update_opcua_mode(
 
 
 @pytest.mark.parametrize(
+    "existing_templates, expects_create, expected_create_name",
+    [
+        # No template present -> create the default.
+        ([], True, None),
+        # Succeeded default template -> left untouched (no overwrite of customizations).
+        (
+            [{"name": "azureiotoperationsconnectorforopcua-abcd", "properties": {"provisioningState": "Succeeded"}}],
+            False,
+            None,
+        ),
+        # Bicep-named template (prefix + uniqueString suffix), Succeeded -> not duplicated.
+        (
+            [{"name": "azureiotoperationsconnectorforopcua-e5c0", "properties": {"provisioningState": "Succeeded"}}],
+            False,
+            None,
+        ),
+        # Failed template -> repaired under its existing name.
+        (
+            [{"name": "azureiotoperationsconnectorforopcua-fail", "properties": {"provisioningState": "Failed"}}],
+            True,
+            "azureiotoperationsconnectorforopcua-fail",
+        ),
+        # Only a non-adopt (custom) template exists -> the default is still created.
+        ([{"name": "my-custom-opcua", "properties": {"provisioningState": "Succeeded"}}], True, None),
+    ],
+)
+def test_instance_update_opcua_backfill(
+    mocked_cmd,
+    mocked_responses: responses,
+    existing_templates: list,
+    expects_create: bool,
+    expected_create_name: Optional[str],
+):
+    """Re-enabling OPC UA reuses the existence check: a Succeeded or Bicep-named template is left
+    untouched, a Failed one is repaired under its existing name, and only a missing default is
+    created."""
+    mocked_responses.assert_all_requests_are_fired = False
+    instance_name = generate_random_string()
+    resource_group_name = generate_random_string()
+    instance_endpoint = get_instance_endpoint(resource_group_name=resource_group_name, instance_name=instance_name)
+    base_url = instance_endpoint.split("?")[0]
+
+    initial_record = get_mock_instance_record(
+        name=instance_name, resource_group_name=resource_group_name, features={"opcua": {"mode": "Disabled"}}
+    )
+    mocked_responses.add(method=responses.GET, url=instance_endpoint, json=initial_record, status=200)
+    updated_record = get_mock_instance_record(
+        name=instance_name, resource_group_name=resource_group_name, features={"opcua": {"mode": "Stable"}}
+    )
+    mocked_responses.add(method=responses.PUT, url=instance_endpoint, json=updated_record, status=200)
+
+    list_re = re.compile(re.escape(base_url) + r"/akriConnectorTemplates(\?|$)")
+    mocked_responses.add(method=responses.GET, url=list_re, json={"value": existing_templates}, status=200)
+
+    created = {}
+
+    def create_cb(request):
+        created["name"] = request.path_url.split("?")[0].split("/")[-1]
+        body = json.loads(request.body)
+        body["properties"] = {**body.get("properties", {}), "provisioningState": "Succeeded"}
+        return (200, {"content-type": "application/json"}, json.dumps(body))
+
+    create_re = re.compile(re.escape(base_url) + r"/akriConnectorTemplates/[^/?]+")
+    mocked_responses.add_callback(method=responses.PUT, url=create_re, callback=create_cb)
+
+    update_instance(
+        cmd=mocked_cmd,
+        instance_name=instance_name,
+        resource_group_name=resource_group_name,
+        instance_features=["opcua.mode=Stable"],
+        wait_sec=0,
+    )
+
+    template_puts = [
+        c for c in mocked_responses.calls if c.request.method == "PUT" and "/akriConnectorTemplates/" in c.request.url
+    ]
+    if expects_create:
+        assert template_puts, "expected the default connector template to be created"
+        if expected_create_name:
+            assert created["name"] == expected_create_name
+        else:
+            assert created["name"].startswith("azureiotoperationsconnectorforopcua-")
+    else:
+        assert not template_puts, "connector template must not be created or overwritten"
+
+
+def test_instance_update_opcua_backfill_surfaces_list_error(mocked_cmd, mocked_responses: responses):
+    """A transient template-list failure during re-enable surfaces instead of silently reporting
+    success with no connector template."""
+    instance_name = generate_random_string()
+    resource_group_name = generate_random_string()
+    instance_endpoint = get_instance_endpoint(resource_group_name=resource_group_name, instance_name=instance_name)
+    base_url = instance_endpoint.split("?")[0]
+
+    initial_record = get_mock_instance_record(
+        name=instance_name, resource_group_name=resource_group_name, features={"opcua": {"mode": "Disabled"}}
+    )
+    mocked_responses.add(method=responses.GET, url=instance_endpoint, json=initial_record, status=200)
+    updated_record = get_mock_instance_record(
+        name=instance_name, resource_group_name=resource_group_name, features={"opcua": {"mode": "Stable"}}
+    )
+    mocked_responses.add(method=responses.PUT, url=instance_endpoint, json=updated_record, status=200)
+
+    list_re = re.compile(re.escape(base_url) + r"/akriConnectorTemplates(\?|$)")
+    mocked_responses.add(
+        method=responses.GET, url=list_re, json={"error": {"code": "Internal", "message": "boom"}}, status=500
+    )
+
+    with pytest.raises(HttpResponseError):
+        update_instance(
+            cmd=mocked_cmd,
+            instance_name=instance_name,
+            resource_group_name=resource_group_name,
+            instance_features=["opcua.mode=Stable"],
+            wait_sec=0,
+        )
+
+
+@pytest.mark.parametrize(
     "spc_name",
     [None, generate_random_string()],
 )

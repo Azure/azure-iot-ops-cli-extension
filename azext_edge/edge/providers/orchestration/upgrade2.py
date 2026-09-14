@@ -220,9 +220,15 @@ class UpgradeManager:
         # Disabled: no supervisor reconciles the template, so its PUT never reaches a terminal state.
         if opcua_mode == "Disabled":
             return False, None
-        needed, repair_name = self.connector_templates.check_default_opcua_template_needed(
-            instance_name=self.instance_name, resource_group_name=self.resource_group_name
-        )
+        try:
+            needed, repair_name = self.connector_templates.check_default_opcua_template_needed(
+                instance_name=self.instance_name, resource_group_name=self.resource_group_name
+            )
+        except HttpResponseError as e:
+            # Upgrade re-evaluates every run and has not mutated the instance, so a transient list
+            # failure is non-fatal here; treat it as nothing to do.
+            logger.debug(f"Error checking OPC UA connector template: {e}")
+            return False, None
         self._opcua_template_name_to_repair = repair_name
         return needed, repair_name
 
