@@ -38,8 +38,9 @@ scenarios:
     parallel: false
 
   - name: redeploy
-    description: "Redeployment tests"
+    description: "Redeployment tests (OPC UA disabled)"
     test_redeploy: true
+    create_args: "--feature opcua.mode=Disabled"
 
   - name: trustbundle
     description: "Workload identity tests"

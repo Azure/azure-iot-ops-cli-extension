@@ -22,7 +22,7 @@ import tarfile
 import tempfile
 from contextlib import nullcontext
 import hashlib
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING, List, Optional, Tuple
 
 from azure.cli.core.azclierror import (
     InvalidArgumentValueError,
@@ -289,6 +289,34 @@ class ConnectorTemplates(Queryable):
                 headers=headers or {},
             )
             return wait_for_terminal_state(poller=poller, logger=logger)
+
+    def check_default_opcua_template_needed(
+        self,
+        instance_name: str,
+        resource_group_name: str,
+    ) -> Tuple[bool, Optional[str]]:
+        """Return (needed, repair_name) for the default OPC UA connector template.
+
+        A prefix-matching template in a terminal ``Failed`` state is repaired in place by reusing
+        its name (``repair_name``); a ``Succeeded`` or transient template is left untouched so user
+        customizations and in-flight provisioning are preserved. If none exists, a new default is
+        needed. Shared by the upgrade backfill and the update re-enable path.
+
+        List failures propagate; the caller decides whether to surface them (update, which has
+        already mutated the instance) or ignore them (upgrade, which re-evaluates every run).
+        """
+        from ..common import OPCUA_CONNECTOR_TEMPLATE_NAME_PREFIX, PROVISIONING_STATE_FAILED
+
+        existing_templates = self.list(instance_name=instance_name, resource_group_name=resource_group_name)
+        for template in existing_templates:
+            if not (template.get("name") or "").lower().startswith(OPCUA_CONNECTOR_TEMPLATE_NAME_PREFIX):
+                continue
+            if (template.get("provisioningState") or "").lower() == PROVISIONING_STATE_FAILED.lower():
+                logger.debug("Default OPC UA connector template exists but failed; will repair in place.")
+                return True, template.get("name")
+            logger.debug("Default OPC UA connector template already exists.")
+            return False, None
+        return True, None
 
     @staticmethod
     def default_opcua_template_name(instance_name: str) -> str:

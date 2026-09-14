@@ -2808,6 +2808,27 @@ def test_opcua_connector_version_matches_template_tag():
     )
 
 
+def test_check_opcua_connector_template_needed_disabled():
+    """Upgrade must not create the default OPC UA connector template when the instance has
+    opcua.mode=Disabled. With the feature off the OPC UA supervisor is not deployed, so the
+    akriConnectorTemplates PUT never reaches a terminal state and hangs the upgrade.
+    """
+    from azext_edge.edge.providers.orchestration.upgrade2 import UpgradeManager
+
+    manager = UpgradeManager.__new__(UpgradeManager)
+    manager.instance_name = generate_random_string()
+    manager.resource_group_name = generate_random_string()
+    manager._opcua_template_name_to_repair = None
+    manager.instance_record = {"properties": {"features": {"opcua": {"mode": "Disabled"}}}}
+    manager.connector_templates = Mock()
+    manager.connector_templates.list.return_value = []
+
+    needed, repair_name = manager._check_opcua_connector_template_needed()
+
+    assert needed is False
+    assert repair_name is None
+
+
 def build_ext_upgrade_state(
     ext_type: str = EXTENSION_TYPE_CM,
     current_version: Optional[str] = "1.4.73",

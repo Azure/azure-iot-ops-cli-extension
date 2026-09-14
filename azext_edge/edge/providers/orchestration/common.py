@@ -444,7 +444,7 @@ OPCUA_CONNECTOR_METADATA_REF = "mcr.microsoft.com/azureiotoperations/aio-connect
 OPCUA_CONNECTOR_AIO_MIN_VERSION = "1.2.100"
 # Connectors component image tag stamped on the template (distinct from the AIO extension
 # version). Bump per release from the publishing capture step's connectors.image.tag.
-OPCUA_CONNECTOR_VERSION = "1.4.10"
+OPCUA_CONNECTOR_VERSION = "1.4.13"
 
 # Management Actions
 EG_TOPICSPACES_PUBLISHER_ROLE_ID = "a12b0b94-b317-4dcd-84a8-502ce99884c6"
