@@ -467,7 +467,7 @@ LIVE_DATA_ADR_API_VERSION = "2026-11-02-preview"
 LIVE_DATA_PROFILE_NAME = "live-data-profile"
 LIVE_DATA_ENDPOINT_NAME = "live-data-endpoint"
 LIVE_DATA_TOPICSPACE_PREFIX = "live-data-ts"
-LIVE_DATA_TOPIC_TEMPLATE = "aio/observabilitySessions/{scope_id}/#"
+LIVE_DATA_TOPIC_TEMPLATE = "aio/live-data/{scope_id}/#"
 LIVE_DATA_ADR_ENDPOINT_TYPE = "Microsoft.EventGrid/namespaces"
 
 

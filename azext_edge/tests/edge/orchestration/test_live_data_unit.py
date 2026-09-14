@@ -299,8 +299,8 @@ class TestBuildObservabilityPutPayload:
 class TestSetupTopicSpace:
     def test_create_new(self, mocked_cmd, mocked_responses: responses):
         ns, rg = generate_random_string(), generate_random_string()
-        instance_name = generate_random_string()
-        instance_rid = _build_adr_namespace_resource_id(instance_name, rg)
+        scope_id = generate_random_string()
+        instance_rid = _build_adr_namespace_resource_id(scope_id, rg)
         eg_ctx = _make_eg_ctx(namespace_name=ns, resource_group_name=rg)
         ts_name = get_live_data_topic_space_name(instance_rid)
 
@@ -319,13 +319,13 @@ class TestSetupTopicSpace:
 
         provider = LiveData(cmd=mocked_cmd)
         result = provider._setup_topic_space(
-            eg_ctx=eg_ctx, instance_name=instance_name, instance_resource_id=instance_rid, wait_sec=0
+            eg_ctx=eg_ctx, instance_name=scope_id, instance_resource_id=instance_rid, wait_sec=0
         )
 
         assert result["name"] == ts_name
         assert result["exists"] is False
         put_body = json.loads(mocked_responses.calls[1].request.body)
-        assert put_body["properties"]["topicTemplates"] == [LIVE_DATA_TOPIC_TEMPLATE.format(scope_id=instance_name)]
+        assert put_body["properties"]["topicTemplates"] == [f"aio/live-data/{scope_id}/#"]
 
     def test_existing_topic_space(self, mocked_cmd, mocked_responses: responses):
         ns, rg = generate_random_string(), generate_random_string()
