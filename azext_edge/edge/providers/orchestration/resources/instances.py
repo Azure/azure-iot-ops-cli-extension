@@ -317,7 +317,7 @@ class Instances(Queryable):
                         connector_version=OPCUA_CONNECTOR_VERSION,
                         template_name=repair_name,
                         headers=headers,
-                        no_status=no_status,
+                        no_status=True,
                     )
             return result
 
