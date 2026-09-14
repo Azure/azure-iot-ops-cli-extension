@@ -7,7 +7,7 @@
 import pytest
 from knack.log import get_logger
 from azext_edge.edge.common import OpsServiceType
-from azext_edge.edge.providers.support.arcagents import ARC_AGENTS
+from azext_edge.edge.providers.support.arcagents import ARC_AGENTS, ARC_TELEMETRY_AGENTS
 from ....helpers import get_multi_kubectl_workload_items
 from .helpers import (
     check_workload_resource_files,
@@ -27,6 +27,7 @@ AGENT_RESOURCE_PREFIXES = {
     "kube-aad-proxy": "kube-aad-proxy",
     "cluster-metadata-operator": "cluster-metadata-operator",
     "metrics-agent": "metrics-agent",
+    "telemetry-agent": "telemetry-agent",
     "resource-sync-agent": "resource-sync-agent"
 }
 AGENT_WORKLOAD_TYPES = ["deployment", "pod", "replicaset"]
@@ -47,9 +48,11 @@ def test_create_bundle_arcagents(cluster_connection, tracked_files):
     walk_result, bundle_path = run_bundle_command(command=command, tracked_files=tracked_files)
     files = get_file_map(walk_result=walk_result, ops_service=ops_service)
     agents_file_map = files["arc"]
+    assert set(agents_file_map).intersection(ARC_TELEMETRY_AGENTS)
 
-    for agent, has_service in ARC_AGENTS:
-        file_map = agents_file_map[agent]
+    service_by_agent = dict(ARC_AGENTS)
+    for agent, file_map in agents_file_map.items():
+        has_service = service_by_agent[agent]
 
         assert set(file_map.keys()).issubset(
             set(AGENT_SERVICE_WORKLOAD_TYPES if has_service else AGENT_WORKLOAD_TYPES)

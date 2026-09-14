@@ -21,6 +21,7 @@ from .base import (
 logger = get_logger(__name__)
 
 MONIKER = "arcagents"
+ARC_TELEMETRY_AGENTS = ("metrics-agent", "telemetry-agent")
 ARC_AGENTS = [
     ("cluster-identity-operator", False),  # (component, has_services)
     ("clusterconnect-agent", False),
@@ -30,6 +31,7 @@ ARC_AGENTS = [
     ("kube-aad-proxy", True),
     ("cluster-metadata-operator", False),
     ("metrics-agent", False),
+    ("telemetry-agent", False),
     ("resource-sync-agent", False),
 ]
 
