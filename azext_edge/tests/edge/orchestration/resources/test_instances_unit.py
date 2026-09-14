@@ -24,9 +24,11 @@ from azext_edge.edge.commands_edge import (
 from azext_edge.edge.commands_secretsync import secretsync_disable, secretsync_enable
 from azext_edge.edge.providers.orchestration.common import (
     AZURE_DEVICE_REGISTRY_ADMINISTRATOR_ROLE_ID,
+    OPCUA_CONNECTOR_TEMPLATE_NAME_PREFIX,
     IdentityUsageType,
 )
 from azext_edge.edge.providers.orchestration.resources import Instances
+from azext_edge.edge.providers.orchestration.resources.connector_templates import ConnectorTemplates
 from azext_edge.edge.providers.orchestration.resources.instances import (
     KEYVAULT_ROLE_ID_READER,
     KEYVAULT_ROLE_ID_SECRETS_USER,
@@ -675,6 +677,10 @@ def test_instance_update_opcua_mode(
         assert len(mocked_responses.calls) == 2
 
 
+# Placeholder for a Bicep-named template; resolved to a perturbed derived default inside the test.
+BICEP_NAMED_SENTINEL = "<bicep-named>"
+
+
 @pytest.mark.parametrize(
     "existing_templates, expects_create, expected_create_name",
     [
@@ -687,8 +693,10 @@ def test_instance_update_opcua_mode(
             None,
         ),
         # Bicep-named template (prefix + uniqueString suffix), Succeeded -> not duplicated.
+        # BICEP_NAMED_SENTINEL is replaced at run time with a suffix guaranteed to differ from the
+        # CLI-derived default so the case keeps covering the distinct Bicep-named path.
         (
-            [{"name": "azureiotoperationsconnectorforopcua-e5c0", "properties": {"provisioningState": "Succeeded"}}],
+            [{"name": BICEP_NAMED_SENTINEL, "properties": {"provisioningState": "Succeeded"}}],
             False,
             None,
         ),
@@ -726,6 +734,15 @@ def test_instance_update_opcua_backfill(
         name=instance_name, resource_group_name=resource_group_name, features={"opcua": {"mode": "Stable"}}
     )
     mocked_responses.add(method=responses.PUT, url=instance_endpoint, json=updated_record, status=200)
+
+    # A Bicep-provisioned template adopts via the prefix but carries a uniqueString suffix distinct
+    # from the CLI-derived default; perturb the derived name so the two never collide.
+    default_name = ConnectorTemplates.default_opcua_template_name(instance_name)
+    bicep_name = f"{default_name[:-1]}{'0' if default_name[-1] != '0' else '1'}"
+    assert bicep_name != default_name and bicep_name.startswith(OPCUA_CONNECTOR_TEMPLATE_NAME_PREFIX)
+    existing_templates = [
+        {**t, "name": bicep_name} if t["name"] == BICEP_NAMED_SENTINEL else t for t in existing_templates
+    ]
 
     list_re = re.compile(re.escape(base_url) + r"/akriConnectorTemplates(\?|$)")
     mocked_responses.add(method=responses.GET, url=list_re, json={"value": existing_templates}, status=200)
