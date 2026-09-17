@@ -312,6 +312,10 @@ class InitTargets:
             )
 
         resources: Dict[str, Dict[str, dict]] = template.content.get("resources", {})
+        # OPC UA disabled: drop the connector template so it is never deployed; no supervisor
+        # reconciles it, so its provisioning would otherwise never reach a terminal state.
+        if self.instance_features and self.instance_features.get("opcua", {}).get("mode") == "Disabled":
+            resources.pop("opcUaConnectorTemplate", None)
         if phase == InstancePhase.EXT:
             del_if_not_in(resources, PHASE_KEY_MAP[InstancePhase.EXT])
             return template.content, parameters
