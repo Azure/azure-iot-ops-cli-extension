@@ -1,7 +1,13 @@
 # .coveragerc to control coverage.py
 [run]
 branch = True
-source = azext_edge/edge
+# parallel writes a uniquely-suffixed data file per process so that the pytest
+# process and every `az` subprocess spawned by integration tests can be measured
+# without clobbering each other. Combined later via `coverage combine`.
+parallel = True
+# Measure by importable package name (not path) so the installed extension used
+# by `az iot ops ...` subprocesses is measured wherever it lives on disk.
+source_pkgs = azext_edge.edge
 omit =
     # ignore all tests
     azext_edge/tests/*
@@ -12,3 +18,11 @@ omit =
     azext_edge/edge/command_map.py
     # skip params and command map
     azext_edge/edge/providers/rpsaas/adr/params.py
+
+[paths]
+# Map the various on-disk locations of the extension (repo source, tox target,
+# `az extension add` cliextensions dir) back to the repo source so data from the
+# pytest process and the `az` subprocesses combines into a single set of files.
+source =
+    azext_edge/edge
+    */azext_edge/edge
