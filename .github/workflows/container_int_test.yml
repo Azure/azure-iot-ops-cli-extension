@@ -7,7 +7,7 @@ on:
         description: Resource group for cluster creation
         type: string
         required: true
-        default: ops-cli-int-test-centralus-rg
+        default: ops-cli-int-test-rg
       custom-locations-oid:
         description: Object ID of Custom Locations RP
         type: string
@@ -27,7 +27,7 @@ on:
         description: Resource group for cluster creation
         type: string
         required: true
-        default: ops-cli-int-test-centralus-rg
+        default: ops-cli-int-test-rg
       custom-locations-oid:
         description: Object ID of Custom Locations RP
         type: string
