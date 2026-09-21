@@ -28,7 +28,7 @@ on:
         type: string
         description: "Resource group to clean up"
         required: true
-        default: ops-cli-int-test-centralus-rg
+        default: ops-cli-int-test-rg
       custom_prefix:
         type: string
         description: "Your custom prefix for things to delete"
@@ -38,7 +38,7 @@ on:
     - cron: '0 8 * * *'
 
 env:
-  RESOURCE_GROUP: ${{ inputs.resource_group || 'ops-cli-int-test-centralus-rg' }}
+  RESOURCE_GROUP: ${{ inputs.resource_group || 'ops-cli-int-test-rg' }}
   CLUSTER_PREFIX: ${{ inputs.cluster_prefix || 'opt' }}
   # Note these are just for the init tests since we dont delete them then
   REGISTRY_PREFIX: 'init-registry'
