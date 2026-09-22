@@ -80,13 +80,25 @@ jobs:
       - name: Delete everything in the test resource group
         run : |
           for resource in $(az resource list -g ${{ env.RESOURCE_GROUP }} --query "[*].id" -o tsv); do
-            az resource delete -v --id $resource --verbose
+            # Pin only ADR, using the last provider segment for extension resources.
+            resource_path="${resource,,}"
+            api_version_args=()
+            if [[ "${resource_path##*/providers/}" == microsoft.deviceregistry/* ]]; then
+              api_version_args=(--api-version 2026-04-01)
+            fi
+            az resource delete -v --id "$resource" "${api_version_args[@]}" --verbose
           done
       - name: Delete your custom stuff
         if: ${{ env.CUSTOM_PREFIX }}
         run: |
           for resource in $(az resource list -g ${{ env.RESOURCE_GROUP }} --query "[?starts_with(name, '${{ env.CUSTOM_PREFIX }}')].id" -o tsv); do
-            az resource delete -v --id $resource --verbose
+            # Pin only ADR, using the last provider segment for extension resources.
+            resource_path="${resource,,}"
+            api_version_args=()
+            if [[ "${resource_path##*/providers/}" == microsoft.deviceregistry/* ]]; then
+              api_version_args=(--api-version 2026-04-01)
+            fi
+            az resource delete -v --id "$resource" "${api_version_args[@]}" --verbose
           done
   mq-cleanup:
     runs-on: ubuntu-latest
