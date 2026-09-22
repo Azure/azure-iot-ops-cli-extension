@@ -4,7 +4,9 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
+from copy import deepcopy
 from enum import IntEnum
+from json import dumps
 from typing import Dict, List, NamedTuple, Optional, Set, Tuple
 
 from azure.cli.core.azclierror import InvalidArgumentValueError
@@ -29,6 +31,7 @@ from ..orchestration.common import (
 from ..orchestration.resources.brokers import Brokers
 from ..orchestration.resources.connector_templates import ConnectorTemplates
 from ..orchestration.resources.instances import parse_feature_kvp_nargs
+from .runtime_profiles import RuntimeProfile
 from .template import (
     TEMPLATE_BLUEPRINT_ENABLEMENT,
     TEMPLATE_BLUEPRINT_INSTANCE,
@@ -104,8 +107,16 @@ class InitTargets:
         # User Trust Config
         user_trust: Optional[bool] = None,
         trust_settings: Optional[List[str]] = None,
+        runtime_profile: Optional[RuntimeProfile] = None,
         **_,
     ):
+        self.runtime_profile = runtime_profile
+        if runtime_profile is not None:
+            runtime_profile.validate_overrides(version=ops_version, train=ops_train)
+        self._instance_blueprint = (
+            runtime_profile.copy_instance_blueprint()
+            if runtime_profile is not None else TEMPLATE_BLUEPRINT_INSTANCE.copy()
+        )
         self.cluster_name = cluster_name
         self.resource_group_name = resource_group_name
         self.schema_registry_resource_id = ensure_resource_id(
@@ -257,6 +268,7 @@ class InitTargets:
                 "clusterNamespace": self.cluster_namespace,
                 "clusterLocation": self.location,
                 "customLocationName": self.custom_location_name,
+                "aioInstanceName": self.instance_name,
                 "clExtensionIds": cl_extension_ids,
                 "schemaRegistryId": self.schema_registry_resource_id,
                 "adrNamespaceId": self.adr_namespace_resource_id,
@@ -264,7 +276,7 @@ class InitTargets:
                 "brokerConfig": self.broker_config,
                 "trustConfig": self.trust_config,
             },
-            template_blueprint=TEMPLATE_BLUEPRINT_INSTANCE,
+            template_blueprint=self._instance_blueprint,
         )
 
         self.extension_manager.apply_to_template(template.content, template_type="instance")
@@ -278,10 +290,10 @@ class InitTargets:
         artifact_registry_endpoint = template.get_resource_by_key("artifactRegistryEndpoint")
         opcua_connector_template = template.get_resource_by_key("opcUaConnectorTemplate")
 
-        instance["properties"] = get_default_instance_config(
-            description=self.instance_description,
-            features=self.instance_features,
-        )
+        properties = instance.setdefault("properties", {})
+        if self.instance_description is not None:
+            properties["description"] = self.instance_description
+        self._apply_instance_features(template, parameters, properties)
 
         if self.instance_name:
             instance["name"] = self.instance_name
@@ -336,6 +348,26 @@ class InitTargets:
 
         return template.content, parameters
 
+    def _apply_instance_features(self, template: TemplateBlueprint, parameters: dict, properties: dict) -> None:
+        if not self.instance_features:
+            return
+        feature_parameter = template.parameters.get("features")
+        generated_features = properties.get("features")
+        if feature_parameter is not None:
+            defaults = feature_parameter.get("defaultValue")
+            merged = merge_template_object(defaults, self.instance_features)
+            if isinstance(merged, dict):
+                parameters["features"] = {"value": merged}
+            else:
+                # Template expressions must evaluate in the template scope, not in
+                # the outer deployment parameter file's scope.
+                feature_parameter["defaultValue"] = merged
+            if isinstance(generated_features, str):
+                # Retain the generated expression and its source-controlled default
+                # logic. The supported features parameter supplies the user input.
+                return
+        properties["features"] = merge_template_object(generated_features, self.instance_features)
+
     def get_broker_config_target_map(self):
         to_process_config_map = {
             "frontendReplicas": self.broker_frontend_replicas,
@@ -348,11 +380,14 @@ class InitTargets:
         processed_config_map = {}
 
         validation_errors = []
-        broker_config_def = TEMPLATE_BLUEPRINT_INSTANCE.get_type_definition("_1.BrokerConfig")["properties"]
+        broker_config_def = self._instance_blueprint.copy().get_type_definition("_1.BrokerConfig")["properties"]
         if not broker_config_def:
             return to_process_config_map
         # TODO @digimaun - replace with longer term pattern
-        broker_config_def["backendRedundancyFactor"]["minValue"] = 2
+        if "backendRedundancyFactor" in broker_config_def:
+            broker_config_def["backendRedundancyFactor"]["minValue"] = max(
+                2, broker_config_def["backendRedundancyFactor"].get("minValue") or 2
+            )
 
         for config in to_process_config_map:
             if to_process_config_map[config] is None:
@@ -367,7 +402,10 @@ class InitTargets:
                     if all([min_value is None, max_value is None]):
                         continue
 
-                    if any([to_process_config_map[config] < min_value, to_process_config_map[config] > max_value]):
+                    if (
+                        (min_value is not None and to_process_config_map[config] < min_value)
+                        or (max_value is not None and to_process_config_map[config] > max_value)
+                    ):
                         error_msg = f"{config} value range"
 
                         if min_value:
@@ -431,16 +469,21 @@ def del_if_not_in(resources: Dict[str, Dict[str, dict]], include_keys: Set[str])
             del resources[k]
 
 
-def get_default_instance_config(
-    description: Optional[str] = None,
-    features: Optional[dict] = None,
-) -> dict:
-    return {
-        "schemaRegistryRef": {"resourceId": "[parameters('schemaRegistryId')]"},
-        "adrNamespaceRef": {"resourceId": "[parameters('adrNamespaceId')]"},
-        "description": description,
-        "features": features,
-    }
+def merge_template_object(defaults, overrides: dict):
+    """Overlay explicit object settings without evaluating or discarding ARM expressions."""
+    if defaults is None:
+        return deepcopy(overrides)
+    if isinstance(defaults, str) and defaults.startswith("[") and defaults.endswith("]"):
+        # ARM union recursively merges objects; apostrophes inside its JSON string
+        # literal must be doubled. Neither the generated source nor hash is edited.
+        literal = dumps(overrides, separators=(",", ":")).replace("'", "''")
+        return f"[union(coalesce({defaults[1:-1]}, createObject()), json('{literal}'))]"
+    if not isinstance(defaults, dict):
+        raise InvalidArgumentValueError("Expected an object or ARM object expression in the selected template.")
+    result = deepcopy(defaults)
+    for key, value in overrides.items():
+        result[key] = merge_template_object(result.get(key), value) if isinstance(value, dict) else deepcopy(value)
+    return result
 
 
 def ensure_resource_id(

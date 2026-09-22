@@ -24,9 +24,12 @@ def version_check_handler(cli_ctx, **kwargs):
 
 class OpsExtensionCommandsLoader(AzCommandsLoader):
     def __init__(self, cli_ctx=None):
-        super(OpsExtensionCommandsLoader, self).__init__(cli_ctx=cli_ctx)
+        from .edge.providers.orchestration.runtime_commands import RuntimeCommandGroup, runtime_validation_handler
+
+        super(OpsExtensionCommandsLoader, self).__init__(cli_ctx=cli_ctx, command_group_cls=RuntimeCommandGroup)
         if cli_ctx:
             cli_ctx.register_event(EVENT_INVOKER_POST_PARSE_ARGS, version_check_handler)
+            cli_ctx.register_event(EVENT_INVOKER_POST_PARSE_ARGS, runtime_validation_handler)
 
     def load_command_table(self, args):
         from azext_edge.edge.command_map import load_iotops_commands

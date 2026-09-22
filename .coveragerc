@@ -12,3 +12,8 @@ omit =
     azext_edge/edge/command_map.py
     # skip params and command map
     azext_edge/edge/providers/rpsaas/adr/params.py
+
+[paths]
+edge =
+    azext_edge/edge
+    */azure-cli-extensions/azure-iot-ops/azext_edge/edge
