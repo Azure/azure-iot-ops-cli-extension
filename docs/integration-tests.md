@@ -25,6 +25,27 @@ There are, however, some prerequisites and caveats that users should be made awa
   You should provide a dedicated resource group for these testing resources.
   During the tests, resources will be created that may not be automatically cleaned up and are typically hidden from default Azure Portal UI views.
 
+  The integration and container-test workflows default to **ops-cli-int-test-centralus-rg**.
+  This dedicated group must exist in **centralus** in the pipeline's subscription, with the federated pipeline
+  identity granted the required permissions. The workflows do not provision the group.
+  Apply `DO_NOT_DELETE=true` to match the persistent test-group convention; this tag only affects external cleanup
+  automation that explicitly honors it and is not an Azure deletion lock.
+
+  New resources use the existing location defaults: ADR namespaces and schema registries inherit the group's
+  location, while custom locations and AIO instances follow the Arc cluster's location. No ADR-specific overrides
+  are needed, including for resources created independently by tests. Verify actual resource locations on a live run.
+  The smoke-test asset query uses the selected group's location.
+
+  Central US is a regional workaround for the mixed ADR v1/v2 routing reported in West US during the direct-RP
+  cutover; API versions are unchanged. To use another supported region, select a dedicated test group there through
+  the `resource-group` input. Moving existing resources between groups does not change their locations.
+
+  The scheduled [cleanup workflow](../.github/workflows/cluster_cleanup.yml) targets the same default group and
+  deletes **all resources** in it. Do not share the group with non-test workloads or overlap tests with cleanup.
+  Post-test and scheduled cleanup preserve the group itself, so it does not need to be recreated before each run.
+  These workflows do not check preservation tags. Remaining resources in the previous group need separate cleanup;
+  that group is no longer targeted by scheduled cleanup. For a custom group, use the `resource_group` cleanup input.
+
   Our tests use `az-iot-ops-test-cluster` prefixes for cluster resources and `opskv` for keyvaults.
 
 - #### Understanding the test scenario matrix
@@ -44,7 +65,6 @@ There are, however, some prerequisites and caveats that users should be made awa
   - **trustbundle**: Workload identity federation tests
 
   ##### **Scenario Configuration**
-
   Each scenario in `test-scenarios.yml` can specify:
   - `tox_env`: The tox environment to run (e.g., `python-rpsaas-int`)
   - `init_args`: Additional `az iot ops init` arguments
