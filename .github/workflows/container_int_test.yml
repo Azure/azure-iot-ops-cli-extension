@@ -173,4 +173,5 @@ jobs:
         if: ${{ always() }}
         run: |
           az resource delete -v --id ${{ steps.create_storage.outputs.STORAGE_ID }} --verbose --no-wait
-          az resource delete -v --id ${{ steps.create_schema_registry.outputs.SCHEMAREGISTRY_ID }} --verbose --no-wait
+          # Match the GA API used by schema registry create.
+          az resource delete -v --id ${{ steps.create_schema_registry.outputs.SCHEMAREGISTRY_ID }} --api-version 2026-04-01 --verbose --no-wait

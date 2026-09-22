@@ -131,6 +131,15 @@ Currently this pipeline does not output values, it simply displays test pass/fai
 
 ### Considerations
 
+#### Device Registry API version
+Generic ADR reads and cleanup commands for the GA integration path explicitly use
+`2026-04-01`, matching the extension's ADR client. Azure CLI can otherwise select
+a newer advertised API instead of the provider's `defaultApiVersion`, which can
+make GA-created resources appear missing during the ADR v2 rollout. Mixed-resource
+cleanup applies this pin only to `Microsoft.DeviceRegistry`; other providers and
+explicitly versioned preview calls are unchanged. Changing regions is not a
+substitute for keeping the API version consistent across the resource lifecycle.
+
 #### CLI Extension Builds
 Currently our pipeline uses the most recent dev branch of the IoT Operations extension to build our extension. The extension repo is cloned from the `dev` branch, the wheel is built from that source, and then added to the agent's CLI extension path.
 
