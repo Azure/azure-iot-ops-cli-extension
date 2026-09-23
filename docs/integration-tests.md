@@ -60,7 +60,10 @@ There are, however, some prerequisites and caveats that users should be made awa
   - **insecure-listener**: Tests with insecure listener deployment
   - **rpsaas**: Cloud-side (RPSaaS) tests
   - **upgrade**: Azure IoT Operations upgrade tests (runs serially)
+  - **runtime-channel**: Shared update and cross-channel refusal tests (runs serially)
+  - **upgrade-path**: Actual older-to-newer upgrade tests; explicitly selected with pinned baselines
   - **mgmtactions**: Azure IoT Operations management actions tests (runs serially)
+  - **livedata**: Preview Live Data lifecycle and GA rejection/no-mutation checks (runs serially)
   - **redeploy**: Tests cluster redeployment functionality
   - **trustbundle**: Workload identity federation tests
 
@@ -82,7 +85,102 @@ There are, however, some prerequisites and caveats that users should be made awa
     test-scenarios: "rpsaas,upgrade"
   ```
 
-  If not specified, all scenarios will run.
+  If not specified, all standard scenarios run on both channels. The `upgrade-path`
+  scenario requires explicit selection and baseline definitions.
+
+### GA and preview qualification
+
+The workflow expands each selected scenario into independent **stable** and **preview**
+jobs by default. These labels mean the intended runtime channel; the actual deployment
+train can still be `integration` for an internal candidate. Each job provisions its own
+temporary k3s/Arc cluster and separately named instance, storage, schema registry and
+ADR namespace. No existing cluster is converted between channels.
+
+- `runtime-channels: "stable,preview"` runs both channels; select one explicitly for troubleshooting.
+- `init` is identical on both channels. Only preview **create** receives `--use-preview --yes`.
+- Extra init/create arguments must not contain `--use-preview`, `--ops-version`, or `--ops-train`;
+  the matrix owns runtime selection. Existing feature-mode arguments remain independent.
+- Shared scenario tests run unchanged on both deployments. The serial `runtime-channel`
+  scenario checks shared update behavior and rejects cross-channel upgrades, including with force.
+  The serial `livedata` scenario exercises preview-only `enable`, `show` and `disable`:
+  preview runs the lifecycle with system/user-assigned identities and role-scope checks;
+  GA rejects all three commands and compares configuration before/after without using
+  the restricted `live-data show` command for setup. Future preview-only features should
+  follow the same success/rejection pattern. These tests cover provisioning, not DOE-owned
+  streaming sessions.
+- Create and each subsequent suite verify the **installed** `currentVersion`, release train,
+  runtime channel, associations and readiness. Qualification assertions are hard failures,
+  even when the legacy `init-continue-on-error` option is set.
+- Results, coverage and cleanup are isolated by scenario and channel. Running both channels
+  roughly doubles runtime-dependent jobs; jobs can be scheduled sequentially to reduce peak cost.
+
+#### The same candidate wheel everywhere
+
+One `build-candidate` job builds the wheel and publishes its SHA256. Every integration job
+downloads that exact artifact and verifies its digest and installed package bytes. Both
+workflow CLI commands and tox environments use it; tox never rebuilds the checkout.
+The test runner stages only test sources alongside the installed package, changes to an
+isolated working directory and checks the CLI extension path to prevent source-tree shadowing.
+The candidate fingerprint is included with each job's JUnit artifact.
+Init and redeployment write separate JUnit reports. Final coverage and result uploads run
+after all test stages and cleanup, even on failure, so redeployment evidence is retained.
+
+For local integration runs, first build a candidate wheel, then set `azext_edge_wheel`
+to its absolute path and `azext_edge_wheel_sha256` to its SHA256 digest. Set
+`azext_edge_runtime_channel` to `stable` or `preview`, along with the normal cluster,
+resource-group and instance settings. The existing tox environments remain available;
+`python-runtime-int` selects the isolated channel tests. Local test runs still create
+and modify real Azure resources—collection and unit tests do not qualify a live runtime.
+
+#### Containerized end-to-end tests
+
+The [container workflow](../.github/workflows/container_int_test.yml) also accepts
+`runtime-channels` (default `stable,preview`). It builds one candidate wheel per workflow
+invocation, then provisions independent clusters/resources for its two channel jobs.
+The host uses that verified wheel for setup; each test container receives the same wheel
+through a read-only mount, together with its digest, runtime channel and target instance.
+The image contains the test harness, not a separately rebuilt extension under test.
+Shared `init` is unchanged; only preview `create` receives the selector and consent flags.
+
+Container exit failures fail the job. Channel-labelled artifacts retain JUnit, coverage
+data and the candidate fingerprint even when tests fail. Direct use of the test image
+likewise requires mounting a candidate wheel and supplying `azext_edge_wheel` (the path
+inside the container), `azext_edge_wheel_sha256`, `azext_edge_runtime_channel`, and the
+normal target/authentication/kubeconfig inputs. Mount a results directory and set
+`azext_edge_junit_path` and `azext_edge_coverage_file` to paths inside it to retain reports.
+
+#### Actual version upgrades versus reconciliation
+
+The default `upgrade` scenario tests same-version reconciliation/configuration updates.
+It is **not** evidence of an older-to-newer upgrade.
+
+Select `test-scenarios: "upgrade-path"` explicitly for actual upgrades and provide
+`upgrade-baselines`, a JSON object keyed by each selected channel. Each definition requires:
+
+| Field | Meaning |
+|---|---|
+| `wheel_url` | Credential-free HTTPS URL of the pinned older CLI wheel; no signed query strings |
+| `sha256` | Exact baseline wheel digest |
+| `version` | Expected installed source runtime version |
+| `train` | Actual source deployment train |
+| `create_args` | Explicit create arguments understood by that older CLI, including any required consent |
+
+The candidate initializes the shared foundation. The isolated baseline CLI provisions the
+older instance; candidate assertions then verify that the expected source runtime is really
+installed. Only the **candidate wheel** executes upgrade and verifies that the installed
+version advanced to its bundled target without changing channel/train or instance identity.
+
+Baseline versions must be older, same-channel and same-train. Historical `integration`
+identities must already have an explicit reviewed mapping in the candidate catalog; inputs
+cannot inject mappings or bypass production upgrade protections. No baseline versions are
+guessed, and omitted definitions fail an explicitly requested upgrade-path job rather than
+silently substituting a current-version deployment. Supply migration-specific assertions
+when a release handoff requires them. Baseline downloads/installation are separate from
+candidate qualification; no baseline artifact replaces the candidate in other tests.
+
+The default scenario selection excludes `upgrade-path` until baseline inputs are supplied
+and that scenario is explicitly selected. Release qualification must include both ordinary
+channel jobs and the approved upgrade paths; a default green run alone does not prove upgrades.
 
 ### Inputs
 
@@ -104,7 +202,9 @@ There are, however, some prerequisites and caveats that users should be made awa
 | Input | Description |
 |---|---|
 **resource-group** | *The resource group to run tests in*
-**test-scenarios** | *Comma-separated list of scenarios to run (e.g., "rpsaas,upgrade"). If empty, all scenarios run.*
+**test-scenarios** | *Comma-separated scenarios (e.g., "rpsaas,upgrade"). Empty selects standard scenarios, excluding opt-in upgrade-path.*
+**runtime-channels** | *Comma-separated channels; defaults to stable,preview with independent clusters.*
+**upgrade-baselines** | *Pinned baseline definitions keyed by channel; required when selecting upgrade-path.*
 **custom-locations-oid** | *Custom Locations Object ID - used to enable cluster-connect feature.*
 **runtime-init-args** | *Additional init arguments (beyond cluster name, resource group, schema registry)*
 **runtime-create-args** | *Additional create arguments (beyond cluster name, resource group, instance name)*
@@ -152,7 +252,9 @@ Currently this pipeline does not output values, it simply displays test pass/fai
 ### Considerations
 
 #### CLI Extension Builds
-Currently our pipeline uses the most recent dev branch of the IoT Operations extension to build our extension. The extension repo is cloned from the `dev` branch, the wheel is built from that source, and then added to the agent's CLI extension path.
+The workflow builds one candidate wheel from its checked-out source revision and shares the
+hash-verified artifact across all runtime-channel jobs. Integration tox environments require
+that artifact instead of installing from the source tree.
 
 ## Using github actions to independently connect a cluster to ARC and/or deploy AIO
 

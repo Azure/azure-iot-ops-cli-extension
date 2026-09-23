@@ -5,6 +5,9 @@
 # ----------------------------------------------------------------------------------------------
 
 import json
+import os
+import shlex
+import subprocess
 from os.path import isfile
 from typing import List, Optional
 
@@ -24,6 +27,7 @@ from azext_edge.edge.providers.orchestration.common import (
 
 from ....generators import generate_random_string
 from ....helpers import assert_role_assignment, process_additional_args, run, strip_quotes
+from ....runtime_checks import assert_runtime, configured_baseline
 
 logger = get_logger(__name__)
 
@@ -125,7 +129,30 @@ def test_init_scenario(init_test_setup: dict, tracked_files: list):
         f"--no-progress {additional_create_args} "
     )
     # TODO: assert create when return be returning
-    run(create_command)
+    baseline = configured_baseline()
+    if baseline:
+        # Candidate init remains shared and unchanged. Only source-runtime provisioning
+        # uses an explicitly pinned older wheel; every assertion/upgrade uses the candidate.
+        baseline_root = os.environ["azext_edge_baseline_extension_dir"]
+        environment = dict(os.environ, AZURE_EXTENSION_DIR=baseline_root)
+        environment["PYTHONPATH"] = os.path.join(baseline_root, "azure-iot-ops")
+        baseline_command = [
+            "az", "iot", "ops", "create", "-g", resource_group, "--cluster", cluster_name, "-n", instance_name,
+            "--sr-resource-id", registry_id, "--ns-resource-id", adr_namespace_id, "--no-progress",
+            *shlex.split(baseline["create_args"]),
+        ]
+        subprocess.run(baseline_command, env=environment, check=True)
+    else:
+        run(create_command)
+
+    channel = os.environ.get("azext_edge_runtime_channel")
+    if channel:
+        # Hard gate: never downgrade identity/version/readiness failures to pytest.skip.
+        assert_runtime(instance_name, resource_group, channel, baseline)
+    if baseline:
+        # Target-template defaults do not describe an older source deployment.
+        # Its readiness/identity were checked above; upgrade tests check the target.
+        return
 
     if init_test_setup["redeployment"]:
         run(f"az iot ops delete --name {instance_name} -g {resource_group} -y --no-progress --force")
@@ -137,6 +164,8 @@ def test_init_scenario(init_test_setup: dict, tracked_files: list):
         )
 
         run(create_command)
+        if channel:
+            assert_runtime(instance_name, resource_group, channel)
 
     # Missing:
     # init
@@ -166,7 +195,7 @@ def test_init_scenario(init_test_setup: dict, tracked_files: list):
         # KeyError: one of the expected keys in the result is not present
         # TypeError: one of the values changes expected types and cannot be evaluated correctly (ex: len(None))
         # and more
-        if init_test_setup["continueOnError"]:
+        if init_test_setup["continueOnError"] and not channel:
             pytest.skip(f"Deployment succeeded but init assertions failed. \n{e}")
         raise e
 
