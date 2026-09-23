@@ -296,6 +296,87 @@ def test_verification_only_does_not_install_or_authenticate(wheel, mocker, monke
     execute.assert_not_called()
 
 
+@pytest.mark.parametrize("target_exists", [False, True])
+def test_runner_imports_newly_installed_candidate_in_fresh_process(wheel, tmp_path, target_exists):
+    """Exercise real imports after install, including Tox's nonexistent startup PYTHONPATH."""
+    archive, digest, _ = wheel
+    target = tmp_path / "fresh extensions" / "azure-iot-ops"
+    if target_exists:
+        target.mkdir(parents=True)
+    tests = tmp_path / "test-sources"
+    tests.mkdir()
+    (tests / "test_example_int.py").write_text("def test_example(): pass\n", encoding="utf-8")
+    script = '''
+import importlib.util
+import json
+import os
+from pathlib import Path
+import sys
+from types import ModuleType, SimpleNamespace
+from zipfile import ZipFile
+
+runner_path, target_path, tests_path, work_path = sys.argv[1:]
+target = Path(target_path)
+assert "azext_edge" not in sys.modules
+assert importlib.util.find_spec("azext_edge") is None
+assert str(target) in sys.path_importer_cache
+if not target.exists():
+    assert sys.path_importer_cache[str(target)] is None
+spec = importlib.util.spec_from_file_location("isolated_runner", runner_path)
+runner = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(runner)
+calls = []
+
+def execute(command, check):
+    assert check
+    calls.append(command)
+    if command[:4] == [sys.executable, "-m", "pip", "install"]:
+        assert command[command.index("--target") + 1] == str(target)
+        # Replace only the installer transport; run the real install/verification/import path.
+        with ZipFile(command[-1]) as wheel:
+            wheel.extractall(target)
+    else:
+        assert command == ["az", "version"]
+
+def extension_info(command, text):
+    assert text and command == ["az", "extension", "show", "--name", "azure-iot-ops", "-o", "json"]
+    return json.dumps({"path": str(target)})
+
+runner.subprocess = SimpleNamespace(run=execute, check_output=extension_info)
+pytest = ModuleType("pytest")
+
+def collect(arguments):
+    package = sys.modules["azext_edge"]
+    assert Path(package.__file__).resolve() == target / "azext_edge" / "__init__.py"
+    assert package.VERSION == "test"
+    assert str(target / "azext_edge/tests/test_example_int.py") in arguments
+    assert os.environ["PYTHONPATH"] == str(target)
+    assert os.environ["AZURE_EXTENSION_DIR"] == str(target.parent)
+    assert Path.cwd() == Path(work_path)
+    print("candidate-import-verified")
+    return 17
+
+pytest.main = collect
+sys.modules["pytest"] = pytest
+result = runner.main([
+    "--extension-dir", str(target), "--tests", tests_path, "--work-dir", work_path,
+    "--junit", str(Path(work_path) / "init.xml"),
+    "--coverage-config", str(Path(work_path) / ".coveragerc"), "--scenario", "init_scenario_test",
+])
+assert result == 17
+assert len(calls) == 2
+'''
+    environment = dict(os.environ, PYTHONPATH=str(target), azext_edge_wheel=str(archive),
+                       azext_edge_wheel_sha256=digest, azext_edge_upgrade_baseline="null")
+    result = subprocess.run(
+        [runner.sys.executable, "-S", "-c", script, str(ROOT / "tools/integration_runner.py"),
+         str(target), str(tests), str(tmp_path / "work")],
+        cwd=tmp_path, env=environment, capture_output=True, text=True, check=False,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "candidate-import-verified" in result.stdout
+
+
 def test_runner_isolates_cli_imports_tests_config_and_working_directory(wheel, mocker, monkeypatch, tmp_path):
     archive, digest, target = wheel
     tests = tmp_path / "test-sources"
@@ -316,7 +397,9 @@ def test_runner_isolates_cli_imports_tests_config_and_working_directory(wheel, m
         __file__=str(target / "azext_edge" / "__init__.py"),
     ))
     # Keep the fake package import local; mock target resolution also uses importlib.
-    mocker.patch.object(runner, "importlib", SimpleNamespace(import_module=package_import))
+    mocker.patch.object(runner, "importlib", SimpleNamespace(
+        import_module=package_import, invalidate_caches=importlib.invalidate_caches,
+    ))
     assert importlib.import_module("pytest") is pytest
     mocker.patch.object(runner.subprocess, "run")
     mocker.patch.object(runner.subprocess, "check_output", return_value=json.dumps({"path": str(target)}))
@@ -722,7 +805,9 @@ def test_runner_retains_init_report_when_redeployment_fails(wheel, mocker, monke
         __file__=str(target / "azext_edge/__init__.py"),
     ))
     # Keep the fake package import local; mock target resolution also uses importlib.
-    mocker.patch.object(runner, "importlib", SimpleNamespace(import_module=package_import))
+    mocker.patch.object(runner, "importlib", SimpleNamespace(
+        import_module=package_import, invalidate_caches=importlib.invalidate_caches,
+    ))
     assert importlib.import_module("pytest") is pytest
     mocker.patch.object(runner.subprocess, "run")
     mocker.patch.object(runner.subprocess, "check_output", return_value=json.dumps({"path": str(target)}))

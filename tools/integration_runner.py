@@ -143,6 +143,9 @@ def main(argv=None):
     os.environ["PYTHONPATH"] = str(target)
     os.environ["AZURE_EXTENSION_DIR"] = str(target.parent)
     os.environ["AZURE_EXTENSION_USE_DYNAMIC_INSTALL"] = "no"
+    # Tox puts target on PYTHONPATH before installation creates it. Python may
+    # cache that missing directory; refresh finders before importing the new wheel.
+    importlib.invalidate_caches()
     package = importlib.import_module("azext_edge")
     if Path(package.__file__).resolve() != target / "azext_edge" / "__init__.py":
         raise ValueError("Source checkout is shadowing the candidate wheel.")
