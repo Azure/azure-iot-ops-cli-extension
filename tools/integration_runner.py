@@ -22,7 +22,7 @@ import shutil
 import subprocess
 import sys
 from urllib.parse import urlsplit
-from urllib.request import urlopen
+from urllib.request import HTTPRedirectHandler, build_opener
 from zipfile import ZipFile
 
 
@@ -80,16 +80,31 @@ def validate_baseline_identity(baseline, channel):
     return source
 
 
+def validate_baseline_url(value):
+    """Apply the same credential-free HTTPS policy to initial URLs and every redirect."""
+    url = urlsplit(value)
+    if (url.scheme != "https" or not url.hostname or url.username is not None
+            or url.password is not None or url.query or url.fragment):
+        raise ValueError("Baseline wheel must use credential-free HTTPS.")
+    return url
+
+
+class BaselineRedirectHandler(HTTPRedirectHandler):
+    """Reject unsafe redirect targets before urllib sends the redirected request."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        validate_baseline_url(newurl)
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
 def prepare_baseline(baseline, channel, work_dir):
     # This validates reviewed runtime mappings BEFORE downloading or provisioning.
     validate_baseline_identity(baseline, channel)
-    url = urlsplit(baseline["wheel_url"])
-    if url.scheme != "https" or not url.hostname or url.username or url.password or url.query or url.fragment:
-        raise ValueError("Baseline wheel must use credential-free HTTPS.")
+    url = validate_baseline_url(baseline["wheel_url"])
     wheel = Path(work_dir) / Path(url.path).name
-    with urlopen(baseline["wheel_url"], timeout=60) as response:
-        if urlsplit(response.url).scheme != "https":
-            raise ValueError("Baseline wheel redirect must remain HTTPS.")
+    opener = build_opener(BaselineRedirectHandler())
+    with opener.open(baseline["wheel_url"], timeout=60) as response:
+        validate_baseline_url(response.url)
         with wheel.open("wb") as output:
             shutil.copyfileobj(response, output)
     verify_wheel(wheel, baseline["sha256"])

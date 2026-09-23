@@ -7,14 +7,18 @@
 """Offline coverage for channel matrix, pinned wheel isolation and live assertions."""
 
 from copy import deepcopy
+from email.message import Message
 import hashlib
 import importlib.util
+from io import BytesIO
 import json
 import os
 from pathlib import Path
 import shutil
 import subprocess
 from types import SimpleNamespace
+from urllib.request import HTTPHandler, HTTPSHandler, build_opener
+from urllib.response import addinfourl
 from zipfile import ZipFile
 
 import pytest
@@ -175,6 +179,112 @@ def test_missing_installed_file_fails(wheel):
     (target / "azext_edge/edge/runtime.py").unlink()
     with pytest.raises(ValueError, match="file missing"):
         runner.verify_installed(archive, target)
+
+
+UNSAFE_BASELINE_URLS = [
+    "http://example.invalid/test.whl",
+    "https:///test.whl",
+    "https://user:password@example.invalid/test.whl",
+    "https://user@example.invalid/test.whl",
+    "https://:password@example.invalid/test.whl",
+    "https://@example.invalid/test.whl",
+    "https://example.invalid/test.whl?token=redacted",
+    "https://example.invalid/test.whl#fragment",
+]
+
+
+@pytest.mark.parametrize("url", UNSAFE_BASELINE_URLS)
+@pytest.mark.parametrize("stage", ["initial", "final"])
+def test_baseline_rejects_unsafe_urls_before_copy_or_install(mocker, monkeypatch, tmp_path, url, stage):
+    definition = baseline()
+    if stage == "initial":
+        definition["wheel_url"] = url
+    mocker.patch.object(runner, "validate_baseline_identity")
+    opener = mocker.patch.object(runner, "build_opener").return_value
+    response = opener.open.return_value.__enter__.return_value
+    response.url = url
+    install = mocker.patch.object(runner, "install_wheel")
+    monkeypatch.setenv("azext_edge_baseline_extension_dir", "unchanged")
+    with pytest.raises(ValueError, match="credential-free HTTPS"):
+        runner.prepare_baseline(definition, "preview", tmp_path)
+    if stage == "initial":
+        opener.open.assert_not_called()
+    response.read.assert_not_called()
+    install.assert_not_called()
+    assert not list(tmp_path.iterdir())
+    assert os.environ["azext_edge_baseline_extension_dir"] == "unchanged"
+
+
+@pytest.fixture
+def baseline_http(mocker):
+    """Exercise urllib's real redirect chain with an entirely in-memory transport."""
+    def configure(locations, payload=b"", code=302):
+        requests = []
+
+        class Transport(HTTPSHandler, HTTPHandler):
+            def https_open(self, req):
+                index = len(requests)
+                requests.append(req.full_url)
+                headers = Message()
+                status = 200
+                body = payload
+                if index < len(locations):
+                    headers["Location"] = locations[index]
+                    status, body = code, b""
+                response = addinfourl(BytesIO(body), headers, req.full_url, status)
+                response.msg = "Redirect" if status != 200 else "OK"
+                return response
+
+            http_open = https_open
+
+        mocker.patch.object(runner, "build_opener", side_effect=lambda handler: build_opener(handler, Transport()))
+        mocker.patch.object(runner, "validate_baseline_identity")
+        return requests
+
+    return configure
+
+
+# Python 3.10 refuses 308 outright; exercise it on interpreters that follow it.
+@pytest.mark.parametrize("code", [
+    code for code in (301, 302, 303, 307, 308) if hasattr(runner.HTTPRedirectHandler, f"http_error_{code}")
+])
+@pytest.mark.parametrize("url", [value for value in UNSAFE_BASELINE_URLS if value != "https:///test.whl"])
+def test_baseline_blocks_unsafe_redirect_before_request(baseline_http, mocker, tmp_path, url, code):
+    safe_hop = "https://cdn.example.invalid/mirror.whl"
+    requests = baseline_http([safe_hop, url], code=code)
+    install = mocker.patch.object(runner, "install_wheel")
+    with pytest.raises(ValueError, match="credential-free HTTPS"):
+        runner.prepare_baseline(baseline(), "preview", tmp_path)
+    assert requests == [baseline()["wheel_url"], safe_hop]
+    assert not list(tmp_path.iterdir())
+    install.assert_not_called()
+
+
+@pytest.mark.parametrize("locations", [[], ["/mirror.whl"], [
+    "https://cdn.example.invalid/mirror.whl", "//other.example.invalid/wheel.whl",
+]])
+@pytest.mark.parametrize("valid_digest", [True, False])
+def test_baseline_safe_download_verifies_digest_before_install(
+        baseline_http, wheel, mocker, monkeypatch, tmp_path, locations, valid_digest):
+    archive, digest, _ = wheel
+    requests = baseline_http(locations, archive.read_bytes())
+    definition = {**baseline(), "sha256": digest if valid_digest else "0" * 64}
+    work = tmp_path / "download"
+    work.mkdir()
+    install = mocker.patch.object(runner, "install_wheel")
+    monkeypatch.setenv("azext_edge_baseline_extension_dir", "unchanged")
+    if valid_digest:
+        target = runner.prepare_baseline(definition, "preview", work)
+        assert target == work / "baseline-extensions/azure-iot-ops"
+        install.assert_called_once_with(work / archive.name, target)
+        assert os.environ["azext_edge_baseline_extension_dir"] == str(target.parent)
+    else:
+        with pytest.raises(ValueError, match="SHA256 mismatch"):
+            runner.prepare_baseline(definition, "preview", work)
+        install.assert_not_called()
+        assert os.environ["azext_edge_baseline_extension_dir"] == "unchanged"
+    assert len(requests) == len(locations) + 1
+    assert (work / archive.name).read_bytes() == archive.read_bytes()
 
 
 def test_verification_only_does_not_install_or_authenticate(wheel, mocker, monkeypatch):
