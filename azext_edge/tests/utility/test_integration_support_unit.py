@@ -13,7 +13,7 @@ import importlib.util
 from io import BytesIO
 import json
 import os
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 import shutil
 import subprocess
 from types import SimpleNamespace
@@ -447,9 +447,109 @@ def test_container_workflow_builds_once_for_both_channels_and_includes_runner():
     assert '"python-e2e-int"' in (ROOT / "Dockerfile").read_text()
 
 
+def _find_workflow_bash(platform_name):
+    if platform_name == "nt":
+        # PATH's bash.exe may be the WSL launcher, not Git for Windows' shell.
+        git = shutil.which("git")
+        if git:
+            for directory in Path(git).resolve().parents:
+                for relative in ("usr/bin/bash.exe", "bin/bash.exe"):
+                    candidate = directory / relative
+                    if candidate.is_file():
+                        return str(candidate)
+        raise RuntimeError("Workflow shell tests require Git for Windows with Bash; WSL is not used.")
+    bash = shutil.which("bash")
+    if not bash:
+        raise RuntimeError("Workflow shell tests require Bash on PATH.")
+    return bash
+
+
+@pytest.fixture(scope="module")
+def workflow_shell():
+    bash = _find_workflow_bash(os.name)
+
+    def run(script, cwd, env):
+        environment = dict(env)
+        # Make Git's POSIX utilities available without loading interactive profiles.
+        bin_dir = Path(bash).parent
+        environment["PATH"] = os.pathsep.join([
+            str(bin_dir), str(bin_dir.parent / "usr/bin"), environment.get("PATH", ""),
+        ])
+        environment.pop("BASH_ENV", None)
+        environment.pop("ENV", None)
+        # stdin avoids Windows command-line quoting and CRLF script-file differences.
+        # Binary input also prevents Python's Windows text pipes from restoring CRLF.
+        result = subprocess.run(
+            [bash, "--noprofile", "--norc", "-e", "-o", "pipefail", "-s"],
+            input=script.replace("\r\n", "\n").encode("utf-8"), cwd=cwd, env=environment,
+            capture_output=True, check=False,
+        )
+        return subprocess.CompletedProcess(
+            result.args, result.returncode, result.stdout.decode("utf-8"), result.stderr.decode("utf-8"),
+        )
+
+    def directory(path):
+        result = run("pwd -P\n", path, os.environ)
+        assert result.returncode == 0, result.stdout + result.stderr
+        return PurePosixPath(result.stdout.strip())
+
+    return SimpleNamespace(run=run, directory=directory)
+
+
+@pytest.mark.parametrize("git_relative", ["cmd/git.exe", "mingw64/bin/git.exe"])
+@pytest.mark.parametrize("bash_relative", ["usr/bin/bash.exe", "bin/bash.exe"])
+def test_workflow_bash_selects_git_for_windows_not_wsl(mocker, tmp_path, git_relative, bash_relative):
+    installation = tmp_path / "Program Files/Git"
+    git = installation / git_relative
+    bash = installation / bash_relative
+    for executable in (git, bash):
+        executable.parent.mkdir(parents=True, exist_ok=True)
+        executable.touch()
+    which = mocker.patch.object(shutil, "which", side_effect=lambda name: {
+        "git": str(git), "bash": "C:/Windows/System32/bash.exe",
+    }.get(name))
+    assert _find_workflow_bash("nt") == str(bash.resolve())
+    which.assert_called_once_with("git")
+
+
+@pytest.mark.parametrize("platform_name", ["nt", "posix"])
+def test_workflow_bash_missing_dependency_fails_instead_of_skipping(mocker, platform_name):
+    mocker.patch.object(shutil, "which", return_value=None)
+    with pytest.raises(RuntimeError, match="require.*Bash"):
+        _find_workflow_bash(platform_name)
+
+
+@pytest.mark.parametrize("newline", ["\n", "\r\n"])
+def test_workflow_shell_handles_spaces_newlines_and_ignores_profiles(workflow_shell, tmp_path, newline):
+    work = tmp_path / "working directory with spaces"
+    work.mkdir()
+    profile = work / "unexpected-profile.sh"
+    profile.write_text("exit 99\n", encoding="utf-8")
+    shell_dir = workflow_shell.directory(work)
+    environment = dict(os.environ, BASH_ENV=str(profile), ENV=str(profile),
+                       OUTPUT=str(shell_dir / "file with spaces"), VALUE="value with spaces")
+    script = newline.join(['printf "%s" "$VALUE" > "$OUTPUT"', 'cat "$OUTPUT"', 'exit 17', ''])
+    result = workflow_shell.run(script, work, environment)
+    assert result.returncode == 17, result.stdout + result.stderr
+    assert result.stdout == "value with spaces"
+    assert (work / "file with spaces").read_text() == result.stdout
+
+
+def test_workflow_shell_uses_binary_lf_input(workflow_shell, mocker, tmp_path):
+    execute = mocker.patch.object(subprocess, "run", return_value=subprocess.CompletedProcess(
+        [], 17, b"output", b"diagnostic",
+    ))
+    result = workflow_shell.run("exit 17\r\n", tmp_path, os.environ)
+    assert execute.call_args.kwargs["input"] == b"exit 17\n"
+    assert not execute.call_args.kwargs.get("text")
+    assert "encoding" not in execute.call_args.kwargs
+    assert (result.returncode, result.stdout, result.stderr) == (17, "output", "diagnostic")
+
+
 @pytest.mark.parametrize("channel", ["stable", "preview"])
 @pytest.mark.parametrize("build_exit,run_exit", [(0, 0), (0, 17), (23, 0)])
-def test_container_shell_passes_candidate_targets_and_preserves_failures(tmp_path, channel, build_exit, run_exit):
+def test_container_shell_passes_candidate_targets_and_preserves_failures(
+        workflow_shell, tmp_path, channel, build_exit, run_exit):
     """Execute the actual workflow shell with a fake Docker; never build images or contact Azure."""
     config = yaml.safe_load((ROOT / ".github/workflows/container_int_test.yml").read_text())
     script = next(step["run"] for step in config["jobs"]["test"]["steps"]
@@ -462,8 +562,11 @@ def test_container_shell_passes_candidate_targets_and_preserves_failures(tmp_pat
     candidate.parent.mkdir()
     candidate.touch()
     arguments = tmp_path / "docker-args"
-    environment = dict(os.environ, HOME=str(home), DOCKER_ARGS=str(arguments), BUILD_EXIT=str(build_exit),
-                       RUN_EXIT=str(run_exit), azext_edge_wheel=str(candidate), azext_edge_wheel_sha256="a" * 64,
+    shell_dir = workflow_shell.directory(tmp_path)
+    shell_candidate = shell_dir / candidate.relative_to(tmp_path).as_posix()
+    environment = dict(os.environ, HOME=str(shell_dir / "home"), DOCKER_ARGS=str(shell_dir / "docker-args"),
+                       BUILD_EXIT=str(build_exit), RUN_EXIT=str(run_exit),
+                       azext_edge_wheel=str(shell_candidate), azext_edge_wheel_sha256="a" * 64,
                        azext_edge_runtime_channel=channel, azext_edge_skip_init="true",
                        azext_edge_init_redeployment="false", azext_edge_rg="test-rg",
                        azext_edge_cluster="test-cluster", azext_edge_instance="test-instance")
@@ -477,15 +580,16 @@ docker() {
     return "$RUN_EXIT"
 }
 '''
-    result = subprocess.run(["bash", "-c", docker_stub + script], cwd=tmp_path, env=environment,
-                            capture_output=True, text=True, check=False)
-    assert result.returncode == (build_exit or run_exit), result.stderr
+    result = workflow_shell.run(docker_stub + script, tmp_path, environment)
+    assert result.returncode == (build_exit or run_exit), result.stdout + result.stderr
     args = arguments.read_bytes().decode().split("\0")
     if build_exit:
         assert "run" not in args
         return
     assert "run" in args and "test-image" in args
-    assert f"{candidate.parent}:/opt/aio-candidate:ro" in args
+    assert f"{shell_candidate.parent}:/opt/aio-candidate:ro" in args
+    assert f"{shell_dir / 'home/.azure'}:/root/.azure" in args
+    assert f"{shell_dir / 'home/.kube/config'}:/root/.kube/config:ro" in args
     for value in (
         "azext_edge_wheel=/opt/aio-candidate/candidate.whl", f"azext_edge_wheel_sha256={'a' * 64}",
         f"azext_edge_runtime_channel={channel}", "azext_edge_instance=test-instance",
@@ -494,11 +598,11 @@ docker() {
         "azext_edge_coverage_file=/integration-results/.coverage",
     ):
         assert value in args
-    assert f"{tmp_path / '.artifacts/container-results'}:/integration-results" in args
+    assert f"{shell_dir / '.artifacts/container-results'}:/integration-results" in args
 
 
 @pytest.mark.parametrize("channel", ["stable", "preview"])
-def test_container_init_is_shared_and_create_uses_selected_channel(tmp_path, channel):
+def test_container_init_is_shared_and_create_uses_selected_channel(workflow_shell, tmp_path, channel):
     config = yaml.safe_load((ROOT / ".github/workflows/container_int_test.yml").read_text())
     steps = {step.get("name"): step for step in config["jobs"]["test"]["steps"]}
     scenarios = yaml.safe_load((ROOT / ".github/test-container-scenarios.yml").read_text())["scenarios"]
@@ -509,9 +613,8 @@ def test_container_init_is_shared_and_create_uses_selected_channel(tmp_path, cha
     # A shell function captures argv; no real az command can be invoked by these steps.
     stub = "az() { printf '%s\\0' \"$@\"; }\n"
     for step, verb in (("Run az iot ops init", "init"), ("Run az iot ops create", "create")):
-        result = subprocess.run(["bash", "-e", "-c", stub + steps[step]["run"]], cwd=tmp_path,
-                                env=environment, capture_output=True, text=True, check=False)
-        assert result.returncode == 0, result.stderr
+        result = workflow_shell.run(stub + steps[step]["run"], tmp_path, environment)
+        assert result.returncode == 0, result.stdout + result.stderr
         args = result.stdout.split("\0")
         assert args[:3] == ["iot", "ops", verb]
         assert ("--use-preview" in args) == (verb == "create" and channel == "preview")
