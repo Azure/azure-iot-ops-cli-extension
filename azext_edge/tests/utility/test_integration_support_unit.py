@@ -202,9 +202,12 @@ def test_runner_isolates_cli_imports_tests_config_and_working_directory(wheel, m
     monkeypatch.setenv("AZURE_EXTENSION_DIR", "unused")
     monkeypatch.setenv("AZURE_EXTENSION_USE_DYNAMIC_INSTALL", "unused")
     install = mocker.patch.object(runner, "install_wheel")
-    mocker.patch.object(runner.importlib, "import_module", return_value=SimpleNamespace(
+    package_import = mocker.Mock(return_value=SimpleNamespace(
         __file__=str(target / "azext_edge" / "__init__.py"),
     ))
+    # Keep the fake package import local; mock target resolution also uses importlib.
+    mocker.patch.object(runner, "importlib", SimpleNamespace(import_module=package_import))
+    assert importlib.import_module("pytest") is pytest
     mocker.patch.object(runner.subprocess, "run")
     mocker.patch.object(runner.subprocess, "check_output", return_value=json.dumps({"path": str(target)}))
     execute = mocker.patch("pytest.main", return_value=0)
@@ -215,6 +218,7 @@ def test_runner_isolates_cli_imports_tests_config_and_working_directory(wheel, m
         "--scenario", "edge", "--collect-only",
     ]) == 0
     install.assert_called_once_with(archive, target)
+    package_import.assert_called_once_with("azext_edge")
 
     assert os.getcwd() == str(work)
     assert os.environ["PYTHONPATH"] == str(target)
@@ -438,9 +442,12 @@ def test_runner_retains_init_report_when_redeployment_fails(wheel, mocker, monke
     mocker.patch.object(runner, "install_wheel", side_effect=lambda *_: shutil.rmtree(
         target / "azext_edge/tests", ignore_errors=True,
     ))
-    mocker.patch.object(runner.importlib, "import_module", return_value=SimpleNamespace(
+    package_import = mocker.Mock(return_value=SimpleNamespace(
         __file__=str(target / "azext_edge/__init__.py"),
     ))
+    # Keep the fake package import local; mock target resolution also uses importlib.
+    mocker.patch.object(runner, "importlib", SimpleNamespace(import_module=package_import))
+    assert importlib.import_module("pytest") is pytest
     mocker.patch.object(runner.subprocess, "run")
     mocker.patch.object(runner.subprocess, "check_output", return_value=json.dumps({"path": str(target)}))
 
@@ -457,5 +464,6 @@ def test_runner_retains_init_report_when_redeployment_fails(wheel, mocker, monke
             "--junit", str(tmp_path / "junit" / f"{phase}.xml"), "--coverage-config", str(ROOT / ".coveragerc"),
             "--scenario", "init_scenario_test",
         ]) == code
+    assert package_import.call_args_list == [mocker.call("azext_edge"), mocker.call("azext_edge")]
     assert (tmp_path / "junit/init.xml").read_text() == '<testsuite failures="0"/>'
     assert (tmp_path / "junit/redeploy.xml").read_text() == '<testsuite failures="1"/>'
