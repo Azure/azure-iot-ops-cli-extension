@@ -11,7 +11,7 @@ on:
         description: Resource group for cluster creation
         type: string
         required: true
-        default: ops-cli-int-test-centralus-rg
+        default: ops-cli-int-test-rg
       custom-locations-oid:
         description: Object ID of Custom Locations RP
         type: string
@@ -35,7 +35,7 @@ on:
         description: Resource group for cluster creation
         type: string
         required: true
-        default: ops-cli-int-test-centralus-rg
+        default: ops-cli-int-test-rg
       custom-locations-oid:
         description: Object ID of Custom Locations RP
         type: string
@@ -232,11 +232,15 @@ jobs:
           STORAGE_ID: ${{ steps.init_reqs.outputs.STORAGE_ID }}
         run: |
           status=0
-          for id in "$SCHEMA_REGISTRY_ID" "$ADR_NAMESPACE_ID" "$STORAGE_ID"; do
+          # Match the GA API used to create the shared ADR prerequisites on both channels.
+          for id in "$SCHEMA_REGISTRY_ID" "$ADR_NAMESPACE_ID"; do
             if [[ -n "$id" ]]; then
-              az resource delete --id "$id" --verbose --no-wait || status=1
+              az resource delete --id "$id" --api-version 2026-04-01 --verbose --no-wait || status=1
             fi
           done
+          if [[ -n "$STORAGE_ID" ]]; then
+            az resource delete --id "$STORAGE_ID" --verbose --no-wait || status=1
+          fi
           exit "$status"
       - name: "Upload container results and candidate fingerprint"
         if: ${{ always() }}

@@ -397,6 +397,26 @@ def test_live_identity_failures_are_hard_errors(mocker, records, failure):
         runtime_checks.assert_runtime("instance", "rg", "stable")
 
 
+@pytest.mark.parametrize("workflow,input_name", [
+    ("int_test.yml", "resource-group"),
+    ("container_int_test.yml", "resource-group"),
+    ("cluster_cleanup.yml", "resource_group"),
+])
+def test_workflows_default_to_existing_test_resource_group(workflow, input_name):
+    source = (ROOT / ".github/workflows" / workflow).read_text()
+    # BaseLoader keeps GitHub's "on" key as a string instead of a YAML 1.1 boolean.
+    config = yaml.load(source, Loader=yaml.BaseLoader)
+    for event in ("workflow_call", "workflow_dispatch"):
+        input_config = config["on"][event]["inputs"][input_name]
+        if event == "workflow_dispatch" or workflow != "cluster_cleanup.yml":
+            assert input_config["default"] == "ops-cli-int-test-rg"
+    if workflow != "container_int_test.yml":
+        assert config["env"]["RESOURCE_GROUP"] == (
+            "${{ inputs." + input_name + " || 'ops-cli-int-test-rg' }}"
+        )
+    assert "centralus" not in source.lower()
+
+
 def test_workflow_builds_once_and_tox_never_installs_checkout():
     config = yaml.safe_load((ROOT / ".github/workflows/int_test.yml").read_text())
     jobs = config["jobs"]
@@ -619,6 +639,45 @@ def test_container_init_is_shared_and_create_uses_selected_channel(workflow_shel
         assert args[:3] == ["iot", "ops", verb]
         assert ("--use-preview" in args) == (verb == "create" and channel == "preview")
         assert ("--yes" in args) == (verb == "create" and channel == "preview")
+
+
+@pytest.mark.parametrize("missing", ["", "SCHEMA_REGISTRY_ID", "ADR_NAMESPACE_ID", "STORAGE_ID", "all"])
+@pytest.mark.parametrize("failed", ["", "SCHEMA_REGISTRY_ID", "ADR_NAMESPACE_ID", "STORAGE_ID"])
+def test_container_cleanup_pins_only_adr_and_preserves_failures(workflow_shell, tmp_path, missing, failed):
+    config = yaml.safe_load((ROOT / ".github/workflows/container_int_test.yml").read_text())
+    steps = {step.get("name"): step for step in config["jobs"]["test"]["steps"]}
+    cleanup = steps["Delete schema registry, ADR namespace and storage"]
+    provider_root = "/subscriptions/test/resourceGroups/test rg/providers"
+    resources = {
+        "SCHEMA_REGISTRY_ID": f"{provider_root}/Microsoft.DeviceRegistry/schemaRegistries/sr",
+        "ADR_NAMESPACE_ID": f"{provider_root}/Microsoft.DeviceRegistry/namespaces/ns",
+        "STORAGE_ID": f"{provider_root}/Microsoft.Storage/storageAccounts/storage",
+    }
+    resources = {name: "" if missing in (name, "all") else value for name, value in resources.items()}
+    environment = dict(os.environ, **resources, FAILED_ID=resources.get(failed, ""))
+    # Capture each argv without invoking Azure, including after a simulated delete failure.
+    stub = '''
+az() {
+    printf '%s\\0' "$@"
+    printf '\\n'
+    if [[ "$4" == "$FAILED_ID" ]]; then return 17; fi
+    return 0
+}
+'''
+    result = workflow_shell.run(stub + cleanup["run"], tmp_path, environment)
+    assert result.returncode == int(bool(resources.get(failed))), result.stdout + result.stderr
+    calls = [line.removesuffix("\0").split("\0") for line in result.stdout.splitlines()]
+    expected = []
+    for name, resource_id in resources.items():
+        if resource_id:
+            api_args = [] if name == "STORAGE_ID" else ["--api-version", "2026-04-01"]
+            expected.append(["resource", "delete", "--id", resource_id, *api_args, "--verbose", "--no-wait"])
+    assert calls == expected
+    assert cleanup["if"] == "${{ always() }}"
+    upload = steps["Upload container results and candidate fingerprint"]
+    assert upload["if"] == "${{ always() }}" and upload["with"]["include-hidden-files"]
+    assert ".artifacts/container-results/" in upload["with"]["path"]
+    assert ".artifacts/candidate/SHA256SUMS" in upload["with"]["path"]
 
 
 def test_redeployment_reports_are_distinct_and_uploaded_after_all_stages():

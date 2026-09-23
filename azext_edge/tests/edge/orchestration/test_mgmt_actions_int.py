@@ -443,7 +443,7 @@ def mgmt_actions_setup(request, settings, tracked_files):
             f"Instance '{instance_name}' has no ADR namespace reference, which mgmt-actions requires."
         )
 
-    location = run(f'az resource show --ids "{ns_id}"')["location"]
+    location = run(f'az resource show --ids "{ns_id}" --api-version {ADR_API_VERSION}')["location"]
 
     # A pre-existing enablement cannot be faithfully restored. The original Event
     # Grid namespace, identity, dataflow profile and role settings are not all

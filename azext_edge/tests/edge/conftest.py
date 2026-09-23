@@ -220,6 +220,7 @@ def tracked_resources(init_setup):
 
 def _build_delete_command(resource_id: str, instance_name: str = None, resource_group: str = None) -> str:
     """Build the appropriate CLI delete command for a tracked resource ID."""
+    from azext_edge.edge.util.az_client import DEFAULT_DEVICEREGISTRY_MGMT_API_VERSION
     from azext_edge.edge.util.id_tools import parse_resource_id
 
     parsed = parse_resource_id(resource_id)
@@ -237,7 +238,12 @@ def _build_delete_command(resource_id: str, instance_name: str = None, resource_
             f"--instance {instance_name} -g {resource_group} -y"
         )
     # Fallback for unrecognized resource types
-    return f"az resource delete --id {resource_id} -v"
+    command = f"az resource delete --id {resource_id} -v"
+    # Match ADR creation's API without pinning other providers or extension resources.
+    resource_provider = resource_id.lower().rsplit("/providers/", 1)[-1].split("/", 1)[0]
+    if resource_provider == "microsoft.deviceregistry":
+        command += f" --api-version {DEFAULT_DEVICEREGISTRY_MGMT_API_VERSION.value}"
+    return command
 
 
 @pytest.fixture(scope="session")
