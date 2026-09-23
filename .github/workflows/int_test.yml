@@ -204,7 +204,8 @@ jobs:
           if-no-files-found: error
 
   int-test:
-    needs: [setup, build-matrix, build-candidate, unit-test]
+    # Lint/unit checks run independently; integration still requires the shared candidate.
+    needs: [setup, build-matrix, build-candidate]
     if: ${{ success() && needs.build-matrix.outputs.matrix != '[]' }}
     env:
       CLUSTER_NAME: "opt${{ github.run_number }}${{ matrix.scenario.name }}"

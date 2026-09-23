@@ -420,7 +420,11 @@ def test_workflows_default_to_existing_test_resource_group(workflow, input_name)
 def test_workflow_builds_once_and_tox_never_installs_checkout():
     config = yaml.safe_load((ROOT / ".github/workflows/int_test.yml").read_text())
     jobs = config["jobs"]
-    assert "build-candidate" in jobs["int-test"]["needs"]
+    assert jobs["int-test"]["needs"] == ["setup", "build-matrix", "build-candidate"]
+    assert jobs["build-candidate"]["needs"] == "build-matrix"
+    assert jobs["unit-test"]["needs"] == "build-matrix"
+    assert jobs["unit-test"]["name"] == "Run linter and unit tests"
+    assert any(step.get("run") == "tox r --skip-pkg-install" for step in jobs["unit-test"]["steps"])
     builds = [
         step for job in jobs.values() for step in job.get("steps", []) if "python -m build" in step.get("run", "")
     ]
