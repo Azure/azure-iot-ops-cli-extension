@@ -4,6 +4,7 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
+import json
 from typing import Tuple
 from unittest.mock import MagicMock
 
@@ -90,3 +91,73 @@ def test_get_versions_target_link_constant():
     from azext_edge.edge.common import GET_VERSIONS_URL
 
     assert GET_VERSIONS_URL == "https://aka.ms/aio-versions"
+
+
+def test_inline_versions_preserve_legacy_fields_and_actual_train(mocker):
+    from azext_edge.constants import AIO_RELEASE, VERSION
+    from azext_edge.edge.providers.orchestration.targets import InitTargets
+    from azext_edge.edge.providers.orchestration.template import TEMPLATE_BLUEPRINT_INSTANCE
+
+    browser = mocker.patch("webbrowser.open", side_effect=AssertionError("browser"))
+    mocker.patch("azure.cli.core.commands.client_factory.get_subscription_id", side_effect=AssertionError("auth"))
+    mocker.patch("azure.cli.core._profile.Profile.get_raw_token", side_effect=AssertionError("auth"))
+    mocker.patch("requests.sessions.Session.request", side_effect=AssertionError("network"))
+    legacy = InitTargets("", "")
+    result = get_versions(inline=True)
+    assert result["cliVersion"] == VERSION
+    assert result["iotOpsRelease"] == AIO_RELEASE
+    assert result["extensions"] == {**legacy.get_extension_versions(), **legacy.get_extension_versions(False)}
+    assert result["defaultRuntimeChannel"] == "stable"
+    assert set(result["runtimeProfiles"]) == {"stable", "preview"}
+    stable = result["runtimeProfiles"]["stable"]
+    assert stable["version"] == result["extensions"]["iotOperations"]["version"]
+    assert stable["train"] == TEMPLATE_BLUEPRINT_INSTANCE.content["variables"]["TRAINS"]["iotOperations"]
+    assert stable["sourceCommit"] == TEMPLATE_BLUEPRINT_INSTANCE.commit_id
+    preview = result["runtimeProfiles"]["preview"]
+    assert preview == {
+        "release": "prev2610",
+        "version": "1.6.0-preview.4",
+        "train": "integration",
+        "sourceRef": "preview/v1.6.x/2610",
+        "sourceCommit": "cd88f1f88596d8fd36cbce0522207bbae69c3f2f",
+        "opcuaConnectorVersion": "1.4.0-alpha.164",
+    }
+    assert json.loads(json.dumps(result)) == result
+    browser.assert_not_called()
+
+
+@pytest.mark.parametrize("train", [None, "integration"])
+def test_inline_reports_both_bundled_profiles_without_relabeling_trains(mocker, train):
+    from azext_edge.edge.providers.orchestration.runtime_profiles import RuntimeChannel, RuntimeProfileCatalog
+    from azext_edge.edge.providers.orchestration.targets import InitTargets
+    from .test_runtime_profiles_unit import make_profile
+
+    stable = make_profile(RuntimeChannel.STABLE, "1.5.7", train, opcua_connector_version="test-stable-tag")
+    preview = make_profile(RuntimeChannel.PREVIEW, "1.6.0-preview.4", train,
+                           opcua_connector_version="test-preview-tag")
+    catalog = RuntimeProfileCatalog([preview, stable])
+    mocker.patch("azext_edge.edge.providers.orchestration.runtime_catalog.get_runtime_catalog", return_value=catalog)
+    mocker.patch("requests.sessions.Session.request", side_effect=AssertionError("network"))
+    result = get_versions(inline=True)
+    assert result["extensions"]["iotOperations"] == {"version": "1.5.7", "train": train or "stable"}
+    shared = InitTargets("", "").get_extension_versions()
+    assert all(result["extensions"][name] == value for name, value in shared.items())
+    assert list(result["runtimeProfiles"]) == ["stable", "preview"]
+    for profile in (stable, preview):
+        assert result["runtimeProfiles"][profile.channel.value] == {
+            "release": profile.release,
+            "version": profile.identity.version,
+            "train": train or profile.channel.value,
+            "sourceRef": "test-ref",
+            "sourceCommit": "test-commit",
+            "opcuaConnectorVersion": profile.opcua_connector_version,
+        }
+    result["runtimeProfiles"]["preview"]["train"] = "changed"
+    assert catalog.describe_profiles()["preview"]["train"] == (train or "preview")
+
+
+def test_browser_versions_does_not_construct_runtime_catalog(mocker):
+    _setup_mocks(mocker)
+    mocker.patch("azext_edge.edge.providers.orchestration.runtime_catalog.get_runtime_catalog",
+                 side_effect=AssertionError("runtime catalog"))
+    get_versions()

@@ -18,6 +18,8 @@ per-session data flow is owned by DOE — so the assertions cover the ARM
 resources the CLI provisions and the role assignments it grants.
 """
 
+import os
+import subprocess
 from typing import Dict, List
 from uuid import uuid4
 
@@ -29,8 +31,10 @@ from azext_edge.edge.providers.orchestration.common import (
     EG_TOPICSPACES_SUBSCRIBER_ROLE_ID,
 )
 from azext_edge.edge.util.az_client import DEFAULT_EVENTGRID_MGMT_API_VERSION
+from azext_edge.edge.providers.orchestration.runtime_profiles import RuntimeChannel
 
 from ...helpers import assert_role_assignment, run
+from ...runtime_checks import assert_runtime, read_runtime
 
 logger = get_logger(__name__)
 
@@ -160,12 +164,29 @@ def user_assigned_mi(request, settings) -> str:
 
 
 @pytest.fixture(scope="module")
-def live_data_setup(request, settings):
+def live_data_runtime(settings):
+    """Read the actual target before any feature-specific setup or mutations."""
+    from ...settings import EnvironmentVariables
+
+    for var in (EnvironmentVariables.rg, EnvironmentVariables.instance):
+        settings.add_to_config(var.value)
+    name, group = settings.env.azext_edge_instance, settings.env.azext_edge_rg
+    assert name and group, "Live Data tests require an instance and resource group."
+    channel = os.environ.get("azext_edge_runtime_channel")
+    runtime = assert_runtime(name, group, channel) if channel else read_runtime(name, group)[0]
+    runtime.require_ready()
+    return runtime
+
+
+@pytest.fixture(scope="module")
+def live_data_setup(request, settings, live_data_runtime):
     """Resolve prerequisites and guarantee a clean baseline for the lifecycle.
 
     Requires an existing IoT Operations instance backed by an ADR namespace.
     Creates an Event Grid namespace when one is not supplied.
     """
+    if live_data_runtime.identity.channel != RuntimeChannel.PREVIEW:
+        pytest.skip("Preview lifecycle only; GA has separate rejection/no-mutation tests.")
     from ...settings import EnvironmentVariables
 
     for var in (
@@ -218,6 +239,44 @@ def live_data_setup(request, settings):
         run(f"az iot ops live-data disable {common} -y")
     except Exception:
         logger.error("Failed to disable live-data during teardown.")
+
+
+def _ga_configuration_snapshot(name: str, group: str) -> Dict:
+    """Inspect configuration using shared commands, never the restricted live-data show."""
+    runtime, instance, extensions = read_runtime(name, group)
+    namespace_id = instance["properties"]["adrNamespaceRef"]["resourceId"]
+    namespace = run(f'az iot ops ns show --ids "{namespace_id}"')
+    properties = ("version", "releaseTrain", "configurationSettings", "autoUpgradeMinorVersion")
+    return {
+        "runtime": runtime.identity,
+        "instance": {key: instance.get(key) for key in ("properties", "identity", "tags")},
+        "namespace": {key: namespace.get(key) for key in ("properties", "identity", "tags")},
+        "extensions": {ext["id"]: {key: ext["properties"].get(key) for key in properties} for ext in extensions},
+        "profiles": sorted(run(f"az iot ops dataflow profile list -i {name} -g {group}"), key=lambda x: x["id"]),
+        "endpoints": sorted(run(f"az iot ops dataflow endpoint list -i {name} -g {group}"), key=lambda x: x["id"]),
+    }
+
+
+@pytest.mark.livedata
+@pytest.mark.serial
+@pytest.mark.parametrize("verb", ["enable", "disable", "show"])
+def test_live_data_rejected_on_ga_without_mutation(settings, live_data_runtime, verb):
+    if live_data_runtime.identity.channel != RuntimeChannel.STABLE:
+        pytest.skip("GA rejection only; preview has separate lifecycle tests.")
+    name, group = settings.env.azext_edge_instance, settings.env.azext_edge_rg
+    before = _ga_configuration_snapshot(name, group)
+    command = ["az", "iot", "ops", "live-data", verb, "-i", name, "-g", group, "--no-progress"]
+    if verb == "enable":
+        # Syntactically valid but deliberately unprovisioned: the runtime gate must
+        # reject before the provider attempts Event Grid discovery or any writes.
+        scope = live_data_runtime.instance_id.lower().split("/providers/", 1)[0]
+        command += ["--eg-resource-id", f"{scope}/providers/Microsoft.EventGrid/namespaces/preview-gate-unused"]
+    elif verb == "disable":
+        command += ["--yes"]
+    result = subprocess.run(command, capture_output=True, text=True, check=False)
+    assert result.returncode != 0, f"Live Data {verb} unexpectedly succeeded on GA."
+    assert "Live Data requires a preview runtime; the target uses stable." in result.stderr, result.stderr
+    assert _ga_configuration_snapshot(name, group) == before, "Rejected command changed GA configuration."
 
 
 @pytest.mark.livedata

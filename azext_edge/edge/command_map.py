@@ -9,6 +9,9 @@ Load CLI commands
 """
 from azure.cli.core.commands import CliCommandType
 
+from .providers.orchestration.runtime import OperationRequirements
+from .providers.orchestration.runtime_profiles import RuntimeChannel
+
 schema_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_schema#{}")
 mq_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_mq#{}")
 dataflow_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_dataflow#{}")
@@ -78,14 +81,15 @@ def load_iotops_commands(self, _):
         cmd_group.show_command("show", "mgmt_actions_show")
         cmd_group.command("execute", "mgmt_actions_execute")
 
+    live_data_requirement = OperationRequirements("Live Data", channels={RuntimeChannel.PREVIEW})
     with self.command_group(
         "iot ops live-data",
         command_type=live_data_resource_ops,
         is_preview=True,
     ) as cmd_group:
-        cmd_group.command("enable", "live_data_enable")
-        cmd_group.command("disable", "live_data_disable")
-        cmd_group.show_command("show", "live_data_show")
+        cmd_group.command("enable", "live_data_enable", runtime_requirement=live_data_requirement)
+        cmd_group.command("disable", "live_data_disable", runtime_requirement=live_data_requirement)
+        cmd_group.show_command("show", "live_data_show", runtime_requirement=live_data_requirement)
 
     with self.command_group(
         "iot ops support",

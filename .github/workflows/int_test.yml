@@ -5,6 +5,14 @@ on:
     - cron: "0 9 * * *" # Run daily at 1:00 AM Pacific Time (9:00 AM UTC)
   workflow_call:
     inputs:
+      runtime-channels:
+        description: "Runtime channels to test (stable,preview); each gets independent clusters"
+        type: string
+        default: "stable,preview"
+      upgrade-baselines:
+        description: "JSON pinned baseline definitions by channel, required for explicit upgrade-path scenarios"
+        type: string
+        default: "{}"
       resource-group:
         description: Resource group for cluster creation
         type: string
@@ -49,6 +57,14 @@ on:
         required: true
   workflow_dispatch:
     inputs:
+      runtime-channels:
+        description: "Runtime channels to test (stable,preview)"
+        type: string
+        default: "stable,preview"
+      upgrade-baselines:
+        description: "JSON pinned baseline definitions by channel, required for upgrade-path"
+        type: string
+        default: "{}"
       resource-group:
         description: Resource group for cluster creation
         type: string
@@ -106,9 +122,6 @@ jobs:
     runs-on: ubuntu-latest
     # Run on dispatch, or ensure scheduled runs only on dev branch
     if: github.event_name != 'schedule' || (github.repository == 'azure/azure-iot-ops-cli-extension' && github.ref == 'refs/heads/dev')
-    outputs:
-      runtime_create_args: ${{ steps.runtime_args.outputs.CREATE_ARGS }}
-      runtime_init_args: ${{ steps.runtime_args.outputs.INIT_ARGS }}
     steps:
       - name: "Check Keep On Failure arg"
         run: |
@@ -116,12 +129,6 @@ jobs:
             echo "The keep alive input is not a valid number"
             exit 1
           fi
-      - name: "Output runtime args for int-test job"
-        id: runtime_args
-        run: |
-          echo "CREATE_ARGS=${{ env.RUNTIME_CREATE_ARGS }}" >> $GITHUB_OUTPUT
-          echo "INIT_ARGS=${{ env.RUNTIME_INIT_ARGS }}" >> $GITHUB_OUTPUT
-
   build-matrix:
     name: "Build Test Matrix"
     needs: setup
@@ -140,6 +147,10 @@ jobs:
         uses: ./.github/actions/build-int-test-matrix
         with:
           test-scenarios: ${{ env.TEST_SCENARIOS }}
+          runtime-channels: ${{ inputs.runtime-channels || 'stable,preview' }}
+          upgrade-baselines: ${{ inputs.upgrade-baselines || '{}' }}
+          runtime-init-args: ${{ env.RUNTIME_INIT_ARGS }}
+          runtime-create-args: ${{ env.RUNTIME_CREATE_ARGS }}
 
   unit-test:
     name: "Run linter and unit tests"
@@ -166,8 +177,35 @@ jobs:
           name: coverage-unit
           path: ./.coverage
           include-hidden-files: true
+  build-candidate:
+    name: "Build one candidate wheel for every runtime channel"
+    needs: build-matrix
+    runs-on: ubuntu-24.04
+    outputs:
+      sha256: ${{ steps.wheel.outputs.sha256 }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.13"
+      - name: "Build and fingerprint candidate"
+        id: wheel
+        run: |
+          python -m pip install build
+          python -m build --wheel
+          cd dist
+          wheels=(*.whl)
+          test "${#wheels[@]}" -eq 1
+          sha256sum "${wheels[0]}" > SHA256SUMS
+          echo "sha256=$(cut -d ' ' -f1 SHA256SUMS)" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: integration-candidate
+          path: dist/
+          if-no-files-found: error
+
   int-test:
-    needs: [setup, build-matrix]
+    needs: [setup, build-matrix, build-candidate, unit-test]
     if: ${{ success() && needs.build-matrix.outputs.matrix != '[]' }}
     env:
       CLUSTER_NAME: "opt${{ github.run_number }}${{ matrix.scenario.name }}"
@@ -175,6 +213,10 @@ jobs:
       KEYVAULT_NAME: "kv${{ github.run_number }}"
       INIT_ARG: ""
       CREATE_ARG: ""
+      azext_edge_runtime_channel: ${{ matrix.scenario.channel }}
+      azext_edge_upgrade_baseline: ${{ toJson(matrix.scenario.baseline) }}
+      azext_edge_wheel_sha256: ${{ needs.build-candidate.outputs.sha256 }}
+      AZURE_EXTENSION_USE_DYNAMIC_INSTALL: "no"
     strategy:
       fail-fast: false
       matrix:
@@ -183,13 +225,15 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - name: "Export init args and environment variables"
+        env:
+          SCENARIO_INIT_ARGS: ${{ matrix.scenario.init_args }}
+          SCENARIO_CREATE_ARGS: ${{ matrix.scenario.create_args }}
+          SCENARIO_ENV: ${{ toJson(matrix.scenario.env) }}
         run: |
-          echo "INIT_ARG=${{ matrix.scenario.init_args }} ${{ env.RUNTIME_INIT_ARGS }}" >> $GITHUB_ENV
-          echo "CREATE_ARG=${{ matrix.scenario.create_args }} ${{ env.RUNTIME_CREATE_ARGS }}" >> $GITHUB_ENV
-
-          env_json='${{ toJson(matrix.scenario.env) }}'
-          if [[ "$env_json" != "null" && "$env_json" != "[]" ]]; then
-            echo "$env_json" | jq -r '.[] | "\(.name)=\(.value)"' >> $GITHUB_ENV
+          echo "INIT_ARG=$SCENARIO_INIT_ARGS" >> "$GITHUB_ENV"
+          echo "CREATE_ARG=$SCENARIO_CREATE_ARGS" >> "$GITHUB_ENV"
+          if [[ "$SCENARIO_ENV" != "null" && "$SCENARIO_ENV" != "[]" ]]; then
+            echo "$SCENARIO_ENV" | jq -r '.[] | "\(.name)=\(.value)"' >> "$GITHUB_ENV"
           fi
       - name: "Output variables for future steps"
         id: "env_out"
@@ -197,18 +241,32 @@ jobs:
           echo "RESOURCE_GROUP=${{ env.RESOURCE_GROUP }}" >> $GITHUB_OUTPUT
           echo "CLUSTER_NAME=${{ env.CLUSTER_NAME }}" >> $GITHUB_OUTPUT
           echo "INSTANCE_NAME=${{ env.INSTANCE_NAME }}" >> $GITHUB_OUTPUT
+          # The resource action truncates names: use a digest so the channel suffix
+          # cannot disappear and make parallel GA/preview jobs share storage/ADR.
+          echo "RESOURCE_SUFFIX=$(printf '%s' "$CLUSTER_NAME" | sha256sum | cut -c1-11)" >> "$GITHUB_OUTPUT"
       - name: "Setup python"
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.13"
-      - name: "Checkout extension source for build"
+      - name: "Checkout test sources and orchestration tools"
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: "Build and install local IoT Ops extension from source"
+      - name: "Download the shared candidate"
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: integration-candidate
+          path: .artifacts/candidate
+      - name: "Verify and install the candidate for workflow CLI commands"
         run: |
-          pip install -r dev_requirements.txt
-          python -m build
-          wheel=$(find ./dist/*.whl)
-          az extension add --source $wheel -y
+          cd .artifacts/candidate
+          sha256sum --check SHA256SUMS
+          wheels=(*.whl)
+          test "${#wheels[@]}" -eq 1
+          export azext_edge_wheel="$PWD/${wheels[0]}"
+          test "$(sha256sum "$azext_edge_wheel" | cut -d ' ' -f1)" = "$azext_edge_wheel_sha256"
+          echo "azext_edge_wheel=$azext_edge_wheel" >> "$GITHUB_ENV"
+          az extension add --source "$azext_edge_wheel" -y
+          extension_path=$(az extension show --name azure-iot-ops --query path -o tsv)
+          python "$GITHUB_WORKSPACE/tools/integration_runner.py" --verify-installed --extension-dir "$extension_path"
       - name: "Create k3s cluster"
         uses: ./.github/actions/create-k3s-cluster
       - name: "Apply custom cluster issuer"
@@ -244,7 +302,7 @@ jobs:
         id: "init_reqs"
         uses: ./.github/actions/setup-cluster-resources
         with:
-          suffix: ${{ env.CLUSTER_NAME }}
+          suffix: ${{ steps.env_out.outputs.RESOURCE_SUFFIX }}
           resource-group: ${{ env.RESOURCE_GROUP }}
       - name: "OIDC Token exchange service"
         run: |
@@ -258,12 +316,13 @@ jobs:
           done &
       - name: "Tox INIT Integration Tests"
         env:
+          azext_edge_junit_path: ${{ github.workspace }}/junit/init.xml
           azext_edge_init_continue_on_error: ${{ inputs.init-continue-on-error || '' }}
           azext_edge_rg: ${{ steps.env_out.outputs.RESOURCE_GROUP }}
           azext_edge_cluster: ${{ steps.env_out.outputs.CLUSTER_NAME }}
           azext_edge_instance: ${{ steps.env_out.outputs.INSTANCE_NAME }}
-          azext_edge_init_args: ${{ matrix.scenario.init_args }} ${{ needs.setup.outputs.runtime_init_args }}
-          azext_edge_create_args: ${{ matrix.scenario.create_args }} ${{ needs.setup.outputs.runtime_create_args }}
+          azext_edge_init_args: ${{ matrix.scenario.init_args }}
+          azext_edge_create_args: ${{ matrix.scenario.create_args }}
           azext_edge_schema_registry_id: ${{ steps.init_reqs.outputs.SCHEMA_REGISTRY_ID }}
           azext_edge_adr_namespace_id: ${{ steps.init_reqs.outputs.ADR_NAMESPACE_ID }}
         run: |
@@ -283,13 +342,6 @@ jobs:
           fi
           tox r -e "${{ matrix.scenario.tox_env }}" --skip-pkg-install -- $PYTEST_ARGS
           tox r -e report
-      - name: "Upload coverage artifacts"
-        if: ${{ always() }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: coverage-${{ matrix.scenario.name }}
-          path: ./.coverage
-          include-hidden-files: true
       - name: "Run smoke tests"
         run: |
           resource_group_location=$(az group show --name "$RESOURCE_GROUP" --query location -o tsv)
@@ -337,11 +389,12 @@ jobs:
       - name: "Redeploy cluster via tox"
         if: ${{ matrix.scenario.test_redeploy }}
         env:
+          azext_edge_junit_path: ${{ github.workspace }}/junit/redeploy.xml
           azext_edge_rg: ${{ steps.env_out.outputs.RESOURCE_GROUP }}
           azext_edge_cluster: ${{ steps.env_out.outputs.CLUSTER_NAME }}
           azext_edge_instance: ${{ steps.env_out.outputs.INSTANCE_NAME }}
-          azext_edge_init_args: ${{ matrix.scenario.init_args }} ${{ needs.setup.outputs.runtime_init_args }}
-          azext_edge_create_args: ${{ matrix.scenario.create_args }} ${{ needs.setup.outputs.runtime_create_args }}
+          azext_edge_init_args: ${{ matrix.scenario.init_args }}
+          azext_edge_create_args: ${{ matrix.scenario.create_args }}
           azext_edge_schema_registry_id: ${{ steps.init_reqs.outputs.SCHEMA_REGISTRY_ID }}
           azext_edge_adr_namespace_id: ${{ steps.init_reqs.outputs.ADR_NAMESPACE_ID }}
         run: |
@@ -369,6 +422,22 @@ jobs:
           else
             echo "No storage account to delete"
           fi
+      - name: "Upload coverage artifacts"
+        if: ${{ always() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: coverage-${{ matrix.scenario.name }}
+          path: ./.coverage
+          include-hidden-files: true
+      - name: "Upload channel-specific test results and candidate fingerprint"
+        if: ${{ always() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: integration-results-${{ matrix.scenario.name }}
+          path: |
+            junit/
+            .artifacts/candidate/SHA256SUMS
+          include-hidden-files: true
   combine-coverage:
     name: "Combine coverage reports"
     if: ${{ always() }}
