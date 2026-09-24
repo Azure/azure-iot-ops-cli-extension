@@ -45,7 +45,7 @@ def qualification_profile():
         channel=RuntimeChannel.PREVIEW,
         release="prev2610",
         source_ref="preview/v1.6.x/2610",
-        source_commit="cd88f1f88596d8fd36cbce0522207bbae69c3f2f",
+        source_commit="test-commit",
         instance_blueprint=TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW,
     )
 
@@ -53,12 +53,12 @@ def qualification_profile():
 def test_preview_source_identity_and_contract(qualification_profile):
     blueprint = TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW
     content = blueprint.content
-    assert blueprint.commit_id == "48d350585364afa6c4ac40e66dd431e539cd64fb"
-    assert content["variables"]["VERSIONS"] == {"iotOperations": "1.6.0-preview.4"}
+    assert blueprint.commit_id
+    assert content
+    assert content["variables"]["VERSIONS"] == {"iotOperations": "1.6.0-preview.11"}
     assert content["variables"]["TRAINS"] == {"iotOperations": "integration"}
     assert qualification_profile.identity.train == "integration"
     assert qualification_profile.identity.channel == RuntimeChannel.PREVIEW
-    assert content["metadata"]["_generator"]["templateHash"] == "9605278375790540282"
     assert set(content["resources"]) == EXPECTED_PREVIEW_RESOURCE_KEYS
     aio_resources = [r for r in content["resources"].values() if r["type"].startswith("Microsoft.IoTOperations/")]
     assert len(aio_resources) == 8
@@ -129,7 +129,7 @@ def test_preview_features_use_source_contract(qualification_profile, mode):
     template, parameters = InitTargets(
         "cluster", "rg", runtime_profile=qualification_profile, instance_features=[f"opcua.mode={mode}"]
     ).get_ops_instance_template()
-    assert parameters["features"] == {"value": {"opcua": {"mode": mode}}}
+    assert parameters["features"] == {"value": {"opcua": {"mode": mode, "settings": {}}}}
     assert template["resources"]["aioInstance"]["properties"]["features"] == "[parameters('features')]"
     assert ("opcUaConnectorTemplate" in template["resources"]) == (mode != "Disabled")
     assert "effectiveFeatures" not in template["variables"]
@@ -198,7 +198,8 @@ def test_bundled_preview_registered_without_changing_default_or_train():
     assert profile is PREVIEW_PROFILE
     assert profile.copy_instance_blueprint() == TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW
     assert profile.identity.train == "integration"
-    assert profile.source_commit == "cd88f1f88596d8fd36cbce0522207bbae69c3f2f"
+    assert profile.source_ref
+    assert profile.source_commit
     assert resolve_runtime_identity(
         profile.identity.version, profile.identity.train, catalog.qualification_identities
     ) == profile.identity

@@ -16,6 +16,7 @@ from knack.log import get_logger
 
 from azext_edge.edge.common import DEFAULT_BROKER, DEFAULT_BROKER_LISTENER
 from azext_edge.edge.util.common import assemble_nargs_to_dict
+from azext_edge.edge.providers.orchestration.runtime_catalog import get_runtime_catalog
 from azext_edge.edge.providers.orchestration.common import (
     AZURE_DEVICE_REGISTRY_ADMINISTRATOR_ROLE_ID,
     CONTRIBUTOR_ROLE_ID,
@@ -251,6 +252,7 @@ def assert_aio_instance(
     tags: Optional[str] = None,
     trust_settings: Optional[dict] = None,
     feature: Optional[str] = None,
+    use_preview: bool = False,
     **_,
 ):
     # check extensions installed
@@ -295,7 +297,10 @@ def assert_aio_instance(
         assert custom_location == expected_custom_location
 
     instance_props = instance_show["properties"]
-    assert instance_props.get("description") == description
+    if description is None:
+        blueprint = get_runtime_catalog().for_create(use_preview=use_preview).copy_instance_blueprint()
+        description = blueprint.get_resource_by_key("aioInstance")["properties"].get("description")
+    assert instance_props.get("description") == description, "Unexpected instance description."
     assert instance_props["schemaRegistryRef"] == {"resourceId": schema_registry_id}
     assert instance_props["adrNamespaceRef"] == {"resourceId": adr_namespace_id}
 

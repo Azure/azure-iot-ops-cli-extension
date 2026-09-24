@@ -206,6 +206,27 @@ def test_generated_instance_defaults_and_new_child_names_are_preserved(profiles)
     assert profile.copy_instance_blueprint().content == blueprint.content
 
 
+@pytest.mark.parametrize("channel", list(RuntimeChannel))
+@pytest.mark.parametrize("mode", ["Stable", "Preview", "Disabled"])
+@pytest.mark.parametrize("phase", [None, 1, 2, 3])
+def test_mode_only_features_satisfy_arm_parameter_contract(channel, mode, phase):
+    from azext_edge.edge.providers.orchestration.runtime_catalog import get_runtime_catalog
+
+    profile = get_runtime_catalog().get(channel)
+    original = profile.copy_instance_blueprint().content
+    targets = InitTargets("cluster", "rg", runtime_profile=profile, instance_features=[f"opcua.mode={mode}"])
+    template, parameters = targets.get_ops_instance_template(phase=phase)
+
+    settings_schema = template["definitions"]["_1.InstanceFeature"]["properties"]["settings"]
+    assert settings_schema["type"] == "object"
+    assert not settings_schema.get("nullable", False)
+    assert parameters["features"] == {"value": {"opcua": {"mode": mode, "settings": {}}}}
+    assert targets.instance_features == {"opcua": {"mode": mode}}
+    assert profile.copy_instance_blueprint().content == original
+    parameters["features"]["value"]["opcua"]["settings"]["changed"] = "Enabled"
+    assert targets.get_ops_instance_template(phase=phase)[1]["features"]["value"]["opcua"]["settings"] == {}
+
+
 @pytest.mark.parametrize("parameter_defaults", [True, False])
 def test_explicit_features_merge_nested_generated_defaults(profiles, parameter_defaults):
     blueprint = profiles[1].copy_instance_blueprint()
@@ -247,9 +268,11 @@ def test_feature_expression_merge_stays_in_template_scope(profiles, parameter_de
     expression = (template["parameters"]["features"]["defaultValue"] if parameter_defaults
                   else template["resources"]["aioInstance"]["properties"]["features"])
     source = "parameters('featureDefaults')" if parameter_defaults else "variables('effectiveFeatures')"
+    override = ('{"opcua":{"mode":"Preview","settings":{}}}' if parameter_defaults
+                else '{"opcua":{"mode":"Preview"}}')
     assert expression == (
         "[union(coalesce(" + source + ", createObject()), "
-        "json('{\"opcua\":{\"mode\":\"Preview\"}}'))]"
+        "json('" + override + "'))]"
     )
     assert profile.copy_instance_blueprint().content == blueprint.content
 
