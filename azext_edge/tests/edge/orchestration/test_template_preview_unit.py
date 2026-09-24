@@ -55,7 +55,7 @@ def test_preview_source_identity_and_contract(qualification_profile):
     content = blueprint.content
     assert blueprint.commit_id
     assert content
-    assert content["variables"]["VERSIONS"] == {"iotOperations": "1.6.0-preview.11"}
+    assert content["variables"]["VERSIONS"] == {"iotOperations": "1.6.0-preview.9"}
     assert content["variables"]["TRAINS"] == {"iotOperations": "integration"}
     assert qualification_profile.identity.train == "integration"
     assert qualification_profile.identity.channel == RuntimeChannel.PREVIEW

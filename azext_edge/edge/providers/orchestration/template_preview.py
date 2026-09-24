@@ -8,9 +8,13 @@
 
 Development connector registries and the GDS setting are retained by approval.
 Runtime catalog registration preserves these inputs and the actual deployment train.
+
+Release-policy override: pin upstream 1.6.0-preview.11 to the release owner's
+recommended 1.6.0-preview.9 on integration for API 2026-09-01-preview qualification.
+Reapply this override to exported Bicep before recompiling, not to generated output.
 """
 
-# selected source preview/v1.6.x/2610 @ cd88f1f88596d8fd36cbce0522207bbae69c3f2f
+# selected source preview/v1.6.x/2610 @ 6e1521ebb4893f2db20b4d97187c5ff9c211326f
 # source release prev2610
 # redaction only loadYamlContent three scalar substitutions
 from .template import TemplateBlueprint
@@ -22,7 +26,7 @@ TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW = TemplateBlueprint(
         "languageVersion": "2.0",
         "contentVersion": "1.0.0.0",
         "metadata": {
-            "_generator": {"name": "bicep", "version": "0.47.16.16243", "templateHash": "10674428641252114978"}
+            "_generator": {"name": "bicep", "version": "0.47.16.16243", "templateHash": "10752848530986159796"}
         },
         "definitions": {
             "_1.AdvancedConfig": {
@@ -727,7 +731,7 @@ TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW = TemplateBlueprint(
             "advancedConfig": {"$ref": "#/definitions/_1.AdvancedConfig", "defaultValue": {}},
         },
         "variables": {
-            "VERSIONS": {"iotOperations": "1.6.0-preview.11"},
+            "VERSIONS": {"iotOperations": "1.6.0-preview.9"},
             "TRAINS": {"iotOperations": "integration"},
             "HASH": "[coalesce(tryGet(parameters('advancedConfig'), 'resourceSuffix'), take(uniqueString(resourceGroup().id, parameters('clusterName'), parameters('clusterNamespace')), 5))]",
             "AIO_EXTENSION_SUFFIX": "[take(uniqueString(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName'))), 5)]",
