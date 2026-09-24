@@ -207,6 +207,13 @@ jobs:
     # Lint/unit checks run independently; integration still requires the shared candidate.
     needs: [setup, build-matrix, build-candidate]
     if: ${{ success() && needs.build-matrix.outputs.matrix != '[]' }}
+    concurrency:
+      group: >-
+        ${{ matrix.scenario.tox_env == 'python-wlif-int' &&
+        format('iot-ops-wlif-{0}', inputs.resource-group || 'ops-cli-int-test-rg') ||
+        format('iot-ops-int-{0}-{1}-{2}', github.run_id, github.run_attempt, matrix.scenario.name) }}
+      cancel-in-progress: false
+      queue: max
     env:
       CLUSTER_NAME: "opt${{ github.run_number }}${{ matrix.scenario.name }}"
       INSTANCE_NAME: "inst${{ github.run_number }}${{ matrix.scenario.name }}"
