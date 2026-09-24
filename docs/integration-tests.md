@@ -94,6 +94,22 @@ ADR namespace. No existing cluster is converted between channels.
 - Results, coverage and cleanup are isolated by scenario and channel. Running both channels
   roughly doubles runtime-dependent jobs; jobs can be scheduled sequentially to reduce peak cost.
 
+#### Workload identity scheduling
+
+Workload-identity jobs (`python-wlif-int`, the `trustbundle` scenario) share a
+resource-group-specific concurrency group. Only one runs at a time, from setup and
+init through tests and cleanup, because OPC UA certificate commands create fixed-name
+SecretSync resources. Other scenarios remain parallel. `parallel: false` controls
+pytest workers within a job; it does not provide this cross-job protection.
+
+The group spans stable/preview channels, branches and workflow runs in the same
+repository that use this configuration. `cancel-in-progress: false` preserves the
+running job and `queue: max` allows up to 100 pending jobs instead of replacing the
+previous pending job. Either channel may run first. Runs in other repositories or
+older workflows without the group are not coordinated. Cleanup failures still need
+investigation: the lock lasts through cleanup attempts, not until successful deletion
+is independently guaranteed.
+
 #### The same candidate wheel everywhere
 
 One `build-candidate` job builds the wheel and publishes its SHA256. Every integration job

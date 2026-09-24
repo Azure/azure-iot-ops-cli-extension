@@ -31,6 +31,7 @@ from azext_edge.edge.providers.orchestration.common import (
     EG_TOPICSPACES_SUBSCRIBER_ROLE_ID,
 )
 from azext_edge.edge.util.az_client import DEFAULT_EVENTGRID_MGMT_API_VERSION
+from azext_edge.edge.util.id_tools import parse_resource_id
 from azext_edge.edge.providers.orchestration.runtime_profiles import RuntimeChannel
 
 from ...helpers import assert_role_assignment, run
@@ -178,6 +179,14 @@ def live_data_runtime(settings):
     return runtime
 
 
+def _read_adr_namespace(namespace_id: str) -> Dict:
+    namespace = parse_resource_id(namespace_id)
+    return run(
+        f'az iot ops ns show -n "{namespace["name"]}" -g "{namespace["resource_group"]}" '
+        f'--subscription "{namespace["subscription"]}"'
+    )
+
+
 @pytest.fixture(scope="module")
 def live_data_setup(request, settings, live_data_runtime):
     """Resolve prerequisites and guarantee a clean baseline for the lifecycle.
@@ -211,7 +220,7 @@ def live_data_setup(request, settings, live_data_runtime):
             f"Instance '{instance_name}' has no ADR namespace reference, which Live Data requires."
         )
 
-    location = run(f'az resource show --ids "{ns_id}"')["location"]
+    location = _read_adr_namespace(ns_id)["location"]
 
     # A pre-existing enablement cannot be faithfully restored, so refuse rather
     # than run on top of it. `enabled` alone is insufficient, since a half
@@ -245,7 +254,7 @@ def _ga_configuration_snapshot(name: str, group: str) -> Dict:
     """Inspect configuration using shared commands, never the restricted live-data show."""
     runtime, instance, extensions = read_runtime(name, group)
     namespace_id = instance["properties"]["adrNamespaceRef"]["resourceId"]
-    namespace = run(f'az iot ops ns show --ids "{namespace_id}"')
+    namespace = _read_adr_namespace(namespace_id)
     properties = ("version", "releaseTrain", "configurationSettings", "autoUpgradeMinorVersion")
     return {
         "runtime": runtime.identity,

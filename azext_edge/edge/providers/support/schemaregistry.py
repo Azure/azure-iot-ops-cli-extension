@@ -19,7 +19,7 @@ from .common import NAME_LABEL_FORMAT
 
 logger = get_logger(__name__)
 
-SCHEMAS_NAME_LABEL = NAME_LABEL_FORMAT.format(label="microsoft-iotoperations-schemas")
+SCHEMAS_NAME_LABEL = NAME_LABEL_FORMAT.format(label="microsoft-iotoperations-schemas,aio-edge-registry")
 SCHEMAS_DIRECTORY_PATH = "schemaregistry"
 
 

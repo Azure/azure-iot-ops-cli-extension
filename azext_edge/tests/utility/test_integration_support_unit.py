@@ -100,6 +100,32 @@ def test_init_description_assertion_uses_selected_defaults(mocker, use_preview, 
         roles.assert_not_called()
 
 
+def test_workload_identity_jobs_serialize_through_cleanup():
+    config = yaml.safe_load((ROOT / ".github/workflows/int_test.yml").read_text())
+    assert "concurrency" not in config
+    job = config["jobs"]["int-test"]
+    assert "max-parallel" not in job["strategy"]
+    assert job["concurrency"] == {
+        "group": (
+            "${{ matrix.scenario.tox_env == 'python-wlif-int' && "
+            "format('iot-ops-wlif-{0}', inputs.resource-group || 'ops-cli-int-test-rg') || "
+            "format('iot-ops-int-{0}-{1}-{2}', github.run_id, github.run_attempt, matrix.scenario.name) }}"
+        ),
+        "cancel-in-progress": False,
+        "queue": "max",
+    }
+    steps = {step.get("name"): step for step in job["steps"]}
+    names = list(steps)
+    assert (
+        names.index("Tox INIT Integration Tests")
+        < names.index("${{ matrix.scenario.description }}")
+        < names.index("Delete AIO resources")
+        < names.index("Delete connected cluster and resources")
+    )
+    for name in ("Delete AIO resources", "Delete connected cluster and resources"):
+        assert steps[name]["if"] == "${{ always() }}"
+
+
 def test_default_matrix_covers_both_channels_without_invented_baselines():
     scenarios = yaml.safe_load((ROOT / ".github/test-scenarios.yml").read_text())["scenarios"]
     rows = matrix.expand_channels(matrix.process_scenarios(scenarios, ""))
@@ -122,6 +148,65 @@ def test_live_data_scenario_uses_both_channels_serially():
     assert all(row["tox_env"] == "python-livedata-int" and not row["parallel"] for row in rows)
     assert [row["create_args"] for row in rows] == ["", "--use-preview --yes"]
     assert all(not row["init_args"] and row["baseline"] is None for row in rows)
+
+
+@pytest.mark.parametrize("channel", list(RuntimeChannel))
+@pytest.mark.parametrize("namespace_group", ["instance-rg", "namespace-rg"])
+def test_live_data_prerequisites_use_scoped_namespace_command(mocker, channel, namespace_group):
+    from azext_edge.tests.edge.orchestration import test_live_data_int as live_tests
+
+    namespace_id = (
+        f"/subscriptions/namespace-sub/resourceGroups/{namespace_group}"
+        "/providers/Microsoft.DeviceRegistry/namespaces/namespace-name"
+    )
+    instance = {"properties": {"adrNamespaceRef": {"resourceId": namespace_id}}}
+    namespace = {"location": "westus2", "properties": {"provisioningState": "Succeeded"}}
+    namespace_command = (
+        f'az iot ops ns show -n "namespace-name" -g "{namespace_group}" --subscription "namespace-sub"'
+    )
+    responses = {
+        namespace_command: namespace,
+        "az iot ops show -n instance -g instance-rg": instance,
+        "az iot ops live-data show -i instance -g instance-rg": {"enabled": False},
+        "az iot ops live-data disable -i instance -g instance-rg -y": None,
+        "az iot ops dataflow profile list -i instance -g instance-rg": [],
+        "az iot ops dataflow endpoint list -i instance -g instance-rg": [],
+    }
+    command = mocker.patch.object(live_tests, "run", side_effect=responses.__getitem__)
+    runtime = SimpleNamespace(identity=SimpleNamespace(channel=channel))
+    mocker.patch.object(live_tests, "read_runtime", return_value=(runtime, instance, []))
+    ensure_eventgrid = mocker.patch.object(live_tests, "_ensure_eg_namespace", return_value="/eventgrid")
+
+    if channel == RuntimeChannel.STABLE:
+        snapshot = live_tests._ga_configuration_snapshot("instance", "instance-rg")
+        assert snapshot["namespace"]["properties"] == namespace["properties"]
+        assert command.call_args_list == [
+            mocker.call(namespace_command),
+            mocker.call("az iot ops dataflow profile list -i instance -g instance-rg"),
+            mocker.call("az iot ops dataflow endpoint list -i instance -g instance-rg"),
+        ]
+        ensure_eventgrid.assert_not_called()
+    else:
+        request = mocker.Mock()
+        settings = SimpleNamespace(
+            env=SimpleNamespace(azext_edge_instance="instance", azext_edge_rg="instance-rg"),
+            add_to_config=mocker.Mock(),
+        )
+        setup = live_tests.live_data_setup.__wrapped__(request, settings, runtime)
+        assert next(setup) == {
+            "instanceName": "instance", "resourceGroup": "instance-rg", "egResourceId": "/eventgrid",
+        }
+        ensure_eventgrid.assert_called_once_with(
+            request=request, settings=settings, resource_group="instance-rg", location="westus2",
+        )
+        with pytest.raises(StopIteration):
+            next(setup)
+        assert command.call_args_list == [
+            mocker.call("az iot ops show -n instance -g instance-rg"),
+            mocker.call(namespace_command),
+            mocker.call("az iot ops live-data show -i instance -g instance-rg"),
+            mocker.call("az iot ops live-data disable -i instance -g instance-rg -y"),
+        ]
 
 
 @pytest.mark.parametrize("channels", ["stable", "preview", "stable,preview", "preview,stable", "stable,stable"])
