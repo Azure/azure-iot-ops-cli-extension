@@ -55,6 +55,51 @@ def baseline():
     }
 
 
+@pytest.mark.parametrize("use_preview", [False, True])
+@pytest.mark.parametrize("description", [None, "", "custom description"])
+@pytest.mark.parametrize("matches", [False, True])
+def test_init_description_assertion_uses_selected_defaults(mocker, use_preview, description, matches):
+    from dataclasses import replace
+    from azext_edge.edge.providers.orchestration.runtime_catalog import get_runtime_catalog
+    from azext_edge.tests.edge.init.int import test_init_int as init_tests
+    from azext_edge.tests.helpers import process_additional_args
+
+    profiles = []
+    for channel in RuntimeChannel:
+        profile = get_runtime_catalog().get(channel)
+        blueprint = profile.copy_instance_blueprint()
+        blueprint.get_resource_by_key("aioInstance")["properties"]["description"] = f"{channel.value} default"
+        profiles.append(replace(profile, instance_blueprint=blueprint))
+    catalog = RuntimeProfileCatalog(profiles)
+    mocker.patch.object(init_tests, "get_runtime_catalog", return_value=catalog)
+    expected = description if description is not None else ("preview default" if use_preview else "stable default")
+    actual = expected if matches else "incorrect description"
+    command = mocker.patch.object(init_tests, "run", side_effect=[
+        {"id": "/cluster"},
+        {"value": [{"properties": {"extensionType": init_tests.EXTENSION_TYPE_OPS},
+                    "identity": {"principalId": "principal"}}]},
+        {"extendedLocation": {"name": "/locations/location"}, "properties": {
+            "description": actual, "schemaRegistryRef": {"resourceId": "/registry"},
+            "adrNamespaceRef": {"resourceId": "/namespace"},
+        }},
+        "location cert-manager",
+    ])
+    roles = mocker.patch.object(init_tests, "assert_role_assignment")
+    arguments = process_additional_args("--use-preview --yes" if use_preview else "")
+    if description is not None:
+        arguments["description"] = description
+    arguments.update(instance_name="instance", cluster_name="cluster", resource_group="rg",
+                     schema_registry_id="/registry", adr_namespace_id="/namespace")
+    if matches:
+        init_tests.assert_aio_instance(**arguments)
+        assert command.call_count == 4
+        roles.assert_called_once()
+    else:
+        with pytest.raises(AssertionError, match="Unexpected instance description"):
+            init_tests.assert_aio_instance(**arguments)
+        roles.assert_not_called()
+
+
 def test_default_matrix_covers_both_channels_without_invented_baselines():
     scenarios = yaml.safe_load((ROOT / ".github/test-scenarios.yml").read_text())["scenarios"]
     rows = matrix.expand_channels(matrix.process_scenarios(scenarios, ""))

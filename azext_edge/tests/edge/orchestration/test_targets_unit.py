@@ -498,7 +498,7 @@ def test_init_targets_opcua_mode(target_scenario: dict):
 
     aio_instance = instance_template["resources"]["aioInstance"]
     assert aio_instance["properties"]["features"] == "[variables('effectiveFeatures')]"
-    assert _instance_parameters["features"]["value"] == expected_features
+    assert _instance_parameters["features"]["value"] == {"opcua": {"mode": "Stable", "settings": {}}}
 
 
 @pytest.mark.parametrize(

@@ -44,7 +44,7 @@ def test_bundled_preview_create_with_yes_reaches_work(mocker, isolated_work, no_
     ask.assert_not_called()
     assert manager._targets.runtime_profile is profile
     assert manager._targets.get_extension_versions(False)["iotOperations"] == {
-        "version": "1.6.0-preview.4", "train": "integration",
+        "version": profile.identity.version, "train": profile.identity.train,
     }
     template, _ = manager._targets.get_ops_instance_template()
     assert template["parameters"]["enableGdsManager"]["defaultValue"] is True

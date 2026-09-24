@@ -355,7 +355,10 @@ class InitTargets:
         generated_features = properties.get("features")
         if feature_parameter is not None:
             defaults = feature_parameter.get("defaultValue")
-            merged = merge_template_object(defaults, self.instance_features)
+            overrides = deepcopy(self.instance_features)
+            for feature in overrides.values():
+                feature.setdefault("settings", {})
+            merged = merge_template_object(defaults, overrides)
             if isinstance(merged, dict):
                 parameters["features"] = {"value": merged}
             else:

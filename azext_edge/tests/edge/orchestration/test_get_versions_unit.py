@@ -95,6 +95,7 @@ def test_get_versions_target_link_constant():
 
 def test_inline_versions_preserve_legacy_fields_and_actual_train(mocker):
     from azext_edge.constants import AIO_RELEASE, VERSION
+    from azext_edge.edge.providers.orchestration.runtime_catalog import get_runtime_catalog
     from azext_edge.edge.providers.orchestration.targets import InitTargets
     from azext_edge.edge.providers.orchestration.template import TEMPLATE_BLUEPRINT_INSTANCE
 
@@ -114,13 +115,14 @@ def test_inline_versions_preserve_legacy_fields_and_actual_train(mocker):
     assert stable["train"] == TEMPLATE_BLUEPRINT_INSTANCE.content["variables"]["TRAINS"]["iotOperations"]
     assert stable["sourceCommit"] == TEMPLATE_BLUEPRINT_INSTANCE.commit_id
     preview = result["runtimeProfiles"]["preview"]
+    preview_profile = get_runtime_catalog().for_create(use_preview=True)
     assert preview == {
-        "release": "prev2610",
-        "version": "1.6.0-preview.4",
-        "train": "integration",
-        "sourceRef": "preview/v1.6.x/2610",
-        "sourceCommit": "cd88f1f88596d8fd36cbce0522207bbae69c3f2f",
-        "opcuaConnectorVersion": "1.4.0-alpha.164",
+        "release": preview_profile.release,
+        "version": preview_profile.identity.version,
+        "train": preview_profile.identity.train,
+        "sourceRef": preview_profile.source_ref,
+        "sourceCommit": preview_profile.source_commit,
+        "opcuaConnectorVersion": preview_profile.opcua_connector_version,
     }
     assert json.loads(json.dumps(result)) == result
     browser.assert_not_called()
