@@ -91,11 +91,15 @@ def isolated_work(mocker):
 
 def create_args():
     root = "/subscriptions/sub/resourceGroups/rg/providers/Microsoft.DeviceRegistry"
-    return dict(
-        cmd=Mock(), cluster_name="cluster", resource_group_name="rg", instance_name="instance",
-        schema_registry_resource_id=f"{root}/schemaRegistries/sr",
-        adr_namespace_resource_id=f"{root}/namespaces/ns", no_progress=True,
-    )
+    return {
+        "cmd": Mock(),
+        "cluster_name": "cluster",
+        "resource_group_name": "rg",
+        "instance_name": "instance",
+        "schema_registry_resource_id": f"{root}/schemaRegistries/sr",
+        "adr_namespace_resource_id": f"{root}/namespaces/ns",
+        "no_progress": True,
+    }
 
 
 @pytest.mark.parametrize("no_preflight", [True, False])

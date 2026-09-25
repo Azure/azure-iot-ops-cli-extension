@@ -264,7 +264,7 @@ def test_null_connectivity_is_unknown_not_ready(records):
         resolve_runtime(**records).require_ready()
 
 
-@pytest.mark.parametrize("statuses", ["unknown", [None]])
+@pytest.mark.parametrize("statuses", ["unknown", {}, [None]])
 def test_invalid_status_information_is_not_ready(records, statuses):
     records["extensions"][0]["properties"]["statuses"] = statuses
     with pytest.raises(ValidationError, match="status information is invalid"):

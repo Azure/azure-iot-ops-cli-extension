@@ -79,7 +79,7 @@ class DependencyRequirement:
         properties = extension.get("properties") or {}
         self.validate_identity(
             properties.get("currentVersion"), properties.get("releaseTrain"),
-            properties.get("configurationSettings") or {},
+            properties.get("configurationSettings", {}),
         )
 
     def validate_observed(self, extension: dict, allow_repair: bool = False) -> None:
@@ -97,7 +97,7 @@ class DependencyRequirement:
         repairing = allow_repair and state in {"failed", "canceled"}
         if state != "succeeded" and not repairing:
             raise ValidationError(f"Foundation extension {self.extension_type} is not ready.")
-        statuses = properties.get("statuses") or []
+        statuses = properties.get("statuses", [])
         if not isinstance(statuses, list) or any(not isinstance(item, dict) for item in statuses):
             raise ValidationError(f"Foundation extension {self.extension_type} reports invalid or failed status.")
         if not repairing and (

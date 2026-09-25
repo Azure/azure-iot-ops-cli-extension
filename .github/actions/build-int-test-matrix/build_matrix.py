@@ -8,7 +8,6 @@ import sys
 import json
 import re
 import shlex
-from contextlib import nullcontext
 from copy import deepcopy
 from json import dumps
 from urllib.parse import urlsplit
@@ -187,9 +186,11 @@ def main() -> None:
 
     # Write to github action output or stdout
     output_path = os.environ.get("GITHUB_OUTPUT")
-    ctx = open(output_path, "a", encoding="utf-8") if output_path else nullcontext(sys.stdout)
-    with ctx as out:
-        out.write(f"scenarios={matrix_json}\n")
+    if output_path:
+        with open(output_path, "a", encoding="utf-8") as out:
+            out.write(f"scenarios={matrix_json}\n")
+    else:
+        sys.stdout.write(f"scenarios={matrix_json}\n")
 
 
 if __name__ == "__main__":

@@ -124,7 +124,7 @@ def resolve_runtime(
             issues.append(f"{name} provisioning state is {state or 'unknown'}")
     if _lower((cluster.get("properties") or {}).get("connectivityStatus")) != "connected":
         issues.append("connected cluster is disconnected or its connectivity is unknown")
-    statuses = properties.get("statuses") or []
+    statuses = properties.get("statuses", [])
     if not isinstance(statuses, list) or any(not isinstance(status, dict) for status in statuses):
         issues.append("extension status information is invalid")
     elif any(_lower(status.get("level")) == "error" for status in statuses):

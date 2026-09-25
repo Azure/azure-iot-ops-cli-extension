@@ -59,8 +59,10 @@ def test_compatible_dependency_is_read_only():
     ({"statuses": [{"level": "Error"}]}, "failed status"),
     ({"statuses": ["invalid"]}, "failed status"),
     ({"statuses": {"state": "unknown"}}, "failed status"),
+    ({"statuses": {}}, "failed status"),
     ({"configurationSettings": {}}, "requires configuration"),
     ({"configurationSettings": ["invalid"]}, "invalid configuration"),
+    ({"configurationSettings": []}, "invalid configuration"),
     ({"extensionType": EXTENSION_TYPE_OPS}, "does not match"),
 ])
 def test_incompatible_or_unknown_installed_dependency_is_rejected(overrides, match):
