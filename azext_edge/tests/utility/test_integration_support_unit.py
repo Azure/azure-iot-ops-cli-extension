@@ -28,7 +28,7 @@ from azure.cli.core.azclierror import ValidationError
 from azext_edge.edge.providers.orchestration.runtime_profiles import (
     RuntimeChannel, RuntimeIdentity, RuntimeProfileCatalog,
 )
-from azext_edge.tests import runtime_checks
+from azext_edge.tests import conftest, runtime_checks
 from azext_edge.tests.edge.orchestration.test_runtime_profiles_unit import make_profile
 from azext_edge.tests.edge.orchestration.test_runtime_unit import records as runtime_records
 
@@ -112,7 +112,6 @@ def test_workload_identity_jobs_serialize_through_cleanup():
             "format('iot-ops-int-{0}-{1}-{2}', github.run_id, github.run_attempt, matrix.scenario.name) }}"
         ),
         "cancel-in-progress": False,
-        "queue": "max",
     }
     steps = {step.get("name"): step for step in job["steps"]}
     names = list(steps)
@@ -888,3 +887,19 @@ def test_runner_retains_init_report_when_redeployment_fails(wheel, mocker, monke
     assert package_import.call_args_list == [mocker.call("azext_edge"), mocker.call("azext_edge")]
     assert (tmp_path / "junit/init.xml").read_text() == '<testsuite failures="0"/>'
     assert (tmp_path / "junit/redeploy.xml").read_text() == '<testsuite failures="1"/>'
+
+
+def test_runtime_precheck_skips_selected_init_scenario(mocker, monkeypatch):
+    monkeypatch.setenv("azext_edge_runtime_channel", "preview")
+    request = SimpleNamespace(
+        config=SimpleNamespace(getoption=mocker.Mock(return_value="init_scenario_test")),
+        session=SimpleNamespace(items=[
+            SimpleNamespace(path=Path("test_init_int.py")),
+            SimpleNamespace(path=Path("test_runtime_channels_int.py")),
+        ]),
+    )
+    assertion = mocker.patch.object(runtime_checks, "assert_runtime")
+
+    conftest.verify_integration_runtime.__wrapped__(request)
+
+    assertion.assert_not_called()
