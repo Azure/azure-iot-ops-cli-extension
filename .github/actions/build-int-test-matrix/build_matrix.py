@@ -5,8 +5,13 @@
 # ----------------------------------------------------------------------------------------------
 import os
 import sys
+import json
+import re
+import shlex
 from contextlib import nullcontext
+from copy import deepcopy
 from json import dumps
+from urllib.parse import urlsplit
 
 from yaml import safe_load
 
@@ -21,6 +26,7 @@ KNOWN_FIELDS = {
     "test_redeploy",  # Whether to test redeployment in the scenario
     "env",  # Custom environment variable dict for the scenario
     "parallel",  # Controls parallel execution in pytest-xdist
+    "requires_baseline",  # Opt-in real upgrade, rather than same-version reconciliation
 }
 
 
@@ -55,6 +61,8 @@ def process_scenarios(scenarios: list[dict], user_selected: str) -> list[dict]:
         # If user provided test selection, only include matching scenarios
         if selected_scenarios and name not in selected_scenarios:
             continue
+        if not selected_scenarios and scenario.get("requires_baseline"):
+            continue
 
         # Warn if unknown fields present
         unknown = set(scenario.keys()) - KNOWN_FIELDS
@@ -83,11 +91,61 @@ def process_scenarios(scenarios: list[dict], user_selected: str) -> list[dict]:
             "test_redeploy": bool(scenario.get("test_redeploy", False)),
             "env": formatted_env,
             "parallel": bool(scenario.get("parallel", True)),
+            "requires_baseline": bool(scenario.get("requires_baseline", False)),
         }
 
         processed_scenarios.append(normalized)
 
     return processed_scenarios
+
+
+def validate_baseline(baseline: dict) -> None:
+    required = {"wheel_url", "sha256", "version", "train", "create_args"}
+    if not isinstance(baseline, dict) or set(baseline) != required:
+        raise ValueError(f"Upgrade baseline must contain exactly: {', '.join(sorted(required))}.")
+    if any(not isinstance(value, str) for value in baseline.values()):
+        raise ValueError("Upgrade baseline values must be strings.")
+    url = urlsplit(baseline["wheel_url"])
+    if url.scheme != "https" or not url.hostname or url.username or url.password or url.query or url.fragment:
+        raise ValueError("Baseline wheel URL must be credential-free HTTPS (no query string or fragment).")
+    if not url.path.endswith(".whl") or not re.fullmatch(r"[a-fA-F0-9]{64}", baseline["sha256"]):
+        raise ValueError("Baseline must identify a wheel and its SHA256 digest.")
+    if not baseline["version"] or baseline["train"] not in {"stable", "preview", "integration"}:
+        raise ValueError("Baseline requires an explicit version and deployment train.")
+
+
+def expand_channels(scenarios, channels="stable,preview", baselines=None, init_args="", create_args=""):
+    """Each row is an independent cluster; never convert an existing runtime's channel."""
+    selected = list(dict.fromkeys(channel.strip() for channel in channels.split(",") if channel.strip()))
+    if not selected or set(selected) - {"stable", "preview"}:
+        raise ValueError("runtime-channels must contain stable and/or preview.")
+    baselines = baselines or {}
+    if not isinstance(baselines, dict) or set(baselines) - {"stable", "preview"}:
+        raise ValueError("upgrade-baselines must be an object keyed by stable and/or preview.")
+    rows = []
+    for scenario in scenarios:
+        # The channel matrix owns these flags. Arbitrary overrides would make a
+        # labelled GA job silently deploy preview, or test a different target.
+        for arguments in (scenario["init_args"], scenario["create_args"], init_args, create_args):
+            options = {arg.split("=", 1)[0] for arg in shlex.split(arguments)}
+            if options & {"--use-preview", "--ops-version", "--ops-train"}:
+                raise ValueError("Runtime selection belongs to runtime-channels / upgrade-baselines, not extra args.")
+        for channel in selected:
+            row = deepcopy(scenario)
+            row["name"] = f"{scenario['name']}-{channel}"
+            row["description"] = f"{scenario['description']} [{channel}]"
+            row["channel"] = channel
+            row["init_args"] = f"{scenario['init_args']} {init_args}".strip()
+            selector = "--use-preview --yes" if channel == "preview" else ""
+            row["create_args"] = f"{scenario['create_args']} {create_args} {selector}".strip()
+            row["baseline"] = None
+            if row["requires_baseline"]:
+                if channel not in baselines:
+                    raise ValueError(f"Scenario {scenario['name']} requires an explicit {channel} upgrade baseline.")
+                validate_baseline(baselines[channel])
+                row["baseline"] = baselines[channel]
+            rows.append(row)
+    return rows
 
 
 def main() -> None:
@@ -107,7 +165,13 @@ def main() -> None:
     config_scenarios = config.get("scenarios", [])
 
     # Filter based on user input
-    test_scenarios = process_scenarios(config_scenarios, custom_scenarios)
+    test_scenarios = expand_channels(
+        process_scenarios(config_scenarios, custom_scenarios),
+        channels=os.getenv("RUNTIME_CHANNELS", "stable,preview"),
+        baselines=json.loads(os.getenv("UPGRADE_BASELINES", "{}")),
+        init_args=os.getenv("RUNTIME_INIT_ARGS", ""),
+        create_args=os.getenv("RUNTIME_CREATE_ARGS", ""),
+    )
 
     # Exit if no valid scenarios
     if not test_scenarios:

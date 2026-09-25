@@ -248,6 +248,33 @@ def test_instance_show(mocked_cmd, mocked_responses: responses):
     assert len(mocked_responses.calls) == 1
 
 
+def mock_runtime_discovery(mocked_responses, instance, version="1.1.15", train="stable"):
+    """Serve associated live ARM records; discovery/eligibility itself remains unmocked."""
+    from ..test_upgrade2_unit import get_cluster_endpoint, get_cluster_extensions_endpoint
+    from azext_edge.edge.providers.orchestration.common import EXTENSION_TYPE_OPS
+
+    resource_group = instance["id"].split("/")[4]
+    custom_location = get_mock_cl_record("location", resource_group)
+    custom_location["id"] = instance["extendedLocation"]["name"]
+    cluster_id = custom_location["properties"]["hostResourceId"]
+    extension_id = f"{cluster_id}/providers/Microsoft.KubernetesConfiguration/extensions/aio"
+    custom_location["properties"]["clusterExtensionIds"] = [extension_id]
+    mocked_responses.add(
+        responses.GET, f"{BASE_URL}{custom_location['id']}", json=custom_location,
+    )
+    mocked_responses.add(
+        responses.GET, get_cluster_endpoint(resource_group),
+        json={"id": cluster_id, "properties": {"connectivityStatus": "Connected"}},
+    )
+    mocked_responses.add(
+        responses.GET, get_cluster_extensions_endpoint(resource_group),
+        json={"value": [{"id": extension_id, "properties": {
+            "extensionType": EXTENSION_TYPE_OPS, "version": version, "currentVersion": version,
+            "releaseTrain": train, "provisioningState": "Succeeded",
+        }}]},
+    )
+
+
 def test_instance_get_resource_map(mocker, mocked_cmd, mocked_responses: responses):
     cl_name = generate_random_string()
     instance_name = generate_random_string()
@@ -344,6 +371,13 @@ def test_instance_list(mocked_cmd, mocked_responses: responses, resource_group_n
             },
             "initialState": {"mqttBroker": {"settings": {"preview": "Enabled"}}},
         },
+        {
+            "inputs": ["connectors.settings.preview=Enabled"],
+            "initialState": {"connectors": {"mode": "Stable", "settings": {"other": "Enabled"}}},
+            "expected": {"connectors": {
+                "mode": "Stable", "settings": {"other": "Enabled", "preview": "Enabled"},
+            }},
+        },
     ],
 )
 def test_instance_update(
@@ -364,6 +398,7 @@ def test_instance_update(
         resource_group_name=resource_group_name,
         features=initial_feat_state,
     )
+    mock_runtime_discovery(mocked_responses, initial_record)
     mocked_responses.add(
         method=responses.GET,
         url=instance_endpoint,
@@ -395,9 +430,9 @@ def test_instance_update(
         instance_description=description,
         wait_sec=0,
     )
-    assert len(mocked_responses.calls) == 2
+    assert len(mocked_responses.calls) == 5
 
-    update_request = json.loads(mocked_responses.calls[1].request.body)
+    update_request = json.loads(next(c.request.body for c in mocked_responses.calls if c.request.method == "PUT"))
     if description:
         assert update_request["properties"]["description"] == description
 
@@ -625,6 +660,7 @@ def test_instance_update_opcua_mode(
         resource_group_name=resource_group_name,
         features=features_scenario["expected"],
     )
+    mock_runtime_discovery(mocked_responses, initial_record)
     mocked_responses.add(
         method=responses.PUT,
         url=instance_endpoint,
@@ -666,7 +702,7 @@ def test_instance_update_opcua_mode(
         wait_sec=0,
     )
 
-    update_request = json.loads(mocked_responses.calls[1].request.body)
+    update_request = json.loads(next(c.request.body for c in mocked_responses.calls if c.request.method == "PUT"))
     assert update_request["properties"]["features"] == features_scenario["expected"]
     assert result == updated_record
 
@@ -674,7 +710,7 @@ def test_instance_update_opcua_mode(
         put_paths = [c.request.url for c in mocked_responses.calls if c.request.method == "PUT"]
         assert any("/akriConnectorTemplates/" in p for p in put_paths), "expected connector template backfill PUT"
     else:
-        assert len(mocked_responses.calls) == 2
+        assert len(mocked_responses.calls) == 5
 
 
 # Placeholder for a Bicep-named template; resolved to a perturbed derived default inside the test.
@@ -729,6 +765,7 @@ def test_instance_update_opcua_backfill(
     initial_record = get_mock_instance_record(
         name=instance_name, resource_group_name=resource_group_name, features={"opcua": {"mode": "Disabled"}}
     )
+    mock_runtime_discovery(mocked_responses, initial_record)
     mocked_responses.add(method=responses.GET, url=instance_endpoint, json=initial_record, status=200)
     updated_record = get_mock_instance_record(
         name=instance_name, resource_group_name=resource_group_name, features={"opcua": {"mode": "Stable"}}
@@ -777,11 +814,14 @@ def test_instance_update_opcua_backfill(
             assert created["name"].startswith("azureiotoperationsconnectorforopcua-")
     else:
         assert not template_puts, "connector template must not be created or overwritten"
+    requests = [call.request for call in mocked_responses.calls]
+    list_index = next(i for i, request in enumerate(requests) if list_re.match(request.url))
+    first_put = next(i for i, request in enumerate(requests) if request.method == "PUT")
+    assert list_index < first_put
 
 
 def test_instance_update_opcua_backfill_surfaces_list_error(mocked_cmd, mocked_responses: responses):
-    """A transient template-list failure during re-enable surfaces instead of silently reporting
-    success with no connector template."""
+    """A template-list failure rejects re-enable before the instance or its children are written."""
     instance_name = generate_random_string()
     resource_group_name = generate_random_string()
     instance_endpoint = get_instance_endpoint(resource_group_name=resource_group_name, instance_name=instance_name)
@@ -790,11 +830,8 @@ def test_instance_update_opcua_backfill_surfaces_list_error(mocked_cmd, mocked_r
     initial_record = get_mock_instance_record(
         name=instance_name, resource_group_name=resource_group_name, features={"opcua": {"mode": "Disabled"}}
     )
+    mock_runtime_discovery(mocked_responses, initial_record)
     mocked_responses.add(method=responses.GET, url=instance_endpoint, json=initial_record, status=200)
-    updated_record = get_mock_instance_record(
-        name=instance_name, resource_group_name=resource_group_name, features={"opcua": {"mode": "Stable"}}
-    )
-    mocked_responses.add(method=responses.PUT, url=instance_endpoint, json=updated_record, status=200)
 
     list_re = re.compile(re.escape(base_url) + r"/akriConnectorTemplates(\?|$)")
     mocked_responses.add(
@@ -809,6 +846,7 @@ def test_instance_update_opcua_backfill_surfaces_list_error(mocked_cmd, mocked_r
             instance_features=["opcua.mode=Stable"],
             wait_sec=0,
         )
+    assert all(call.request.method == "GET" for call in mocked_responses.calls)
 
 
 @pytest.mark.parametrize(
