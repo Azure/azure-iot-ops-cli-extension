@@ -112,6 +112,7 @@ def test_workload_identity_jobs_serialize_through_cleanup():
             "format('iot-ops-int-{0}-{1}-{2}', github.run_id, github.run_attempt, matrix.scenario.name) }}"
         ),
         "cancel-in-progress": False,
+        "queue": "max",
     }
     steps = {step.get("name"): step for step in job["steps"]}
     names = list(steps)
@@ -889,17 +890,45 @@ def test_runner_retains_init_report_when_redeployment_fails(wheel, mocker, monke
     assert (tmp_path / "junit/redeploy.xml").read_text() == '<testsuite failures="1"/>'
 
 
-def test_runtime_precheck_skips_selected_init_scenario(mocker, monkeypatch):
+@pytest.mark.parametrize("selection,expected_tests", [
+    ("init_scenario_test", ["test_init_scenario"]),
+    ("(init_scenario_test)", ["test_init_scenario"]),
+    ("init_scenario_test and not long_running", ["test_init_scenario"]),
+    ("not init_scenario_test", ["test_runtime"]),
+    ("init_scenario_test or long_running", ["test_init_scenario", "test_runtime"]),
+    ("", ["test_init_scenario", "test_runtime"]),
+])
+def test_runtime_precheck_uses_selected_items(mocker, monkeypatch, tmp_path, selection, expected_tests):
     monkeypatch.setenv("azext_edge_runtime_channel", "preview")
-    request = SimpleNamespace(
-        config=SimpleNamespace(getoption=mocker.Mock(return_value="init_scenario_test")),
-        session=SimpleNamespace(items=[
-            SimpleNamespace(path=Path("test_init_int.py")),
-            SimpleNamespace(path=Path("test_runtime_channels_int.py")),
-        ]),
+    monkeypatch.setenv("azext_edge_instance", "instance")
+    monkeypatch.setenv("azext_edge_rg", "rg")
+    monkeypatch.setenv("PYTEST_DISABLE_PLUGIN_AUTOLOAD", "1")
+    config = tmp_path / "pytest.ini"
+    config.write_text("[pytest]\n", encoding="utf-8")
+    (tmp_path / f"test_{tmp_path.name}_int.py").write_text(
+        "import pytest\n"
+        "@pytest.mark.init_scenario_test\n"
+        "def test_init_scenario(): pass\n"
+        "@pytest.mark.long_running\n"
+        "def test_runtime(): pass\n",
+        encoding="utf-8",
     )
     assertion = mocker.patch.object(runtime_checks, "assert_runtime")
+    mocker.patch.object(runtime_checks, "configured_baseline", return_value=None)
+    selected_tests = []
 
-    conftest.verify_integration_runtime.__wrapped__(request)
+    class SelectionPlugin:
+        def pytest_collection_finish(self, session):
+            selected_tests.extend(item.name for item in session.items)
 
-    assertion.assert_not_called()
+    result = pytest.main([
+        str(tmp_path), "-c", str(config), "--confcutdir", str(tmp_path),
+        "-m", selection, "-q", "-p", "no:cacheprovider",
+    ], plugins=[conftest, SelectionPlugin()])
+
+    assert result == pytest.ExitCode.OK
+    assert selected_tests == expected_tests
+    if expected_tests == ["test_init_scenario"]:
+        assertion.assert_not_called()
+    else:
+        assertion.assert_called_once_with("instance", "rg", "preview", None)

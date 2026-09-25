@@ -73,7 +73,7 @@ def verify_integration_runtime(request):
         return
     # Init performs this assertion immediately after creating the instance, outside
     # the legacy continue-on-error block. Other suites validate before their first test.
-    if request.config.getoption("-m").strip("\"'") == "init_scenario_test":
+    if all(item.get_closest_marker("init_scenario_test") for item in integration):
         return
     from .runtime_checks import assert_runtime, configured_baseline
 
