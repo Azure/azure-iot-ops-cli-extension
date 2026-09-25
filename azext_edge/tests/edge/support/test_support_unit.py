@@ -1096,6 +1096,7 @@ def test_create_bundle_schemas(
     mocked_root_logger,
     mocked_get_config_map,
 ):
+    assert SCHEMAS_NAME_LABEL == "app.kubernetes.io/name in (microsoft-iotoperations-schemas,aio-edge-registry)"
     since_seconds = random.randint(86400, 172800)
     result = support_bundle(
         None,
@@ -1138,6 +1139,30 @@ def test_create_bundle_schemas(
         mocked_zipfile,
         directory_path=SCHEMAS_DIRECTORY_PATH,
         label_selector=SCHEMAS_NAME_LABEL,
+    )
+
+
+def test_schema_bundle_integration_checks_both_layouts(mocker):
+    from .create_bundle_int import test_schemaregistry_int as schema_tests
+
+    workloads = mocker.patch.object(schema_tests, "get_multi_kubectl_workload_items", return_value={})
+    mocker.patch.object(schema_tests, "run_bundle_command", return_value=({}, "bundle.zip"))
+    file_map = {"statefulset": []}
+    mocker.patch.object(schema_tests, "get_file_map", return_value={"aio": file_map})
+    check_files = mocker.patch.object(schema_tests, "check_workload_resource_files")
+    check_labels = mocker.patch.object(schema_tests, "check_cluster_label_coverage")
+
+    schema_tests.test_create_bundle_schemas(None, [])
+
+    prefixes = ["adr-schema-registry", "aio-edge-registry"]
+    workload_types = ["configmap", "pod", "service", "statefulset", "pvc"]
+    workloads.assert_called_once_with(expected_workload_types=workload_types, prefixes=prefixes)
+    check_files.assert_called_once_with(
+        file_objs=file_map, pre_bundle_items={}, prefixes=prefixes, bundle_path="bundle.zip",
+    )
+    check_labels.assert_called_once_with(
+        prefixes=prefixes, expected_label=("app.kubernetes.io/name", "microsoft-iotoperations-schemas"),
+        workload_types=workload_types, accepted_labels=["aio-edge-registry"],
     )
 
 

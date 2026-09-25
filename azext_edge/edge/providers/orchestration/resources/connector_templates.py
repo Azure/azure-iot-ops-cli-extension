@@ -302,8 +302,8 @@ class ConnectorTemplates(Queryable):
         customizations and in-flight provisioning are preserved. If none exists, a new default is
         needed. Shared by the upgrade backfill and the update re-enable path.
 
-        List failures propagate; the caller decides whether to surface them (update, which has
-        already mutated the instance) or ignore them (upgrade, which re-evaluates every run).
+        List failures propagate. Update and upgrade callers perform this discovery before
+        mutations, so a failed lookup cannot silently skip a required backfill.
         """
         from ..common import OPCUA_CONNECTOR_TEMPLATE_NAME_PREFIX, PROVISIONING_STATE_FAILED
 
