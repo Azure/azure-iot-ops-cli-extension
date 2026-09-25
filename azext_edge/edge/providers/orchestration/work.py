@@ -49,6 +49,9 @@ from .common import (
 from .permissions import ROLE_DEF_FORMAT_STR, PermissionManager, PrincipalType, get_ra_user_error_msg
 from .resource_map import IoTOperationsResourceMap
 from .resources.custom_locations import CustomLocations
+from .preview import confirm_preview_creation
+from .runtime_catalog import get_runtime_catalog
+from .runtime_requirements import validate_runtime_requirements
 from .rp_namespace import HEALTH_PROVIDER, register_providers
 from .targets import InitTargets, InstancePhase
 
@@ -247,6 +250,13 @@ class WorkManager:
                 "Cluster was enabled with system cert-manager, "
                 "trust settings (--trust-settings) are not applicable to this cluster."
             )
+        for requirement in self._dependency_requirements:
+            extension = dependencies.get(requirement.extension_type)
+            if extension is None and requirement.extension_type == EXTENSION_TYPE_CM and is_user_trust:
+                continue
+            if extension is None:
+                raise ValidationError(f"Required foundation extension {requirement.extension_type} is not installed.")
+            requirement.validate_installed(extension)
 
     def _apply_sr_role_assignment(self) -> Optional[str]:
         ops_ext = self.ops_extension
@@ -323,8 +333,22 @@ class WorkManager:
         context_name: Optional[str] = None,
         show_progress: bool = True,
         pre_flight: bool = True,
+        use_preview: bool = False,
+        confirm_yes: bool = False,
         **kwargs,
     ):
+        # Profile/consent validation is mandatory and precedes all deployment work.
+        # Init never selects a runtime profile or prompts for preview acceptance.
+        self._dependency_requirements = ()
+        if not apply_foundation:
+            catalog = get_runtime_catalog()
+            profile = catalog.for_create(use_preview=use_preview)
+            self._dependency_requirements = catalog.dependency_requirements
+            identity = profile.validate_overrides(version=kwargs.get("ops_version"), train=kwargs.get("ops_train"))
+            validate_runtime_requirements("iot ops create", identity, kwargs, cmd=self.cmd)
+            kwargs["runtime_profile"] = profile
+            if use_preview and not confirm_preview_creation(profile, confirm_yes=confirm_yes):
+                return
         self._bootstrap_ux(show_progress=show_progress)
         self._work_id = str(uuid4())
         self._work_format_str = f"aziotops.{{op}}.{self._work_id}"
@@ -347,6 +371,7 @@ class WorkManager:
         self._warnings: List[str] = []
         self._ops_ext_dependencies = None
         self._ops_ext = None
+        self._existing_ops_extensions = []
         self._skip_sr_ra = kwargs.pop("skip_sr_ra", False)
         self._custom_sr_role_id = kwargs.pop("custom_sr_role_id", None)
         self._health_checks_max = kwargs.pop("health_checks_max", DEFAULT_HEALTH_CHECKS_MAX)
@@ -370,6 +395,10 @@ class WorkManager:
                 self._headers["CommandName"] = "iot ops create"
             elif self._apply_foundation:
                 self._headers["CommandName"] = "iot ops init"
+
+            if self._targets.instance_name and not self._apply_foundation:
+                self._process_extension_dependencies()
+                self._raise_if_ops_deployed()
 
             # Pre-Flight workflow
             if self._pre_flight:
@@ -444,8 +473,9 @@ class WorkManager:
                         api_version=DEFAULT_DEVICEREGISTRY_MGMT_API_VERSION.value,
                     )
 
-                self._process_extension_dependencies()
-                self._raise_if_ops_deployed()
+                if self._apply_foundation:
+                    self._process_extension_dependencies()
+                    self._raise_if_ops_deployed()
                 dependency_ext_ids = [self.ops_extension_dependencies[EXTENSION_TYPE_SSC]["id"]]
                 self._render_display(category=WorkCategoryKey.DEPLOY_IOT_OPS, active_step=WorkStepKey.DEPLOY_INSTANCE)
                 self._create_or_update_custom_location(extension_ids=dependency_ext_ids)
@@ -614,9 +644,20 @@ class WorkManager:
     @property
     def ops_extension_dependencies(self) -> Dict[str, Optional[dict]]:
         if not self._ops_ext_dependencies:
-            self._ops_ext_dependencies = self._resource_map.connected_cluster.get_extensions_by_type(
-                *OPS_EXTENSION_DEPS
-            )
+            extensions = list(self._resource_map.connected_cluster.extensions)
+            self._existing_ops_extensions = [
+                ext for ext in extensions
+                if (ext.get("properties", {}).get("extensionType") or "").lower() == EXTENSION_TYPE_OPS
+            ]
+            self._ops_ext_dependencies = {}
+            for ext_type in OPS_EXTENSION_DEPS:
+                matches = [
+                    ext for ext in extensions
+                    if (ext.get("properties", {}).get("extensionType") or "").lower() == ext_type
+                ]
+                if len(matches) > 1:
+                    raise ValidationError(f"Multiple foundational extensions of type {ext_type} detected.")
+                self._ops_ext_dependencies[ext_type] = matches[0] if matches else None
         return self._ops_ext_dependencies
 
     @property
@@ -688,7 +729,7 @@ class WorkManager:
         return cluster_check_kwargs
 
     def _raise_if_ops_deployed(self):
-        if self._resource_map.connected_cluster.get_aio_custom_locations():
+        if self._existing_ops_extensions or self._resource_map.connected_cluster.get_aio_custom_locations():
             raise ValidationError(
                 "IoT Operations is detected on the cluster.\n"
                 "Re-deployment or multiple instances are not supported at this time. Please run:\n\n"

@@ -3162,11 +3162,19 @@ def load_iotops_help():
     ] = f"""
         type: command
         short-summary: Opens the version guide located at {GET_VERSIONS_URL} in the default browser.
+        long-summary: |
+          Use --inline to report local package versions and bundled runtime profiles without authentication.
+          The extensions field retains the shared foundation and default create versions. runtimeProfiles
+          lists each bundled channel's target version, actual deployment train and source provenance.
+          These are package inputs, not installed cluster versions or a list of qualified upgrade paths.
 
         examples:
         - name: Route to the version guide in a new browser window.
           text: >
             az iot ops get-versions
+        - name: Show bundled runtime profiles without contacting Azure.
+          text: >
+            az iot ops get-versions --inline --query runtimeProfiles
     """
 
     helps[

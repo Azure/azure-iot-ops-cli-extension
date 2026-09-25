@@ -82,6 +82,8 @@ INSTANCE_PARAM_CONVERSION_MAP = {
     "clusterNamespace": "cluster_namespace",
     "clusterLocation": "location",
     "customLocationName": "custom_location_name",
+    "aioInstanceName": "instance_name",
+    "features": "instance_features",
     "schemaRegistryId": "schema_registry_resource_id",
     "adrNamespaceId": "adr_namespace_resource_id",
     "defaultDataflowInstanceCount": "dataflow_profile_instances",
@@ -439,8 +441,12 @@ def test_init_targets(target_scenario: dict, mocked_feature_keys: Mock):
 
     # Verify instance properties
     aio_instance = instance_template["resources"]["aioInstance"]
-    assert aio_instance["properties"]["description"] == targets.instance_description
-    assert aio_instance["properties"]["features"] == targets.instance_features
+    assert aio_instance["properties"]["description"] == (targets.instance_description or "An AIO instance.")
+    assert aio_instance["properties"]["features"] == "[variables('effectiveFeatures')]"
+    if targets.instance_features:
+        assert instance_parameters["features"]["value"] == targets.instance_features
+    else:
+        assert "features" not in instance_parameters
 
     if targets.tags:
         assert aio_instance["tags"] == targets.tags
@@ -491,7 +497,8 @@ def test_init_targets_opcua_mode(target_scenario: dict):
     instance_template, _instance_parameters = targets.get_ops_instance_template(extension_ids)
 
     aio_instance = instance_template["resources"]["aioInstance"]
-    assert aio_instance["properties"]["features"] == expected_features
+    assert aio_instance["properties"]["features"] == "[variables('effectiveFeatures')]"
+    assert _instance_parameters["features"]["value"] == {"opcua": {"mode": "Stable", "settings": {}}}
 
 
 @pytest.mark.parametrize(

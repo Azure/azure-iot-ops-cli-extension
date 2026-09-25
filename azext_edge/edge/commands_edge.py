@@ -191,6 +191,8 @@ def create_instance(
     no_preflight: Optional[bool] = None,
     health_checks_max: int = DEFAULT_HEALTH_CHECKS_MAX,
     health_checks_interval: int = DEFAULT_HEALTH_CHECKS_INTERVAL,
+    use_preview: Optional[bool] = None,
+    confirm_yes: Optional[bool] = None,
     **kwargs,
 ) -> Union[Dict[str, Any], None]:
     _validate_health_check_args(health_checks_max, health_checks_interval)
@@ -208,6 +210,8 @@ def create_instance(
         show_progress=not no_progress,
         pre_flight=not (no_preflight or feature_config.is_enabled(FeatureFlag.PREFLIGHT_DISABLED)),
         apply_foundation=False,
+        use_preview=use_preview,
+        confirm_yes=confirm_yes,
         cluster_name=cluster_name,
         resource_group_name=resource_group_name,
         cluster_namespace=cluster_namespace,
@@ -454,19 +458,24 @@ def enable_rsync(
 
 
 def get_versions(inline: Optional[bool] = None):
-    # TODO: quick and dirty, refactor this in the future.
     if inline:
         from ..constants import AIO_RELEASE, VERSION
+        from .providers.orchestration.runtime_catalog import get_runtime_catalog
         from .providers.orchestration.targets import InitTargets
 
-        targets = InitTargets("", "")
+        catalog = get_runtime_catalog()
+        default_profile = catalog.for_create()
+        targets = InitTargets("", "", runtime_profile=default_profile)
         return {
             "cliVersion": VERSION,
             "iotOpsRelease": AIO_RELEASE,
+            # Preserve existing query paths for shared dependencies and default create.
             "extensions": {
                 **targets.get_extension_versions(),
                 **targets.get_extension_versions(False),
             },
+            "defaultRuntimeChannel": default_profile.channel.value,
+            "runtimeProfiles": catalog.describe_profiles(),
         }
     else:
         import webbrowser
