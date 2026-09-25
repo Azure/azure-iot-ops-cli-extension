@@ -10,6 +10,8 @@
 # - test_redeploy: Optional boolean to test redeployment in the scenario (default: false)
 # - env: Optional list of environment variable dictionaries with key-value pairs
 # - parallel: Optional boolean controlling parallel execution in pytest-xdist (default: true)
+# Every selected scenario is expanded across runtime-channels (stable,preview by default).
+# - requires_baseline: Explicit opt-in scenario; requires a pinned baseline per selected channel.
 
 scenarios:
   - name: edge
@@ -27,9 +29,20 @@ scenarios:
     description: "Cloud tests"
     tox_env: python-rpsaas-int
 
+  - name: runtime-channel
+    description: "Shared commands and runtime-channel boundaries"
+    tox_env: python-runtime-int
+    parallel: false
+
   - name: upgrade
-    description: "Upgrade tests"
+    description: "Upgrade reconciliation tests (same runtime version)"
     tox_env: python-upgrade-int
+    parallel: false
+
+  - name: upgrade-path
+    description: "Older runtime to bundled target upgrade tests"
+    tox_env: python-upgrade-int
+    requires_baseline: true
     parallel: false
 
   - name: mgmtactions

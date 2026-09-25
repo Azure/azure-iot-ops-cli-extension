@@ -7,6 +7,7 @@
 import json
 import re
 import time
+from copy import deepcopy
 from contextlib import nullcontext
 from typing import Dict, Iterable, List, Optional, Tuple
 from urllib.parse import urlsplit
@@ -25,6 +26,8 @@ from rich.console import Console
 
 from ....util.az_client import (
     ResourceIdContainer,
+    get_clusterconfig_mgmt_client,
+    get_connectedk8s_mgmt_client,
     get_iotops_mgmt_client,
     get_keyvault_client,
     get_msi_mgmt_client,
@@ -56,6 +59,10 @@ from ..permissions import (
     get_ra_user_error_msg,
 )
 from ..resource_map import IoTOperationsResourceMap
+from ..runtime import RuntimeContext, get_runtime_cluster_id, resolve_runtime
+from ..runtime_profiles import RuntimeIdentity
+from ..runtime_catalog import get_runtime_catalog
+from ..runtime_requirements import validate_runtime_requirements
 
 logger = get_logger(__name__)
 
@@ -241,6 +248,31 @@ class Instances(Queryable):
             resource_id=instance["extendedLocation"]["name"], api_version=CUSTOM_LOCATIONS_API_VERSION
         )
 
+    def get_runtime_context(
+        self, instance: dict, qualification_identities: Iterable[RuntimeIdentity] = ()
+    ) -> RuntimeContext:
+        """Read the associated runtime using the cluster's subscription, without mutations.
+
+        No global client defaults change. Independent ADR and diagnostic operations need
+        not perform this discovery; mutation/capability entry points can opt in explicitly.
+        """
+        custom_location = self.get_associated_cl(instance)
+        cluster_id = get_runtime_cluster_id(instance, custom_location)
+        cluster = parse_resource_id(cluster_id)
+        client_kwargs = self._get_client_kwargs(subscription_id=cluster.subscription_id)
+        cluster_client = get_connectedk8s_mgmt_client(**client_kwargs)
+        extension_client = get_clusterconfig_mgmt_client(**client_kwargs)
+        cluster_record = cluster_client.connected_cluster.get(
+            resource_group_name=cluster.resource_group_name, cluster_name=cluster.resource_name
+        )
+        extensions = extension_client.extensions.list(
+            resource_group_name=cluster.resource_group_name,
+            cluster_rp="Microsoft.Kubernetes",
+            cluster_resource_name="connectedClusters",
+            cluster_name=cluster.resource_name,
+        )
+        return resolve_runtime(instance, custom_location, cluster_record, extensions, qualification_identities)
+
     def get_resource_map(self, instance: dict) -> IoTOperationsResourceMap:
         custom_location = self.get_associated_cl(instance)
         resource_id_container = parse_resource_id(custom_location["properties"]["hostResourceId"])
@@ -264,7 +296,45 @@ class Instances(Queryable):
         spc_resource_id: Optional[str] = None,
         **kwargs: dict,
     ) -> dict:
-        instance = kwargs.pop("instance", None) or self.show(name=name, resource_group_name=resource_group_name)
+        instance = deepcopy(
+            kwargs.pop("instance", None) or self.show(name=name, resource_group_name=resource_group_name)
+        )
+        desired_features = parse_feature_kvp_nargs(features, strict=True) if features else None
+        catalog = get_runtime_catalog()
+        runtime = self.get_runtime_context(instance, catalog.qualification_identities)
+        runtime.require_ready()
+        requested_arguments = {
+            "instance_features": features, "description": description, "tags": tags,
+            "adr_namespace_resource_id": adr_namespace_resource_id, "spc_resource_id": spc_resource_id,
+        }
+        validate_runtime_requirements("iot ops update", runtime.identity, requested_arguments, cmd=self.cmd)
+        connector_version = None
+        if (desired_features or {}).get("opcua", {}).get("mode") not in (None, "Disabled"):
+            profile = catalog.get(runtime.identity.channel)
+            connector_version = profile.require_opcua_connector_version()
+        return self._update(
+            name=name, resource_group_name=resource_group_name, instance=instance, tags=tags,
+            description=description, features=features, adr_namespace_resource_id=adr_namespace_resource_id,
+            spc_resource_id=spc_resource_id, connector_version=connector_version, **kwargs,
+        )
+
+    def _update(
+        self,
+        name: str,
+        resource_group_name: str,
+        tags: Optional[Dict[str, str]] = None,
+        description: Optional[str] = None,
+        features: Optional[List[str]] = None,
+        adr_namespace_resource_id: Optional[str] = None,
+        spc_resource_id: Optional[str] = None,
+        connector_version: Optional[str] = None,
+        **kwargs: dict,
+    ) -> dict:
+        """Write an instance for an already-validated operation or existing identity/secret workflow."""
+        instance = deepcopy(
+            kwargs.pop("instance", None) or self.show(name=name, resource_group_name=resource_group_name)
+        )
+        desired_features = parse_feature_kvp_nargs(features, strict=True) if features else None
         status_text = kwargs.pop("status_text", "Working...")
         no_status = kwargs.pop("no_status", False)
         headers = kwargs.pop("headers", None)
@@ -275,9 +345,15 @@ class Instances(Queryable):
 
         opcua_backfill_requested = False
         if features:
-            desired_features = parse_feature_kvp_nargs(features, strict=True)
             current_features: dict = instance["properties"].get("features", {}) or {}
-            current_features.update(desired_features)
+            for component, changes in desired_features.items():
+                component_config = current_features.setdefault(component, {}) or {}
+                current_features[component] = component_config
+                for key, value in changes.items():
+                    if key == "settings":
+                        component_config["settings"] = {**(component_config.get("settings") or {}), **value}
+                    else:
+                        component_config[key] = value
             instance["properties"]["features"] = current_features
             requested_opcua_mode = (desired_features.get("opcua") or {}).get("mode")
             # Enabling OPC UA needs the default connector template the create path skips while
@@ -293,6 +369,22 @@ class Instances(Queryable):
         if tags or tags == {}:
             instance["tags"] = tags
 
+        # Discover the complete backfill before changing the instance. A failed
+        # list must not leave OPC UA enabled without its required template.
+        connector_templates = None
+        backfill_needed, repair_name = False, None
+        if opcua_backfill_requested:
+            from .connector_templates import ConnectorTemplates
+
+            connector_templates = ConnectorTemplates(self.cmd)
+            backfill_needed, repair_name = connector_templates.check_default_opcua_template_needed(
+                instance_name=name, resource_group_name=resource_group_name
+            )
+            if backfill_needed and not connector_version:
+                raise ValidationError(
+                    "OPC UA backfill requires a reviewed connector version before updating the instance."
+                )
+
         status_context = nullcontext() if no_status else console.status(status_text)
         with status_context:
             poller = self.iotops_mgmt_client.instance.begin_create_or_update(
@@ -302,23 +394,15 @@ class Instances(Queryable):
                 **operation_kwargs,
             )
             result = wait_for_terminal_state(poller, **kwargs)
-            if opcua_backfill_requested:
-                from .connector_templates import ConnectorTemplates
-                from ..common import OPCUA_CONNECTOR_VERSION
-
-                connector_templates = ConnectorTemplates(self.cmd)
-                needed, repair_name = connector_templates.check_default_opcua_template_needed(
-                    instance_name=name, resource_group_name=resource_group_name
+            if backfill_needed:
+                connector_templates.create_default_opcua_template(
+                    resource_group_name=resource_group_name,
+                    instance_name=name,
+                    connector_version=connector_version,
+                    template_name=repair_name,
+                    headers=headers,
+                    no_status=True,
                 )
-                if needed:
-                    connector_templates.create_default_opcua_template(
-                        resource_group_name=resource_group_name,
-                        instance_name=name,
-                        connector_version=OPCUA_CONNECTOR_VERSION,
-                        template_name=repair_name,
-                        headers=headers,
-                        no_status=True,
-                    )
             return result
 
     def remove_mi_user_assigned(
@@ -365,7 +449,7 @@ class Instances(Queryable):
             identity["type"] = "None"
 
         instance["identity"] = identity
-        return self.update(name=name, resource_group_name=resource_group_name, instance=instance, **kwargs)
+        return self._update(name=name, resource_group_name=resource_group_name, instance=instance, **kwargs)
 
     def add_mi_user_assigned(
         self,
@@ -421,7 +505,7 @@ class Instances(Queryable):
         identity["userAssignedIdentities"][mi_user_assigned] = {}
 
         instance["identity"] = identity
-        updated_instance = self.update(name=name, resource_group_name=resource_group_name, instance=instance, **kwargs)
+        updated_instance = self._update(name=name, resource_group_name=resource_group_name, instance=instance, **kwargs)
         if usage_type == IdentityUsageType.SCHEMA.value and not skip_sr_ra:
             schema_registry_id = instance.get("properties", {}).get("schemaRegistryRef", {}).get("resourceId")
             if not schema_registry_id:
@@ -552,7 +636,7 @@ class Instances(Queryable):
             )
             result_spc = wait_for_terminal_state(spc_poller, **kwargs)
         instance["properties"]["defaultSecretProviderClassRef"] = {"resourceId": result_spc["id"]}
-        self.update(
+        self._update(
             name=name,
             resource_group_name=resource_group_name,
             instance=instance,
@@ -592,7 +676,7 @@ class Instances(Queryable):
         # remove the default secret provider class reference
         default_spc_ref = instance["properties"].pop("defaultSecretProviderClassRef", None)
         if default_spc_ref:
-            self.update(
+            self._update(
                 name=name,
                 resource_group_name=resource_group_name,
                 instance=instance,
