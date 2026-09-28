@@ -75,6 +75,7 @@ def _assert_sub_resources_exist(show_result: Dict) -> None:
 
     adr_section = show_result["deviceRegistryNamespace"]
     assert adr_section is not None
+    assert adr_section["observabilityEnabled"] is True, "ADR namespace observability is not enabled"
     assert adr_section["observabilityEndpoint"] is not None, "ADR observability endpoint entry missing"
     assert adr_section["observabilityEndpoint"]["address"]
 

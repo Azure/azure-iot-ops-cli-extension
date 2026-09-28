@@ -1013,7 +1013,18 @@ class TestEnable:
 
 
 class TestShow:
-    def _register_show_mocks(self, mocked_responses, instance_name, rg, ns_name, adr_ns, eg_rid, hostname, ts_name):
+    def _register_show_mocks(
+        self,
+        mocked_responses,
+        instance_name,
+        rg,
+        ns_name,
+        adr_ns,
+        eg_rid,
+        hostname,
+        ts_name,
+        observability_enabled: Optional[bool] = True,
+    ):
         cl_id = MOCK_EXTENDED_LOCATION["name"]
         obs_endpoint = {
             "endpointType": LIVE_DATA_ADR_ENDPOINT_TYPE, "address": hostname,
@@ -1027,7 +1038,9 @@ class TestShow:
             method=responses.GET, url=_build_adr_endpoint(adr_ns, rg),
             json=_build_adr_namespace_response(
                 adr_ns, rg, identity_type="SystemAssigned", principal_id="adr-pid",
-                observability_endpoints={cl_id: obs_endpoint}, outbound_identity={"type": "SystemAssigned"},
+                observability_endpoints={cl_id: obs_endpoint},
+                observability_enabled=observability_enabled,
+                outbound_identity={"type": "SystemAssigned"},
             ),
             status=200,
         )
@@ -1072,6 +1085,46 @@ class TestShow:
         result = provider.show(name=instance_name, resource_group_name=rg)
         assert result["enabled"] is True
         assert result["deviceRegistryNamespace"]["name"] == adr_ns
+        assert result["deviceRegistryNamespace"]["observabilityEnabled"] is True
+        assert result["eventGrid"]["topicSpace"]["exists"] is True
+        assert result["instance"]["dataflowProfile"]["exists"] is True
+
+    @pytest.mark.parametrize("observability_enabled", [None, False])
+    def test_disabled_when_namespace_observability_not_enabled(
+        self,
+        mocked_cmd,
+        mocked_responses: responses,
+        observability_enabled: Optional[bool],
+    ):
+        rg = generate_random_string()
+        instance_name = generate_random_string()
+        ns_name = generate_random_string()
+        adr_ns = f"{instance_name}-adr-ns"
+        eg_rid = _build_eg_resource_id(ns_name, rg)
+        hostname = f"{ns_name}.eastus-1.ts.eventgrid.azure.net"
+        instance_rid = (
+            f"/subscriptions/{ZEROED_SUBSCRIPTION}/resourceGroups/{rg}"
+            f"/providers/{IOTOPS_RP}/instances/{instance_name}"
+        )
+        ts_name = get_live_data_topic_space_name(instance_rid)
+        self._register_show_mocks(
+            mocked_responses,
+            instance_name,
+            rg,
+            ns_name,
+            adr_ns,
+            eg_rid,
+            hostname,
+            ts_name,
+            observability_enabled=observability_enabled,
+        )
+
+        provider = LiveData(cmd=mocked_cmd)
+        result = provider.show(name=instance_name, resource_group_name=rg)
+
+        assert result["enabled"] is False
+        assert result["deviceRegistryNamespace"]["observabilityEnabled"] is False
+        assert result["deviceRegistryNamespace"]["observabilityEndpoint"] is not None
         assert result["eventGrid"]["topicSpace"]["exists"] is True
         assert result["instance"]["dataflowProfile"]["exists"] is True
 

@@ -2493,8 +2493,8 @@ def load_iotops_help():
               endpoint entry (keyed by the instance's custom location).
 
             The command is idempotent. Re-running converges to the desired state without
-            overwriting unrelated entries. Enablement for an instance is expressed by the presence
-            of its observability endpoint entry.
+            overwriting unrelated entries. Enablement requires namespace observability to be enabled
+            and the instance's observability endpoint entry to be present.
 
             By default, role assignments (Event Grid TopicSpaces Publisher for the instance identity
             and Subscriber for the ADR namespace identity) are created at the Event Grid namespace
@@ -2551,8 +2551,8 @@ def load_iotops_help():
         long-summary: |
             Reports the Live Data configuration and resource status across the Device Registry
             namespace, Event Grid, and IoT Operations dataflow resources. The top-level enabled
-            flag is true only when this instance's observability endpoint entry and all supporting
-            resources are present.
+            flag is true only when namespace observability is enabled, this instance's observability
+            endpoint entry is present, and all supporting resources are present.
 
         examples:
         - name: Show Live Data configuration for an instance.
