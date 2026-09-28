@@ -857,7 +857,9 @@ class LiveData(EventGridProviderBase):
         }
         outbound_identity = self._build_outbound_identity(mi_resource)
 
-        existing_endpoints = properties.get("observability", {}).get("endpoints", {})
+        observability = properties.get("observability", {})
+        observability_already_enabled = observability.get("enabled") is True
+        existing_endpoints = observability.get("endpoints", {})
         current_endpoint = existing_endpoints.get(custom_location_id)
         endpoint_already_configured = current_endpoint == desired_endpoint
 
@@ -874,7 +876,12 @@ class LiveData(EventGridProviderBase):
         if needs_identity_enable:
             base_payload["identity"] = {"type": "SystemAssigned"}
 
-        if endpoint_already_configured and outbound_identity_already_configured and (not needs_identity_enable):
+        if (
+            observability_already_enabled
+            and endpoint_already_configured
+            and outbound_identity_already_configured
+            and not needs_identity_enable
+        ):
             principal_id = self._resolve_outbound_principal(mi_resource, current_identity)
             logger.info(
                 "ADR namespace '%s' already has outbound identity and observability endpoint configured.",
@@ -914,13 +921,23 @@ class LiveData(EventGridProviderBase):
             )
             merged_endpoints = dict(existing_endpoints)
             merged_endpoints[custom_location_id] = desired_endpoint
-            endpoint_payload = {"properties": {"observability": {"endpoints": merged_endpoints}}}
+            endpoint_payload = {
+                "properties": {
+                    "observability": {
+                        "enabled": True,
+                        "endpoints": merged_endpoints,
+                    }
+                }
+            }
             self._patch_namespace(adr_resource_group, adr_namespace_name, endpoint_payload, **kwargs)
         else:
             merged_endpoints = dict(existing_endpoints)
             merged_endpoints[custom_location_id] = desired_endpoint
             payload = dict(base_payload)
-            payload["properties"]["observability"] = {"endpoints": merged_endpoints}
+            payload["properties"]["observability"] = {
+                "enabled": True,
+                "endpoints": merged_endpoints,
+            }
             updated_namespace = self._patch_namespace(
                 adr_resource_group, adr_namespace_name, payload, **kwargs
             )
