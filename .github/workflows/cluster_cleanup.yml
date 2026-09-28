@@ -28,7 +28,7 @@ on:
         type: string
         description: "Resource group to clean up"
         required: true
-        default: ops-cli-int-test-centralus-rg
+        default: ops-cli-int-test-rg
       custom_prefix:
         type: string
         description: "Your custom prefix for things to delete"
@@ -38,7 +38,7 @@ on:
     - cron: '0 8 * * *'
 
 env:
-  RESOURCE_GROUP: ${{ inputs.resource_group || 'ops-cli-int-test-centralus-rg' }}
+  RESOURCE_GROUP: ${{ inputs.resource_group || 'ops-cli-int-test-rg' }}
   CLUSTER_PREFIX: ${{ inputs.cluster_prefix || 'opt' }}
   # Note these are just for the init tests since we dont delete them then
   REGISTRY_PREFIX: 'init-registry'
@@ -80,13 +80,25 @@ jobs:
       - name: Delete everything in the test resource group
         run : |
           for resource in $(az resource list -g ${{ env.RESOURCE_GROUP }} --query "[*].id" -o tsv); do
-            az resource delete -v --id $resource --verbose
+            # Pin only ADR, using the last provider segment for extension resources.
+            resource_path="${resource,,}"
+            api_version_args=()
+            if [[ "${resource_path##*/providers/}" == microsoft.deviceregistry/* ]]; then
+              api_version_args=(--api-version 2026-04-01)
+            fi
+            az resource delete -v --id "$resource" "${api_version_args[@]}" --verbose
           done
       - name: Delete your custom stuff
         if: ${{ env.CUSTOM_PREFIX }}
         run: |
           for resource in $(az resource list -g ${{ env.RESOURCE_GROUP }} --query "[?starts_with(name, '${{ env.CUSTOM_PREFIX }}')].id" -o tsv); do
-            az resource delete -v --id $resource --verbose
+            # Pin only ADR, using the last provider segment for extension resources.
+            resource_path="${resource,,}"
+            api_version_args=()
+            if [[ "${resource_path##*/providers/}" == microsoft.deviceregistry/* ]]; then
+              api_version_args=(--api-version 2026-04-01)
+            fi
+            az resource delete -v --id "$resource" "${api_version_args[@]}" --verbose
           done
   mq-cleanup:
     runs-on: ubuntu-latest
