@@ -2900,7 +2900,7 @@ def test_preview_upgrade_routes_instance_and_backfills_to_profile_api(mocked_cmd
     scenario.set_instance_mock(mocked_responses, name, resource_group)
     preview_record = deepcopy(scenario.instance_record)
     preview_record["properties"]["previewOnlyProperty"] = {"retained": ["value"]}
-    api_version = "2026-11-01-preview"
+    api_version = "2026-09-01-preview"
     endpoint = get_instance_endpoint(resource_group, name, api_version=api_version)
     base_url = endpoint.split("?")[0]
     mocked_responses.add(responses.GET, endpoint, json=preview_record)

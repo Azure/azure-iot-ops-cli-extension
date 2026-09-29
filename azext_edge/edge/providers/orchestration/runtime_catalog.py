@@ -39,7 +39,7 @@ PREVIEW_PROFILE: Optional[RuntimeProfile] = RuntimeProfile(
     preview_notice=PREVIEW_NOTICE,
     preview_agreement_url=PREVIEW_AGREEMENT_URL,
     opcua_connector_version="1.4.0-alpha.164",
-    iotops_api_version=IoTOpsMgmtApiVersion.V20261101_preview.value,
+    iotops_api_version=IoTOpsMgmtApiVersion.V20260901_preview.value,
 )
 QUALIFICATION_IDENTITIES: Tuple[RuntimeIdentity, ...] = ()
 # GA and preview share the same init dependency versions and trains.

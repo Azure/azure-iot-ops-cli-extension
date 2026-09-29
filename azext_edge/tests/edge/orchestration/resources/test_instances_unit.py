@@ -262,7 +262,7 @@ def test_preview_instance_api_preserves_response_fields(mocked_cmd, mocked_respo
         initial["properties"]["provisioningState"] = "Failed"
         preview["properties"]["provisioningState"] = "Failed"
     ga_endpoint = get_instance_endpoint(resource_group, name)
-    preview_endpoint = get_instance_endpoint(resource_group, name, api_version="2026-11-01-preview")
+    preview_endpoint = get_instance_endpoint(resource_group, name, api_version="2026-09-01-preview")
     mocked_responses.add(responses.GET, ga_endpoint, json=initial)
     mocked_responses.add(responses.GET, preview_endpoint, json=preview)
     expected = deepcopy(preview)
