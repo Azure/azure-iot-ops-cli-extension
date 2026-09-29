@@ -7,6 +7,7 @@
 
 import json
 import re
+from copy import deepcopy
 from typing import Optional
 from unittest.mock import Mock
 
@@ -234,6 +235,7 @@ def test_instance_show(mocked_cmd, mocked_responses: responses):
     resource_group_name = generate_random_string()
 
     mock_instance_record = get_mock_instance_record(name=instance_name, resource_group_name=resource_group_name)
+    mock_runtime_discovery(mocked_responses, mock_instance_record)
     mocked_responses.add(
         method=responses.GET,
         url=get_instance_endpoint(resource_group_name=resource_group_name, instance_name=instance_name),
@@ -245,7 +247,38 @@ def test_instance_show(mocked_cmd, mocked_responses: responses):
     result = show_instance(cmd=mocked_cmd, instance_name=instance_name, resource_group_name=resource_group_name)
 
     assert result == mock_instance_record
-    assert len(mocked_responses.calls) == 1
+    assert len(mocked_responses.calls) == 4
+
+
+@pytest.mark.parametrize("operation", ["show", "update"])
+@pytest.mark.parametrize("train", ["preview", "integration"])
+def test_preview_instance_api_preserves_response_fields(mocked_cmd, mocked_responses, operation, train):
+    name, resource_group = "preview-instance", "preview-rg"
+    initial = get_mock_instance_record(name, resource_group)
+    mock_runtime_discovery(mocked_responses, initial, version="1.6.0-preview.9", train=train)
+    preview = deepcopy(initial)
+    preview["properties"]["previewOnlyProperty"] = {"retained": ["value"]}
+    if operation == "show":
+        initial["properties"]["provisioningState"] = "Failed"
+        preview["properties"]["provisioningState"] = "Failed"
+    ga_endpoint = get_instance_endpoint(resource_group, name)
+    preview_endpoint = get_instance_endpoint(resource_group, name, api_version="2026-11-01-preview")
+    mocked_responses.add(responses.GET, ga_endpoint, json=initial)
+    mocked_responses.add(responses.GET, preview_endpoint, json=preview)
+    expected = deepcopy(preview)
+    if operation == "update":
+        expected["tags"] = {"updated": "yes"}
+        mocked_responses.add(responses.PUT, preview_endpoint, json=expected)
+        result = update_instance(mocked_cmd, name, resource_group, tags=expected["tags"], wait_sec=0)
+        writes = [call.request for call in mocked_responses.calls if call.request.method != "GET"]
+        assert len(writes) == 1
+        assert json.loads(writes[0].body) == expected
+        assert writes[0].url == preview_endpoint
+    else:
+        result = show_instance(mocked_cmd, name, resource_group)
+        assert all(call.request.method == "GET" for call in mocked_responses.calls)
+    assert result == expected
+    assert initial["properties"].get("previewOnlyProperty") is None
 
 
 def mock_runtime_discovery(mocked_responses, instance, version="1.1.15", train="stable"):

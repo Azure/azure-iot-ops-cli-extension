@@ -15,6 +15,8 @@ Resolve these from the request and existing release handoff; ask only for missin
    the branch name into a release or guessing a runtime version. If no moniker was supplied, report the discovered
    value instead of treating an inferred branch suffix as a conflicting input.
 - Approved public-content exclusions, deliberate train overrides, and connector/backfill compatibility inputs.
+- Reviewed IoT Operations management API version for each selected profile, from the release handoff or confirmed
+   API contract. Do not infer it from the release moniker, runtime version, or the newest available API constant.
 - Approved preview notice/agreement URL only when activating preview creation, not as a prerequisite for dry-run
   generation. Never invent legal text or a URL.
 
@@ -119,6 +121,31 @@ After the generated content is approved:
    are not update/upgrade migrations, and a target connector tag is not automatically valid for all older runtimes
    in the channel. Report missing policies rather than stamping the latest tag indiscriminately.
 
+### Maintain release-specific management APIs
+
+Maintain the management API selection on every new release and same-release refresh:
+
+1. Compare the selected profile's `iotops_api_version` in `runtime_catalog.py` with the approved release API input.
+   Reuse or add the corresponding `IoTOpsMgmtApiVersion` constant in `azext_edge/edge/util/az_client.py`, and select
+   it in that profile. Preserve existing constants, the nonselected profile, and the GA default during preview-only
+   work. Providers must consume profile metadata, not duplicate release-specific API strings.
+2. Report the management API separately from the `apiVersion` values in the compiled deployment resources.
+   A user may intentionally keep an older, pinned qualification blueprint while selecting a newer management API.
+   Record the approved difference and its validation status; do not silently change the source ref, refresh the
+   blueprint, or hand-edit generated output to make the dates match. An API-only change does not authorize a
+   template regeneration. Missing compatibility evidence remains visible in the handoff.
+3. Check the selected API's operation paths, request/response shapes, and generated-client support. The existing
+   model-less client can pass an explicit API version and preserve JSON fields, but that does not prove service
+   compatibility or add missing preview-only operation groups. Report unsupported operations and seek scoped
+   client-generation approval; never fall back silently to GA for preview mutations.
+4. Update independent API expectations in `test_runtime_profiles_unit.py`, `resources/test_instances_unit.py`,
+   and `test_upgrade2_unit.py`. Cover GA and preview request API versions, re-reading through the selected API
+   before read-modify-write, preview field preservation, and registry/connector backfill requests. Preserve fixed
+   synthetic upgrade versions and GA expectations. Test any newly supported child operations separately.
+5. Run those modules and `azext_edge/tests/utility/test_az_client_unit.py` after the changes, then the section 5
+   suites. Report offline request/serialization tests separately from live runtime/API qualification; do not claim
+   that mocked field preservation proves server-side child-resource preservation.
+
 `--use-preview` is a normal runtime-selection parameter, not a Preview-tagged CLI interface. Leave that distinction
 and the `init` interface intact. Component `--feature ...mode=Preview` and package `--allow-preview` are unrelated.
 
@@ -126,6 +153,46 @@ The parent **CLI version/train policy does not apply to a multi-profile sync**. 
 the selected runtime's maturity/train. Preserve `VERSION` for template preparation unless an explicit package
 release change is requested. For a packaging request, use one agreed CLI version for both runtime profiles and
 check reuse under the existing release process. Do not promote/demote the wheel because preview is bundled.
+
+### Maintain release-tracking tests
+
+Test maintenance is part of every selected-profile refresh, including a new release cycle and a same-release
+re-sync. Once the source changes are reviewed, identify and update affected expectations in the same change as
+the blueprint/catalog; do not ask the user to locate stale assertions or hand-edit them later.
+
+1. For preview, inspect `azext_edge/tests/edge/orchestration/test_template_preview_unit.py` on every refresh.
+   Compare its pinned AIO version, actual train, API versions, connector tags/registries, resource keys/counts,
+   phase membership, feature expressions, parameter defaults and catalog/backfill assertions with the approved
+   source and final compile. Update only expectations whose corresponding inputs intentionally changed.
+2. Keep that file's `qualification_profile` release/ref labels aligned with the selected release/ref for clarity.
+   These labels do not select the artifact or prove provenance; `source_commit="test-commit"` may remain synthetic.
+   Production catalog provenance must still use the exact resolved source SHA.
+3. Follow references to the selected blueprint/profile and changed release values in the orchestration tests,
+   especially `test_runtime_activation_unit.py`, `test_runtime_profiles_unit.py`, `test_runtime_commands_unit.py`
+   and `test_get_versions_unit.py`. Distinguish expectations for the actual bundled artifact from deliberately
+   synthetic versions, historical upgrade baselines and boundary cases. Never bulk-replace old version strings
+   or advance a historical fixture merely because a new release has the same-looking value.
+4. Keep artifact expectations independent: take new expected literals from the reviewed source/final compile,
+   not from the object under test at test runtime. Do not replace pinned assertions with self-comparisons, weaken
+   them, or skip failing cases to make a refresh green. Reuse existing fixtures and expectation sets where suitable;
+   preserve GA/shared expectations during preview-only work.
+5. Reconcile added/removed resources and changed defaults with phase, custom-name, feature-preservation and
+   catalog-wiring tests. An unexpected failure is a reason to investigate the source or implementation, not
+   permission to change the expected result. Obtain the existing behavioral approval for newly discovered changes.
+6. Run the focused checks below immediately after the related edits, then the broader section 5 suites. Include
+   the reviewed old/new expectations and validation results in the handoff. Do not report a completed sync while
+   these tests fail or have not run; report a blocked/incomplete sync instead.
+
+For a preview refresh, run from the CLI repository root with the configured development interpreter:
+
+```shell
+python -m pytest -q \
+  azext_edge/tests/edge/orchestration/test_template_preview_unit.py \
+  azext_edge/tests/edge/orchestration/test_runtime_activation_unit.py \
+  azext_edge/tests/edge/orchestration/test_runtime_profiles_unit.py \
+  azext_edge/tests/edge/orchestration/test_runtime_commands_unit.py \
+  azext_edge/tests/edge/orchestration/test_get_versions_unit.py
+```
 
 ## 5. Validate selected outputs and isolation
 
@@ -165,7 +232,9 @@ preview profile/notice must remain visible rather than being replaced with synth
 ## 6. Handoff without publication
 
 For template-only work, report each profile's release, actual version/train, source SHA, blueprint provenance,
-compiler hash, connector version, shared-foundation differences, behavioral decisions, and activation status.
+compiler hash, connector version, management API and deployment API versions, shared-foundation differences,
+behavioral decisions, and activation status. Include any intentional API mismatch and unverified client/service
+compatibility rather than describing the profile as release-ready.
 Keep review output in the conversation; do not create a separate implementation-plan document.
 
 If a versions-wiki payload is requested, adapt parent section 6 per profile: components come from that profile's

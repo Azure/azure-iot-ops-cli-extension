@@ -10,6 +10,7 @@ from typing import Optional, Tuple
 
 from azext_edge.constants import AIO_RELEASE
 
+from ...util.az_client import IoTOpsMgmtApiVersion
 from .common import OPCUA_CONNECTOR_VERSION
 from .runtime_dependencies import DependencyRequirement
 from .runtime_profiles import RuntimeChannel, RuntimeIdentity, RuntimeProfile, RuntimeProfileCatalog
@@ -38,10 +39,12 @@ PREVIEW_PROFILE: Optional[RuntimeProfile] = RuntimeProfile(
     preview_notice=PREVIEW_NOTICE,
     preview_agreement_url=PREVIEW_AGREEMENT_URL,
     opcua_connector_version="1.4.0-alpha.164",
+    iotops_api_version=IoTOpsMgmtApiVersion.V20261101_preview.value,
 )
 QUALIFICATION_IDENTITIES: Tuple[RuntimeIdentity, ...] = ()
-# Populate from the release compatibility handoff, shared by GA and preview.
-# A deployment default is not evidence that every newer dependency is compatible.
+# GA and preview share the same init dependency versions and trains.
+# No additional dependency compatibility constraints are specified for this release.
+# An empty policy leaves the existing shared foundation checks unchanged.
 SHARED_DEPENDENCY_REQUIREMENTS: Tuple[DependencyRequirement, ...] = ()
 
 

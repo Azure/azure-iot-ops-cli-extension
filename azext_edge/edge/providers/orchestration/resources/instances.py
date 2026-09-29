@@ -25,6 +25,7 @@ from rich import print
 from rich.console import Console
 
 from ....util.az_client import (
+    DEFAULT_IOTOPS_MGMT_API_VERSION,
     ResourceIdContainer,
     get_clusterconfig_mgmt_client,
     get_connectedk8s_mgmt_client,
@@ -60,7 +61,7 @@ from ..permissions import (
 )
 from ..resource_map import IoTOperationsResourceMap
 from ..runtime import RuntimeContext, get_runtime_cluster_id, resolve_runtime
-from ..runtime_profiles import RuntimeIdentity
+from ..runtime_profiles import RuntimeIdentity, RuntimeProfile
 from ..runtime_catalog import get_runtime_catalog
 from ..runtime_requirements import validate_runtime_requirements
 
@@ -204,6 +205,7 @@ class Instances(Queryable):
         # TODO: make sure this works correctly
         # TODO: longer term pattern?
         super().__init__(cmd=cmd, subscriptions=[subscription_id] if subscription_id else None)
+        self.iotops_api_version = DEFAULT_IOTOPS_MGMT_API_VERSION.value
         self.iotops_mgmt_client = get_iotops_mgmt_client(
             **self._get_client_kwargs(subscription_id=self.subscriptions[0])
         )
@@ -215,14 +217,33 @@ class Instances(Queryable):
         )
         self.permission_manager = PermissionManager(self.default_subscription_id)
 
-    def show(self, name: str, resource_group_name: str, show_tree: Optional[bool] = None) -> Optional[dict]:
+    def show(
+        self, name: str, resource_group_name: str, show_tree: Optional[bool] = None, resolve_api: bool = False,
+    ) -> Optional[dict]:
         result = self.iotops_mgmt_client.instance.get(instance_name=name, resource_group_name=resource_group_name)
+        if resolve_api:
+            catalog = get_runtime_catalog()
+            runtime = self.get_runtime_context(result, catalog.qualification_identities)
+            result = self.use_runtime_profile(catalog.get(runtime.identity.channel), result)
 
         if show_tree:
             self._show_tree(result)
             return
 
         return result
+
+    def use_runtime_profile(self, profile: RuntimeProfile, instance: dict) -> dict:
+        if self.iotops_api_version == profile.iotops_api_version:
+            return instance
+        self.iotops_mgmt_client = get_iotops_mgmt_client(
+            api_version=profile.iotops_api_version,
+            **self._get_client_kwargs(subscription_id=self.subscriptions[0]),
+        )
+        self.iotops_api_version = profile.iotops_api_version
+        resource = parse_resource_id(instance["id"])
+        return self.iotops_mgmt_client.instance.get(
+            instance_name=resource.resource_name, resource_group_name=resource.resource_group_name,
+        )
 
     def get_ext_loc(
         self,
@@ -308,9 +329,10 @@ class Instances(Queryable):
             "adr_namespace_resource_id": adr_namespace_resource_id, "spc_resource_id": spc_resource_id,
         }
         validate_runtime_requirements("iot ops update", runtime.identity, requested_arguments, cmd=self.cmd)
+        profile = catalog.get(runtime.identity.channel)
+        instance = self.use_runtime_profile(profile, instance)
         connector_version = None
         if (desired_features or {}).get("opcua", {}).get("mode") not in (None, "Disabled"):
-            profile = catalog.get(runtime.identity.channel)
             connector_version = profile.require_opcua_connector_version()
         return self._update(
             name=name, resource_group_name=resource_group_name, instance=instance, tags=tags,
@@ -376,7 +398,7 @@ class Instances(Queryable):
         if opcua_backfill_requested:
             from .connector_templates import ConnectorTemplates
 
-            connector_templates = ConnectorTemplates(self.cmd)
+            connector_templates = ConnectorTemplates(self.cmd, instances=self)
             backfill_needed, repair_name = connector_templates.check_default_opcua_template_needed(
                 instance_name=name, resource_group_name=resource_group_name
             )

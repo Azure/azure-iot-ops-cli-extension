@@ -50,6 +50,17 @@ def test_catalog_defaults_and_upgrade_selection(profiles):
     assert catalog.for_upgrade(RuntimeIdentity(RuntimeChannel.PREVIEW, "1.6.0-preview.2", "preview")) is preview
 
 
+def test_bundled_profiles_select_management_api_without_changing_preview_blueprint():
+    from azext_edge.edge.providers.orchestration.runtime_catalog import get_runtime_catalog
+
+    catalog = get_runtime_catalog()
+    assert catalog.get(RuntimeChannel.STABLE).iotops_api_version == "2026-07-01"
+    preview = catalog.get(RuntimeChannel.PREVIEW)
+    assert preview.iotops_api_version == "2026-11-01-preview"
+    assert preview.identity.version == "1.6.0-preview.9"
+    assert preview.copy_instance_blueprint().content["resources"]["aioInstance"]["apiVersion"] == "2026-09-01-preview"
+
+
 def test_catalog_missing_and_duplicate_profiles_fail(profiles):
     with pytest.raises(ValidationError, match="No reviewed preview"):
         RuntimeProfileCatalog(profiles[:1]).for_create(use_preview=True)

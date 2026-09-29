@@ -7,6 +7,7 @@
 """Read-only runtime discovery and capability checks. Never called while constructing help."""
 
 from dataclasses import dataclass
+from enum import Enum
 from typing import Any, FrozenSet, Iterable, Mapping, Optional, Tuple
 
 from azure.cli.core.azclierror import ValidationError
@@ -48,6 +49,22 @@ def get_runtime_cluster_id(instance: dict, custom_location: dict) -> str:
     )
 
 
+class RuntimeIssueCode(str, Enum):
+    PROVISIONING_STATE = "provisioning_state"
+    CLUSTER_CONNECTIVITY = "cluster_connectivity"
+    INVALID_EXTENSION_STATUS = "invalid_extension_status"
+    EXTENSION_ERROR = "extension_error"
+    VERSION_MISMATCH = "version_mismatch"
+
+
+@dataclass(frozen=True)
+class RuntimeIssue:
+    code: RuntimeIssueCode
+    resource: str
+    message: str
+    state: Optional[str] = None
+
+
 @dataclass(frozen=True)
 class RuntimeContext:
     instance_id: str
@@ -57,11 +74,14 @@ class RuntimeContext:
     identity: RuntimeIdentity
     requested_version: Optional[str]
     provisioning_state: Optional[str]
-    readiness_issues: Tuple[str, ...] = ()
+    readiness_issues: Tuple[RuntimeIssue, ...] = ()
+    auto_upgrade_minor_version: Optional[bool] = None
 
     def require_ready(self) -> None:
         if self.readiness_issues:
-            raise ValidationError("AIO runtime is not ready: " + "; ".join(self.readiness_issues))
+            raise ValidationError("AIO runtime is not ready: " + "; ".join(
+                issue.message for issue in self.readiness_issues
+            ))
 
     def require_upgradeable(self) -> None:
         # A known failed extension can be reconciled, but not while another operation
@@ -71,10 +91,17 @@ class RuntimeContext:
             return
         blockers = [
             issue for issue in self.readiness_issues
-            if not issue.startswith(("extension provisioning state", "extension reports", "requested version"))
+            if not (
+                issue.resource == "extension"
+                and issue.code in {
+                    RuntimeIssueCode.PROVISIONING_STATE,
+                    RuntimeIssueCode.EXTENSION_ERROR,
+                    RuntimeIssueCode.VERSION_MISMATCH,
+                }
+            )
         ]
         if blockers:
-            raise ValidationError("AIO runtime cannot be upgraded: " + "; ".join(blockers))
+            raise ValidationError("AIO runtime cannot be upgraded: " + "; ".join(issue.message for issue in blockers))
 
 
 def resolve_runtime(
@@ -121,21 +148,39 @@ def resolve_runtime(
     for name, record in (("instance", instance), ("custom location", custom_location), ("extension", extension)):
         state = (record.get("properties") or {}).get("provisioningState")
         if not isinstance(state, str) or state.lower() != "succeeded":
-            issues.append(f"{name} provisioning state is {state or 'unknown'}")
-    if _lower((cluster.get("properties") or {}).get("connectivityStatus")) != "connected":
-        issues.append("connected cluster is disconnected or its connectivity is unknown")
+            issues.append(RuntimeIssue(
+                RuntimeIssueCode.PROVISIONING_STATE, name, f"{name} provisioning state is {state or 'unknown'}", state,
+            ))
+    connectivity = (cluster.get("properties") or {}).get("connectivityStatus")
+    if _lower(connectivity) != "connected":
+        issues.append(RuntimeIssue(
+            RuntimeIssueCode.CLUSTER_CONNECTIVITY, "cluster",
+            "connected cluster is disconnected or its connectivity is unknown", connectivity,
+        ))
+    extension_state = properties.get("provisioningState")
     statuses = properties.get("statuses", [])
     if not isinstance(statuses, list) or any(not isinstance(status, dict) for status in statuses):
-        issues.append("extension status information is invalid")
+        issues.append(RuntimeIssue(
+            RuntimeIssueCode.INVALID_EXTENSION_STATUS, "extension", "extension status information is invalid",
+            extension_state,
+        ))
     elif any(_lower(status.get("level")) == "error" for status in statuses):
-        issues.append("extension reports an error")
+        issues.append(RuntimeIssue(
+            RuntimeIssueCode.EXTENSION_ERROR, "extension", "extension reports an error", extension_state,
+        ))
     if properties.get("errorInfo"):
-        issues.append("extension reports an error")
+        issues.append(RuntimeIssue(
+            RuntimeIssueCode.EXTENSION_ERROR, "extension", "extension reports an error", extension_state,
+        ))
     requested_version = properties.get("version")
     if requested_version is not None:
         requested = parse_runtime_version(requested_version)
         if requested != parse_runtime_version(installed_version):
-            issues.append(f"requested version {requested_version} differs from installed version {installed_version}")
+            issues.append(RuntimeIssue(
+                RuntimeIssueCode.VERSION_MISMATCH, "extension",
+                f"requested version {requested_version} differs from installed version {installed_version}",
+                extension_state,
+            ))
     return RuntimeContext(
         instance_id=instance["id"],
         custom_location_id=custom_location["id"],
@@ -145,6 +190,7 @@ def resolve_runtime(
         requested_version=requested_version,
         provisioning_state=properties.get("provisioningState"),
         readiness_issues=tuple(issues),
+        auto_upgrade_minor_version=properties.get("autoUpgradeMinorVersion"),
     )
 
 

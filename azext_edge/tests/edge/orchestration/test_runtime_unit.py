@@ -5,6 +5,7 @@
 # ----------------------------------------------------------------------------------------------
 
 from copy import deepcopy
+from dataclasses import replace
 from unittest.mock import Mock
 
 import pytest
@@ -16,6 +17,8 @@ from azext_edge.edge.providers.orchestration.resources.instances import Instance
 from azext_edge.edge.providers.orchestration.runtime import (
     OperationRequirements,
     ParameterRequirement,
+    RuntimeIssue,
+    RuntimeIssueCode,
     resolve_runtime,
     validate_operation,
 )
@@ -88,31 +91,91 @@ def test_requested_version_is_optional(records):
     runtime.require_ready()
 
 
-@pytest.mark.parametrize("state", ["Failed", "Canceled"])
-def test_known_failed_runtime_can_be_reconciled(records, state):
-    properties = records["extensions"][0]["properties"]
-    properties.update(provisioningState=state, version="1.5.8", errorInfo={"message": "upgrade failed"})
+@pytest.mark.parametrize("auto_upgrade", [False, True, None])
+def test_runtime_captures_upgrade_ownership(records, auto_upgrade):
+    if auto_upgrade is not None:
+        records["extensions"][0]["properties"]["autoUpgradeMinorVersion"] = auto_upgrade
     runtime = resolve_runtime(**records)
+    assert runtime.auto_upgrade_minor_version is auto_upgrade
+    runtime.require_ready()
+
+
+@pytest.mark.parametrize("state", ["Failed", "Canceled"])
+@pytest.mark.parametrize("error_source", ["statuses", "errorInfo"])
+def test_known_failed_runtime_can_be_reconciled(records, state, error_source):
+    properties = records["extensions"][0]["properties"]
+    properties.update(provisioningState=state, version="1.5.8")
+    properties[error_source] = [{"level": "Error"}] if error_source == "statuses" else {"message": "upgrade failed"}
+    runtime = resolve_runtime(**records)
+    assert runtime.readiness_issues == (
+        RuntimeIssue(
+            RuntimeIssueCode.PROVISIONING_STATE, "extension", f"extension provisioning state is {state}", state,
+        ),
+        RuntimeIssue(RuntimeIssueCode.EXTENSION_ERROR, "extension", "extension reports an error", state),
+        RuntimeIssue(
+            RuntimeIssueCode.VERSION_MISMATCH, "extension",
+            "requested version 1.5.8 differs from installed version 1.5.7", state,
+        ),
+    )
     with pytest.raises(ValidationError):
         runtime.require_ready()
     runtime.require_upgradeable()
+    reworded = replace(runtime, readiness_issues=tuple(
+        replace(issue, message="Reworded diagnostic") for issue in runtime.readiness_issues
+    ))
+    reworded.require_upgradeable()
+    with pytest.raises(ValidationError, match="Reworded diagnostic"):
+        reworded.require_ready()
 
 
-def test_repair_does_not_ignore_other_readiness_failures(records):
-    records["extensions"][0]["properties"]["provisioningState"] = "Failed"
-    records["cluster"]["properties"]["connectivityStatus"] = "Disconnected"
-    with pytest.raises(ValidationError, match="disconnected"):
-        resolve_runtime(**records).require_upgradeable()
+@pytest.mark.parametrize("state", ["Failed", "Canceled"])
+@pytest.mark.parametrize("record_name,field,value,code,resource", [
+    ("instance", "provisioningState", "Failed", RuntimeIssueCode.PROVISIONING_STATE, "instance"),
+    ("instance", "provisioningState", "Canceled", RuntimeIssueCode.PROVISIONING_STATE, "instance"),
+    ("custom_location", "provisioningState", "Failed", RuntimeIssueCode.PROVISIONING_STATE, "custom location"),
+    ("custom_location", "provisioningState", "Canceled", RuntimeIssueCode.PROVISIONING_STATE, "custom location"),
+    ("cluster", "connectivityStatus", "Disconnected", RuntimeIssueCode.CLUSTER_CONNECTIVITY, "cluster"),
+    ("cluster", "connectivityStatus", None, RuntimeIssueCode.CLUSTER_CONNECTIVITY, "cluster"),
+    ("extension", "statuses", {}, RuntimeIssueCode.INVALID_EXTENSION_STATUS, "extension"),
+    ("extension", "statuses", [None], RuntimeIssueCode.INVALID_EXTENSION_STATUS, "extension"),
+])
+def test_repair_does_not_ignore_other_readiness_failures(
+    records, state, record_name, field, value, code, resource,
+):
+    records["extensions"][0]["properties"]["provisioningState"] = state
+    record = records["extensions"][0] if record_name == "extension" else records[record_name]
+    record["properties"][field] = value
+    runtime = resolve_runtime(**records)
+    assert (code, resource) in {(issue.code, issue.resource) for issue in runtime.readiness_issues}
+    with pytest.raises(ValidationError, match="cannot be upgraded"):
+        runtime.require_upgradeable()
+    reworded = replace(runtime, readiness_issues=tuple(
+        replace(issue, message="extension reports a differently worded issue") for issue in runtime.readiness_issues
+    ))
+    with pytest.raises(ValidationError, match="extension reports a differently worded issue"):
+        reworded.require_upgradeable()
 
 
-@pytest.mark.parametrize("state", [None, "Failed", "Creating", "Updating", "Deleting", "Canceled"])
+@pytest.mark.parametrize("state", [
+    None, "Unknown", "Failed", "Creating", "Updating", "Deleting", "Accepted", "Canceled",
+])
 @pytest.mark.parametrize("record_name", ["instance", "custom_location", "extension"])
 def test_unready_runtime_rejected(records, state, record_name):
     record = records["extensions"][0] if record_name == "extension" else records[record_name]
     record["properties"]["provisioningState"] = state
     runtime = resolve_runtime(**records)
+    resource = record_name.replace("_", " ")
+    assert runtime.readiness_issues == (
+        RuntimeIssue(RuntimeIssueCode.PROVISIONING_STATE, resource,
+                     f"{resource} provisioning state is {state or 'unknown'}", state),
+    )
     with pytest.raises(ValidationError, match="not ready"):
         OperationRequirements("update").validate(runtime)
+    if record_name == "extension" and state in {"Failed", "Canceled"}:
+        runtime.require_upgradeable()
+    else:
+        with pytest.raises(ValidationError):
+            runtime.require_upgradeable()
 
 
 @pytest.mark.parametrize("error", ["disconnected", "errorInfo", "statuses"])

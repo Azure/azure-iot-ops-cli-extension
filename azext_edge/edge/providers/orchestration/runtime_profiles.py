@@ -17,6 +17,7 @@ from typing import Iterable, Optional
 
 from azure.cli.core.azclierror import ValidationError
 
+from ...util.az_client import DEFAULT_IOTOPS_MGMT_API_VERSION
 from ...util.machinery import scoped_semver_import
 from .common import EXTENSION_MONIKER_OPS
 from .runtime_dependencies import DependencyRequirement
@@ -67,6 +68,7 @@ class RuntimeProfile:
     preview_notice: Optional[str] = None
     preview_agreement_url: Optional[str] = None
     opcua_connector_version: Optional[str] = None
+    iotops_api_version: str = DEFAULT_IOTOPS_MGMT_API_VERSION.value
     identity: RuntimeIdentity = field(init=False)
     _instance_blueprint: TemplateBlueprint = field(init=False, repr=False, compare=False)
 
