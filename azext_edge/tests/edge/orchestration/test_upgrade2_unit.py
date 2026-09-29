@@ -2976,8 +2976,14 @@ def test_ops_version_pinning_requires_manual_ownership(force, auto_upgrade, oper
         properties["autoUpgradeMinorVersion"] = auto_upgrade
     if operation in {"upgrade", "repair"} and auto_upgrade is not False:
         for validate in (ext.validate_upgrade, ext.get_patch):
-            with pytest.raises(ValidationError, match="autoUpgradeMinorVersion is explicitly false"):
+            with pytest.raises(ValidationError, match="autoUpgradeMinorVersion is explicitly false") as caught:
                 validate()
+            assert (
+                "az k8s-extension update --subscription <cluster-subscription> "
+                "--resource-group <cluster-resource-group> --cluster-name <cluster-name> "
+                "--cluster-type connectedClusters --name <aio-extension-name> --auto-upgrade false"
+            ) in str(caught.value)
+            assert "--force cannot override upgrade ownership" in str(caught.value)
     else:
         ext.validate_upgrade()
         patch_properties = ext.get_patch().get("properties", {})

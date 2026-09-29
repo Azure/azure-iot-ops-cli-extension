@@ -1318,7 +1318,11 @@ class ExtensionUpgradeState:
             raise ValidationError(
                 "Cannot pin an AIO extension version unless autoUpgradeMinorVersion is explicitly false. "
                 "Arc-managed upgrades must be disabled through an explicit ownership decision before CLI upgrade "
-                "or repair. --force cannot override upgrade ownership."
+                "or repair. To explicitly transfer ownership, run 'az k8s-extension update "
+                "--subscription <cluster-subscription> --resource-group <cluster-resource-group> "
+                "--cluster-name <cluster-name> --cluster-type connectedClusters "
+                "--name <aio-extension-name> --auto-upgrade false', then retry. "
+                "--force cannot override upgrade ownership."
             )
 
     def _validate_ops_boundary(self) -> None:

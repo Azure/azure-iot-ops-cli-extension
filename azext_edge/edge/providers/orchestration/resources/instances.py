@@ -223,8 +223,16 @@ class Instances(Queryable):
         result = self.iotops_mgmt_client.instance.get(instance_name=name, resource_group_name=resource_group_name)
         if resolve_api:
             catalog = get_runtime_catalog()
-            runtime = self.get_runtime_context(result, catalog.qualification_identities)
-            result = self.use_runtime_profile(catalog.get(runtime.identity.channel), result)
+            try:
+                runtime = self.get_runtime_context(result, catalog.qualification_identities)
+            except (ValidationError, HttpResponseError) as error:
+                logger.warning(
+                    "Unable to resolve the AIO runtime. Returning the instance using API %s; "
+                    "preview-specific fields may be incomplete. %s",
+                    self.iotops_api_version, error,
+                )
+            else:
+                result = self.use_runtime_profile(catalog.get(runtime.identity.channel), result)
 
         if show_tree:
             self._show_tree(result)
