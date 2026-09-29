@@ -51,6 +51,7 @@ from .resources.conftest import (
     CLUSTER_EXTENSIONS_API_VERSION,
     CLUSTER_EXTENSIONS_URL_MATCH_RE,
     CONNECTED_CLUSTER_API_VERSION,
+    INSTANCES_API_VERSION,
     get_base_endpoint,
     get_mock_resource,
 )
@@ -307,6 +308,7 @@ class UpgradeScenario:
                     "version": vers,
                     "currentVersion": vers,
                     "releaseTrain": train,
+                    "autoUpgradeMinorVersion": False,
                     "configurationSettings": {},
                     "provisioningState": PROVISIONING_STATE_SUCCESS,
                 },
@@ -371,6 +373,7 @@ class UpgradeScenario:
                     "extensionType": ext_type,
                     "version": actual_vers,
                     "releaseTrain": actual_train,
+                    "autoUpgradeMinorVersion": False,
                     "configurationSettings": config_settings or {},
                     "provisioningState": provisioning_state or PROVISIONING_STATE_SUCCESS,
                 },
@@ -410,8 +413,12 @@ class UpgradeScenario:
 
         return self
 
-    def set_instance_mock(self: T, mocked_responses: responses, instance_name: str, resource_group_name: str) -> T:
+    def set_instance_mock(
+        self: T, mocked_responses: responses, instance_name: str, resource_group_name: str,
+        iotops_api_version: str = INSTANCES_API_VERSION,
+    ) -> T:
         mocked_responses.assert_all_requests_are_fired = False
+        self.iotops_api_version = iotops_api_version
 
         # Always use version 1.2.0+ (which includes ADR namespace)
         # unless explicitly testing scenario without ADR
@@ -446,6 +453,12 @@ class UpgradeScenario:
 
         # Track if instance update was called
         self.instance_update_called = False
+        if iotops_api_version != INSTANCES_API_VERSION:
+            mocked_responses.add(
+                responses.GET,
+                get_instance_endpoint(resource_group_name, instance_name, api_version=iotops_api_version),
+                json=mock_instance_record,
+            )
 
         # Add instance update mock if expected
         if self.expect_instance_update:
@@ -483,7 +496,10 @@ class UpgradeScenario:
 
             mocked_responses.add_callback(
                 method=responses.PUT,
-                url=get_instance_endpoint(resource_group_name=resource_group_name, instance_name=instance_name),
+                url=get_instance_endpoint(
+                    resource_group_name=resource_group_name, instance_name=instance_name,
+                    api_version=iotops_api_version,
+                ),
                 callback=instance_update_callback,
             )
 
@@ -753,7 +769,7 @@ class UpgradeScenario:
     def _setup_registry_endpoint_mocks(self, mocked_responses: responses, instance_name: str, resource_group_name: str):
         """Set up registry endpoint mocks for tests."""
         list_endpoint = get_registry_endpoint_endpoint(
-            instance_name=instance_name, resource_group_name=resource_group_name
+            instance_name=instance_name, resource_group_name=resource_group_name, api_version=self.iotops_api_version,
         )
 
         # Determine test configuration
@@ -785,7 +801,8 @@ class UpgradeScenario:
 
         # Always add PUT mock for creation attempts
         create_endpoint = get_registry_endpoint_endpoint(
-            instance_name=instance_name, resource_group_name=resource_group_name, registry_endpoint_name="default"
+            instance_name=instance_name, resource_group_name=resource_group_name, registry_endpoint_name="default",
+            api_version=self.iotops_api_version,
         )
 
         def registry_create_callback(request):
@@ -812,7 +829,7 @@ class UpgradeScenario:
     ):
         """Set up default OPC UA connector template mocks for tests."""
         list_endpoint = get_connector_template_endpoint(
-            instance_name=instance_name, resource_group_name=resource_group_name
+            instance_name=instance_name, resource_group_name=resource_group_name, api_version=self.iotops_api_version,
         )
         base_list_url = list_endpoint.split("?")[0]
 
@@ -847,7 +864,10 @@ class UpgradeScenario:
             )
 
         # Always add PUT mock for creation attempts (name is instance-derived).
-        create_endpoint = re.compile(re.escape(base_list_url) + r"/azureiotoperationsconnectorforopcua-[a-z0-9]+")
+        create_endpoint = re.compile(
+            re.escape(base_list_url) + r"/azureiotoperationsconnectorforopcua-[a-z0-9]+"
+            + re.escape("?" + list_endpoint.split("?", 1)[1]) + "$"
+        )
 
         def connector_template_create_callback(request):
             assert_upgrade_headers(request.headers)
@@ -1330,22 +1350,21 @@ def assert_operation_order(target_scenario: UpgradeScenario, upgrade_result: Lis
             {EXTENSION_TYPE_OPS: build_extension_props(EXTENSION_TYPE_OPS, version="1.1.0")},
         ),
         (
-            UpgradeScenario("Failed state: With preview train and version change")
+            UpgradeScenario("Failed state: Preview upgrade to the next minor version")
             .set_extension(
                 ext_type=EXTENSION_TYPE_OPS,
                 ext_vers="1.6.0-preview.4",
                 ext_train="preview",
                 provisioning_state=PROVISIONING_STATE_FAILED,
             )
-            .set_user_kwargs(ops_version="1.7.0-preview.1")
-            .expecting_validation_error("across runtime version cycles"),
-            {},
+            .set_user_kwargs(ops_version="1.7.0-preview.1"),
+            {EXTENSION_TYPE_OPS: build_extension_props(EXTENSION_TYPE_OPS, version="1.7.0-preview.1")},
         ),
         (
             UpgradeScenario("Failed state: Preview train allowed with force")
             .set_extension(
                 ext_type=EXTENSION_TYPE_OPS,
-                ext_vers="1.6.0-preview.4",
+                ext_vers="1.6.0-preview.9",
                 ext_train="preview",
                 provisioning_state=PROVISIONING_STATE_FAILED,
             )
@@ -2851,7 +2870,9 @@ def build_ext_upgrade_state(
     """Build an ExtensionUpgradeState directly, bypassing cluster discovery."""
     from azext_edge.edge.providers.orchestration.upgrade2 import ConfigOverride, ExtensionUpgradeState
 
-    props: Dict[str, str] = {"extensionType": ext_type, "provisioningState": provisioning_state}
+    props = {
+        "extensionType": ext_type, "provisioningState": provisioning_state, "autoUpgradeMinorVersion": False,
+    }
     if current_version:
         props["version"] = current_version
         props["currentVersion"] = current_version
@@ -2866,6 +2887,131 @@ def build_ext_upgrade_state(
         force=force,
         operation_type=operation_type,
     )
+
+
+def test_preview_upgrade_routes_instance_and_backfills_to_profile_api(mocked_cmd, mocked_responses, mocked_sleep):
+    from azext_edge.edge.providers.orchestration.upgrade2 import UpgradeManager
+    from azext_edge.edge.providers.orchestration.resources.connector_templates import ConnectorTemplates
+
+    name, resource_group = "preview-instance", "preview-rg"
+    scenario = UpgradeScenario().set_extension(
+        EXTENSION_TYPE_OPS, ext_vers="1.6.0-preview.9", ext_train="integration",
+    )
+    scenario.set_instance_mock(mocked_responses, name, resource_group)
+    preview_record = deepcopy(scenario.instance_record)
+    preview_record["properties"]["previewOnlyProperty"] = {"retained": ["value"]}
+    api_version = "2026-11-01-preview"
+    endpoint = get_instance_endpoint(resource_group, name, api_version=api_version)
+    base_url = endpoint.split("?")[0]
+    mocked_responses.add(responses.GET, endpoint, json=preview_record)
+    for resource_type in ("registryEndpoints", "akriConnectorTemplates"):
+        mocked_responses.add(
+            responses.GET, f"{base_url}/{resource_type}?api-version={api_version}", json={"value": []},
+        )
+
+    def echo_resource(request):
+        record = json.loads(request.body)
+        record["properties"]["provisioningState"] = "Succeeded"
+        return 200, STANDARD_HEADERS, json.dumps(record)
+
+    template_name = ConnectorTemplates.default_opcua_template_name(name)
+    write_urls = [
+        endpoint,
+        f"{base_url}/registryEndpoints/default?api-version={api_version}",
+        f"{base_url}/akriConnectorTemplates/{template_name}?api-version={api_version}",
+    ]
+    for url in write_urls:
+        mocked_responses.add_callback(responses.PUT, url, callback=echo_resource)
+    adr_id = preview_record["properties"]["adrNamespaceRef"]["resourceId"] + "-updated"
+    manager = UpgradeManager(mocked_cmd, resource_group, name, adr_namespace_resource_id=adr_id, no_progress=True)
+    plan = manager.analyze_cluster()
+    assert plan.instance_upgrade and plan.registry_endpoint_needed and plan.connector_template_needed
+    manager.apply_upgrades(plan)
+
+    aio_requests = [call.request for call in mocked_responses.calls if "/Microsoft.IoTOperations/" in call.request.url]
+    assert aio_requests[0].url == get_instance_endpoint(resource_group, name)
+    assert all(request.url.endswith(f"api-version={api_version}") for request in aio_requests[1:])
+    writes = [request for request in aio_requests if request.method != "GET"]
+    assert [request.url for request in writes] == write_urls
+    assert all(request.method == "PUT" for request in writes)
+    payload = json.loads(writes[0].body)
+    assert payload["properties"]["previewOnlyProperty"] == {"retained": ["value"]}
+    assert payload["properties"]["adrNamespaceRef"]["resourceId"] == adr_id
+    assert "previewOnlyProperty" not in scenario.instance_record["properties"]
+
+
+@pytest.mark.parametrize("force", [False, True])
+@pytest.mark.parametrize("auto_upgrade", [True, None])
+def test_upgrade_ownership_failure_prevents_all_writes(mocked_cmd, mocked_responses, force, auto_upgrade):
+    from azext_edge.edge.commands_edge import upgrade_instance
+
+    scenario = UpgradeScenario().set_extension(EXTENSION_TYPE_OPS, ext_vers="1.4.0")
+    properties = scenario.extensions[EXTENSION_TYPE_OPS]["properties"]
+    if auto_upgrade is None:
+        properties.pop("autoUpgradeMinorVersion")
+    else:
+        properties["autoUpgradeMinorVersion"] = auto_upgrade
+    scenario.set_instance_mock(mocked_responses, "instance", "rg")
+    with pytest.raises(ValidationError, match="autoUpgradeMinorVersion is explicitly false"):
+        upgrade_instance(mocked_cmd, "rg", "instance", confirm_yes=True, force=force)
+    assert not [call for call in mocked_responses.calls if call.request.method in {"PUT", "PATCH", "DELETE"}]
+
+
+@pytest.mark.parametrize("force", [False, True])
+@pytest.mark.parametrize("auto_upgrade", [False, True, None, "false"])
+@pytest.mark.parametrize("operation", ["upgrade", "repair", "config", "noop"])
+def test_ops_version_pinning_requires_manual_ownership(force, auto_upgrade, operation):
+    ext = build_ext_upgrade_state(
+        ext_type=EXTENSION_TYPE_OPS,
+        current_version="1.6.0-preview.9", current_train="preview",
+        built_in_version="1.6.0-preview.10" if operation == "upgrade" else "1.6.0-preview.9",
+        built_in_train="preview", force=force,
+        provisioning_state=PROVISIONING_STATE_FAILED if operation == "repair" else PROVISIONING_STATE_SUCCESS,
+        desired_config={"setting": "value"} if operation == "config" else None,
+    )
+    properties = ext.extension["properties"]
+    if auto_upgrade is None:
+        properties.pop("autoUpgradeMinorVersion")
+    else:
+        properties["autoUpgradeMinorVersion"] = auto_upgrade
+    if operation in {"upgrade", "repair"} and auto_upgrade is not False:
+        for validate in (ext.validate_upgrade, ext.get_patch):
+            with pytest.raises(ValidationError, match="autoUpgradeMinorVersion is explicitly false"):
+                validate()
+    else:
+        ext.validate_upgrade()
+        patch_properties = ext.get_patch().get("properties", {})
+        if operation in {"upgrade", "repair"}:
+            assert patch_properties["version"] == ext.desired_version[0]
+        else:
+            assert "version" not in patch_properties
+        assert "autoUpgradeMinorVersion" not in patch_properties
+
+
+@pytest.mark.parametrize("force", [False, True])
+@pytest.mark.parametrize("target_version,error_match", [
+    ("1.6.0-preview.9", None),
+    ("1.6.0-preview.10", None),
+    ("1.6.0-preview.11", None),
+    ("1.6.0-preview.20", None),
+    ("1.7.0-preview.1", None),
+    ("1.7.0-preview.11", None),
+    ("1.8.0-preview.1", "more than one minor version"),
+    ("2.0.0-preview.1", "across major versions"),
+    ("1.6.0-preview.8", "downgrade"),
+])
+def test_preview_upgrades_allow_one_minor_version_and_suffix_jumps(force, target_version, error_match):
+    ext = build_ext_upgrade_state(
+        ext_type=EXTENSION_TYPE_OPS, current_version="1.6.0-preview.9", current_train="preview",
+        built_in_version=target_version, built_in_train="preview", version_override=target_version, force=force,
+    )
+    if error_match is None:
+        ext.validate_upgrade()
+        assert ext.get_patch()["properties"]["version"] == target_version
+    else:
+        for validate in (ext.validate_upgrade, ext.get_patch):
+            with pytest.raises(ValidationError, match=error_match):
+                validate()
 
 
 def test_desired_state_ignores_built_in_target_when_no_version_is_sent():

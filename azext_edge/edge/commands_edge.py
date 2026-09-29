@@ -330,7 +330,9 @@ def delete(
 
 
 def show_instance(cmd, instance_name: str, resource_group_name: str, show_tree: Optional[bool] = None) -> dict:
-    return Instances(cmd).show(name=instance_name, resource_group_name=resource_group_name, show_tree=show_tree)
+    return Instances(cmd).show(
+        name=instance_name, resource_group_name=resource_group_name, show_tree=show_tree, resolve_api=True,
+    )
 
 
 def list_instances(cmd, resource_group_name: Optional[str] = None) -> Iterable[dict]:

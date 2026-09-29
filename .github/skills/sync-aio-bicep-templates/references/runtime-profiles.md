@@ -15,6 +15,8 @@ Resolve these from the request and existing release handoff; ask only for missin
    the branch name into a release or guessing a runtime version. If no moniker was supplied, report the discovered
    value instead of treating an inferred branch suffix as a conflicting input.
 - Approved public-content exclusions, deliberate train overrides, and connector/backfill compatibility inputs.
+- Reviewed IoT Operations management API version for each selected profile, from the release handoff or confirmed
+   API contract. Do not infer it from the release moniker, runtime version, or the newest available API constant.
 - Approved preview notice/agreement URL only when activating preview creation, not as a prerequisite for dry-run
   generation. Never invent legal text or a URL.
 
@@ -119,6 +121,31 @@ After the generated content is approved:
    are not update/upgrade migrations, and a target connector tag is not automatically valid for all older runtimes
    in the channel. Report missing policies rather than stamping the latest tag indiscriminately.
 
+### Maintain release-specific management APIs
+
+Maintain the management API selection on every new release and same-release refresh:
+
+1. Compare the selected profile's `iotops_api_version` in `runtime_catalog.py` with the approved release API input.
+   Reuse or add the corresponding `IoTOpsMgmtApiVersion` constant in `azext_edge/edge/util/az_client.py`, and select
+   it in that profile. Preserve existing constants, the nonselected profile, and the GA default during preview-only
+   work. Providers must consume profile metadata, not duplicate release-specific API strings.
+2. Report the management API separately from the `apiVersion` values in the compiled deployment resources.
+   A user may intentionally keep an older, pinned qualification blueprint while selecting a newer management API.
+   Record the approved difference and its validation status; do not silently change the source ref, refresh the
+   blueprint, or hand-edit generated output to make the dates match. An API-only change does not authorize a
+   template regeneration. Missing compatibility evidence remains visible in the handoff.
+3. Check the selected API's operation paths, request/response shapes, and generated-client support. The existing
+   model-less client can pass an explicit API version and preserve JSON fields, but that does not prove service
+   compatibility or add missing preview-only operation groups. Report unsupported operations and seek scoped
+   client-generation approval; never fall back silently to GA for preview mutations.
+4. Update independent API expectations in `test_runtime_profiles_unit.py`, `resources/test_instances_unit.py`,
+   and `test_upgrade2_unit.py`. Cover GA and preview request API versions, re-reading through the selected API
+   before read-modify-write, preview field preservation, and registry/connector backfill requests. Preserve fixed
+   synthetic upgrade versions and GA expectations. Test any newly supported child operations separately.
+5. Run those modules and `azext_edge/tests/utility/test_az_client_unit.py` after the changes, then the section 5
+   suites. Report offline request/serialization tests separately from live runtime/API qualification; do not claim
+   that mocked field preservation proves server-side child-resource preservation.
+
 `--use-preview` is a normal runtime-selection parameter, not a Preview-tagged CLI interface. Leave that distinction
 and the `init` interface intact. Component `--feature ...mode=Preview` and package `--allow-preview` are unrelated.
 
@@ -205,7 +232,9 @@ preview profile/notice must remain visible rather than being replaced with synth
 ## 6. Handoff without publication
 
 For template-only work, report each profile's release, actual version/train, source SHA, blueprint provenance,
-compiler hash, connector version, shared-foundation differences, behavioral decisions, and activation status.
+compiler hash, connector version, management API and deployment API versions, shared-foundation differences,
+behavioral decisions, and activation status. Include any intentional API mismatch and unverified client/service
+compatibility rather than describing the profile as release-ready.
 Keep review output in the conversation; do not create a separate implementation-plan document.
 
 If a versions-wiki payload is requested, adapt parent section 6 per profile: components come from that profile's

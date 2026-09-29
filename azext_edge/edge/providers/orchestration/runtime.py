@@ -58,6 +58,7 @@ class RuntimeContext:
     requested_version: Optional[str]
     provisioning_state: Optional[str]
     readiness_issues: Tuple[str, ...] = ()
+    auto_upgrade_minor_version: Optional[bool] = None
 
     def require_ready(self) -> None:
         if self.readiness_issues:
@@ -145,6 +146,7 @@ def resolve_runtime(
         requested_version=requested_version,
         provisioning_state=properties.get("provisioningState"),
         readiness_issues=tuple(issues),
+        auto_upgrade_minor_version=properties.get("autoUpgradeMinorVersion"),
     )
 
 

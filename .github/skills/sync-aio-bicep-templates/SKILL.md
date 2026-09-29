@@ -319,6 +319,9 @@ depends on the file's structure rather than on one scalar within it.
 For profile-aware syncs, complete the [release-test maintenance steps](./references/runtime-profiles.md#maintain-release-tracking-tests)
 in the same change as the selected blueprint and catalog. The GA-only list below is not sufficient for preview.
 Do not leave release-specific test updates as a manual task for the user.
+Also complete [management API maintenance](./references/runtime-profiles.md#maintain-release-specific-management-apis)
+from the approved release inputs. Keep runtime-profile API selection separate from generated deployment API values;
+an intentionally pinned blueprint must not be regenerated merely to align those values.
 
 Also update, from the same generated output:
 

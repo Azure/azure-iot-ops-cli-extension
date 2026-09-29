@@ -88,6 +88,15 @@ def test_requested_version_is_optional(records):
     runtime.require_ready()
 
 
+@pytest.mark.parametrize("auto_upgrade", [False, True, None])
+def test_runtime_captures_upgrade_ownership(records, auto_upgrade):
+    if auto_upgrade is not None:
+        records["extensions"][0]["properties"]["autoUpgradeMinorVersion"] = auto_upgrade
+    runtime = resolve_runtime(**records)
+    assert runtime.auto_upgrade_minor_version is auto_upgrade
+    runtime.require_ready()
+
+
 @pytest.mark.parametrize("state", ["Failed", "Canceled"])
 def test_known_failed_runtime_can_be_reconciled(records, state):
     properties = records["extensions"][0]["properties"]

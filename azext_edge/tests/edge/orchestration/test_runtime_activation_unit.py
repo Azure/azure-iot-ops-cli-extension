@@ -87,7 +87,9 @@ def test_bundled_preview_update_preserves_payload_and_selects_connector_tag(mock
     endpoint = get_instance_endpoint(resource_group_name="rg", instance_name="instance")
     mocked_responses.add(responses.GET, endpoint, json=record)
     mock_runtime_discovery(mocked_responses, record, profile.identity.version, profile.identity.train)
-    mocked_responses.add(responses.PUT, endpoint, json=record)
+    preview_endpoint = get_instance_endpoint("rg", "instance", api_version="2026-11-01-preview")
+    mocked_responses.add(responses.GET, preview_endpoint, json=record)
+    mocked_responses.add(responses.PUT, preview_endpoint, json=record)
     mocker.patch.object(ConnectorTemplates, "check_default_opcua_template_needed", return_value=(True, None))
     connector = mocker.patch.object(ConnectorTemplates, "create_default_opcua_template")
 
@@ -98,6 +100,7 @@ def test_bundled_preview_update_preserves_payload_and_selects_connector_tag(mock
 
     writes = [c for c in mocked_responses.calls if c.request.method == "PUT"]
     assert len(writes) == 1
+    assert writes[0].request.url == preview_endpoint
     body = json.loads(writes[0].request.body)
     assert body["properties"]["features"] == {
         "opcua": {"mode": "Preview", "settings": {"retained": "Enabled"}},
@@ -143,7 +146,7 @@ def test_bundled_preview_upgrade_plan_uses_preview_target_and_shared_foundation(
         EXTENSION_TYPE_OPS, ext_vers=profile.identity.version, ext_train=profile.identity.train,
     )
     scenario.set_auxiliary_kwargs(opcua_connector_template_exists=connector_exists)
-    scenario.set_instance_mock(mocked_responses, "instance", "rg")
+    scenario.set_instance_mock(mocked_responses, "instance", "rg", iotops_api_version="2026-11-01-preview")
     manager = UpgradeManager(mocked_cmd, "rg", "instance", no_progress=True)
     state = manager.analyze_cluster()
     assert manager.runtime_profile is profile
@@ -160,7 +163,7 @@ def test_bundled_preview_upgrade_repairs_same_runtime_without_qualification_bloc
         EXTENSION_TYPE_OPS, ext_vers=profile.identity.version, ext_train=profile.identity.train,
         provisioning_state="Failed",
     )
-    scenario.set_instance_mock(mocked_responses, "instance", "rg")
+    scenario.set_instance_mock(mocked_responses, "instance", "rg", iotops_api_version="2026-11-01-preview")
     upgrade_instance(mocked_cmd, "rg", "instance", confirm_yes=True, no_progress=True)
     patches = [c for c in mocked_responses.calls if c.request.method == "PATCH"]
     assert len(patches) == 1

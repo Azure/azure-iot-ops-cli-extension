@@ -60,9 +60,9 @@ VALID_ALLOCATION_POLICIES = ["Bucketized"]
 class ConnectorTemplates(Queryable):
     """Provider for connector template operations."""
 
-    def __init__(self, cmd):
+    def __init__(self, cmd, instances: Optional[Instances] = None):
         super().__init__(cmd=cmd)
-        self.instances = Instances(cmd=cmd)
+        self.instances = instances if instances is not None else Instances(cmd=cmd)
         self.iotops_mgmt_client = self.instances.iotops_mgmt_client
         self.ops: "AkriConnectorTemplateOperations" = (
             self.iotops_mgmt_client.akri_connector_template

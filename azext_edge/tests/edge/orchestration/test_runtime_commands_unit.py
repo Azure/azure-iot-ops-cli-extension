@@ -285,7 +285,7 @@ def test_upgrade_unknown_or_inconsistent_runtime_never_writes(mocked_cmd, mocked
 @pytest.mark.parametrize("source,target,train,match", [
     ("1.6.0-preview.10", "1.6.0-preview.4", "preview", "downgrade"),
     ("1.5.7", "1.5.6", "stable", "downgrade"),
-    ("1.6.0-preview.10", "1.7.0-preview.11", "preview", "across runtime version cycles"),
+    ("1.6.0-preview.10", "1.8.0-preview.11", "preview", "more than one minor version"),
 ])
 @pytest.mark.parametrize("force", [False, True])
 def test_runtime_boundaries_apply_even_with_force(source, target, train, match, force):

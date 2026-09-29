@@ -135,8 +135,6 @@ class UpgradeManager:
         self.force = force
         self.no_cm_install = no_cm_install
         self.instances = Instances(self.cmd)
-        self.registry_endpoints = RegistryEndpoints(self.cmd)
-        self.connector_templates = ConnectorTemplates(self.cmd)
         # Name of an existing failed OPC UA template to repair in place (set during the check).
         self._opcua_template_name_to_repair = None
         self.instance_record = self.instances.show(
@@ -148,6 +146,9 @@ class UpgradeManager:
         )
         self.runtime_context.require_upgradeable()
         self.runtime_profile = self.runtime_catalog.for_upgrade(self.runtime_context.identity)
+        self.instance_record = self.instances.use_runtime_profile(self.runtime_profile, self.instance_record)
+        self.registry_endpoints = RegistryEndpoints(self.cmd, instances=self.instances)
+        self.connector_templates = ConnectorTemplates(self.cmd, instances=self.instances)
         self.resource_map = self.instances.get_resource_map(self.instance_record)
         self.targets = InitTargets(
             cluster_name=self.resource_map.connected_cluster.cluster_name,
@@ -258,6 +259,7 @@ class UpgradeManager:
             or (properties.get("releaseTrain") or "").lower() != observed.identity.train
             or properties.get("version") != observed.requested_version
             or properties.get("provisioningState") != observed.provisioning_state
+            or properties.get("autoUpgradeMinorVersion") is not observed.auto_upgrade_minor_version
         ):
             raise ValidationError("AIO runtime changed during discovery. Retry after the active operation completes.")
         return extensions
@@ -1289,6 +1291,7 @@ class ExtensionUpgradeState:
             self._validate_ops_boundary()
         if self._has_delta_in_version():
             self._validate_version_upgrade()
+            self._require_manual_upgrade()
             return self.desired_version[0]
 
         if self._has_non_success_state():
@@ -1303,9 +1306,20 @@ class ExtensionUpgradeState:
             # reapplies the current version and sends no train.
             if self._has_delta_in_train():
                 self._validate_version_upgrade(target_version=reconcile_version)
+            self._require_manual_upgrade()
             return reconcile_version
 
         return None
+
+    def _require_manual_upgrade(self) -> None:
+        if self.moniker != EXTENSION_MONIKER_OPS:
+            return
+        if self.extension["properties"].get("autoUpgradeMinorVersion") is not False:
+            raise ValidationError(
+                "Cannot pin an AIO extension version unless autoUpgradeMinorVersion is explicitly false. "
+                "Arc-managed upgrades must be disabled through an explicit ownership decision before CLI upgrade "
+                "or repair. --force cannot override upgrade ownership."
+            )
 
     def _validate_ops_boundary(self) -> None:
         current_version, current_train = self.current_version
@@ -1526,11 +1540,13 @@ class ExtensionUpgradeState:
             self.current_version[0], self.current_version[1], self.qualification_identities
         )
         if installed.channel == RuntimeChannel.PREVIEW:
-            if (parsed_current.major, parsed_current.minor, parsed_current.patch) != (
-                parsed_desired.major, parsed_desired.minor, parsed_desired.patch
-            ):
+            if parsed_desired.major != parsed_current.major:
                 raise ValidationError(
-                    "Preview upgrades across runtime version cycles are not supported by this policy."
+                    "Preview upgrades across major versions are not supported."
+                )
+            if parsed_desired.minor - parsed_current.minor > 1:
+                raise ValidationError(
+                    "Preview upgrades more than one minor version ahead are not supported, including with --force."
                 )
             return
 
