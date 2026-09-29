@@ -1963,6 +1963,11 @@ def load_iotops_help():
           `az iot ops enable-rsync` command post instance creation.
 
         examples:
+        - name: Create an Essentials SKU instance. Essentials is intended for
+            single-node deployments and disables OPC UA.
+          text: >
+            az iot ops create --cluster mycluster -g myresourcegroup --name myinstance --sr-resource-id $SCHEMA_REGISTRY_RESOURCE_ID
+            --ns-resource-id $NAMESPACE_RESOURCE_ID --sku Essentials
         - name: Create the target instance with minimum input.
           text: >
             az iot ops create --cluster mycluster -g myresourcegroup --name myinstance --sr-resource-id $SCHEMA_REGISTRY_RESOURCE_ID
