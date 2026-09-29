@@ -11,4 +11,4 @@ VERSION = "2.10.0"
 EXTENSION_NAME = "azure-iot-ops"
 EXTENSION_ROOT = os.path.dirname(os.path.abspath(__file__))
 USER_AGENT = "IotOperationsCliExtension/{}".format(VERSION)
-AIO_RELEASE = "2609"
+AIO_RELEASE = "prev2610"

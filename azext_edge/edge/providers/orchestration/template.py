@@ -49,13 +49,13 @@ class TemplateBlueprint(NamedTuple):
 
 
 TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
-    commit_id="119db07abf946ac86967d1af61b18f4dfd958adf",
+    commit_id="1dfac78ed54a68cd5458c8d6311ada02514428e3",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "languageVersion": "2.0",
         "contentVersion": "1.0.0.0",
         "metadata": {
-            "_generator": {"name": "bicep", "version": "0.47.16.16243", "templateHash": "4923817034101134132"}
+            "_generator": {"name": "bicep", "version": "0.47.16.16243", "templateHash": "16799607987499092170"}
         },
         "definitions": {
             "_1.AdvancedConfig": {
@@ -104,6 +104,7 @@ TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
                         "properties": {
                             "version": {"type": "string", "nullable": True},
                             "registry": {"type": "string", "nullable": True},
+                            "repository": {"type": "string", "nullable": True},
                             "imageRegistry": {"type": "string", "nullable": True},
                         },
                         "nullable": True,
@@ -201,7 +202,9 @@ TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
                     "persistence": {
                         "$ref": "#/definitions/_1.BrokerPersistence",
                         "nullable": True,
-                        "metadata": {"description": "The persistence settings of the Broker."},
+                        "metadata": {
+                            "description": "The persistence settings of the Broker, preserved as supplied when enablePersistence is true. Customize maxSize and persistentVolumeClaimSpec.storageClassName here. When omitted, deployment templates use the recommended persistence default; set enablePersistence to false for an in-memory broker."
+                        },
                     },
                     "diagnostics": {
                         "$ref": "#/definitions/_1.BrokerDiagnostics",
@@ -319,14 +322,14 @@ TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
                     "maxSize": {
                         "type": "string",
                         "metadata": {
-                            "description": "The max size of the message buffer on disk. If a PVC template is specified, this size\nis used as the request and limit sizes of that template. If unset, a local-path provisioner is used.\n"
+                            "description": "The max size of the message buffer on disk. The recommended deployment default is 3Gi per Backend replica.\nIf a PVC template is specified, this size is used as the request and limit sizes of that template.\n"
                         },
                     },
                     "persistentVolumeClaimSpec": {
                         "$ref": "#/definitions/_1.VolumeClaimSpec",
                         "nullable": True,
                         "metadata": {
-                            "description": "Use the specified PersistentVolumeClaim template to mount a persistent volume.\nIf unset, a default PVC with default properties will be used.\n"
+                            "description": "Use the specified PersistentVolumeClaim template to mount a persistent volume.\nIf unset, a default PVC using the cluster default StorageClass will be used.\n"
                         },
                     },
                     "retain": {
@@ -359,7 +362,7 @@ TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
                     },
                 },
                 "metadata": {
-                    "description": "Disk persistence configuration for the Broker.\nOptional. Everything is in-memory if not set.\nNote: if configured, all MQTT session states are written to disk.\n",
+                    "description": "Disk persistence configuration for the Broker.\nDeployment templates supply the recommended default when omitted unless enablePersistence is false.\nNote: if configured, all MQTT session states are written to disk.\n",
                     "__bicep_imported_from!": {"sourceTemplate": "types.bicep"},
                 },
             },
@@ -615,6 +618,7 @@ TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
                         "type": "object",
                         "properties": {},
                         "additionalProperties": {"$ref": "#/definitions/_1.InstanceFeatureSettingValue"},
+                        "nullable": True,
                     },
                 },
                 "metadata": {
@@ -775,13 +779,13 @@ TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
 )
 
 TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
-    commit_id="6e1521ebb4893f2db20b4d97187c5ff9c211326f",
+    commit_id="1dfac78ed54a68cd5458c8d6311ada02514428e3",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "languageVersion": "2.0",
         "contentVersion": "1.0.0.0",
         "metadata": {
-            "_generator": {"name": "bicep", "version": "0.47.16.16243", "templateHash": "10752848530986159796"}
+            "_generator": {"name": "bicep", "version": "0.47.16.16243", "templateHash": "7336606107333567966"}
         },
         "definitions": {
             "_1.AdvancedConfig": {
@@ -830,6 +834,7 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
                         "properties": {
                             "version": {"type": "string", "nullable": True},
                             "registry": {"type": "string", "nullable": True},
+                            "repository": {"type": "string", "nullable": True},
                             "imageRegistry": {"type": "string", "nullable": True},
                         },
                         "nullable": True,
@@ -927,7 +932,9 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
                     "persistence": {
                         "$ref": "#/definitions/_1.BrokerPersistence",
                         "nullable": True,
-                        "metadata": {"description": "The persistence settings of the Broker."},
+                        "metadata": {
+                            "description": "The persistence settings of the Broker, preserved as supplied when enablePersistence is true. Customize maxSize and persistentVolumeClaimSpec.storageClassName here. When omitted, deployment templates use the recommended persistence default; set enablePersistence to false for an in-memory broker."
+                        },
                     },
                     "diagnostics": {
                         "$ref": "#/definitions/_1.BrokerDiagnostics",
@@ -1045,14 +1052,14 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
                     "maxSize": {
                         "type": "string",
                         "metadata": {
-                            "description": "The max size of the message buffer on disk. If a PVC template is specified, this size\nis used as the request and limit sizes of that template. If unset, a local-path provisioner is used.\n"
+                            "description": "The max size of the message buffer on disk. The recommended deployment default is 3Gi per Backend replica.\nIf a PVC template is specified, this size is used as the request and limit sizes of that template.\n"
                         },
                     },
                     "persistentVolumeClaimSpec": {
                         "$ref": "#/definitions/_1.VolumeClaimSpec",
                         "nullable": True,
                         "metadata": {
-                            "description": "Use the specified PersistentVolumeClaim template to mount a persistent volume.\nIf unset, a default PVC with default properties will be used.\n"
+                            "description": "Use the specified PersistentVolumeClaim template to mount a persistent volume.\nIf unset, a default PVC using the cluster default StorageClass will be used.\n"
                         },
                     },
                     "retain": {
@@ -1085,7 +1092,7 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
                     },
                 },
                 "metadata": {
-                    "description": "Disk persistence configuration for the Broker.\nOptional. Everything is in-memory if not set.\nNote: if configured, all MQTT session states are written to disk.\n",
+                    "description": "Disk persistence configuration for the Broker.\nDeployment templates supply the recommended default when omitted unless enablePersistence is false.\nNote: if configured, all MQTT session states are written to disk.\n",
                     "__bicep_imported_from!": {"sourceTemplate": "types.bicep"},
                 },
             },
@@ -1341,6 +1348,7 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
                         "type": "object",
                         "properties": {},
                         "additionalProperties": {"$ref": "#/definitions/_1.InstanceFeatureSettingValue"},
+                        "nullable": True,
                     },
                 },
                 "metadata": {
@@ -1447,6 +1455,21 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
             {
                 "namespace": "_2",
                 "members": {
+                    "buildBrokerPersistence": {
+                        "parameters": [
+                            {"type": "bool", "name": "enablePersistence"},
+                            {"$ref": "#/definitions/_1.BrokerPersistence", "nullable": True, "name": "persistence"},
+                        ],
+                        "output": {
+                            "$ref": "#/definitions/_1.BrokerPersistence",
+                            "nullable": True,
+                            "value": "[if(not(parameters('enablePersistence')), null(), coalesce(parameters('persistence'), createObject('maxSize', '3Gi', 'retain', createObject('mode', 'None'), 'subscriberQueue', createObject('mode', 'None'), 'stateStore', createObject('mode', 'Custom', 'stateStoreSettings', createObject('dynamic', createObject('mode', 'Enabled'))))))]",
+                        },
+                        "metadata": {
+                            "description": "Use the supplied persistence configuration unchanged, or the recommended default for new deployments. Explicit opt-out takes precedence.",
+                            "__bicep_imported_from!": {"sourceTemplate": "utils.bicep"},
+                        },
+                    },
                     "buildIdentity": {
                         "parameters": [
                             {
@@ -1464,7 +1487,7 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
                             "description": 'Builds a UserAssigned identity object for the given array of identities.\nIf the list is empty, it will return {type: \'None\'}\ne.g\n```bicep\nvar identites = [\'/subscriptions/.../id1\', \'/subscriptions/.../id2\']\noutput userIdentities object = buildUserIdentities(identites)\n// The output will be:\n// {\n//   "type": "UserAssigned",\n//   "userAssignedIdentities": {\n//     "/subscriptions/.../id1": {},\n//     "/subscriptions/.../id2": {}\n//   }\n// }\n}\n',
                             "__bicep_imported_from!": {"sourceTemplate": "utils.bicep"},
                         },
-                    }
+                    },
                 },
             }
         ],
@@ -1479,14 +1502,16 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
             "schemaRegistryId": {"type": "string"},
             "adrNamespaceId": {"type": "string", "nullable": True},
             "features": {"$ref": "#/definitions/_1.Features", "nullable": True},
+            "sku": {"type": "string", "allowedValues": ["Essentials", "Standard"], "nullable": True},
             "brokerConfig": {"$ref": "#/definitions/_1.BrokerConfig", "nullable": True},
+            "enablePersistence": {"type": "bool", "defaultValue": True},
             "trustConfig": {"$ref": "#/definitions/_1.TrustConfig", "defaultValue": {"source": "SelfSigned"}},
             "defaultDataflowInstanceCount": {"type": "int", "defaultValue": 1},
             "enableGdsManager": {"type": "bool", "defaultValue": True},
             "advancedConfig": {"$ref": "#/definitions/_1.AdvancedConfig", "defaultValue": {}},
         },
         "variables": {
-            "VERSIONS": {"iotOperations": "1.6.0-preview.9"},
+            "VERSIONS": {"iotOperations": "1.6.0-preview.19", "connectors": "1.5.12"},
             "TRAINS": {"iotOperations": "integration"},
             "HASH": "[coalesce(tryGet(parameters('advancedConfig'), 'resourceSuffix'), take(uniqueString(resourceGroup().id, parameters('clusterName'), parameters('clusterNamespace')), 5))]",
             "AIO_EXTENSION_SUFFIX": "[take(uniqueString(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName'))), 5)]",
@@ -1496,8 +1521,9 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
             "ISSUER_NAME": "[if(variables('customerManagedTrust'), parameters('trustConfig').settings.issuerName, format('{0}-aio-certificate-issuer', parameters('clusterNamespace')))]",
             "TRUST_CONFIG_MAP": "[if(variables('customerManagedTrust'), parameters('trustConfig').settings.configMapName, format('{0}-aio-ca-trust-bundle', parameters('clusterNamespace')))]",
             "TRUST_CONFIG_MAP_KEY": "[if(variables('customerManagedTrust'), parameters('trustConfig').settings.configMapKey, 'ca.crt')]",
-            "OPCUA_CONNECTOR_VERSION": "[coalesce(tryGet(tryGet(parameters('advancedConfig'), 'connectors'), 'version'), '1.4.0-alpha.164')]",
+            "OPCUA_CONNECTOR_VERSION": "[coalesce(tryGet(tryGet(parameters('advancedConfig'), 'connectors'), 'version'), variables('VERSIONS').connectors)]",
             "CONNECTORS_CHART_REGISTRY": "[coalesce(tryGet(tryGet(parameters('advancedConfig'), 'connectors'), 'registry'), 'aioconnectorsdev.azurecr.io')]",
+            "CONNECTORS_CHART_REPOSITORY": "[coalesce(tryGet(tryGet(parameters('advancedConfig'), 'connectors'), 'repository'), 'aio-connectors/helmchart/microsoft-aio-connectors')]",
             "CONNECTORS_IMAGE_REGISTRY": "[coalesce(tryGet(tryGet(parameters('advancedConfig'), 'connectors'), 'imageRegistry'), 'aioconnectorsdev.azurecr.io')]",
             "MQTT_SETTINGS": {
                 "brokerListenerServiceName": "aio-broker",
@@ -1513,13 +1539,14 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
                 "backendPartitions": "[coalesce(tryGet(parameters('brokerConfig'), 'backendPartitions'), 2)]",
                 "memoryProfile": "[coalesce(tryGet(parameters('brokerConfig'), 'memoryProfile'), 'Medium')]",
                 "serviceType": "[coalesce(tryGet(parameters('brokerConfig'), 'serviceType'), 'ClusterIp')]",
-                "persistence": "[tryGet(parameters('brokerConfig'), 'persistence')]",
+                "persistence": "[_2.buildBrokerPersistence(parameters('enablePersistence'), tryGet(parameters('brokerConfig'), 'persistence'))]",
                 "diagnostics": "[tryGet(parameters('brokerConfig'), 'diagnostics')]",
             },
             "defaultAioConfigurationSettings": {
                 "AgentOperationTimeoutInMinutes": "120",
                 "connectors.image.tag": "[variables('OPCUA_CONNECTOR_VERSION')]",
                 "connectors.image.registry": "[variables('CONNECTORS_CHART_REGISTRY')]",
+                "connectors.image.repository": "[variables('CONNECTORS_CHART_REPOSITORY')]",
                 "connectors.values.image.registry": "[variables('CONNECTORS_IMAGE_REGISTRY')]",
                 "connectors.values.mqttBroker.address": "[format('mqtts://{0}:{1}', variables('MQTT_SETTINGS').brokerListenerHost, variables('MQTT_SETTINGS').brokerListenerPort)]",
                 "connectors.values.mqttBroker.serviceAccountTokenAudience": "[variables('MQTT_SETTINGS').serviceAccountAudience]",
@@ -1590,6 +1617,7 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
                 "location": "[parameters('clusterLocation')]",
                 "extendedLocation": "[variables('extendedLocation')]",
                 "identity": "[_2.buildIdentity(createArray(parameters('userAssignedIdentity')))]",
+                "sku": "[if(not(equals(parameters('sku'), null())), createObject('name', parameters('sku')), null())]",
                 "properties": {
                     "description": "An AIO instance.",
                     "schemaRegistryRef": {"resourceId": "[parameters('schemaRegistryId')]"},
@@ -1734,9 +1762,75 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
                             },
                         },
                     },
-                    "deviceInboundEndpointTypes": [{"endpointType": "Microsoft.OpcUa"}],
+                    "deviceInboundEndpointTypes": [
+                        {"endpointType": "Microsoft.OpcUa"},
+                        {"endpointType": "Microsoft.OpcUa.WoT"},
+                    ],
                 },
                 "dependsOn": ["aioInstance", "customLocation"],
+            },
+            "mcpDefaultPolicy": {
+                "condition": "[equals(tryGet(tryGet(parameters('features'), 'mcp'), 'mode'), 'Preview')]",
+                "type": "Microsoft.IoTOperations/instances/mcpAuthorizationPolicies",
+                "apiVersion": "2026-09-01-preview",
+                "name": "[format('{0}/{1}', coalesce(parameters('aioInstanceName'), format('aio-{0}', variables('HASH'))), 'aio-mcp-policy-v1')]",
+                "extendedLocation": "[variables('extendedLocation')]",
+                "properties": {
+                    "policies": [
+                        {
+                            "action": "tool-call",
+                            "principal": {"principalType": "Role", "role": "Reader"},
+                            "resources": [
+                                "documentation_overview",
+                                "documentation",
+                                "get_schema",
+                                "get_schema_from_asset",
+                                "list_assets",
+                                "get_asset",
+                                "asset_details",
+                                "list_devices",
+                                "get_device",
+                                "device_details",
+                                "list_brokers",
+                                "get_broker",
+                                "broker_details",
+                                "list_dataflows",
+                                "get_dataflow",
+                                "dataflow_details",
+                                "list_dataflow_graphs",
+                                "get_dataflow_graph",
+                                "dataflow_graph_details",
+                            ],
+                        },
+                        {
+                            "action": "tool-call",
+                            "principal": {"principalType": "Role", "role": "DataReader"},
+                            "resources": ["mq_messages", "dss_get"],
+                        },
+                        {
+                            "action": "tool-call",
+                            "principal": {"principalType": "Role", "role": "Admin"},
+                            "resources": ["*"],
+                        },
+                    ]
+                },
+                "dependsOn": ["aioInstance", "customLocation"],
+            },
+            "mcpAioConnection": {
+                "condition": "[and(equals(tryGet(tryGet(parameters('features'), 'mcp'), 'mode'), 'Preview'), lessOrEquals(length(coalesce(parameters('aioInstanceName'), format('aio-{0}', variables('HASH')))), 32))]",
+                "type": "Microsoft.IoTOperations/instances/mcpServerConnections",
+                "apiVersion": "2026-09-01-preview",
+                "name": "[format('{0}/{1}', coalesce(parameters('aioInstanceName'), format('aio-{0}', variables('HASH'))), 'aio')]",
+                "extendedLocation": "[variables('extendedLocation')]",
+                "properties": {
+                    "service": {
+                        "name": "[format('{0}-mcp', coalesce(parameters('aioInstanceName'), format('aio-{0}', variables('HASH'))))]",
+                        "path": "/mcp",
+                    },
+                    "trustBundle": "/var/run/certs",
+                    "authorization": {"mode": "PolicyBased", "policyRef": {"name": "aio-mcp-policy-v1"}},
+                },
+                "dependsOn": ["aioInstance", "customLocation", "mcpDefaultPolicy"],
             },
         },
         "outputs": {

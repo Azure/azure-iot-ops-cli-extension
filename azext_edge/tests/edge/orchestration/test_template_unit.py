@@ -46,6 +46,8 @@ EXPECTED_INSTANCE_RESOURCE_KEYS = frozenset(
         "dataflowEndpoint",
         "artifactRegistryEndpoint",
         "opcUaConnectorTemplate",
+        "mcpDefaultPolicy",
+        "mcpAioConnection",
     ]
 )
 
@@ -170,7 +172,7 @@ EXTENSION_CONFIGS = {
         (EXTENSION_TYPE_SSC, "1.5.5", "stable"),
     ],
     "instance": [
-        (EXTENSION_TYPE_OPS, "1.6.0-preview.9", "integration"),
+        (EXTENSION_TYPE_OPS, "1.6.0-preview.19", "integration"),
     ],
 }
 
