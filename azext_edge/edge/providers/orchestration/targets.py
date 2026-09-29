@@ -262,6 +262,7 @@ class InitTargets:
                 "clExtensionIds": cl_extension_ids,
                 "schemaRegistryId": self.schema_registry_resource_id,
                 "adrNamespaceId": self.adr_namespace_resource_id,
+                "sku": self.sku,
                 "defaultDataflowInstanceCount": self.dataflow_profile_instances,
                 "brokerConfig": self.broker_config,
                 "trustConfig": self.trust_config,
@@ -284,6 +285,7 @@ class InitTargets:
             description=self.instance_description,
             features=self.instance_features,
         )
+        instance.pop("sku", None)
         if self.sku:
             instance["sku"] = {"name": self.sku}
 
