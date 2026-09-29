@@ -1520,6 +1520,30 @@ def test_iot_ops_create_block_feature_config(
     assert "opcua.mode" in exc_msg
 
 
+@pytest.mark.parametrize(
+    "instance_features, expected_features, conflict_mode",
+    [
+        (None, ["opcua.mode=Disabled"], None),
+        (["opcua.mode=Disabled"], ["opcua.mode=Disabled"], None),
+        (["opcua.mode=Stable"], ["opcua.mode=Disabled"], "Stable"),
+        (["opcua.mode=Preview"], ["opcua.mode=Disabled"], "Preview"),
+    ],
+)
+def test_apply_essentials_sku(mocker, instance_features, expected_features, conflict_mode):
+    from azext_edge.edge.commands_edge import _apply_essentials_sku
+
+    mocked_logger = mocker.patch("azext_edge.edge.commands_edge.logger", autospec=True)
+    assert _apply_essentials_sku(instance_features) == expected_features
+    warnings = [call.args for call in mocked_logger.warning.call_args_list]
+    assert "single-node deployments" in warnings[0][0]
+
+    if conflict_mode:
+        assert warnings[1][1] == conflict_mode
+        assert "will use opcua.mode=Disabled" in warnings[1][0]
+    else:
+        assert len(warnings) == 1
+
+
 def assert_logger(mocked_logger: Mock, target_scenario: dict):
     expected_warnings: List[Tuple[int, str]] = target_scenario.get("warnings", [])
     warning_calls: List[Mock] = mocked_logger.warning.mock_calls

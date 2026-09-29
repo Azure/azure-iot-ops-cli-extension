@@ -42,6 +42,10 @@ scenarios:
     test_redeploy: true
     create_args: "--feature opcua.mode=Disabled"
 
+  - name: essentials-sku
+    description: "Essentials SKU tests"
+    create_args: "--sku Essentials --feature opcua.mode=Stable"
+
   - name: trustbundle
     description: "Workload identity tests"
     tox_env: python-wlif-int

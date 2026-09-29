@@ -36,6 +36,7 @@ from .providers.orchestration.common import (
     DataflowEndpointFabricPathType,
     DataflowEndpointKafkaAcksType,
     IdentityUsageType,
+    IoTOperationsSku,
     KafkaCloudEventAttributeType,
     KafkaCompressionType,
     KafkaPartitionStrategyType,
@@ -1265,6 +1266,12 @@ def load_iotops_arguments(self, _):
         )
 
     with self.argument_context("iot ops create") as context:
+        context.argument(
+            "sku",
+            options_list=["--sku"],
+            arg_type=get_enum_type(IoTOperationsSku),
+            help="Billing SKU for the IoT Operations instance. The SKU cannot be changed after creation.",
+        )
         context.argument(
             "skip_sr_ra",
             options_list=["--skip-sr-ra"],

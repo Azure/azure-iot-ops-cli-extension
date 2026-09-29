@@ -222,6 +222,7 @@ def assert_aio_instance(
     tags: Optional[str] = None,
     trust_settings: Optional[dict] = None,
     feature: Optional[str] = None,
+    sku: Optional[str] = None,
     **_,
 ):
     # check extensions installed
@@ -269,6 +270,12 @@ def assert_aio_instance(
     assert instance_props.get("description") == description
     assert instance_props["schemaRegistryRef"] == {"resourceId": schema_registry_id}
     assert instance_props["adrNamespaceRef"] == {"resourceId": adr_namespace_id}
+    if sku:
+        assert instance_show.get("sku", {}).get("name") == sku
+        instances = run(f"az iot ops list -g {resource_group}")
+        listed_instance = next((instance for instance in instances if instance["name"] == instance_name), None)
+        assert listed_instance, f"Instance '{instance_name}' was not returned by 'az iot ops list'."
+        assert listed_instance.get("sku", {}).get("name") == sku
 
     # Verify the schema registry role assignment includes Azure Device Registry Administrator
     assert iot_ops_ext_principal_id, "IoT Operations extension is missing 'identity.principalId'."
@@ -285,7 +292,10 @@ def assert_aio_instance(
         assert "cert-manager" in tree
 
     # OPC UA disabled: the instance must reflect it and no default connector template should exist.
-    if feature and "opcua.mode=disabled" in str(feature).lower():
+    opcua_disabled = (feature and "opcua.mode=disabled" in str(feature).lower()) or (
+        sku and sku.lower() == "essentials"
+    )
+    if opcua_disabled:
         assert instance_props.get("features", {}).get("opcua", {}).get("mode") == "Disabled"
         templates = run(f"az iot ops connector template list -g {resource_group} --instance {instance_name}") or []
         default_templates = [

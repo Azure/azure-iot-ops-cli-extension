@@ -75,6 +75,7 @@ class InitTargets:
         instance_name: Optional[str] = None,
         instance_description: Optional[str] = None,
         instance_features: Optional[List[str]] = None,
+        sku: Optional[str] = None,
         tags: Optional[dict] = None,
         # Extension config
         ops_config: Optional[List[str]] = None,
@@ -139,6 +140,7 @@ class InitTargets:
         self.instance_name = self._sanitize_k8s_name(instance_name)
         self.instance_description = instance_description
         self.instance_features = parse_feature_kvp_nargs(instance_features, strict=True)
+        self.sku = sku
         self.tags = tags
 
         # Extensions
@@ -219,10 +221,11 @@ class InitTargets:
             get_template_method = self.get_ops_instance_template
         template, _ = get_template_method()
         template_vars = template["variables"]
-        for moniker in template_vars["VERSIONS"]:
-            version_map[moniker] = {"version": template_vars["VERSIONS"][moniker]}
-        for moniker in template_vars["TRAINS"]:
-            version_map[moniker]["train"] = template_vars["TRAINS"][moniker]
+        for moniker, train in template_vars["TRAINS"].items():
+            version_map[moniker] = {
+                "version": template_vars["VERSIONS"][moniker],
+                "train": train,
+            }
 
         return version_map
 
@@ -257,9 +260,11 @@ class InitTargets:
                 "clusterNamespace": self.cluster_namespace,
                 "clusterLocation": self.location,
                 "customLocationName": self.custom_location_name,
+                "aioInstanceName": self.instance_name,
                 "clExtensionIds": cl_extension_ids,
                 "schemaRegistryId": self.schema_registry_resource_id,
                 "adrNamespaceId": self.adr_namespace_resource_id,
+                "sku": self.sku,
                 "defaultDataflowInstanceCount": self.dataflow_profile_instances,
                 "brokerConfig": self.broker_config,
                 "trustConfig": self.trust_config,
@@ -282,6 +287,9 @@ class InitTargets:
             description=self.instance_description,
             features=self.instance_features,
         )
+        instance.pop("sku", None)
+        if self.sku:
+            instance["sku"] = {"name": self.sku}
 
         if self.instance_name:
             instance["name"] = self.instance_name

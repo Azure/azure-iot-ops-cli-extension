@@ -1414,7 +1414,8 @@ def assert_operation_order(target_scenario: UpgradeScenario, upgrade_result: Lis
         (
             UpgradeScenario("Migration: Platform already deleted, create CertManager")
             .set_extension(ext_type=EXTENSION_TYPE_CM, remove=True)
-            .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE),
+            .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE)
+            .set_user_kwargs(force=True),
             {
                 EXTENSION_TYPE_CM: build_extension_props(EXTENSION_TYPE_CM, version=BUILT_IN_VALUE),
                 EXTENSION_TYPE_OPS: build_extension_props(EXTENSION_TYPE_OPS, version=BUILT_IN_VALUE),
@@ -2798,9 +2799,13 @@ def test_opcua_connector_version_matches_template_tag():
 
     opcua_var = TEMPLATE_BLUEPRINT_INSTANCE.content["variables"].get("OPCUA_CONNECTOR_VERSION")
     assert opcua_var, "OPCUA_CONNECTOR_VERSION variable missing from the instance template."
-    # The connectors tag is the coalesce fallback literal, i.e. the last single-quoted token.
-    quoted_literals = re.findall(r"'([^']*)'", opcua_var)
-    template_tag = quoted_literals[-1] if quoted_literals else None
+    versions_reference = "variables('VERSIONS').connectors"
+    if versions_reference in opcua_var:
+        template_tag = TEMPLATE_BLUEPRINT_INSTANCE.content["variables"]["VERSIONS"]["connectors"]
+    else:
+        # Older templates use a literal coalesce fallback.
+        quoted_literals = re.findall(r"'([^']*)'", opcua_var)
+        template_tag = quoted_literals[-1] if quoted_literals else None
     assert template_tag == OPCUA_CONNECTOR_VERSION, (
         f"OPCUA_CONNECTOR_VERSION constant ({OPCUA_CONNECTOR_VERSION}) does not match the connectors "
         f"tag stamped by the instance template ({template_tag}); update the constant during the "
