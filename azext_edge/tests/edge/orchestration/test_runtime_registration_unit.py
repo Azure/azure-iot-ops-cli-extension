@@ -24,7 +24,9 @@ from knack.help_files import helps
 
 from azext_edge import OpsExtensionCommandsLoader
 from azext_edge.edge.providers.orchestration import runtime_requirements
-from azext_edge.edge.providers.orchestration.runtime import OperationRequirements, ParameterRequirement, RuntimeContext
+from azext_edge.edge.providers.orchestration.runtime import (
+    OperationRequirements, ParameterRequirement, RuntimeContext, RuntimeIssue, RuntimeIssueCode,
+)
 from azext_edge.edge.providers.orchestration.runtime_commands import (
     PREVIEW_RUNTIME_NOTICE, RuntimeTarget, get_runtime_notice_targets,
 )
@@ -375,7 +377,9 @@ def test_explicit_target_resolver(invocation):
 
 def test_not_ready_target_cannot_execute(invocation):
     call = invocation(runtime_requirement=PREVIEW_ONLY)
-    call.instances.return_value.get_runtime_context.return_value = runtime(RuntimeChannel.PREVIEW, issues=("pending",))
+    call.instances.return_value.get_runtime_context.return_value = runtime(RuntimeChannel.PREVIEW, issues=(
+        RuntimeIssue(RuntimeIssueCode.PROVISIONING_STATE, "instance", "pending", "Updating"),
+    ))
     with pytest.raises(ValidationError, match="not ready"):
         call.execute()
     call.writer.assert_not_called()
