@@ -49,12 +49,14 @@ class TemplateBlueprint(NamedTuple):
 
 
 TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
-    commit_id="f9e05bed5c435135403c5a32264afebf14a409ec",
+    commit_id="119db07abf946ac86967d1af61b18f4dfd958adf",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "languageVersion": "2.0",
         "contentVersion": "1.0.0.0",
-        "metadata": {"_generator": {"name": "bicep", "version": "0.47.16.16243", "templateHash": "16735839634517342696"}},
+        "metadata": {
+            "_generator": {"name": "bicep", "version": "0.47.16.16243", "templateHash": "4923817034101134132"}
+        },
         "definitions": {
             "_1.AdvancedConfig": {
                 "type": "object",
@@ -99,7 +101,11 @@ TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
                     },
                     "connectors": {
                         "type": "object",
-                        "properties": {"version": {"type": "string", "nullable": True}},
+                        "properties": {
+                            "version": {"type": "string", "nullable": True},
+                            "registry": {"type": "string", "nullable": True},
+                            "imageRegistry": {"type": "string", "nullable": True},
+                        },
                         "nullable": True,
                     },
                     "secretSyncController": {
@@ -333,7 +339,9 @@ TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
                     "stateStore": {
                         "$ref": "#/definitions/_1.BrokerStateStorePolicy",
                         "nullable": True,
-                        "metadata": {"description": "Controls which keys should be persisted to disk for the state store."},
+                        "metadata": {
+                            "description": "Controls which keys should be persisted to disk for the state store."
+                        },
                     },
                     "subscriberQueue": {
                         "$ref": "#/definitions/_1.BrokerSubscriberQueuePolicy",
@@ -401,7 +409,10 @@ TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
                     "propertyName": "mode",
                     "mapping": {
                         "All": {"type": "object", "properties": {"mode": {"type": "string", "allowedValues": ["All"]}}},
-                        "None": {"type": "object", "properties": {"mode": {"type": "string", "allowedValues": ["None"]}}},
+                        "None": {
+                            "type": "object",
+                            "properties": {"mode": {"type": "string", "allowedValues": ["None"]}},
+                        },
                         "Custom": {"$ref": "#/definitions/_1.BrokerRetainMessagesCustomPolicy"},
                     },
                 },
@@ -463,7 +474,10 @@ TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
                     "propertyName": "mode",
                     "mapping": {
                         "All": {"type": "object", "properties": {"mode": {"type": "string", "allowedValues": ["All"]}}},
-                        "None": {"type": "object", "properties": {"mode": {"type": "string", "allowedValues": ["None"]}}},
+                        "None": {
+                            "type": "object",
+                            "properties": {"mode": {"type": "string", "allowedValues": ["None"]}},
+                        },
                         "Custom": {"$ref": "#/definitions/_1.BrokerStateStoreCustomPolicy"},
                     },
                 },
@@ -561,7 +575,10 @@ TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
                     "propertyName": "mode",
                     "mapping": {
                         "All": {"type": "object", "properties": {"mode": {"type": "string", "allowedValues": ["All"]}}},
-                        "None": {"type": "object", "properties": {"mode": {"type": "string", "allowedValues": ["None"]}}},
+                        "None": {
+                            "type": "object",
+                            "properties": {"mode": {"type": "string", "allowedValues": ["None"]}},
+                        },
                         "Custom": {"$ref": "#/definitions/_1.BrokerSubscriberQueueCustomPolicy"},
                     },
                 },
@@ -678,7 +695,7 @@ TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
             "advancedConfig": {"$ref": "#/definitions/_1.AdvancedConfig", "defaultValue": {}},
         },
         "variables": {
-            "VERSIONS": {"certManager": "1.1.2", "secretStore": "1.5.3"},
+            "VERSIONS": {"certManager": "1.2.0", "secretStore": "1.5.5"},
             "TRAINS": {"certManager": "stable", "secretStore": "stable"},
         },
         "resources": {
@@ -758,12 +775,14 @@ TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
 )
 
 TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
-    commit_id="1739de59728aa4f6e45b3096c64cc179836e806a",
+    commit_id="6e1521ebb4893f2db20b4d97187c5ff9c211326f",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "languageVersion": "2.0",
         "contentVersion": "1.0.0.0",
-        "metadata": {"_generator": {"name": "bicep", "version": "0.47.16.16243", "templateHash": "8063133346727960478"}},
+        "metadata": {
+            "_generator": {"name": "bicep", "version": "0.47.16.16243", "templateHash": "10752848530986159796"}
+        },
         "definitions": {
             "_1.AdvancedConfig": {
                 "type": "object",
@@ -808,7 +827,11 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
                     },
                     "connectors": {
                         "type": "object",
-                        "properties": {"version": {"type": "string", "nullable": True}},
+                        "properties": {
+                            "version": {"type": "string", "nullable": True},
+                            "registry": {"type": "string", "nullable": True},
+                            "imageRegistry": {"type": "string", "nullable": True},
+                        },
                         "nullable": True,
                     },
                     "secretSyncController": {
@@ -1042,7 +1065,9 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
                     "stateStore": {
                         "$ref": "#/definitions/_1.BrokerStateStorePolicy",
                         "nullable": True,
-                        "metadata": {"description": "Controls which keys should be persisted to disk for the state store."},
+                        "metadata": {
+                            "description": "Controls which keys should be persisted to disk for the state store."
+                        },
                     },
                     "subscriberQueue": {
                         "$ref": "#/definitions/_1.BrokerSubscriberQueuePolicy",
@@ -1110,7 +1135,10 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
                     "propertyName": "mode",
                     "mapping": {
                         "All": {"type": "object", "properties": {"mode": {"type": "string", "allowedValues": ["All"]}}},
-                        "None": {"type": "object", "properties": {"mode": {"type": "string", "allowedValues": ["None"]}}},
+                        "None": {
+                            "type": "object",
+                            "properties": {"mode": {"type": "string", "allowedValues": ["None"]}},
+                        },
                         "Custom": {"$ref": "#/definitions/_1.BrokerRetainMessagesCustomPolicy"},
                     },
                 },
@@ -1172,7 +1200,10 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
                     "propertyName": "mode",
                     "mapping": {
                         "All": {"type": "object", "properties": {"mode": {"type": "string", "allowedValues": ["All"]}}},
-                        "None": {"type": "object", "properties": {"mode": {"type": "string", "allowedValues": ["None"]}}},
+                        "None": {
+                            "type": "object",
+                            "properties": {"mode": {"type": "string", "allowedValues": ["None"]}},
+                        },
                         "Custom": {"$ref": "#/definitions/_1.BrokerStateStoreCustomPolicy"},
                     },
                 },
@@ -1270,7 +1301,10 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
                     "propertyName": "mode",
                     "mapping": {
                         "All": {"type": "object", "properties": {"mode": {"type": "string", "allowedValues": ["All"]}}},
-                        "None": {"type": "object", "properties": {"mode": {"type": "string", "allowedValues": ["None"]}}},
+                        "None": {
+                            "type": "object",
+                            "properties": {"mode": {"type": "string", "allowedValues": ["None"]}},
+                        },
                         "Custom": {"$ref": "#/definitions/_1.BrokerSubscriberQueueCustomPolicy"},
                     },
                 },
@@ -1448,12 +1482,12 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
             "brokerConfig": {"$ref": "#/definitions/_1.BrokerConfig", "nullable": True},
             "trustConfig": {"$ref": "#/definitions/_1.TrustConfig", "defaultValue": {"source": "SelfSigned"}},
             "defaultDataflowInstanceCount": {"type": "int", "defaultValue": 1},
-            "disableOpcUaFeature": {"type": "bool", "defaultValue": False},
+            "enableGdsManager": {"type": "bool", "defaultValue": True},
             "advancedConfig": {"$ref": "#/definitions/_1.AdvancedConfig", "defaultValue": {}},
         },
         "variables": {
-            "VERSIONS": {"iotOperations": "1.4.112"},
-            "TRAINS": {"iotOperations": "stable"},
+            "VERSIONS": {"iotOperations": "1.6.0-preview.9"},
+            "TRAINS": {"iotOperations": "integration"},
             "HASH": "[coalesce(tryGet(parameters('advancedConfig'), 'resourceSuffix'), take(uniqueString(resourceGroup().id, parameters('clusterName'), parameters('clusterNamespace')), 5))]",
             "AIO_EXTENSION_SUFFIX": "[take(uniqueString(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName'))), 5)]",
             "CUSTOM_LOCATION_NAMESPACE": "[parameters('clusterNamespace')]",
@@ -1462,7 +1496,9 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
             "ISSUER_NAME": "[if(variables('customerManagedTrust'), parameters('trustConfig').settings.issuerName, format('{0}-aio-certificate-issuer', parameters('clusterNamespace')))]",
             "TRUST_CONFIG_MAP": "[if(variables('customerManagedTrust'), parameters('trustConfig').settings.configMapName, format('{0}-aio-ca-trust-bundle', parameters('clusterNamespace')))]",
             "TRUST_CONFIG_MAP_KEY": "[if(variables('customerManagedTrust'), parameters('trustConfig').settings.configMapKey, 'ca.crt')]",
-            "OPCUA_CONNECTOR_VERSION": "[coalesce(tryGet(tryGet(parameters('advancedConfig'), 'connectors'), 'version'), '1.4.14')]",
+            "OPCUA_CONNECTOR_VERSION": "[coalesce(tryGet(tryGet(parameters('advancedConfig'), 'connectors'), 'version'), '1.4.0-alpha.164')]",
+            "CONNECTORS_CHART_REGISTRY": "[coalesce(tryGet(tryGet(parameters('advancedConfig'), 'connectors'), 'registry'), 'aioconnectorsdev.azurecr.io')]",
+            "CONNECTORS_IMAGE_REGISTRY": "[coalesce(tryGet(tryGet(parameters('advancedConfig'), 'connectors'), 'imageRegistry'), 'aioconnectorsdev.azurecr.io')]",
             "MQTT_SETTINGS": {
                 "brokerListenerServiceName": "aio-broker",
                 "brokerListenerPort": 18883,
@@ -1482,10 +1518,14 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
             },
             "defaultAioConfigurationSettings": {
                 "AgentOperationTimeoutInMinutes": "120",
+                "connectors.image.tag": "[variables('OPCUA_CONNECTOR_VERSION')]",
+                "connectors.image.registry": "[variables('CONNECTORS_CHART_REGISTRY')]",
+                "connectors.values.image.registry": "[variables('CONNECTORS_IMAGE_REGISTRY')]",
                 "connectors.values.mqttBroker.address": "[format('mqtts://{0}:{1}', variables('MQTT_SETTINGS').brokerListenerHost, variables('MQTT_SETTINGS').brokerListenerPort)]",
                 "connectors.values.mqttBroker.serviceAccountTokenAudience": "[variables('MQTT_SETTINGS').serviceAccountAudience]",
                 "connectors.values.securityPki.applicationUri": "[format('urn:microsoft.com:aio:opc:ua:broker:{0}', variables('AIO_EXTENSION_SUFFIX'))]",
                 "connectors.values.securityPki.subjectName": "[format('CN=aio-opc-opcuabroker-{0}', variables('AIO_EXTENSION_SUFFIX'))]",
+                "connectors.values.gdsManager.enabled": "[if(parameters('enableGdsManager'), 'true', 'false')]",
                 "dataFlows.values.tinyKube.mqttBroker.hostName": "[variables('MQTT_SETTINGS').brokerListenerHost]",
                 "dataFlows.values.tinyKube.mqttBroker.port": "[variables('MQTT_SETTINGS').brokerListenerPort]",
                 "dataFlows.values.tinyKube.mqttBroker.authentication.serviceAccountTokenAudience": "[variables('MQTT_SETTINGS').serviceAccountAudience]",
@@ -1505,10 +1545,8 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
                 "name": "[resourceId('Microsoft.ExtendedLocation/customLocations', coalesce(parameters('customLocationName'), format('location-{0}', variables('HASH'))))]",
                 "type": "CustomLocation",
             },
-            "effectiveFeatures": "[if(parameters('disableOpcUaFeature'), union(coalesce(parameters('features'), createObject()), createObject('opcua', createObject('mode', 'Disabled', 'settings', createObject()))), parameters('features'))]",
             "opcUaConnectorTemplateName": "[format('azureiotoperationsconnectorforopcua-{0}', substring(uniqueString(resourceId('Microsoft.IoTOperations/instances', coalesce(parameters('aioInstanceName'), format('aio-{0}', variables('HASH'))))), 0, 4))]",
             "opcUaFeature": "[coalesce(coalesce(tryGet(parameters('features'), 'opcua'), tryGet(parameters('features'), 'connectors')), createObject())]",
-            "opcUaFeatureMode": "[if(parameters('disableOpcUaFeature'), 'Disabled', coalesce(tryGet(variables('opcUaFeature'), 'mode'), 'Stable'))]",
         },
         "resources": {
             "cluster": {
@@ -1547,7 +1585,7 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
             },
             "aioInstance": {
                 "type": "Microsoft.IoTOperations/instances",
-                "apiVersion": "2026-07-01",
+                "apiVersion": "2026-09-01-preview",
                 "name": "[coalesce(parameters('aioInstanceName'), format('aio-{0}', variables('HASH')))]",
                 "location": "[parameters('clusterLocation')]",
                 "extendedLocation": "[variables('extendedLocation')]",
@@ -1555,14 +1593,14 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
                 "properties": {
                     "description": "An AIO instance.",
                     "schemaRegistryRef": {"resourceId": "[parameters('schemaRegistryId')]"},
-                    "features": "[variables('effectiveFeatures')]",
+                    "features": "[parameters('features')]",
                     "adrNamespaceRef": "[if(not(empty(parameters('adrNamespaceId'))), createObject('resourceId', parameters('adrNamespaceId')), null())]",
                 },
                 "dependsOn": ["customLocation"],
             },
             "broker": {
                 "type": "Microsoft.IoTOperations/instances/brokers",
-                "apiVersion": "2026-07-01",
+                "apiVersion": "2026-09-01-preview",
                 "name": "[format('{0}/{1}', coalesce(parameters('aioInstanceName'), format('aio-{0}', variables('HASH'))), 'default')]",
                 "extendedLocation": "[variables('extendedLocation')]",
                 "properties": {
@@ -1586,7 +1624,7 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
             },
             "brokerAuthn": {
                 "type": "Microsoft.IoTOperations/instances/brokers/authentications",
-                "apiVersion": "2026-07-01",
+                "apiVersion": "2026-09-01-preview",
                 "name": "[format('{0}/{1}/{2}', coalesce(parameters('aioInstanceName'), format('aio-{0}', variables('HASH'))), 'default', 'default')]",
                 "extendedLocation": "[variables('extendedLocation')]",
                 "properties": {
@@ -1603,7 +1641,7 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
             },
             "brokerListener": {
                 "type": "Microsoft.IoTOperations/instances/brokers/listeners",
-                "apiVersion": "2026-07-01",
+                "apiVersion": "2026-09-01-preview",
                 "name": "[format('{0}/{1}/{2}', coalesce(parameters('aioInstanceName'), format('aio-{0}', variables('HASH'))), 'default', 'default')]",
                 "extendedLocation": "[variables('extendedLocation')]",
                 "properties": {
@@ -1630,7 +1668,7 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
             },
             "dataflowProfile": {
                 "type": "Microsoft.IoTOperations/instances/dataflowProfiles",
-                "apiVersion": "2026-07-01",
+                "apiVersion": "2026-09-01-preview",
                 "name": "[format('{0}/{1}', coalesce(parameters('aioInstanceName'), format('aio-{0}', variables('HASH'))), 'default')]",
                 "extendedLocation": "[variables('extendedLocation')]",
                 "properties": {"instanceCount": "[parameters('defaultDataflowInstanceCount')]"},
@@ -1638,7 +1676,7 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
             },
             "dataflowEndpoint": {
                 "type": "Microsoft.IoTOperations/instances/dataflowEndpoints",
-                "apiVersion": "2026-07-01",
+                "apiVersion": "2026-09-01-preview",
                 "name": "[format('{0}/{1}', coalesce(parameters('aioInstanceName'), format('aio-{0}', variables('HASH'))), 'default')]",
                 "extendedLocation": "[variables('extendedLocation')]",
                 "properties": {
@@ -1651,14 +1689,17 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
                                 "audience": "[variables('MQTT_SETTINGS').serviceAccountAudience]"
                             },
                         },
-                        "tls": {"mode": "Enabled", "trustedCaCertificateConfigMapRef": "[variables('TRUST_CONFIG_MAP')]"},
+                        "tls": {
+                            "mode": "Enabled",
+                            "trustedCaCertificateConfigMapRef": "[variables('TRUST_CONFIG_MAP')]",
+                        },
                     },
                 },
                 "dependsOn": ["aioInstance", "customLocation"],
             },
             "artifactRegistryEndpoint": {
                 "type": "Microsoft.IoTOperations/instances/registryEndpoints",
-                "apiVersion": "2026-07-01",
+                "apiVersion": "2026-09-01-preview",
                 "name": "[format('{0}/{1}', coalesce(parameters('aioInstanceName'), format('aio-{0}', variables('HASH'))), 'default')]",
                 "extendedLocation": "[variables('extendedLocation')]",
                 "properties": {
@@ -1668,9 +1709,9 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
                 "dependsOn": ["aioInstance", "customLocation"],
             },
             "opcUaConnectorTemplate": {
-                "condition": "[not(equals(variables('opcUaFeatureMode'), 'Disabled'))]",
+                "condition": "[not(equals(coalesce(tryGet(variables('opcUaFeature'), 'mode'), 'Stable'), 'Disabled'))]",
                 "type": "Microsoft.IoTOperations/instances/akriConnectorTemplates",
-                "apiVersion": "2026-07-01",
+                "apiVersion": "2026-09-01-preview",
                 "name": "[format('{0}/{1}', coalesce(parameters('aioInstanceName'), format('aio-{0}', variables('HASH'))), variables('opcUaConnectorTemplateName'))]",
                 "extendedLocation": "[variables('extendedLocation')]",
                 "properties": {

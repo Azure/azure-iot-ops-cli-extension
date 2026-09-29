@@ -1414,7 +1414,8 @@ def assert_operation_order(target_scenario: UpgradeScenario, upgrade_result: Lis
         (
             UpgradeScenario("Migration: Platform already deleted, create CertManager")
             .set_extension(ext_type=EXTENSION_TYPE_CM, remove=True)
-            .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE),
+            .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE)
+            .set_user_kwargs(force=True),
             {
                 EXTENSION_TYPE_CM: build_extension_props(EXTENSION_TYPE_CM, version=BUILT_IN_VALUE),
                 EXTENSION_TYPE_OPS: build_extension_props(EXTENSION_TYPE_OPS, version=BUILT_IN_VALUE),

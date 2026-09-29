@@ -20,6 +20,7 @@ from azext_edge.edge.providers.orchestration.template import (
     TemplateBlueprint,
     get_insecure_listener,
 )
+from azext_edge.edge.util.az_client import DEFAULT_IOTOPS_MGMT_API_VERSION
 
 from ...generators import generate_random_string
 
@@ -100,6 +101,20 @@ def test_instance_template():
     assert len(listeners) == 2
 
 
+def test_instance_resource_api_versions_match_client_default():
+    iot_operations_resources = [
+        resource
+        for resource in TEMPLATE_BLUEPRINT_INSTANCE.content["resources"].values()
+        if resource["type"].startswith("Microsoft.IoTOperations/")
+    ]
+
+    assert iot_operations_resources
+    assert all(
+        resource["apiVersion"] == DEFAULT_IOTOPS_MGMT_API_VERSION.value
+        for resource in iot_operations_resources
+    )
+
+
 @pytest.mark.parametrize(
     "content",
     [
@@ -151,11 +166,11 @@ def test_template_blueprint(content: dict):
 
 EXTENSION_CONFIGS = {
     "enablement": [
-        (EXTENSION_TYPE_CM, "1.1.2", "stable"),
-        (EXTENSION_TYPE_SSC, "1.5.3", "stable"),
+        (EXTENSION_TYPE_CM, "1.2.0", "stable"),
+        (EXTENSION_TYPE_SSC, "1.5.5", "stable"),
     ],
     "instance": [
-        (EXTENSION_TYPE_OPS, "1.4.112", "stable"),
+        (EXTENSION_TYPE_OPS, "1.6.0-preview.9", "integration"),
     ],
 }
 
