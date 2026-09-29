@@ -495,6 +495,33 @@ def test_init_targets_opcua_mode(target_scenario: dict):
 
 
 @pytest.mark.parametrize(
+    "sku, expected_sku",
+    [
+        (None, None),
+        ("Standard", {"name": "Standard"}),
+        ("Essentials", {"name": "Essentials"}),
+    ],
+)
+def test_init_targets_instance_sku(sku, expected_sku):
+    targets = InitTargets(
+        cluster_name=generate_random_string(),
+        resource_group_name=generate_random_string(),
+        schema_registry_resource_id=get_schema_registry_id(),
+        adr_namespace_resource_id=get_ns_resource_id(),
+        instance_name=generate_random_string(),
+        sku=sku,
+    )
+
+    instance_template, _ = targets.get_ops_instance_template([generate_random_string()])
+    aio_instance = instance_template["resources"]["aioInstance"]
+
+    if expected_sku:
+        assert aio_instance["sku"] == expected_sku
+    else:
+        assert "sku" not in aio_instance
+
+
+@pytest.mark.parametrize(
     "instance_features",
     [
         ["opcua.mode=Disabled"],

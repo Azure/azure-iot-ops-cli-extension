@@ -75,6 +75,7 @@ class InitTargets:
         instance_name: Optional[str] = None,
         instance_description: Optional[str] = None,
         instance_features: Optional[List[str]] = None,
+        sku: Optional[str] = None,
         tags: Optional[dict] = None,
         # Extension config
         ops_config: Optional[List[str]] = None,
@@ -139,6 +140,7 @@ class InitTargets:
         self.instance_name = self._sanitize_k8s_name(instance_name)
         self.instance_description = instance_description
         self.instance_features = parse_feature_kvp_nargs(instance_features, strict=True)
+        self.sku = sku
         self.tags = tags
 
         # Extensions
@@ -260,6 +262,7 @@ class InitTargets:
                 "clExtensionIds": cl_extension_ids,
                 "schemaRegistryId": self.schema_registry_resource_id,
                 "adrNamespaceId": self.adr_namespace_resource_id,
+                "sku": self.sku,
                 "defaultDataflowInstanceCount": self.dataflow_profile_instances,
                 "brokerConfig": self.broker_config,
                 "trustConfig": self.trust_config,
@@ -282,6 +285,9 @@ class InitTargets:
             description=self.instance_description,
             features=self.instance_features,
         )
+        instance.pop("sku", None)
+        if self.sku:
+            instance["sku"] = {"name": self.sku}
 
         if self.instance_name:
             instance["name"] = self.instance_name
