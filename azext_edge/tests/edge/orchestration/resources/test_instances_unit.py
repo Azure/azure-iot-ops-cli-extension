@@ -251,6 +251,58 @@ def test_instance_show(mocked_cmd, mocked_responses: responses):
 
 
 @pytest.mark.parametrize("operation", ["show", "update"])
+@pytest.mark.parametrize("discovery_error", [
+    ValidationError("Expected exactly one AIO extension on the associated connected cluster."),
+    ValidationError("The custom location is not associated with the AIO extension."),
+    ValidationError("Unable to determine installed AIO version: extension currentVersion is missing."),
+    ValidationError("AIO runtime '1.6.0-preview.8' on train 'integration' has no supported runtime profile mapping."),
+    HttpResponseError("AuthorizationFailed: cluster read forbidden"),
+    HttpResponseError("ResourceNotFound: connected cluster not found"),
+])
+def test_instance_discovery_failure_only_falls_back_for_show(
+    mocker, mocked_cmd, mocked_responses, caplog, operation, discovery_error,
+):
+    name, resource_group = "instance", "rg"
+    record = get_mock_instance_record(name, resource_group)
+    mocked_responses.add(responses.GET, get_instance_endpoint(resource_group, name), json=record)
+    mocker.patch.object(Instances, "get_runtime_context", side_effect=discovery_error)
+
+    if operation == "show":
+        assert show_instance(mocked_cmd, name, resource_group) == record
+        assert "Returning the instance using API 2026-07-01" in caplog.text
+        assert "preview-specific fields may be incomplete" in caplog.text
+        assert str(discovery_error) in caplog.text
+    else:
+        with pytest.raises(type(discovery_error)) as caught:
+            update_instance(mocked_cmd, name, resource_group, tags={"updated": "yes"})
+        assert caught.value is discovery_error
+        assert "Returning the instance" not in caplog.text
+    assert len(mocked_responses.calls) == 1
+    assert mocked_responses.calls[0].request.method == "GET"
+
+
+@pytest.mark.parametrize("phase", ["initial", "preview"])
+@pytest.mark.parametrize("status", [403, 404, 500])
+def test_instance_show_does_not_hide_instance_read_errors(mocked_cmd, mocked_responses, caplog, phase, status):
+    name, resource_group = "instance", "rg"
+    endpoint = get_instance_endpoint(resource_group, name)
+    if phase == "preview":
+        record = get_mock_instance_record(name, resource_group)
+        mocked_responses.add(responses.GET, endpoint, json=record)
+        mock_runtime_discovery(mocked_responses, record, version="1.6.0-preview.9", train="integration")
+        endpoint = get_instance_endpoint(resource_group, name, api_version="2026-09-01-preview")
+    mocked_responses.add(
+        responses.GET, endpoint, status=status, json={"error": {"code": "ReadFailed", "message": "Read failed"}},
+    )
+
+    with pytest.raises(HttpResponseError) as caught:
+        show_instance(mocked_cmd, name, resource_group)
+    assert caught.value.status_code == status
+    assert "Returning the instance" not in caplog.text
+    assert all(call.request.method == "GET" for call in mocked_responses.calls)
+
+
+@pytest.mark.parametrize("operation", ["show", "update"])
 @pytest.mark.parametrize("train", ["preview", "integration"])
 def test_preview_instance_api_preserves_response_fields(mocked_cmd, mocked_responses, operation, train):
     name, resource_group = "preview-instance", "preview-rg"
