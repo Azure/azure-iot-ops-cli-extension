@@ -162,6 +162,7 @@ def _build_adr_namespace_response(
     identity_type: str = "None",
     principal_id: Optional[str] = None,
     observability_endpoints: Optional[dict] = None,
+    observability_enabled: Optional[bool] = None,
     outbound_identity: Optional[dict] = None,
     subscription_id: Optional[str] = None,
 ) -> dict:
@@ -170,8 +171,13 @@ def _build_adr_namespace_response(
     if principal_id:
         identity["principalId"] = principal_id
     properties: dict = {"provisioningState": "Succeeded"}
+    observability: dict = {}
+    if observability_enabled is not None:
+        observability["enabled"] = observability_enabled
     if observability_endpoints is not None:
-        properties["observability"] = {"endpoints": observability_endpoints}
+        observability["endpoints"] = observability_endpoints
+    if observability:
+        properties["observability"] = observability
     if outbound_identity is not None:
         properties["outboundIdentity"] = outbound_identity
     return {
@@ -259,7 +265,10 @@ class TestBuildObservabilityPutPayload:
             "identity": {"type": "SystemAssigned", "principalId": "pid"},
             "tags": {"env": "test"},
             "properties": {
-                "observability": {"endpoints": {cl_key: {"address": "mine"}, other_key: other_entry}},
+                "observability": {
+                    "enabled": True,
+                    "endpoints": {cl_key: {"address": "mine"}, other_key: other_entry},
+                },
                 "outboundIdentity": {"type": "SystemAssigned"},
                 "management": {"endpoints": {"cl-x": {"address": "mgmt"}}},
                 "messaging": {"endpoints": {}},
@@ -270,6 +279,7 @@ class TestBuildObservabilityPutPayload:
         endpoints = payload["properties"]["observability"]["endpoints"]
         assert cl_key not in endpoints
         assert endpoints[other_key] == other_entry
+        assert payload["properties"]["observability"]["enabled"] is True
         assert payload["identity"] == {"type": "SystemAssigned", "principalId": "pid"}
         assert payload["tags"] == {"env": "test"}
         assert payload["properties"]["outboundIdentity"] == {"type": "SystemAssigned"}
@@ -512,6 +522,7 @@ class TestSetupAdrObservability:
         assert len(mocked_responses.calls) == 2
         patch_body = json.loads(mocked_responses.calls[1].request.body)
         endpoints = patch_body["properties"]["observability"]["endpoints"]
+        assert patch_body["properties"]["observability"]["enabled"] is True
         assert cl_id in endpoints
         assert endpoints[cl_id]["endpointType"] == LIVE_DATA_ADR_ENDPOINT_TYPE
         assert endpoints[cl_id]["scopeId"] == instance_name
@@ -581,6 +592,7 @@ class TestSetupAdrObservability:
         patch1 = json.loads(mocked_responses.calls[1].request.body)
         assert "observability" not in patch1["properties"]
         patch2 = json.loads(mocked_responses.calls[2].request.body)
+        assert patch2["properties"]["observability"]["enabled"] is True
         assert cl_id in patch2["properties"]["observability"]["endpoints"]
 
     def test_already_configured_early_return(self, mocked_cmd, mocked_responses: responses):
@@ -603,6 +615,7 @@ class TestSetupAdrObservability:
             json=_build_adr_namespace_response(
                 adr_ns, rg, identity_type="SystemAssigned", principal_id="adr-pid",
                 observability_endpoints={cl_id: desired},
+                observability_enabled=True,
                 outbound_identity={"type": "SystemAssigned"},
             ),
             status=200,
@@ -617,6 +630,71 @@ class TestSetupAdrObservability:
         assert result["identity_exists"] is True
         assert result["endpoint_exists"] is True
         assert len(mocked_responses.calls) == 1  # GET only, no PATCH
+
+    @pytest.mark.parametrize("observability_enabled", [None, False])
+    def test_repairs_namespace_observability_flag(
+        self,
+        mocked_cmd,
+        mocked_responses: responses,
+        observability_enabled: Optional[bool],
+    ):
+        rg = generate_random_string()
+        instance_name = generate_random_string()
+        adr_ns = f"{instance_name}-adr-ns"
+        instance = _build_instance_response(instance_name, rg, adr_namespace_name=adr_ns)
+        eg_ctx = _make_eg_ctx(resource_group_name=rg)
+        cl_id = MOCK_EXTENDED_LOCATION["name"]
+        desired = {
+            "endpointType": LIVE_DATA_ADR_ENDPOINT_TYPE,
+            "address": eg_ctx.mqtt_hostname,
+            "scopeId": instance_name,
+            "resourceId": eg_ctx.resource_id,
+        }
+        mocked_responses.add(
+            method=responses.GET,
+            url=_build_adr_endpoint(adr_ns, rg),
+            json=_build_adr_namespace_response(
+                adr_ns,
+                rg,
+                identity_type="SystemAssigned",
+                principal_id="adr-pid",
+                observability_endpoints={cl_id: desired},
+                observability_enabled=observability_enabled,
+                outbound_identity={"type": "SystemAssigned"},
+            ),
+            status=200,
+        )
+        mocked_responses.add(
+            method=responses.PATCH,
+            url=_build_adr_endpoint(adr_ns, rg),
+            json=_build_adr_namespace_response(
+                adr_ns,
+                rg,
+                identity_type="SystemAssigned",
+                principal_id="adr-pid",
+                observability_endpoints={cl_id: desired},
+                observability_enabled=True,
+                outbound_identity={"type": "SystemAssigned"},
+            ),
+            status=200,
+        )
+
+        provider = LiveData(cmd=mocked_cmd)
+        provider._setup_adr_observability(
+            instance=instance,
+            eg_ctx=eg_ctx,
+            custom_location_id=cl_id,
+            mi_resource=None,
+            ra_scope=LiveDataRoleScope.NAMESPACE,
+            topic_space_name="live-data-ts-abc12345",
+            adr_role_ids=None,
+            skip_role_assignments=False,
+            wait_sec=0,
+        )
+
+        patch_body = json.loads(mocked_responses.calls[1].request.body)
+        assert patch_body["properties"]["observability"]["enabled"] is True
+        assert patch_body["properties"]["observability"]["endpoints"][cl_id] == desired
 
     def test_uami_single_write(self, mocked_cmd, mocked_responses: responses):
         """A user-assigned identity uses a single write with UserAssigned outboundIdentity."""
@@ -652,6 +730,7 @@ class TestSetupAdrObservability:
         assert result["identity"]["principalId"] == "uami-pid"
         patch_body = json.loads(mocked_responses.calls[1].request.body)
         assert patch_body["properties"]["outboundIdentity"]["type"] == "UserAssigned"
+        assert patch_body["properties"]["observability"]["enabled"] is True
 
     def test_no_adr_ref_raises(self, mocked_cmd):
         instance = _build_instance_response(generate_random_string(), generate_random_string(), include_adr_ref=False)
@@ -934,7 +1013,18 @@ class TestEnable:
 
 
 class TestShow:
-    def _register_show_mocks(self, mocked_responses, instance_name, rg, ns_name, adr_ns, eg_rid, hostname, ts_name):
+    def _register_show_mocks(
+        self,
+        mocked_responses,
+        instance_name,
+        rg,
+        ns_name,
+        adr_ns,
+        eg_rid,
+        hostname,
+        ts_name,
+        observability_enabled: Optional[bool] = True,
+    ):
         cl_id = MOCK_EXTENDED_LOCATION["name"]
         obs_endpoint = {
             "endpointType": LIVE_DATA_ADR_ENDPOINT_TYPE, "address": hostname,
@@ -948,7 +1038,9 @@ class TestShow:
             method=responses.GET, url=_build_adr_endpoint(adr_ns, rg),
             json=_build_adr_namespace_response(
                 adr_ns, rg, identity_type="SystemAssigned", principal_id="adr-pid",
-                observability_endpoints={cl_id: obs_endpoint}, outbound_identity={"type": "SystemAssigned"},
+                observability_endpoints={cl_id: obs_endpoint},
+                observability_enabled=observability_enabled,
+                outbound_identity={"type": "SystemAssigned"},
             ),
             status=200,
         )
@@ -993,6 +1085,46 @@ class TestShow:
         result = provider.show(name=instance_name, resource_group_name=rg)
         assert result["enabled"] is True
         assert result["deviceRegistryNamespace"]["name"] == adr_ns
+        assert result["deviceRegistryNamespace"]["observabilityEnabled"] is True
+        assert result["eventGrid"]["topicSpace"]["exists"] is True
+        assert result["instance"]["dataflowProfile"]["exists"] is True
+
+    @pytest.mark.parametrize("observability_enabled", [None, False])
+    def test_disabled_when_namespace_observability_not_enabled(
+        self,
+        mocked_cmd,
+        mocked_responses: responses,
+        observability_enabled: Optional[bool],
+    ):
+        rg = generate_random_string()
+        instance_name = generate_random_string()
+        ns_name = generate_random_string()
+        adr_ns = f"{instance_name}-adr-ns"
+        eg_rid = _build_eg_resource_id(ns_name, rg)
+        hostname = f"{ns_name}.eastus-1.ts.eventgrid.azure.net"
+        instance_rid = (
+            f"/subscriptions/{ZEROED_SUBSCRIPTION}/resourceGroups/{rg}"
+            f"/providers/{IOTOPS_RP}/instances/{instance_name}"
+        )
+        ts_name = get_live_data_topic_space_name(instance_rid)
+        self._register_show_mocks(
+            mocked_responses,
+            instance_name,
+            rg,
+            ns_name,
+            adr_ns,
+            eg_rid,
+            hostname,
+            ts_name,
+            observability_enabled=observability_enabled,
+        )
+
+        provider = LiveData(cmd=mocked_cmd)
+        result = provider.show(name=instance_name, resource_group_name=rg)
+
+        assert result["enabled"] is False
+        assert result["deviceRegistryNamespace"]["observabilityEnabled"] is False
+        assert result["deviceRegistryNamespace"]["observabilityEndpoint"] is not None
         assert result["eventGrid"]["topicSpace"]["exists"] is True
         assert result["instance"]["dataflowProfile"]["exists"] is True
 
@@ -1103,6 +1235,7 @@ class TestDisable:
             json=_build_adr_namespace_response(
                 adr_ns, rg, identity_type="SystemAssigned", principal_id="adr-pid",
                 observability_endpoints={cl_id: obs_endpoint},
+                observability_enabled=True,
             ),
             status=200,
         )
@@ -1139,7 +1272,10 @@ class TestDisable:
         # teardown: ADR PUT (remove endpoint), profile DELETE, endpoint DELETE, topic space DELETE
         mocked_responses.add(
             method=responses.PUT, url=_build_adr_endpoint(adr_ns, rg),
-            json=_build_adr_namespace_response(adr_ns, rg, observability_endpoints={}), status=200,
+            json=_build_adr_namespace_response(
+                adr_ns, rg, observability_endpoints={}, observability_enabled=True,
+            ),
+            status=200,
         )
         mocked_responses.add(
             method=responses.DELETE,
@@ -1161,6 +1297,10 @@ class TestDisable:
         methods = [c.request.method for c in mocked_responses.calls]
         assert methods.count("DELETE") == 3
         assert "PUT" in methods  # endpoint entry removed via begin_create_or_replace
+        put_call = next(call for call in mocked_responses.calls if call.request.method == "PUT")
+        put_body = json.loads(put_call.request.body)
+        assert put_body["properties"]["observability"]["enabled"] is True
+        assert put_body["properties"]["observability"]["endpoints"] == {}
 
     def test_no_adr_ref_early_return(self, mocked_cmd, mocked_responses: responses):
         rg = generate_random_string()

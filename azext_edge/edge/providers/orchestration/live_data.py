@@ -312,9 +312,8 @@ class LiveData(EventGridProviderBase):
     ) -> Dict:
         """Show Live Data configuration for an IoT Operations instance.
 
-        Live Data state for this instance is derived from the presence of this instance's
-        observability.endpoints[<customLocationId>] entry on the ADR namespace. The
-        namespace-level observability.enabled flag is not managed or interpreted here.
+        Live Data state requires namespace observability to be enabled and this instance's
+        observability.endpoints[<customLocationId>] entry to be present on the ADR namespace.
         """
         analyzing_cats = {
             "Analyzing": ["Instance & ADR namespace", "Event Grid resources", "Instance dataflow resources"],
@@ -323,6 +322,7 @@ class LiveData(EventGridProviderBase):
         adr_section: Optional[Dict] = None
         eg_section: Optional[Dict] = None
         obs_endpoint: Optional[Dict] = None
+        observability_enabled = False
         obs_endpoint_exists = False
         eg_all_exist = False
 
@@ -356,11 +356,11 @@ class LiveData(EventGridProviderBase):
                                 resource_group_name=adr_resource_group,
                                 namespace_name=adr_namespace_name,
                             )
-                            existing_endpoints = (
-                                adr_namespace.get("properties", {})
-                                .get("observability", {})
-                                .get("endpoints", {})
+                            observability = (
+                                adr_namespace.get("properties", {}).get("observability", {})
                             )
+                            observability_enabled = observability.get("enabled") is True
+                            existing_endpoints = observability.get("endpoints", {})
                             obs_endpoint = existing_endpoints.get(custom_location_id) if custom_location_id else None
                             obs_endpoint_exists = bool(obs_endpoint)
 
@@ -369,6 +369,7 @@ class LiveData(EventGridProviderBase):
                                 "resourceGroup": adr_resource_group,
                                 "subscriptionId": adr_subscription_id,
                                 "outboundIdentity": adr_namespace.get("properties", {}).get("outboundIdentity"),
+                                "observabilityEnabled": observability_enabled,
                                 "observabilityEndpoint": {
                                     "endpointType": obs_endpoint.get("endpointType", ""),
                                     "address": obs_endpoint.get("address", ""),
@@ -458,7 +459,7 @@ class LiveData(EventGridProviderBase):
             "dataflowEndpoint": {"name": LIVE_DATA_ENDPOINT_NAME, "exists": ep_exists},
         }
 
-        enabled = obs_endpoint_exists and eg_all_exist and aio_all_exist
+        enabled = observability_enabled and obs_endpoint_exists and eg_all_exist and aio_all_exist
 
         return {
             "enabled": enabled,
@@ -857,7 +858,9 @@ class LiveData(EventGridProviderBase):
         }
         outbound_identity = self._build_outbound_identity(mi_resource)
 
-        existing_endpoints = properties.get("observability", {}).get("endpoints", {})
+        observability = properties.get("observability", {})
+        observability_already_enabled = observability.get("enabled") is True
+        existing_endpoints = observability.get("endpoints", {})
         current_endpoint = existing_endpoints.get(custom_location_id)
         endpoint_already_configured = current_endpoint == desired_endpoint
 
@@ -874,7 +877,12 @@ class LiveData(EventGridProviderBase):
         if needs_identity_enable:
             base_payload["identity"] = {"type": "SystemAssigned"}
 
-        if endpoint_already_configured and outbound_identity_already_configured and (not needs_identity_enable):
+        if (
+            observability_already_enabled
+            and endpoint_already_configured
+            and outbound_identity_already_configured
+            and not needs_identity_enable
+        ):
             principal_id = self._resolve_outbound_principal(mi_resource, current_identity)
             logger.info(
                 "ADR namespace '%s' already has outbound identity and observability endpoint configured.",
@@ -914,13 +922,23 @@ class LiveData(EventGridProviderBase):
             )
             merged_endpoints = dict(existing_endpoints)
             merged_endpoints[custom_location_id] = desired_endpoint
-            endpoint_payload = {"properties": {"observability": {"endpoints": merged_endpoints}}}
+            endpoint_payload = {
+                "properties": {
+                    "observability": {
+                        "enabled": True,
+                        "endpoints": merged_endpoints,
+                    }
+                }
+            }
             self._patch_namespace(adr_resource_group, adr_namespace_name, endpoint_payload, **kwargs)
         else:
             merged_endpoints = dict(existing_endpoints)
             merged_endpoints[custom_location_id] = desired_endpoint
             payload = dict(base_payload)
-            payload["properties"]["observability"] = {"endpoints": merged_endpoints}
+            payload["properties"]["observability"] = {
+                "enabled": True,
+                "endpoints": merged_endpoints,
+            }
             updated_namespace = self._patch_namespace(
                 adr_resource_group, adr_namespace_name, payload, **kwargs
             )
