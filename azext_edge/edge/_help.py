@@ -2101,20 +2101,13 @@ def load_iotops_help():
                       deployed cluster side services that make up IoT Operations and compare them
                       with the built-in deployment that would be executed with `az iot ops init`
                       and `az iot ops create`.
-                      Upgrades and repairs that pin an AIO extension version require
-                      autoUpgradeMinorVersion=false. If Arc manages automatic upgrades, explicitly
-                      transfer upgrade ownership using `az k8s-extension update --auto-upgrade false`
-                      with the AIO extension's name and its cluster's subscription, resource group,
-                      name and type. `az iot ops upgrade` does not disable automatic upgrades for you,
-                      and --force cannot override this prerequisite.
+                      Version-pinned upgrades and repairs require `autoUpgradeMinorVersion=false`.
+                      Disable Arc automatic upgrades explicitly before proceeding;
+                      `--force` cannot override this requirement.
         examples:
         - name: Upgrade the instance with minimal inputs.
           text: >
             az iot ops upgrade --name myinstance -g myresourcegroup
-        - name: Explicitly transfer AIO extension upgrade ownership to the CLI before upgrading.
-          text: >
-            az k8s-extension update --subscription myclustersubscription --resource-group myclusterresourcegroup
-            --cluster-name mycluster --cluster-type connectedClusters --name myaioextension --auto-upgrade false
         - name: Skip the confirmation prompt for instance upgrade. Useful for CI scenarios.
           text: >
             az iot ops upgrade --name myinstance -g myresourcegroup -y

@@ -30,6 +30,7 @@ from azext_edge.edge.providers.orchestration.common import (
 )
 from azext_edge.edge.providers.orchestration.resources import Instances
 from azext_edge.edge.providers.orchestration.resources.connector_templates import ConnectorTemplates
+from azext_edge.edge.providers.orchestration.runtime_profiles import RuntimeChannel
 from azext_edge.edge.providers.orchestration.resources.instances import (
     KEYVAULT_ROLE_ID_READER,
     KEYVAULT_ROLE_ID_SECRETS_USER,
@@ -88,6 +89,13 @@ def mocked_resolve_oidc_issuer(mocker):
         "azext_edge.edge.providers.orchestration.resources.instances.resolve_oidc_issuer",
         autospec=True,
         side_effect=lambda arm_issuer, **_: (arm_issuer, False),
+    )
+
+
+@pytest.fixture
+def mocked_ga_runtime_context(mocker):
+    yield mocker.patch.object(
+        Instances, "get_runtime_context", return_value=Mock(identity=Mock(channel=RuntimeChannel.STABLE)),
     )
 
 
@@ -331,6 +339,134 @@ def test_preview_instance_api_preserves_response_fields(mocked_cmd, mocked_respo
         assert all(call.request.method == "GET" for call in mocked_responses.calls)
     assert result == expected
     assert initial["properties"].get("previewOnlyProperty") is None
+
+
+@pytest.mark.parametrize("operation", [
+    "add_mi_user_assigned", "remove_mi_user_assigned", "enable_secretsync", "disable_secretsync",
+])
+@pytest.mark.parametrize("train,version,api_version", [
+    ("stable", "1.4.112", "2026-07-01"),
+    ("integration", "1.6.0-preview.9", "2026-09-01-preview"),
+])
+def test_instance_workflow_preserves_runtime_fields(
+    mocker, mocked_cmd, mocked_responses, mocked_get_tenant_id, operation, train, version, api_version,
+):
+    name, resource_group = "runtime-instance", "runtime-rg"
+    identity_id = generate_resource_id(
+        resource_group_name=resource_group, resource_provider=UAMI_RP, resource_path="/userAssignedIdentities/identity",
+    )
+    existing_id = identity_id if operation == "remove_mi_user_assigned" else f"{identity_id}-existing"
+    spc = get_mock_spc_record(name="spc", resource_group_name=resource_group)
+    initial = get_mock_instance_record(
+        name, resource_group, identity_map={existing_id: {}}, default_spc_resource_id=f"{spc['id']}-old",
+    )
+    initial["properties"]["version"] = version
+    mock_runtime_discovery(mocked_responses, initial, version=version, train=train)
+    initial_endpoint = get_instance_endpoint(resource_group, name)
+    mocked_responses.add(responses.GET, initial_endpoint, json=initial)
+    selected = deepcopy(initial)
+    selected_endpoint = get_instance_endpoint(resource_group, name, api_version=api_version)
+    if train == "integration":
+        selected["properties"]["previewOnlyProperty"] = {"retained": ["value"]}
+        mocked_responses.add(responses.GET, selected_endpoint, json=selected)
+    mocked_responses.add_callback(responses.PUT, selected_endpoint, callback=echo_callback)
+
+    instances = Instances(mocked_cmd)
+    resource_map = mocker.patch.object(instances, "get_resource_map").return_value
+    resource_map.connected_cluster.resource = {"name": "cluster", "location": "westus2"}
+    resource_map.connected_cluster.get_cl_resources_by_type.return_value = {}
+    mocker.patch.object(instances, "_ensure_oidc_issuer", return_value="https://issuer.example/cluster")
+    mocker.patch.object(instances, "federate_msi")
+    mocker.patch.object(instances, "unfederate_msi")
+    mocker.patch.object(instances, "_attempt_keyvault_role_assignments")
+    if operation in {"add_mi_user_assigned", "enable_secretsync"}:
+        mocked_responses.add(
+            responses.GET, get_uami_endpoint(resource_group, "identity"),
+            json={"properties": {"clientId": generate_uuid(), "principalId": generate_uuid()}},
+        )
+    keyvault_id = generate_resource_id(
+        resource_group_name=resource_group, resource_provider=KEYVAULT_RP, resource_path="/keyvaults/vault",
+    )
+    if operation == "enable_secretsync":
+        mocked_responses.add(responses.GET, get_kv_endpoint(resource_group, "vault"), json={})
+        mocked_responses.add(responses.PUT, get_spc_endpoint(resource_group, "spc"), json=spc)
+    operation_kwargs = {
+        "add_mi_user_assigned": {"mi_user_assigned": identity_id, "usage_type": IdentityUsageType.DATAFLOW.value},
+        "remove_mi_user_assigned": {"mi_user_assigned": identity_id, "federated_credential_name": "credential"},
+        "enable_secretsync": {"mi_user_assigned": identity_id, "keyvault_resource_id": keyvault_id, "spc_name": "spc"},
+        "disable_secretsync": {"confirm_yes": True},
+    }
+    result = getattr(instances, operation)(
+        name=name, resource_group_name=resource_group, wait_sec=0, **operation_kwargs[operation],
+    )
+    expected = deepcopy(selected)
+    if operation == "add_mi_user_assigned":
+        expected["identity"]["userAssignedIdentities"][identity_id] = {}
+    elif operation == "remove_mi_user_assigned":
+        expected["identity"] = {"type": "None", "userAssignedIdentities": {}}
+    elif operation == "enable_secretsync":
+        expected["properties"]["defaultSecretProviderClassRef"] = {"resourceId": spc["id"]}
+    else:
+        del expected["properties"]["defaultSecretProviderClassRef"]
+    writes = [call.request for call in mocked_responses.calls
+              if call.request.method == "PUT" and "/instances/" in call.request.url]
+    assert len(writes) == 1
+    assert writes[0].url == selected_endpoint
+    assert json.loads(writes[0].body) == expected
+    assert instances.iotops_api_version == api_version
+    if operation in {"add_mi_user_assigned", "remove_mi_user_assigned"}:
+        assert result == expected
+    elif operation == "enable_secretsync":
+        assert result == spc
+    else:
+        assert result is None
+    reads = [call.request.url for call in mocked_responses.calls
+             if call.request.method == "GET" and "/instances/" in call.request.url]
+    assert reads == ([initial_endpoint, selected_endpoint] if train == "integration" else [initial_endpoint])
+
+
+@pytest.mark.parametrize("operation", [
+    "add_mi_user_assigned", "remove_mi_user_assigned", "enable_secretsync", "disable_secretsync",
+])
+@pytest.mark.parametrize("failure", ["unmapped_runtime", "discovery_http", "preview_http"])
+def test_instance_workflow_api_failure_prevents_writes(mocker, mocked_cmd, mocked_responses, operation, failure):
+    name, resource_group = "preview-instance", "preview-rg"
+    instance = get_mock_instance_record(name, resource_group)
+    mocked_responses.add(responses.GET, get_instance_endpoint(resource_group, name), json=instance)
+    if failure == "discovery_http":
+        mocker.patch.object(Instances, "get_runtime_context", side_effect=HttpResponseError("Forbidden"))
+    else:
+        version = "1.6.0-preview.8" if failure == "unmapped_runtime" else "1.6.0-preview.9"
+        mock_runtime_discovery(mocked_responses, instance, version=version, train="integration")
+        if failure == "preview_http":
+            mocked_responses.add(
+                responses.GET, get_instance_endpoint(resource_group, name, api_version="2026-09-01-preview"),
+                status=403, json={"error": {"code": "AuthorizationFailed", "message": "Forbidden"}},
+            )
+    instances = Instances(mocked_cmd)
+    side_effects = [mocker.patch.object(instances, method) for method in (
+        "federate_msi", "unfederate_msi", "_attempt_keyvault_role_assignments", "_ensure_oidc_issuer",
+    )]
+    identity_id = generate_resource_id(
+        resource_group_name=resource_group, resource_provider=UAMI_RP, resource_path="/userAssignedIdentities/identity",
+    )
+    operation_kwargs = {
+        "add_mi_user_assigned": {"mi_user_assigned": identity_id, "usage_type": IdentityUsageType.DATAFLOW.value},
+        "remove_mi_user_assigned": {"mi_user_assigned": identity_id, "federated_credential_name": "credential"},
+        "enable_secretsync": {
+            "mi_user_assigned": identity_id,
+            "keyvault_resource_id": generate_resource_id(
+                resource_group_name=resource_group, resource_provider=KEYVAULT_RP, resource_path="/vaults/vault",
+            ),
+        },
+        "disable_secretsync": {"confirm_yes": True},
+    }
+    expected_error = ValidationError if failure == "unmapped_runtime" else HttpResponseError
+    with pytest.raises(expected_error):
+        getattr(instances, operation)(name=name, resource_group_name=resource_group, **operation_kwargs[operation])
+    assert all(call.request.method == "GET" for call in mocked_responses.calls)
+    for side_effect in side_effects:
+        side_effect.assert_not_called()
 
 
 def mock_runtime_discovery(mocked_responses, instance, version="1.1.15", train="stable"):
@@ -960,6 +1096,7 @@ def test_instance_update_opcua_backfill_surfaces_list_error(mocked_cmd, mocked_r
 def test_secretsync_enable(
     mocked_cmd,
     mocked_responses: responses,
+    mocked_ga_runtime_context,
     spc_name: Optional[str],
     skip_role_assignments: Optional[bool],
     use_self_hosted_issuer: Optional[bool],
@@ -1222,7 +1359,7 @@ def test_secretsync_enable_repairs_existing_fic(
     instances.resource_client = mocker.Mock()
     instances.msi_mgmt_client = mocker.Mock()
     instances.ssc_mgmt_client = mocker.Mock()
-    instances.show = mocker.Mock()
+    instances._get_instance_for_write = mocker.Mock()
     instances.get_resource_map = mocker.Mock()
     instances.get_associated_cl = mocker.Mock()
     instances._ensure_oidc_issuer = mocker.Mock()
@@ -1247,7 +1384,7 @@ def test_secretsync_enable_repairs_existing_fic(
         "name": instance_name,
         "extendedLocation": {"name": generate_resource_id(resource_group_name=resource_group_name)},
     }
-    instances.show.return_value = instance
+    instances._get_instance_for_write.return_value = instance
     instances.get_associated_cl.return_value = {"properties": {"namespace": namespace}}
     resource_map = instances.get_resource_map.return_value
     resource_map.connected_cluster.resource = {"name": generate_random_string()}
@@ -1465,6 +1602,7 @@ def test_repair_federated_cred_issuer_surfaces_actionable_error(mocker, operatio
 def test_secretsync_enable_issuer_error(
     mocked_cmd,
     mocked_responses: responses,
+    mocked_ga_runtime_context,
     scenario: dict,
 ):
     resource_group_name = generate_random_string()
@@ -1607,6 +1745,7 @@ def test_secretsync_enable_issuer_error(
 def test_secretsync_disable(
     mocked_cmd,
     mocked_responses: responses,
+    mocked_ga_runtime_context,
     default_spc_resource_id: Optional[str],
     existing_resources: Optional[list[dict]],
 ):
@@ -1718,6 +1857,7 @@ def test_secretsync_disable(
 def test_add_mi_user_assigned(
     mocked_cmd,
     mocked_responses: responses,
+    mocked_ga_runtime_context,
     usage_type: Optional[str],
     use_self_hosted_issuer: Optional[bool],
     fc_name: Optional[str],

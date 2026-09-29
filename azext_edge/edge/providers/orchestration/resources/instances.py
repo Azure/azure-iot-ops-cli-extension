@@ -253,6 +253,12 @@ class Instances(Queryable):
             instance_name=resource.resource_name, resource_group_name=resource.resource_group_name,
         )
 
+    def _get_instance_for_write(self, name: str, resource_group_name: str) -> dict:
+        instance = self.show(name=name, resource_group_name=resource_group_name)
+        catalog = get_runtime_catalog()
+        runtime = self.get_runtime_context(instance, catalog.qualification_identities)
+        return self.use_runtime_profile(catalog.get(runtime.identity.channel), instance)
+
     def get_ext_loc(
         self,
         name: str,
@@ -360,7 +366,7 @@ class Instances(Queryable):
         connector_version: Optional[str] = None,
         **kwargs: dict,
     ) -> dict:
-        """Write an instance for an already-validated operation or existing identity/secret workflow."""
+        """Write an instance after the caller selects its runtime API and validates the operation."""
         instance = deepcopy(
             kwargs.pop("instance", None) or self.show(name=name, resource_group_name=resource_group_name)
         )
@@ -444,7 +450,7 @@ class Instances(Queryable):
         **kwargs,
     ):
         mi_resource_id_container = parse_resource_id(mi_user_assigned)
-        instance = self.show(name=name, resource_group_name=resource_group_name)
+        instance = self._get_instance_for_write(name=name, resource_group_name=resource_group_name)
 
         # TODO - @digimaun
         # cluster_resource = self.get_resource_map(instance).connected_cluster.resource
@@ -497,11 +503,11 @@ class Instances(Queryable):
         Responsible for federating and building the instance identity object.
         """
         mi_resource_id_container = parse_resource_id(mi_user_assigned)
+        instance = self._get_instance_for_write(name=name, resource_group_name=resource_group_name)
         mi_resource = self.resource_client.resources.get_by_id(
             resource_id=mi_resource_id_container.resource_id, api_version=MANAGED_IDENTITY_API_VERSION
         )
 
-        instance = self.show(name=name, resource_group_name=resource_group_name)
         cluster_resource = self.get_resource_map(instance).connected_cluster.resource
         oidc_issuer = self._ensure_oidc_issuer(cluster_resource, use_self_hosted_issuer)
         custom_location = self.get_associated_cl(instance)
@@ -585,6 +591,7 @@ class Instances(Queryable):
         # TODO: add unit test
         mi_resource_id_container = parse_resource_id(mi_user_assigned)
         keyvault_resource_id_container = parse_resource_id(keyvault_resource_id)
+        instance = self._get_instance_for_write(name=name, resource_group_name=resource_group_name)
         with console.status("Working...") as status:
             # TODO
             self.resource_client.resources.get_by_id(
@@ -603,7 +610,6 @@ class Instances(Queryable):
                     custom_role_id=custom_role_id,
                 )
 
-            instance = self.show(name=name, resource_group_name=resource_group_name)
             resource_map = self.get_resource_map(instance)
             cluster_resource = resource_map.connected_cluster.resource
             custom_location = self.get_associated_cl(instance)
@@ -702,7 +708,7 @@ class Instances(Queryable):
         if should_bail:
             return
 
-        instance: dict = self.show(name=name, resource_group_name=resource_group_name)
+        instance = self._get_instance_for_write(name=name, resource_group_name=resource_group_name)
         # remove the default secret provider class reference
         default_spc_ref = instance["properties"].pop("defaultSecretProviderClassRef", None)
         if default_spc_ref:
