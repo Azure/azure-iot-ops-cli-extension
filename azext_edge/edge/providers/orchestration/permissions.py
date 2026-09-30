@@ -5,7 +5,7 @@
 # ----------------------------------------------------------------------------------------------
 
 from enum import Enum
-from typing import Iterable, Optional
+from typing import Iterable, Optional, Tuple
 from uuid import uuid4
 
 from azure.cli.core.azclierror import ValidationError
@@ -92,13 +92,25 @@ class PermissionManager:
     def apply_role_assignment(
         self, scope: str, principal_id: str, role_def_id: str, principal_type: Optional[str] = None, **kwargs
     ) -> Optional[dict]:
+        role_assignment, created = self.ensure_role_assignment(
+            scope=scope,
+            principal_id=principal_id,
+            role_def_id=role_def_id,
+            principal_type=principal_type,
+            **kwargs,
+        )
+        return role_assignment if created else None
+
+    def ensure_role_assignment(
+        self, scope: str, principal_id: str, role_def_id: str, principal_type: Optional[str] = None, **kwargs
+    ) -> Tuple[dict, bool]:
         headers = kwargs.pop("headers", {})
         role_assignments_iter = self.authz_client.role_assignments.list_for_scope(
             scope=scope, filter=f"principalId eq '{principal_id}'"
         )
         for role_assignment in role_assignments_iter:
             if role_assignment["properties"]["roleDefinitionId"] == role_def_id:
-                return
+                return role_assignment, False
         props = {
             "properties": {
                 "roleDefinitionId": role_def_id,
@@ -107,11 +119,18 @@ class PermissionManager:
         }
         if principal_type:
             props["properties"]["principalType"] = principal_type
-        return self.authz_client.role_assignments.create(
+        role_assignment = self.authz_client.role_assignments.create(
             scope=scope,
             role_assignment_name=str(uuid4()),
             parameters=props,
             headers=headers,
+        )
+        return role_assignment, True
+
+    def delete_role_assignment(self, role_assignment_id: str, **kwargs) -> None:
+        self.authz_client.role_assignments.delete_by_id(
+            role_assignment_id=role_assignment_id,
+            **kwargs,
         )
 
     def can_apply_role_assignment(

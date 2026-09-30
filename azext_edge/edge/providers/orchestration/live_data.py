@@ -4,7 +4,8 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from typing import TYPE_CHECKING, Dict, List, Optional
+from typing import TYPE_CHECKING, Dict, List, Optional, Tuple
+from uuid import UUID
 
 from azure.cli.core.azclierror import ValidationError
 from azure.core.exceptions import HttpResponseError, ResourceNotFoundError
@@ -30,6 +31,7 @@ from .common import (
     LIVE_DATA_PROFILE_NAME,
     LIVE_DATA_TOPIC_TEMPLATE,
     LIVE_DATA_TOPICSPACE_PREFIX,
+    LIVE_DATA_USER_ROLE_ID,
     LiveDataRoleScope,
 )
 from .eg_provider_base import EgNamespaceContext, EventGridProviderBase, graceful_delete
@@ -119,6 +121,7 @@ class LiveData(EventGridProviderBase):
         ra_scope: Optional[str] = None,
         adr_role_ids: Optional[List[str]] = None,
         ops_role_ids: Optional[List[str]] = None,
+        user_object_ids: Optional[List[str]] = None,
         skip_role_assignments: Optional[bool] = None,
         no_progress: Optional[bool] = None,
         **kwargs,
@@ -135,6 +138,14 @@ class LiveData(EventGridProviderBase):
                 "Event Grid Namespaces with MQTT, which is not supported in the active cloud."
             )
 
+        if skip_role_assignments and user_object_ids:
+            logger.warning(
+                "Both --skip-ra and --user-object-ids were provided. "
+                "Skipping all role assignments because --skip-ra takes precedence."
+            )
+            resolved_user_object_ids: List[str] = []
+        else:
+            resolved_user_object_ids = self._normalize_user_object_ids(user_object_ids)
         resolved_scope = LiveDataRoleScope(ra_scope) if ra_scope else LiveDataRoleScope.NAMESPACE
 
         analyzing_cats = {"Analyzing": ["Instance resolution", "EG namespace validation", "UAMI resolution"]}
@@ -176,7 +187,10 @@ class LiveData(EventGridProviderBase):
             cat_adr: ["Outbound identity", "Observability endpoint"],
         }
         if not skip_role_assignments:
-            config_cats[cat_roles] = ["Publisher (instance)", "Subscriber (namespace)"]
+            role_steps = ["Publisher (instance)", "Subscriber (namespace)"]
+            if resolved_user_object_ids:
+                role_steps.append("Reader (users)")
+            config_cats[cat_roles] = role_steps
 
         with WorkflowDisplay(
             "Live Data Enablement", config_cats, transient=False, no_progress=no_progress,
@@ -271,6 +285,18 @@ class LiveData(EventGridProviderBase):
                     display.update_step(cat_roles, "Subscriber (namespace)", StepState.FAILED, str(exc)[:40])
                     raise
 
+                if resolved_user_object_ids:
+                    display.update_step(cat_roles, "Reader (users)", StepState.ACTIVE)
+                    try:
+                        role_assignments_result["users"] = self._setup_user_role_assignments(
+                            adr_namespace_id=adr_ns_ref,
+                            user_object_ids=resolved_user_object_ids,
+                        )
+                        display.update_step(cat_roles, "Reader (users)", StepState.COMPLETE, "done")
+                    except Exception as exc:
+                        display.update_step(cat_roles, "Reader (users)", StepState.FAILED, str(exc)[:40])
+                        raise
+
         for sub_result in [topic_space_result, profile_result, endpoint_result]:
             sub_result.pop("exists", None)
             sub_result.pop("updated", None)
@@ -302,6 +328,122 @@ class LiveData(EventGridProviderBase):
             result["roleAssignments"] = role_assignments_result
 
         return result
+
+    @staticmethod
+    def _normalize_user_object_ids(user_object_ids: Optional[List[str]]) -> List[str]:
+        """Validate and de-duplicate Microsoft Entra user object IDs."""
+        normalized: List[str] = []
+        seen = set()
+        for object_id in user_object_ids or []:
+            try:
+                value = str(UUID(object_id))
+            except (AttributeError, TypeError, ValueError):
+                raise ValidationError(
+                    f"Invalid Microsoft Entra user object ID '{object_id}'. Provide GUID object IDs."
+                )
+            if value not in seen:
+                seen.add(value)
+                normalized.append(value)
+        return normalized
+
+    def _setup_user_role_assignments(
+        self,
+        adr_namespace_id: str,
+        user_object_ids: List[str],
+    ) -> Dict:
+        """Grant Reader to explicit users at the Device Registry namespace scope."""
+        parsed_adr = parse_resource_id_dict(adr_namespace_id)
+        subscription_id = parsed_adr.get("subscription", "")
+        if not subscription_id:
+            raise ValidationError(
+                f"Malformed ADR namespace resource Id '{adr_namespace_id}'. Could not extract subscription Id."
+            )
+
+        role_def_id = ROLE_DEF_FORMAT_STR.format(
+            subscription_id=subscription_id,
+            role_id=LIVE_DATA_USER_ROLE_ID,
+        )
+        manager = PermissionManager(subscription_id)
+        assignments: List[Dict] = []
+        for user_object_id in user_object_ids:
+            try:
+                role_assignment, created = manager.ensure_role_assignment(
+                    scope=adr_namespace_id,
+                    principal_id=user_object_id,
+                    role_def_id=role_def_id,
+                    principal_type=PrincipalType.USER.value,
+                )
+            except HttpResponseError as e:
+                rolled_back, rollback_failures = self._rollback_user_role_assignments(manager, assignments)
+                rollback_detail = self._format_user_assignment_rollback_detail(rolled_back, rollback_failures)
+                raise ValidationError(
+                    f"Failed to assign Reader role to user '{user_object_id}' "
+                    f"on Device Registry namespace '{adr_namespace_id}'.\n"
+                    f"Error: {e.message}\n"
+                    f"  Scope: {adr_namespace_id}\n  Principal ID: {user_object_id}\n"
+                    f"  Role ID: {LIVE_DATA_USER_ROLE_ID}\n{rollback_detail}"
+                )
+
+            assignment_id = role_assignment.get("id", "") if role_assignment else ""
+            if not assignment_id:
+                rolled_back, rollback_failures = self._rollback_user_role_assignments(manager, assignments)
+                rollback_detail = self._format_user_assignment_rollback_detail(rolled_back, rollback_failures)
+                raise ValidationError(
+                    f"Reader role assignment for user '{user_object_id}' succeeded but no assignment Id was returned. "
+                    "The current assignment could not be targeted for cleanup.\n"
+                    f"{rollback_detail}"
+                )
+            assignments.append(
+                {
+                    "principalId": user_object_id,
+                    "assignmentId": assignment_id,
+                    "created": created,
+                }
+            )
+
+        return {
+            "roleId": LIVE_DATA_USER_ROLE_ID,
+            "scope": adr_namespace_id,
+            "preservedOnDisable": True,
+            "assignments": assignments,
+        }
+
+    @staticmethod
+    def _rollback_user_role_assignments(
+        manager: PermissionManager,
+        assignments: List[Dict],
+    ) -> Tuple[List[str], List[str]]:
+        """Remove assignments created earlier in the current operation."""
+        rolled_back: List[str] = []
+        rollback_failures: List[str] = []
+        for assignment in reversed(assignments):
+            if not assignment["created"]:
+                continue
+            assignment_id = assignment["assignmentId"]
+            try:
+                manager.delete_role_assignment(assignment_id)
+            except HttpResponseError:
+                rollback_failures.append(assignment_id)
+            else:
+                rolled_back.append(assignment_id)
+        return rolled_back, rollback_failures
+
+    @staticmethod
+    def _format_user_assignment_rollback_detail(
+        rolled_back: List[str],
+        rollback_failures: List[str],
+    ) -> str:
+        if rollback_failures:
+            detail = (
+                "Cleanup failed for newly created role assignment IDs: "
+                f"{', '.join(rollback_failures)}"
+            )
+            if rolled_back:
+                detail += f"\nRolled back role assignment IDs: {', '.join(rolled_back)}"
+            return detail
+        if rolled_back:
+            return f"Rolled back role assignment IDs: {', '.join(rolled_back)}"
+        return "No role assignments were created earlier in this operation."
 
     def show(
         self,

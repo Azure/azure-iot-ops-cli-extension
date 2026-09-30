@@ -10,6 +10,7 @@ from typing import Optional
 import pytest
 import responses
 from azure.cli.core.azclierror import ValidationError
+from azure.core.exceptions import HttpResponseError
 
 from azext_edge.edge.providers.orchestration.common import (
     EG_TOPICSPACES_PUBLISHER_ROLE_ID,
@@ -19,6 +20,7 @@ from azext_edge.edge.providers.orchestration.common import (
     LIVE_DATA_PROFILE_NAME,
     LIVE_DATA_TOPIC_TEMPLATE,
     LIVE_DATA_TOPICSPACE_PREFIX,
+    LIVE_DATA_USER_ROLE_ID,
     LiveDataRoleScope,
 )
 from azext_edge.edge.providers.orchestration.eg_provider_base import EgNamespaceContext
@@ -27,6 +29,7 @@ from azext_edge.edge.providers.orchestration.live_data import (
     _build_adr_observability_put_payload,
     get_live_data_topic_space_name,
 )
+from azext_edge.edge.providers.orchestration.permissions import PrincipalType
 
 from ...generators import BASE_URL, generate_random_string, generate_resource_id, get_zeroed_subscription
 
@@ -465,6 +468,122 @@ class TestSetupRoleAssignments:
         assert mock_pm.apply_role_assignment.call_count == 2
         for call in mock_pm.apply_role_assignment.call_args_list:
             assert call.kwargs["scope"] == eg_ctx.resource_id
+
+
+class TestSetupUserRoleAssignments:
+    USER_1 = "11111111-1111-1111-1111-111111111111"
+    USER_2 = "22222222-2222-2222-2222-222222222222"
+
+    def test_assigns_reader_and_reports_ids(self, mocked_cmd, mocker):
+        adr_namespace_id = _build_adr_namespace_resource_id("adr-ns", "rg")
+        manager = mocker.patch(
+            "azext_edge.edge.providers.orchestration.live_data.PermissionManager"
+        ).return_value
+        manager.ensure_role_assignment.side_effect = [
+            ({"id": "/assignments/new"}, True),
+            ({"id": "/assignments/existing"}, False),
+        ]
+
+        result = LiveData(cmd=mocked_cmd)._setup_user_role_assignments(
+            adr_namespace_id=adr_namespace_id,
+            user_object_ids=[self.USER_1, self.USER_2],
+        )
+
+        assert result == {
+            "roleId": LIVE_DATA_USER_ROLE_ID,
+            "scope": adr_namespace_id,
+            "preservedOnDisable": True,
+            "assignments": [
+                {"principalId": self.USER_1, "assignmentId": "/assignments/new", "created": True},
+                {"principalId": self.USER_2, "assignmentId": "/assignments/existing", "created": False},
+            ],
+        }
+        assert manager.ensure_role_assignment.call_count == 2
+        for call in manager.ensure_role_assignment.call_args_list:
+            assert call.kwargs["scope"] == adr_namespace_id
+            assert call.kwargs["principal_type"] == PrincipalType.USER.value
+            assert call.kwargs["role_def_id"].endswith(LIVE_DATA_USER_ROLE_ID)
+
+    def test_assignment_failure_identifies_user(self, mocked_cmd, mocker):
+        adr_namespace_id = _build_adr_namespace_resource_id("adr-ns", "rg")
+        manager = mocker.patch(
+            "azext_edge.edge.providers.orchestration.live_data.PermissionManager"
+        ).return_value
+        manager.ensure_role_assignment.side_effect = HttpResponseError(message="denied")
+
+        with pytest.raises(ValidationError, match=self.USER_1):
+            LiveData(cmd=mocked_cmd)._setup_user_role_assignments(
+                adr_namespace_id=adr_namespace_id,
+                user_object_ids=[self.USER_1],
+            )
+        manager.delete_role_assignment.assert_not_called()
+
+    def test_later_failure_rolls_back_only_new_assignments(self, mocked_cmd, mocker):
+        adr_namespace_id = _build_adr_namespace_resource_id("adr-ns", "rg")
+        manager = mocker.patch(
+            "azext_edge.edge.providers.orchestration.live_data.PermissionManager"
+        ).return_value
+        manager.ensure_role_assignment.side_effect = [
+            ({"id": "/assignments/existing"}, False),
+            ({"id": "/assignments/new"}, True),
+            HttpResponseError(message="denied"),
+        ]
+
+        with pytest.raises(ValidationError, match="Rolled back role assignment IDs"):
+            LiveData(cmd=mocked_cmd)._setup_user_role_assignments(
+                adr_namespace_id=adr_namespace_id,
+                user_object_ids=[
+                    self.USER_1,
+                    self.USER_2,
+                    "33333333-3333-3333-3333-333333333333",
+                ],
+            )
+
+        manager.delete_role_assignment.assert_called_once_with("/assignments/new")
+
+    def test_rollback_failure_reports_surviving_assignment_id(self, mocked_cmd, mocker):
+        adr_namespace_id = _build_adr_namespace_resource_id("adr-ns", "rg")
+        manager = mocker.patch(
+            "azext_edge.edge.providers.orchestration.live_data.PermissionManager"
+        ).return_value
+        manager.ensure_role_assignment.side_effect = [
+            ({"id": "/assignments/new"}, True),
+            HttpResponseError(message="denied"),
+        ]
+        manager.delete_role_assignment.side_effect = HttpResponseError(message="cleanup denied")
+
+        with pytest.raises(ValidationError, match="/assignments/new"):
+            LiveData(cmd=mocked_cmd)._setup_user_role_assignments(
+                adr_namespace_id=adr_namespace_id,
+                user_object_ids=[self.USER_1, self.USER_2],
+            )
+
+    def test_missing_assignment_id_raises(self, mocked_cmd, mocker):
+        adr_namespace_id = _build_adr_namespace_resource_id("adr-ns", "rg")
+        manager = mocker.patch(
+            "azext_edge.edge.providers.orchestration.live_data.PermissionManager"
+        ).return_value
+        manager.ensure_role_assignment.return_value = ({}, True)
+
+        with pytest.raises(ValidationError, match="no assignment Id was returned"):
+            LiveData(cmd=mocked_cmd)._setup_user_role_assignments(
+                adr_namespace_id=adr_namespace_id,
+                user_object_ids=[self.USER_1],
+            )
+
+
+class TestNormalizeUserObjectIds:
+    def test_normalizes_and_deduplicates(self):
+        assert LiveData._normalize_user_object_ids(
+            [
+                "AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
+                "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+            ]
+        ) == ["aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]
+
+    def test_invalid_id_raises(self):
+        with pytest.raises(ValidationError, match="Invalid Microsoft Entra user object ID"):
+            LiveData._normalize_user_object_ids(["not-a-guid"])
 
 
 # ---------------------------------------------------------------------------
@@ -938,6 +1057,7 @@ class TestEnable:
             LiveData, "_setup_role_assignments",
             return_value={"instance": {"principalId": "pub-pid"}, "adrNamespace": {"principalId": "adr-pid"}},
         )
+        setup_user_ra = mocker.patch.object(LiveData, "_setup_user_role_assignments")
         _register_enable_mocks(mocked_responses, instance_name, rg, ns_name, adr_ns, eg_rid, hostname, instance_rid)
 
         provider = LiveData(cmd=mocked_cmd)
@@ -953,6 +1073,7 @@ class TestEnable:
         assert result["instance"]["dataflowEndpoint"]["name"] == LIVE_DATA_ENDPOINT_NAME
         assert result["eventGrid"]["namespace"]["name"] == ns_name
         assert result["deviceRegistryNamespace"]["outboundIdentity"] == {"type": "SystemAssigned"}
+        setup_user_ra.assert_not_called()
 
     def test_cloud_gate_blocks(self, mocked_cmd, mocker):
         cloud = mocker.MagicMock()
@@ -962,7 +1083,7 @@ class TestEnable:
         with pytest.raises(ValidationError, match="not available in this cloud"):
             provider.enable(name="i", resource_group_name="rg", eg_resource_id="eg", wait_sec=0)
 
-    def test_skip_role_assignments(self, mocked_cmd, mocked_responses: responses, mocker):
+    def test_skip_role_assignments(self, mocked_cmd, mocked_responses: responses, mocker, caplog):
         rg = generate_random_string()
         instance_name = generate_random_string()
         ns_name = generate_random_string()
@@ -974,15 +1095,66 @@ class TestEnable:
             f"/providers/{IOTOPS_RP}/instances/{instance_name}"
         )
         setup_ra = mocker.patch.object(LiveData, "_setup_role_assignments")
+        setup_user_ra = mocker.patch.object(LiveData, "_setup_user_role_assignments")
         _register_enable_mocks(mocked_responses, instance_name, rg, ns_name, adr_ns, eg_rid, hostname, instance_rid)
 
         provider = LiveData(cmd=mocked_cmd)
         result = provider.enable(
             name=instance_name, resource_group_name=rg, eg_resource_id=eg_rid,
+            user_object_ids=["not-a-guid"],
             skip_role_assignments=True, wait_sec=0,
         )
         assert "roleAssignments" not in result
         setup_ra.assert_not_called()
+        setup_user_ra.assert_not_called()
+        assert "--skip-ra takes precedence" in caplog.text
+
+    def test_user_role_assignments_in_result(self, mocked_cmd, mocked_responses: responses, mocker):
+        rg = generate_random_string()
+        instance_name = generate_random_string()
+        ns_name = generate_random_string()
+        adr_ns = f"{instance_name}-adr-ns"
+        eg_rid = _build_eg_resource_id(ns_name, rg)
+        hostname = f"{ns_name}.eastus-1.ts.eventgrid.azure.net"
+        instance_rid = (
+            f"/subscriptions/{ZEROED_SUBSCRIPTION}/resourceGroups/{rg}"
+            f"/providers/{IOTOPS_RP}/instances/{instance_name}"
+        )
+        user_object_id = "11111111-1111-1111-1111-111111111111"
+        mocker.patch.object(LiveData, "_resolve_ops_extension_identity", return_value="pub-pid")
+        mocker.patch.object(
+            LiveData,
+            "_setup_role_assignments",
+            return_value={"instance": {}, "adrNamespace": {}},
+        )
+        user_result = {
+            "roleId": LIVE_DATA_USER_ROLE_ID,
+            "scope": _build_adr_namespace_resource_id(adr_ns, rg),
+            "preservedOnDisable": True,
+            "assignments": [{"principalId": user_object_id, "assignmentId": "/assignment", "created": True}],
+        }
+        setup_user_ra = mocker.patch.object(
+            LiveData,
+            "_setup_user_role_assignments",
+            return_value=user_result,
+        )
+        _register_enable_mocks(
+            mocked_responses, instance_name, rg, ns_name, adr_ns, eg_rid, hostname, instance_rid
+        )
+
+        result = LiveData(cmd=mocked_cmd).enable(
+            name=instance_name,
+            resource_group_name=rg,
+            eg_resource_id=eg_rid,
+            user_object_ids=[user_object_id],
+            wait_sec=0,
+        )
+
+        assert result["roleAssignments"]["users"] == user_result
+        setup_user_ra.assert_called_once_with(
+            adr_namespace_id=_build_adr_namespace_resource_id(adr_ns, rg),
+            user_object_ids=[user_object_id],
+        )
 
     def test_ra_scope_topic_space(self, mocked_cmd, mocked_responses: responses, mocker):
         rg = generate_random_string()
@@ -1363,10 +1535,17 @@ class TestCommandAdapters:
         mock_provider = mocker.MagicMock()
         mocker.patch.object(commands_live_data, "LiveData", return_value=mock_provider)
         commands_live_data.live_data_enable(
-            cmd=mocker.MagicMock(), instance_name="i", resource_group_name="rg", eg_resource_id="eg",
+            cmd=mocker.MagicMock(),
+            instance_name="i",
+            resource_group_name="rg",
+            eg_resource_id="eg",
+            user_object_ids=["11111111-1111-1111-1111-111111111111"],
         )
         mock_provider.enable.assert_called_once()
         assert mock_provider.enable.call_args.kwargs["name"] == "i"
+        assert mock_provider.enable.call_args.kwargs["user_object_ids"] == [
+            "11111111-1111-1111-1111-111111111111"
+        ]
 
     def test_show_delegates(self, mocker):
         from azext_edge.edge import commands_live_data
