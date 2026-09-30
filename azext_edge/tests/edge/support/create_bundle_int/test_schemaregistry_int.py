@@ -13,9 +13,9 @@ from .helpers import check_cluster_label_coverage, check_workload_resource_files
 logger = get_logger(__name__)
 
 pytestmark = pytest.mark.e2e
-SCHEMA_PREFIXES = ["adr-schema-registry"]
+SCHEMA_PREFIXES = ["aio-edge-registry"]
 SCHEMA_WORKLOAD_TYPES = ["configmap", "pod", "service", "statefulset", "pvc"]
-SCHEMA_LABEL = ("app.kubernetes.io/name", "microsoft-iotoperations-schemas")
+SCHEMA_LABEL = ("app.kubernetes.io/name", "aio-edge-registry")
 
 
 def test_create_bundle_schemas(cluster_connection, tracked_files):

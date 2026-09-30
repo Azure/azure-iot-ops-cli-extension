@@ -387,7 +387,16 @@ def assert_broker_args(
             "subscriberQueueSettings": {"dynamic": {"mode": "Enabled"}},
         }
     else:
-        assert "persistence" not in broker_props
+        persistence = broker_props["persistence"]
+        assert persistence["maxSize"] == "3Gi"
+        assert persistence["encryption"]["mode"] == "Enabled"
+        assert persistence["persistentVolumeClaimSpec"]["accessModes"] == ["ReadWriteOncePod"]
+        assert persistence["retain"] == {"mode": "None"}
+        assert persistence["stateStore"] == {
+            "mode": "Custom",
+            "stateStoreSettings": {"dynamic": {"mode": "Enabled"}},
+        }
+        assert persistence["subscriberQueue"] == {"mode": "None"}
 
     # nothing interesting in the authn
     authns = run(f"az iot ops broker authn list -g {resource_group} -i {instance_name} -b {broker_name}")
