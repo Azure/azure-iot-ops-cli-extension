@@ -37,6 +37,11 @@ scenarios:
     tox_env: python-mgmtactions-int
     parallel: false
 
+  - name: livedata
+    description: "Live Data tests"
+    tox_env: python-livedata-int
+    parallel: false
+
   - name: redeploy
     description: "Redeployment tests (OPC UA disabled)"
     test_redeploy: true
