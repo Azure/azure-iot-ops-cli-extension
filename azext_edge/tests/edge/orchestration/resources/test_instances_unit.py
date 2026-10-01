@@ -41,6 +41,7 @@ from azext_edge.edge.providers.orchestration.resources.instances import (
     get_spc_name,
     parse_feature_kvp_nargs,
 )
+from azext_edge.edge.util.az_client import IoTOpsMgmtApiVersion
 from azext_edge.edge.util.machinery import scoped_semver_import
 from ....generators import (
     generate_random_string,
@@ -236,7 +237,11 @@ def test_instance_show(mocked_cmd, mocked_responses: responses):
     mock_instance_record = get_mock_instance_record(name=instance_name, resource_group_name=resource_group_name)
     mocked_responses.add(
         method=responses.GET,
-        url=get_instance_endpoint(resource_group_name=resource_group_name, instance_name=instance_name),
+        url=get_instance_endpoint(
+            resource_group_name=resource_group_name,
+            instance_name=instance_name,
+            api_version=IoTOpsMgmtApiVersion.V20260901PREVIEW.value,
+        ),
         json=mock_instance_record,
         status=200,
         content_type="application/json",
@@ -296,7 +301,10 @@ def test_instance_list(mocked_cmd, mocked_responses: responses, resource_group_n
 
     mocked_responses.add(
         method=responses.GET,
-        url=get_instance_endpoint(resource_group_name=resource_group_name),
+        url=get_instance_endpoint(
+            resource_group_name=resource_group_name,
+            api_version=IoTOpsMgmtApiVersion.V20260901PREVIEW.value,
+        ),
         json=mock_instance_records,
         status=200,
         content_type="application/json",

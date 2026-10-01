@@ -12,6 +12,12 @@ from ..generators import generate_random_string
 AZ_CLIENT_PATH = "azext_edge.edge.util.az_client"
 
 
+def test_default_iotops_management_api_remains_stable():
+    from azext_edge.edge.util.az_client import DEFAULT_IOTOPS_MGMT_API_VERSION, IoTOpsMgmtApiVersion
+
+    assert DEFAULT_IOTOPS_MGMT_API_VERSION is IoTOpsMgmtApiVersion.V20260701
+
+
 @pytest.mark.parametrize("done", [True, False])
 def test_wait_for_terminal_state(mocker, done):
     # could be fixture with param

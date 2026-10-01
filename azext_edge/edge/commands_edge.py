@@ -24,6 +24,7 @@ from .providers.orchestration.common import (
 )
 from .providers.orchestration.resources import Instances
 from .providers.support.base import get_bundle_path
+from .util.az_client import IoTOpsMgmtApiVersion
 
 logger = get_logger(__name__)
 
@@ -358,11 +359,15 @@ def delete(
 
 
 def show_instance(cmd, instance_name: str, resource_group_name: str, show_tree: Optional[bool] = None) -> dict:
-    return Instances(cmd).show(name=instance_name, resource_group_name=resource_group_name, show_tree=show_tree)
+    return Instances(cmd, api_version=IoTOpsMgmtApiVersion.V20260901PREVIEW).show(
+        name=instance_name,
+        resource_group_name=resource_group_name,
+        show_tree=show_tree,
+    )
 
 
 def list_instances(cmd, resource_group_name: Optional[str] = None) -> Iterable[dict]:
-    return Instances(cmd).list(resource_group_name)
+    return Instances(cmd, api_version=IoTOpsMgmtApiVersion.V20260901PREVIEW).list(resource_group_name)
 
 
 def update_instance(

@@ -24,6 +24,8 @@ from rich import print
 from rich.console import Console
 
 from ....util.az_client import (
+    DEFAULT_IOTOPS_MGMT_API_VERSION,
+    IoTOpsMgmtApiVersion,
     ResourceIdContainer,
     get_iotops_mgmt_client,
     get_keyvault_client,
@@ -193,11 +195,17 @@ def get_enable_syntax(instance_name: str, resource_group_name: str) -> str:
 
 
 class Instances(Queryable):
-    def __init__(self, cmd, subscription_id: Optional[str] = None):
+    def __init__(
+        self,
+        cmd,
+        subscription_id: Optional[str] = None,
+        api_version: IoTOpsMgmtApiVersion = DEFAULT_IOTOPS_MGMT_API_VERSION,
+    ):
         # TODO: make sure this works correctly
         # TODO: longer term pattern?
         super().__init__(cmd=cmd, subscriptions=[subscription_id] if subscription_id else None)
         self.iotops_mgmt_client = get_iotops_mgmt_client(
+            api_version=api_version,
             **self._get_client_kwargs(subscription_id=self.subscriptions[0])
         )
         self.msi_mgmt_client = get_msi_mgmt_client(
