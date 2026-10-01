@@ -20,7 +20,6 @@ from azext_edge.edge.providers.orchestration.template import (
     TemplateBlueprint,
     get_insecure_listener,
 )
-from azext_edge.edge.util.az_client import DEFAULT_IOTOPS_MGMT_API_VERSION
 
 from ...generators import generate_random_string
 
@@ -103,7 +102,7 @@ def test_instance_template():
     assert len(listeners) == 2
 
 
-def test_instance_resource_api_versions_match_client_default():
+def test_instance_resource_api_versions_use_preview_contract():
     iot_operations_resources = [
         resource
         for resource in TEMPLATE_BLUEPRINT_INSTANCE.content["resources"].values()
@@ -111,10 +110,7 @@ def test_instance_resource_api_versions_match_client_default():
     ]
 
     assert iot_operations_resources
-    assert all(
-        resource["apiVersion"] == DEFAULT_IOTOPS_MGMT_API_VERSION.value
-        for resource in iot_operations_resources
-    )
+    assert all(resource["apiVersion"] == "2026-09-01-preview" for resource in iot_operations_resources)
 
 
 @pytest.mark.parametrize(
@@ -191,3 +187,12 @@ def test_instance_extension_versions(extension_type, version, train):
     moniker = EXTENSION_TYPE_TO_MONIKER_MAP[extension_type]
     assert TEMPLATE_BLUEPRINT_INSTANCE.content["variables"]["VERSIONS"][moniker] == version
     assert TEMPLATE_BLUEPRINT_INSTANCE.content["variables"]["TRAINS"][moniker] == train
+
+
+def test_instance_sku_uses_preview_api():
+    instance = TEMPLATE_BLUEPRINT_INSTANCE.get_resource_by_key("aioInstance")
+
+    assert instance["apiVersion"] == "2026-09-01-preview"
+    assert instance["sku"] == (
+        "[if(not(equals(parameters('sku'), null())), createObject('name', parameters('sku')), null())]"
+    )
