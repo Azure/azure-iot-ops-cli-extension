@@ -22,7 +22,9 @@ from azext_edge.edge.providers.orchestration.common import (
     RegistryEndpointAuthenticationType,
 )
 from azext_edge.edge.providers.orchestration.resources import RegistryEndpoints
-from azext_edge.tests.edge.orchestration.resources.conftest import get_base_endpoint, get_mock_resource
+from azext_edge.tests.edge.orchestration.resources.conftest import (
+    INSTANCES_API_VERSION, get_base_endpoint, get_mock_resource,
+)
 from azext_edge.tests.edge.orchestration.resources.test_instances_unit import (
     get_instance_endpoint,
     get_mock_instance_record,
@@ -31,12 +33,15 @@ from azext_edge.tests.generators import generate_random_string
 
 
 def get_registry_endpoint_endpoint(
-    instance_name: str, resource_group_name: str, registry_endpoint_name: Optional[str] = None
+    instance_name: str, resource_group_name: str, registry_endpoint_name: Optional[str] = None,
+    api_version: str = INSTANCES_API_VERSION,
 ) -> str:
     resource_path = f"/instances/{instance_name}/registryEndpoints"
     if registry_endpoint_name:
         resource_path += f"/{registry_endpoint_name}"
-    return get_base_endpoint(resource_group_name=resource_group_name, resource_path=resource_path)
+    return get_base_endpoint(
+        resource_group_name=resource_group_name, resource_path=resource_path, api_version=api_version,
+    )
 
 
 def get_mock_registry_endpoint_record(

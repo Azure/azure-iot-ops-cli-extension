@@ -201,6 +201,15 @@ class ServiceGenerator:
             omit_methods = frozenset([])
 
         omit_methods = omit_methods.union(override_omit_http_method)
+        # Resource Graph POST is a read. Negative create tests still allow discovery
+        # while rejecting every deployment/provider-registration write.
+        if responses.POST in omit_methods:
+            self.mocked_responses.assert_all_requests_are_fired = False
+            self.mocked_responses.add_callback(
+                method=responses.POST,
+                url=re.compile(r"https://management\.azure\.com/providers/Microsoft\.ResourceGraph/resources.*"),
+                callback=self._handle_requests,
+            )
         for method in [
             responses.GET,
             responses.HEAD,
@@ -366,7 +375,13 @@ class ServiceGenerator:
             ):
                 assert request_kpis.params["api-version"] == ExpectedAPIVersion.CLUSTER_EXTENSION.value
                 self.call_map[CallKey.GET_CLUSTER_EXTENSIONS].append(request_kpis)
-                return (200, STANDARD_HEADERS, json.dumps(self.scenario["cluster"]["extensions"]))
+                extensions = self.scenario["cluster"]["extensions"]
+                if not self.call_map[CallKey.DEPLOY_CREATE_EXT] and not self.scenario.get("existing_ops_extension"):
+                    extensions = {"value": [
+                        ext for ext in extensions["value"]
+                        if ext["properties"]["extensionType"].lower() != EXTENSION_TYPE_OPS
+                    ]}
+                return (200, STANDARD_HEADERS, json.dumps(extensions))
 
         if request_kpis.method == responses.PUT:
             self._assert_correlation_headers(request_kpis)
@@ -1581,6 +1596,7 @@ def assert_instance_deployment_body(body_str: str, target_scenario: dict, phase:
     assert set(parameters["clExtensionIds"]["value"]) == cl_extension_ids
     assert parameters["schemaRegistryId"]["value"] == target_scenario["schemaRegistry"]["id"]
     assert parameters["adrNamespaceId"]["value"] == target_scenario["adrNamespace"]["id"]
+    assert parameters["aioInstanceName"]["value"] == target_scenario["instance"]["name"].lower()
 
     # TODO - eventually delete.
     assert "deployResourceSyncRules" not in parameters
@@ -1643,11 +1659,11 @@ def assert_instance_deployment_body(body_str: str, target_scenario: dict, phase:
         if target_scenario["instance"]["tags"]:
             assert resources["aioInstance"]["tags"] == target_scenario["instance"]["tags"]
         instance_features = target_scenario.get("instance_features")
+        assert resources["aioInstance"]["properties"]["features"] == "[variables('effectiveFeatures')]"
         if instance_features:
-            assert resources["aioInstance"]["properties"]["features"]
+            assert parameters["features"]["value"]
         else:
-            # TODO: think about general 'not in' or 'not' pattern
-            assert not resources["aioInstance"]["properties"]["features"]
+            assert "features" not in parameters
 
     if phase in [InstancePhase.RESOURCES]:
         assert resources["broker"]["name"] == f"{instance_name_lowered}/{DEFAULT_BROKER}"

@@ -51,6 +51,7 @@ from .resources.conftest import (
     CLUSTER_EXTENSIONS_API_VERSION,
     CLUSTER_EXTENSIONS_URL_MATCH_RE,
     CONNECTED_CLUSTER_API_VERSION,
+    INSTANCES_API_VERSION,
     get_base_endpoint,
     get_mock_resource,
 )
@@ -232,17 +233,29 @@ def spy_upgrade_displays(mocker):
 
 @pytest.fixture
 def mocked_upgrade_manager():
-    # Patch InitTargets.get_extension_versions to return stable trains for testing
+    from azext_edge.edge.providers.orchestration.runtime_profiles import RuntimeChannel, RuntimeProfileCatalog
+    from .test_runtime_profiles_unit import make_profile
+
+    version = InitTargets(cluster_name="cluster", resource_group_name="rg").get_extension_versions(False)[
+        EXTENSION_MONIKER_OPS
+    ]["version"]
+    catalog = RuntimeProfileCatalog([
+        make_profile(RuntimeChannel.STABLE, version, opcua_connector_version=OPCUA_CONNECTOR_VERSION),
+        make_profile(RuntimeChannel.PREVIEW, "1.6.0-preview.10", opcua_connector_version=OPCUA_CONNECTOR_VERSION),
+    ])
+    # Use explicit synthetic release inputs rather than relabel production templates.
     original_get_extension_versions = InitTargets.get_extension_versions
 
     def patched_get_extension_versions(self, for_enablement=True):
         versions = original_get_extension_versions(self, for_enablement)
         # Override non-stable trains for IoT Operations only
-        if EXTENSION_MONIKER_OPS in versions and versions[EXTENSION_MONIKER_OPS].get("train", "").lower() != "stable":
+        if EXTENSION_MONIKER_OPS in versions and versions[EXTENSION_MONIKER_OPS].get("train") == "integration":
             versions[EXTENSION_MONIKER_OPS]["train"] = "stable"
         return versions
 
-    with patch.object(InitTargets, "get_extension_versions", patched_get_extension_versions) as mock:
+    with patch.object(InitTargets, "get_extension_versions", patched_get_extension_versions) as mock, patch(
+        "azext_edge.edge.providers.orchestration.upgrade2.get_runtime_catalog", return_value=catalog
+    ):
         yield mock
 
 
@@ -293,7 +306,9 @@ class UpgradeScenario:
                 "properties": {
                     "extensionType": ext_type,
                     "version": vers,
+                    "currentVersion": vers,
                     "releaseTrain": train,
+                    "autoUpgradeMinorVersion": False,
                     "configurationSettings": {},
                     "provisioningState": PROVISIONING_STATE_SUCCESS,
                 },
@@ -358,6 +373,7 @@ class UpgradeScenario:
                     "extensionType": ext_type,
                     "version": actual_vers,
                     "releaseTrain": actual_train,
+                    "autoUpgradeMinorVersion": False,
                     "configurationSettings": config_settings or {},
                     "provisioningState": provisioning_state or PROVISIONING_STATE_SUCCESS,
                 },
@@ -371,6 +387,7 @@ class UpgradeScenario:
                 self.extensions[ext_type]["properties"]["provisioningState"] = provisioning_state
             if config_settings is not None:
                 self.extensions[ext_type]["properties"]["configurationSettings"] = config_settings
+        self.extensions[ext_type]["properties"]["currentVersion"] = actual_vers
         return self
 
     def set_response_on_patch(
@@ -396,8 +413,12 @@ class UpgradeScenario:
 
         return self
 
-    def set_instance_mock(self: T, mocked_responses: responses, instance_name: str, resource_group_name: str) -> T:
+    def set_instance_mock(
+        self: T, mocked_responses: responses, instance_name: str, resource_group_name: str,
+        iotops_api_version: str = INSTANCES_API_VERSION,
+    ) -> T:
         mocked_responses.assert_all_requests_are_fired = False
+        self.iotops_api_version = iotops_api_version
 
         # Always use version 1.2.0+ (which includes ADR namespace)
         # unless explicitly testing scenario without ADR
@@ -432,6 +453,12 @@ class UpgradeScenario:
 
         # Track if instance update was called
         self.instance_update_called = False
+        if iotops_api_version != INSTANCES_API_VERSION:
+            mocked_responses.add(
+                responses.GET,
+                get_instance_endpoint(resource_group_name, instance_name, api_version=iotops_api_version),
+                json=mock_instance_record,
+            )
 
         # Add instance update mock if expected
         if self.expect_instance_update:
@@ -469,12 +496,22 @@ class UpgradeScenario:
 
             mocked_responses.add_callback(
                 method=responses.PUT,
-                url=get_instance_endpoint(resource_group_name=resource_group_name, instance_name=instance_name),
+                url=get_instance_endpoint(
+                    resource_group_name=resource_group_name, instance_name=instance_name,
+                    api_version=iotops_api_version,
+                ),
                 callback=instance_update_callback,
             )
 
         cl_name = generate_random_string()
         mock_cl_record = get_mock_cl_record(name=cl_name, resource_group_name=resource_group_name)
+        mock_cl_record["id"] = mock_instance_record["extendedLocation"]["name"]
+        cluster_id = mock_cl_record["properties"]["hostResourceId"]
+        for extension in self.extensions.values():
+            extension["id"] = (
+                f"{cluster_id}/providers/Microsoft.KubernetesConfiguration/extensions/{extension['name']}"
+            )
+        mock_cl_record["properties"]["clusterExtensionIds"] = [ext["id"] for ext in self.extensions.values()]
         mocked_responses.add(
             method=responses.GET,
             url=f"{BASE_URL}{mock_instance_record['extendedLocation']['name']}",
@@ -486,6 +523,7 @@ class UpgradeScenario:
         mock_cluster_record = get_mock_cluster_record(
             resource_group_name=resource_group_name, connected_status=self.cluster_connected_status
         )
+        mock_cluster_record["id"] = cluster_id
         mocked_responses.add(
             method=responses.GET,
             url=get_cluster_endpoint(resource_group_name=resource_group_name),
@@ -731,7 +769,7 @@ class UpgradeScenario:
     def _setup_registry_endpoint_mocks(self, mocked_responses: responses, instance_name: str, resource_group_name: str):
         """Set up registry endpoint mocks for tests."""
         list_endpoint = get_registry_endpoint_endpoint(
-            instance_name=instance_name, resource_group_name=resource_group_name
+            instance_name=instance_name, resource_group_name=resource_group_name, api_version=self.iotops_api_version,
         )
 
         # Determine test configuration
@@ -763,7 +801,8 @@ class UpgradeScenario:
 
         # Always add PUT mock for creation attempts
         create_endpoint = get_registry_endpoint_endpoint(
-            instance_name=instance_name, resource_group_name=resource_group_name, registry_endpoint_name="default"
+            instance_name=instance_name, resource_group_name=resource_group_name, registry_endpoint_name="default",
+            api_version=self.iotops_api_version,
         )
 
         def registry_create_callback(request):
@@ -790,7 +829,7 @@ class UpgradeScenario:
     ):
         """Set up default OPC UA connector template mocks for tests."""
         list_endpoint = get_connector_template_endpoint(
-            instance_name=instance_name, resource_group_name=resource_group_name
+            instance_name=instance_name, resource_group_name=resource_group_name, api_version=self.iotops_api_version,
         )
         base_list_url = list_endpoint.split("?")[0]
 
@@ -825,7 +864,10 @@ class UpgradeScenario:
             )
 
         # Always add PUT mock for creation attempts (name is instance-derived).
-        create_endpoint = re.compile(re.escape(base_list_url) + r"/azureiotoperationsconnectorforopcua-[a-z0-9]+")
+        create_endpoint = re.compile(
+            re.escape(base_list_url) + r"/azureiotoperationsconnectorforopcua-[a-z0-9]+"
+            + re.escape("?" + list_endpoint.split("?", 1)[1]) + "$"
+        )
 
         def connector_template_create_callback(request):
             assert_upgrade_headers(request.headers)
@@ -839,7 +881,9 @@ class UpgradeScenario:
                 "imageConfigurationSettings"
             ]
             assert image_settings["imageName"] == "azureiotoperations/aio-connectors/supervisor"
-            assert image_settings["tagDigestSettings"]["tag"] == OPCUA_CONNECTOR_VERSION
+            assert image_settings["tagDigestSettings"]["tag"] == self.aux_kwargs.get(
+                "opcua_connector_version", OPCUA_CONNECTOR_VERSION,
+            )
 
             template_name = request.path_url.split("?")[0].split("/")[-1]
             response_body = deepcopy(body)
@@ -1093,25 +1137,27 @@ def assert_operation_order(target_scenario: UpgradeScenario, upgrade_result: Lis
         (
             UpgradeScenario("No-op: Version ahead with different train").set_extension(
                 ext_type=EXTENSION_TYPE_OPS, ext_vers="9.9.9", ext_train="custom-train"
-            ),
+            ).expecting_validation_error("no supported runtime profile mapping"),
             {},
         ),
         # ========== Train-only updates (version unchanged) ==========
         (
             UpgradeScenario("Train update: Auto-increment when version matches desired").set_extension(
                 ext_type=EXTENSION_TYPE_OPS, ext_train="old-train"
-            ),
-            {EXTENSION_TYPE_OPS: build_extension_props(EXTENSION_TYPE_OPS, train=BUILT_IN_VALUE)},
+            ).expecting_validation_error("no supported runtime profile mapping"),
+            {},
         ),
         (
-            UpgradeScenario("Train update: Explicit train override").set_user_kwargs(ops_train="custom-train"),
-            {EXTENSION_TYPE_OPS: build_extension_props(EXTENSION_TYPE_OPS, train="custom-train")},
+            UpgradeScenario("Train update: Explicit train override").set_user_kwargs(ops_train="custom-train")
+            .expecting_validation_error("Cross-train upgrades"),
+            {},
         ),
         (
             UpgradeScenario("Train update: No auto-increment with explicit version")
             .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_train="old-train")
-            .set_user_kwargs(ops_version="9.9.9", force=True),
-            {EXTENSION_TYPE_OPS: build_extension_props(EXTENSION_TYPE_OPS, version="9.9.9")},
+            .set_user_kwargs(ops_version="9.9.9", force=True)
+            .expecting_validation_error("no supported runtime profile mapping"),
+            {},
         ),
         # ========== Standard version upgrades ==========
         (
@@ -1129,8 +1175,9 @@ def assert_operation_order(target_scenario: UpgradeScenario, upgrade_result: Lis
         (
             UpgradeScenario("Version upgrade: Dev version string")
             .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.1.0-main.20250425.8")
-            .set_user_kwargs(ops_version="1.1.0-main.20250425.9"),
-            {EXTENSION_TYPE_OPS: build_extension_props(EXTENSION_TYPE_OPS, version="1.1.0-main.20250425.9")},
+            .set_user_kwargs(ops_version="1.1.0-main.20250425.9")
+            .expecting_validation_error("conflicts with the stable runtime profile"),
+            {},
         ),
         # ========== Downgrade validation ==========
         (
@@ -1155,10 +1202,11 @@ def assert_operation_order(target_scenario: UpgradeScenario, upgrade_result: Lis
             {},
         ),
         (
-            UpgradeScenario("Major version allowed with force")
+            UpgradeScenario("Major version blocked with force")
             .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="0.1.0")
-            .set_user_kwargs(ops_version="1.0.0", force=True),
-            {EXTENSION_TYPE_OPS: build_extension_props(EXTENSION_TYPE_OPS, version="1.0.0")},
+            .set_user_kwargs(ops_version="1.0.0", force=True)
+            .expecting_validation_error(r"incompatible \(different major version\)"),
+            {},
         ),
         # ========== Minor version gap validation (ops only) ==========
         (
@@ -1175,10 +1223,11 @@ def assert_operation_order(target_scenario: UpgradeScenario, upgrade_result: Lis
             {EXTENSION_TYPE_OPS: build_extension_props(EXTENSION_TYPE_OPS, version="1.2.0")},
         ),
         (
-            UpgradeScenario("Minor version allowed with force: 3+ versions")
+            UpgradeScenario("Minor version blocked with force: 3+ versions")
             .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.0.0")
-            .set_user_kwargs(ops_version="1.3.0", force=True),
-            {EXTENSION_TYPE_OPS: build_extension_props(EXTENSION_TYPE_OPS, version="1.3.0")},
+            .set_user_kwargs(ops_version="1.3.0", force=True)
+            .expecting_validation_error(r"incompatible \(more than 2 minor versions ahead\)"),
+            {},
         ),
         # ========== Minimum version requirement for v2 (ops only) ==========
         (
@@ -1214,58 +1263,63 @@ def assert_operation_order(target_scenario: UpgradeScenario, upgrade_result: Lis
             {EXTENSION_TYPE_OPS: build_extension_props(EXTENSION_TYPE_OPS, version="1.2.35")},
         ),
         (
-            UpgradeScenario("Min v2 allowed with force")
+            UpgradeScenario("Min v2 blocked with force")
             .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.0.0")
-            .set_user_kwargs(ops_version="1.2.36", force=True),
-            {EXTENSION_TYPE_OPS: build_extension_props(EXTENSION_TYPE_OPS, version="1.2.36")},
+            .set_user_kwargs(ops_version="1.2.36", force=True)
+            .expecting_validation_error(r"min compatible upgrade version.*1\.1\.59"),
+            {},
         ),
-        # ========== Preview train validation (blocks all changes except identical version+train) ==========
+        # ========== Preview runtime progression and non-bypassable channel boundary ==========
         (
             UpgradeScenario("Preview train blocked: From preview to stable with version change")
-            .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.0.0", ext_train="preview")
-            .set_user_kwargs(ops_version="1.1.0")
-            .expecting_validation_error(r"Upgrades to or from non-stable release trains are not supported"),
+            .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.6.0-preview.4", ext_train="preview")
+            .set_user_kwargs(ops_version="1.6.0", ops_train="stable")
+            .expecting_validation_error("Cross-train upgrades"),
             {},
         ),
         (
             UpgradeScenario("Preview train blocked: From stable to preview with version change")
             .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.0.0", ext_train="stable")
             .set_user_kwargs(ops_version="1.1.0", ops_train="preview")
-            .expecting_validation_error(r"Upgrades to or from non-stable release trains are not supported"),
+            .expecting_validation_error("Cross-train upgrades"),
             {},
         ),
         (
             UpgradeScenario("Preview train blocked: Same version different train")
             .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.1.0", ext_train="stable")
             .set_user_kwargs(ops_version="1.1.0", ops_train="preview")
-            .expecting_validation_error(r"Upgrades to or from non-stable release trains are not supported"),
+            .expecting_validation_error("Cross-train upgrades"),
             {},
         ),
         (
             UpgradeScenario("Preview train blocked: Preview to different preview with same version")
-            .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.1.0", ext_train="preview")
-            .set_user_kwargs(ops_version="1.1.0", ops_train="canary")
-            .expecting_validation_error(r"Upgrades to or from non-stable release trains are not supported"),
+            .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.6.0-preview.4", ext_train="preview")
+            .set_user_kwargs(ops_version="1.6.0-preview.4", ops_train="canary")
+            .expecting_validation_error("Cross-train upgrades"),
             {},
         ),
         (
-            UpgradeScenario("Preview train blocked: Preview to preview with version change")
-            .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.0.0", ext_train="preview")
-            .set_user_kwargs(ops_version="1.1.0", ops_train="preview")
-            .expecting_validation_error(r"Upgrades to or from non-stable release trains are not supported"),
-            {},
+            UpgradeScenario("Preview upgrades numerically from RC 4 to RC 10")
+            .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.6.0-preview.4", ext_train="preview")
+            .set_user_kwargs(ops_version="1.6.0-preview.10", ops_train="preview"),
+            {EXTENSION_TYPE_OPS: build_extension_props(
+                EXTENSION_TYPE_OPS, version="1.6.0-preview.10", train="preview"
+            )},
         ),
         (
             UpgradeScenario("Preview train allowed: Identical version and train")
-            .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.1.0", ext_train="preview")
-            .set_user_kwargs(ops_version="1.1.0", ops_train="preview"),
-            {EXTENSION_TYPE_OPS: build_extension_props(EXTENSION_TYPE_OPS, version="1.1.0", train="preview")},
+            .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.6.0-preview.4", ext_train="preview")
+            .set_user_kwargs(ops_version="1.6.0-preview.4", ops_train="preview"),
+            {EXTENSION_TYPE_OPS: build_extension_props(
+                EXTENSION_TYPE_OPS, version="1.6.0-preview.4", train="preview"
+            )},
         ),
         (
-            UpgradeScenario("Preview train allowed with force")
-            .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.0.0", ext_train="preview")
-            .set_user_kwargs(ops_version="1.1.0", ops_train="stable", force=True),
-            {EXTENSION_TYPE_OPS: build_extension_props(EXTENSION_TYPE_OPS, version="1.1.0", train="stable")},
+            UpgradeScenario("Preview conversion blocked with force")
+            .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.6.0-preview.4", ext_train="preview")
+            .set_user_kwargs(ops_version="1.6.0", ops_train="stable", force=True)
+            .expecting_validation_error("Cross-train upgrades"),
+            {},
         ),
         # ========== Configuration updates ==========
         (
@@ -1298,27 +1352,26 @@ def assert_operation_order(target_scenario: UpgradeScenario, upgrade_result: Lis
             {EXTENSION_TYPE_OPS: build_extension_props(EXTENSION_TYPE_OPS, version="1.1.0")},
         ),
         (
-            UpgradeScenario("Failed state: With preview train and version change")
+            UpgradeScenario("Failed state: Preview upgrade to the next minor version")
             .set_extension(
                 ext_type=EXTENSION_TYPE_OPS,
-                ext_vers="1.0.0",
+                ext_vers="1.6.0-preview.4",
                 ext_train="preview",
                 provisioning_state=PROVISIONING_STATE_FAILED,
             )
-            .set_user_kwargs(ops_version="1.1.0")
-            .expecting_validation_error(r"Upgrades to or from non-stable release trains are not supported"),
-            {},
+            .set_user_kwargs(ops_version="1.7.0-preview.1"),
+            {EXTENSION_TYPE_OPS: build_extension_props(EXTENSION_TYPE_OPS, version="1.7.0-preview.1")},
         ),
         (
             UpgradeScenario("Failed state: Preview train allowed with force")
             .set_extension(
                 ext_type=EXTENSION_TYPE_OPS,
-                ext_vers="1.0.0",
+                ext_vers="1.6.0-preview.9",
                 ext_train="preview",
                 provisioning_state=PROVISIONING_STATE_FAILED,
             )
-            .set_user_kwargs(ops_version="1.1.0", force=True),
-            {EXTENSION_TYPE_OPS: build_extension_props(EXTENSION_TYPE_OPS, version="1.1.0")},
+            .set_user_kwargs(ops_version="1.6.0-preview.10", force=True),
+            {EXTENSION_TYPE_OPS: build_extension_props(EXTENSION_TYPE_OPS, version="1.6.0-preview.10")},
         ),
         # ========== Multi-extension scenarios ==========
         (
@@ -1336,7 +1389,7 @@ def assert_operation_order(target_scenario: UpgradeScenario, upgrade_result: Lis
         (
             UpgradeScenario("Multi-extension: Mixed overrides")
             .set_extension(ext_type=EXTENSION_TYPE_SSC, ext_vers="1.0.0")
-            .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="0.1.0")
+            .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.2.0")
             .set_user_kwargs(
                 ssc_config=["c=d"],
                 ssc_version="1.1.1",
@@ -1371,24 +1424,25 @@ def assert_operation_order(target_scenario: UpgradeScenario, upgrade_result: Lis
         ),
         # ========== Combined validation scenarios ==========
         (
-            UpgradeScenario("Combined: Min version takes precedence over preview train")
+            UpgradeScenario("Combined: Inconsistent runtime identity fails before path policy")
             .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.0.0", ext_train="preview")
             .set_user_kwargs(ops_version="1.2.36")
-            .expecting_validation_error(r"min compatible upgrade version.*1\.1\.59"),
+            .expecting_validation_error("conflicts with the preview runtime profile"),
             {},
         ),
         (
             UpgradeScenario("Combined: Preview train validation after min version passes")
             .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.1.59", ext_train="preview")  # Meets min version
             .set_user_kwargs(ops_version="1.2.36")
-            .expecting_validation_error(r"Upgrades to or from non-stable release trains are not supported"),
+            .expecting_validation_error("conflicts with the preview runtime profile"),
             {},
         ),
         (
-            UpgradeScenario("Combined: All validations bypassed with force")
+            UpgradeScenario("Combined: Invalid runtime is blocked with force")
             .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.0.0", ext_train="preview")
-            .set_user_kwargs(ops_version="1.2.36", ops_train="stable", force=True),
-            {EXTENSION_TYPE_OPS: build_extension_props(EXTENSION_TYPE_OPS, version="1.2.36", train="stable")},
+            .set_user_kwargs(ops_version="1.2.36", ops_train="stable", force=True)
+            .expecting_validation_error("conflicts with the preview runtime profile"),
+            {},
         ),
         # ========== User confirmation test ==========
         (
@@ -1772,18 +1826,14 @@ def assert_operation_order(target_scenario: UpgradeScenario, upgrade_result: Lis
             },
         ),
         (
-            UpgradeScenario("Registry: Handle error gracefully when checking endpoints")
+            UpgradeScenario("Registry: Failed discovery blocks migration before writes")
             .set_extension(ext_type=EXTENSION_TYPE_PLATFORM, ext_vers="1.0.0")
             .set_extension(ext_type=EXTENSION_TYPE_CM, remove=True)
             .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.2.0")
             .set_user_kwargs(ops_version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE)
-            .set_auxiliary_kwargs(registry_list_error=True),
-            {
-                EXTENSION_TYPE_CM: build_extension_props(EXTENSION_TYPE_CM, version=BUILT_IN_VALUE),
-                EXTENSION_TYPE_OPS: build_extension_props(
-                    EXTENSION_TYPE_OPS, version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE
-                ),
-            },
+            .set_auxiliary_kwargs(registry_list_error=True)
+            .expecting_validation_error("Unable to validate the default registry endpoint"),
+            {},
         ),
         # ========== OPC UA Connector Template Backfill (>= MIN_INSTANCE_VERSION_FOR_OPCUA_CONNECTOR_TEMPLATE) ====
         (
@@ -1871,15 +1921,12 @@ def assert_operation_order(target_scenario: UpgradeScenario, upgrade_result: Lis
             },
         ),
         (
-            UpgradeScenario("OPC UA Template: Handle error gracefully when checking template")
+            UpgradeScenario("OPC UA Template: Failed discovery blocks upgrade before writes")
             .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.4.0")
             .set_user_kwargs(ops_version=MIN_INSTANCE_VERSION_FOR_OPCUA_CONNECTOR_TEMPLATE)
-            .set_auxiliary_kwargs(connector_template_list_error=True),
-            {
-                EXTENSION_TYPE_OPS: build_extension_props(
-                    EXTENSION_TYPE_OPS, version=MIN_INSTANCE_VERSION_FOR_OPCUA_CONNECTOR_TEMPLATE
-                ),
-            },
+            .set_auxiliary_kwargs(connector_template_list_error=True)
+            .expecting_validation_error("Unable to validate the OPC UA connector template"),
+            {},
         ),
         (
             UpgradeScenario("Combined: registry + OPC UA template + secretsync ordering")
@@ -2064,7 +2111,7 @@ def assert_operation_order(target_scenario: UpgradeScenario, upgrade_result: Lis
             UpgradeScenario("Missing data: Current version is None blocks upgrade")
             .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers=None)
             .set_user_kwargs(ops_version="1.2.0")
-            .expecting_validation_error(r"Unable to determine installed version for.*Cannot validate upgrade path"),
+            .expecting_validation_error("currentVersion is missing"),
             {},
         ),
         (
@@ -2072,21 +2119,23 @@ def assert_operation_order(target_scenario: UpgradeScenario, upgrade_result: Lis
             .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.1.0", ext_train=None)
             .set_user_kwargs(ops_version="1.2.0")
             .expecting_validation_error(
-                r"Unable to determine release train for installed.*Cannot validate upgrade path"
+                "Unable to determine AIO release train"
             ),
             {},
         ),
         (
-            UpgradeScenario("Missing data: Force bypasses missing version check")
+            UpgradeScenario("Missing data: Force cannot bypass missing version check")
             .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers=None)
-            .set_user_kwargs(ops_version="1.2.0", force=True),
-            {EXTENSION_TYPE_OPS: build_extension_props(EXTENSION_TYPE_OPS, version="1.2.0")},
+            .set_user_kwargs(ops_version="1.2.0", force=True)
+            .expecting_validation_error("currentVersion is missing"),
+            {},
         ),
         (
-            UpgradeScenario("Missing data: Force bypasses missing train check")
+            UpgradeScenario("Missing data: Force cannot bypass missing train check")
             .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.1.0", ext_train=None)
-            .set_user_kwargs(ops_version="1.2.0", force=True),
-            {EXTENSION_TYPE_OPS: build_extension_props(EXTENSION_TYPE_OPS, version="1.2.0")},
+            .set_user_kwargs(ops_version="1.2.0", force=True)
+            .expecting_validation_error("Unable to determine AIO release train"),
+            {},
         ),
         (
             UpgradeScenario("Early Validation: IoT Ops downgrade blocks platform migration")
@@ -2094,7 +2143,7 @@ def assert_operation_order(target_scenario: UpgradeScenario, upgrade_result: Lis
             .set_extension(ext_type=EXTENSION_TYPE_CM, remove=True)
             .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE)
             .set_user_kwargs(ops_version="1.2.0")  # Downgrade from MIN_INSTANCE_VERSION_FOR_CM_MIGRATE
-            .expecting_validation_error(r"is a downgrade which is not supported"),
+            .expecting_validation_error("downgrade.*not supported"),
             {},
         ),
         (
@@ -2112,7 +2161,7 @@ def assert_operation_order(target_scenario: UpgradeScenario, upgrade_result: Lis
             .set_extension(ext_type=EXTENSION_TYPE_CM, remove=True)
             .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.2.0", ext_train="preview")
             .set_user_kwargs(ops_version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE)
-            .expecting_validation_error(r"Upgrades to or from non-stable release trains are not supported"),
+            .expecting_validation_error("conflicts with the preview runtime profile"),
             {},
         ),
         (
@@ -2125,18 +2174,13 @@ def assert_operation_order(target_scenario: UpgradeScenario, upgrade_result: Lis
             {},
         ),
         (
-            UpgradeScenario("Early Validation: Force bypasses validation and allows migration")
+            UpgradeScenario("Early Validation: Force cannot bypass migration policy")
             .set_extension(ext_type=EXTENSION_TYPE_PLATFORM, ext_vers="1.0.0")
             .set_extension(ext_type=EXTENSION_TYPE_CM, remove=True)
             .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.0.0")
-            .set_user_kwargs(ops_version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE, force=True),
-            {
-                # Platform deleted, CM created, IoT Ops upgraded - all operations proceed with force
-                EXTENSION_TYPE_CM: build_extension_props(EXTENSION_TYPE_CM, version=BUILT_IN_VALUE),
-                EXTENSION_TYPE_OPS: build_extension_props(
-                    EXTENSION_TYPE_OPS, version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE
-                ),
-            },
+            .set_user_kwargs(ops_version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE, force=True)
+            .expecting_validation_error("min compatible upgrade version"),
+            {},
         ),
     ],
 )
@@ -2192,6 +2236,8 @@ def test_ops_upgrade(
             mocked_logger.error.assert_called_once_with(
                 f"Correlation Id for failed update operation: {target_scenario.last_correlation_id}"
             )
+        if isinstance(err.value, ValidationError):
+            assert not [call for call in mocked_responses.calls if call.request.method in {"PUT", "PATCH", "DELETE"}]
         assert_displays(spy_upgrade_displays, no_progress, error_context=err)
         return
 
@@ -2269,6 +2315,7 @@ def test_ops_upgrade_retry_assertion(
     mocked_logger: Mock,
     mocked_sleep: Mock,
     spy_upgrade_displays: Dict[str, Mock],
+    mocked_upgrade_manager: Mock,
 ):
     from azext_edge.edge.commands_edge import upgrade_instance
 
@@ -2613,33 +2660,13 @@ def assert_displays(
 
             if isinstance(error_value, ValidationError):
                 error_msg = str(error_value)
-
-                # These errors occur early (before table render), only 1 progress init
-                early_errors = [
-                    "is not connected",
-                    "IoT Operations extension not detected",
-                    "requires an ADR namespace",
-                ]
-
-                ops_validation_patterns = [
-                    "is a downgrade",
-                    "incompatible",
-                    "min compatible upgrade version",
-                    "non-stable release trains",
-                    "Unable to determine",
-                ]
-                is_ops_validation_error = EXTENSION_MONIKER_OPS in error_msg and any(
-                    pattern in error_msg for pattern in ops_validation_patterns
+                discovery_errors = (
+                    "no supported runtime profile mapping", "conflicts with the",
+                    "currentVersion is missing", "Unable to determine AIO release train",
+                    "Expected exactly one AIO extension", "AIO runtime is not ready",
                 )
-
-                if any(phrase in error_msg for phrase in early_errors):
-                    progress_count = 1
-                elif is_ops_validation_error:
-                    # IoT Operations validation errors are early (gatekeeper for entire upgrade)
-                    progress_count = 1
-                else:
-                    # Other validation errors (e.g., certManager downgrade) are late
-                    progress_count = 2
+                # All other plan validation also precedes rendering and mutations.
+                progress_count = 0 if any(text in error_msg for text in discovery_errors) else 1
             elif isinstance(error_value, HttpResponseError):
                 # HTTP errors occur during apply_upgrades, after table render
                 progress_count = 2
@@ -2845,9 +2872,12 @@ def build_ext_upgrade_state(
     """Build an ExtensionUpgradeState directly, bypassing cluster discovery."""
     from azext_edge.edge.providers.orchestration.upgrade2 import ConfigOverride, ExtensionUpgradeState
 
-    props: Dict[str, str] = {"extensionType": ext_type, "provisioningState": provisioning_state}
+    props = {
+        "extensionType": ext_type, "provisioningState": provisioning_state, "autoUpgradeMinorVersion": False,
+    }
     if current_version:
         props["version"] = current_version
+        props["currentVersion"] = current_version
     if current_train:
         props["releaseTrain"] = current_train
 
@@ -2859,6 +2889,137 @@ def build_ext_upgrade_state(
         force=force,
         operation_type=operation_type,
     )
+
+
+def test_preview_upgrade_routes_instance_and_backfills_to_profile_api(mocked_cmd, mocked_responses, mocked_sleep):
+    from azext_edge.edge.providers.orchestration.upgrade2 import UpgradeManager
+    from azext_edge.edge.providers.orchestration.resources.connector_templates import ConnectorTemplates
+
+    name, resource_group = "preview-instance", "preview-rg"
+    scenario = UpgradeScenario().set_extension(
+        EXTENSION_TYPE_OPS, ext_vers="1.6.0-preview.19", ext_train="integration",
+    )
+    scenario.set_instance_mock(mocked_responses, name, resource_group)
+    preview_record = deepcopy(scenario.instance_record)
+    preview_record["properties"]["previewOnlyProperty"] = {"retained": ["value"]}
+    api_version = "2026-09-01-preview"
+    endpoint = get_instance_endpoint(resource_group, name, api_version=api_version)
+    base_url = endpoint.split("?")[0]
+    mocked_responses.add(responses.GET, endpoint, json=preview_record)
+    for resource_type in ("registryEndpoints", "akriConnectorTemplates"):
+        mocked_responses.add(
+            responses.GET, f"{base_url}/{resource_type}?api-version={api_version}", json={"value": []},
+        )
+
+    def echo_resource(request):
+        record = json.loads(request.body)
+        record["properties"]["provisioningState"] = "Succeeded"
+        return 200, STANDARD_HEADERS, json.dumps(record)
+
+    template_name = ConnectorTemplates.default_opcua_template_name(name)
+    write_urls = [
+        endpoint,
+        f"{base_url}/registryEndpoints/default?api-version={api_version}",
+        f"{base_url}/akriConnectorTemplates/{template_name}?api-version={api_version}",
+    ]
+    for url in write_urls:
+        mocked_responses.add_callback(responses.PUT, url, callback=echo_resource)
+    adr_id = preview_record["properties"]["adrNamespaceRef"]["resourceId"] + "-updated"
+    manager = UpgradeManager(mocked_cmd, resource_group, name, adr_namespace_resource_id=adr_id, no_progress=True)
+    plan = manager.analyze_cluster()
+    assert plan.instance_upgrade and plan.registry_endpoint_needed and plan.connector_template_needed
+    manager.apply_upgrades(plan)
+
+    aio_requests = [call.request for call in mocked_responses.calls if "/Microsoft.IoTOperations/" in call.request.url]
+    assert aio_requests[0].url == get_instance_endpoint(resource_group, name)
+    assert all(request.url.endswith(f"api-version={api_version}") for request in aio_requests[1:])
+    writes = [request for request in aio_requests if request.method != "GET"]
+    assert [request.url for request in writes] == write_urls
+    assert all(request.method == "PUT" for request in writes)
+    payload = json.loads(writes[0].body)
+    assert payload["properties"]["previewOnlyProperty"] == {"retained": ["value"]}
+    assert payload["properties"]["adrNamespaceRef"]["resourceId"] == adr_id
+    assert "previewOnlyProperty" not in scenario.instance_record["properties"]
+
+
+@pytest.mark.parametrize("force", [False, True])
+@pytest.mark.parametrize("auto_upgrade", [True, None])
+def test_upgrade_ownership_failure_prevents_all_writes(mocked_cmd, mocked_responses, force, auto_upgrade):
+    from azext_edge.edge.commands_edge import upgrade_instance
+
+    scenario = UpgradeScenario().set_extension(EXTENSION_TYPE_OPS, ext_vers="1.4.0")
+    properties = scenario.extensions[EXTENSION_TYPE_OPS]["properties"]
+    if auto_upgrade is None:
+        properties.pop("autoUpgradeMinorVersion")
+    else:
+        properties["autoUpgradeMinorVersion"] = auto_upgrade
+    scenario.set_instance_mock(mocked_responses, "instance", "rg")
+    with pytest.raises(ValidationError, match="autoUpgradeMinorVersion is explicitly false"):
+        upgrade_instance(mocked_cmd, "rg", "instance", confirm_yes=True, force=force)
+    assert not [call for call in mocked_responses.calls if call.request.method in {"PUT", "PATCH", "DELETE"}]
+
+
+@pytest.mark.parametrize("force", [False, True])
+@pytest.mark.parametrize("auto_upgrade", [False, True, None, "false"])
+@pytest.mark.parametrize("operation", ["upgrade", "repair", "config", "noop"])
+def test_ops_version_pinning_requires_manual_ownership(force, auto_upgrade, operation):
+    ext = build_ext_upgrade_state(
+        ext_type=EXTENSION_TYPE_OPS,
+        current_version="1.6.0-preview.9", current_train="preview",
+        built_in_version="1.6.0-preview.10" if operation == "upgrade" else "1.6.0-preview.9",
+        built_in_train="preview", force=force,
+        provisioning_state=PROVISIONING_STATE_FAILED if operation == "repair" else PROVISIONING_STATE_SUCCESS,
+        desired_config={"setting": "value"} if operation == "config" else None,
+    )
+    properties = ext.extension["properties"]
+    if auto_upgrade is None:
+        properties.pop("autoUpgradeMinorVersion")
+    else:
+        properties["autoUpgradeMinorVersion"] = auto_upgrade
+    if operation in {"upgrade", "repair"} and auto_upgrade is not False:
+        for validate in (ext.validate_upgrade, ext.get_patch):
+            with pytest.raises(ValidationError, match="autoUpgradeMinorVersion is explicitly false") as caught:
+                validate()
+            assert (
+                "az k8s-extension update --subscription <cluster-subscription> "
+                "--resource-group <cluster-resource-group> --cluster-name <cluster-name> "
+                "--cluster-type connectedClusters --name <aio-extension-name> --auto-upgrade false"
+            ) in str(caught.value)
+            assert "--force cannot override upgrade ownership" in str(caught.value)
+    else:
+        ext.validate_upgrade()
+        patch_properties = ext.get_patch().get("properties", {})
+        if operation in {"upgrade", "repair"}:
+            assert patch_properties["version"] == ext.desired_version[0]
+        else:
+            assert "version" not in patch_properties
+        assert "autoUpgradeMinorVersion" not in patch_properties
+
+
+@pytest.mark.parametrize("force", [False, True])
+@pytest.mark.parametrize("target_version,error_match", [
+    ("1.6.0-preview.9", None),
+    ("1.6.0-preview.10", None),
+    ("1.6.0-preview.11", None),
+    ("1.6.0-preview.20", None),
+    ("1.7.0-preview.1", None),
+    ("1.7.0-preview.11", None),
+    ("1.8.0-preview.1", "more than one minor version"),
+    ("2.0.0-preview.1", "across major versions"),
+    ("1.6.0-preview.8", "downgrade"),
+])
+def test_preview_upgrades_allow_one_minor_version_and_suffix_jumps(force, target_version, error_match):
+    ext = build_ext_upgrade_state(
+        ext_type=EXTENSION_TYPE_OPS, current_version="1.6.0-preview.9", current_train="preview",
+        built_in_version=target_version, built_in_train="preview", version_override=target_version, force=force,
+    )
+    if error_match is None:
+        ext.validate_upgrade()
+        assert ext.get_patch()["properties"]["version"] == target_version
+    else:
+        for validate in (ext.validate_upgrade, ext.get_patch):
+            with pytest.raises(ValidationError, match=error_match):
+                validate()
 
 
 def test_desired_state_ignores_built_in_target_when_no_version_is_sent():
@@ -3012,9 +3173,9 @@ def test_reconcile_cannot_bypass_release_train_guard(built_in_train, train_overr
         provisioning_state=PROVISIONING_STATE_FAILED,
     )
 
-    with pytest.raises(ValidationError, match="non-stable release trains are not supported"):
+    with pytest.raises(ValidationError, match="Cross-train upgrades"):
         ext.validate_upgrade()
-    with pytest.raises(ValidationError, match="non-stable release trains are not supported"):
+    with pytest.raises(ValidationError, match="Cross-train upgrades"):
         ext.get_patch()
 
 
@@ -3036,16 +3197,16 @@ def test_reconcile_train_delta_validates_the_version_the_patch_sends():
 def test_reconcile_repairs_a_failed_extension_on_a_preview_train():
     ext = build_ext_upgrade_state(
         ext_type=EXTENSION_TYPE_OPS,
-        current_version="1.4.73",
+        current_version="1.6.0-preview.10",
         current_train="preview",
-        built_in_version="1.3.105",
+        built_in_version="1.6.0-preview.4",
         built_in_train="preview",
         provisioning_state=PROVISIONING_STATE_FAILED,
     )
 
     ext.validate_upgrade()
 
-    assert ext.get_patch()["properties"]["version"] == "1.4.73"
+    assert ext.get_patch()["properties"]["version"] == "1.6.0-preview.10"
 
 
 @pytest.mark.parametrize("provisioning_state", [PROVISIONING_STATE_SUCCESS, PROVISIONING_STATE_FAILED])

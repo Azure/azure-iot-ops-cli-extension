@@ -2101,6 +2101,9 @@ def load_iotops_help():
                       deployed cluster side services that make up IoT Operations and compare them
                       with the built-in deployment that would be executed with `az iot ops init`
                       and `az iot ops create`.
+                      Version-pinned upgrades and repairs require `autoUpgradeMinorVersion=false`.
+                      Disable Arc automatic upgrades explicitly before proceeding;
+                      `--force` cannot override this requirement.
         examples:
         - name: Upgrade the instance with minimal inputs.
           text: >
@@ -3162,11 +3165,19 @@ def load_iotops_help():
     ] = f"""
         type: command
         short-summary: Opens the version guide located at {GET_VERSIONS_URL} in the default browser.
+        long-summary: |
+          Use --inline to report local package versions and bundled runtime profiles without authentication.
+          The extensions field retains the shared foundation and default create versions. runtimeProfiles
+          lists each bundled channel's target version, actual deployment train and source provenance.
+          These are package inputs, not installed cluster versions or a list of qualified upgrade paths.
 
         examples:
         - name: Route to the version guide in a new browser window.
           text: >
             az iot ops get-versions
+        - name: Show bundled runtime profiles without contacting Azure.
+          text: >
+            az iot ops get-versions --inline --query runtimeProfiles
     """
 
     helps[

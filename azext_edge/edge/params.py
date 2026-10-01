@@ -1266,6 +1266,13 @@ def load_iotops_arguments(self, _):
 
     with self.argument_context("iot ops create") as context:
         context.argument(
+            "use_preview",
+            options_list=["--use-preview"],
+            arg_type=get_three_state_flag(),
+            help="Create using the bundled Public Preview runtime profile instead of the GA profile. "
+            "Requires acceptance of the displayed preview terms; use --yes for noninteractive execution.",
+        )
+        context.argument(
             "skip_sr_ra",
             options_list=["--skip-sr-ra"],
             arg_type=get_three_state_flag(),
@@ -1533,7 +1540,8 @@ def load_iotops_arguments(self, _):
             "force",
             options_list=["--force"],
             arg_type=get_three_state_flag(),
-            help="Force the operation to continue. Use to get around guards, such as those preventing downgrade.",
+            help="Force eligible repair operations. Does not bypass AIO runtime compatibility, "
+            "cross-train or downgrade restrictions.",
             arg_group="Extension Config",
             deprecate_info=context.deprecate(hide=True),
         )
@@ -2862,5 +2870,6 @@ def load_iotops_arguments(self, _):
             "inline",
             options_list=["--inline"],
             arg_type=get_three_state_flag(),
-            help="Provides key version attributes in console output.",
+            help="Reports bundled versions and runtime profiles without contacting a cluster. "
+            "The extensions field describes shared dependencies and the default create profile.",
         )

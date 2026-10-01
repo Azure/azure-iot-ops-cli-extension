@@ -13,7 +13,7 @@ from .helpers import check_cluster_label_coverage, check_workload_resource_files
 logger = get_logger(__name__)
 
 pytestmark = pytest.mark.e2e
-SCHEMA_PREFIXES = ["adr-schema-registry"]
+SCHEMA_PREFIXES = ["adr-schema-registry", "aio-edge-registry"]
 SCHEMA_WORKLOAD_TYPES = ["configmap", "pod", "service", "statefulset", "pvc"]
 SCHEMA_LABEL = ("app.kubernetes.io/name", "microsoft-iotoperations-schemas")
 
@@ -24,7 +24,6 @@ def test_create_bundle_schemas(cluster_connection, tracked_files):
     pre_bundle_workload_items = get_multi_kubectl_workload_items(
         expected_workload_types=SCHEMA_WORKLOAD_TYPES,
         prefixes=SCHEMA_PREFIXES,
-        expected_label=SCHEMA_LABEL
     )
     command = f"az iot ops support create-bundle --ops-service {ops_service}"
     walk_result, bundle_path = run_bundle_command(command=command, tracked_files=tracked_files)
@@ -37,10 +36,10 @@ def test_create_bundle_schemas(cluster_connection, tracked_files):
         pre_bundle_items=pre_bundle_workload_items,
         prefixes=SCHEMA_PREFIXES,
         bundle_path=bundle_path,
-        expected_label=SCHEMA_LABEL,
     )
     check_cluster_label_coverage(
         prefixes=SCHEMA_PREFIXES,
         expected_label=SCHEMA_LABEL,
         workload_types=SCHEMA_WORKLOAD_TYPES,
+        accepted_labels=["aio-edge-registry"],
     )
