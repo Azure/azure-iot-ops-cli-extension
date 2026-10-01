@@ -306,6 +306,9 @@ class InitTargets:
             opcua_connector_template["name"] = (
                 f"{self.instance_name}/{ConnectorTemplates.default_opcua_template_name(self.instance_name)}"
             )
+            mcp_default_policy = template.content["resources"].get("mcpDefaultPolicy")
+            if mcp_default_policy is not None:
+                mcp_default_policy["name"] = f"{self.instance_name}/aio-mcp-policy-v1"
 
             template.content["outputs"]["aio"]["value"]["name"] = self.instance_name
 

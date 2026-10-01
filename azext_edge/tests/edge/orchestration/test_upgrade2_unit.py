@@ -881,7 +881,9 @@ class UpgradeScenario:
                 "imageConfigurationSettings"
             ]
             assert image_settings["imageName"] == "azureiotoperations/aio-connectors/supervisor"
-            assert image_settings["tagDigestSettings"]["tag"] == OPCUA_CONNECTOR_VERSION
+            assert image_settings["tagDigestSettings"]["tag"] == self.aux_kwargs.get(
+                "opcua_connector_version", OPCUA_CONNECTOR_VERSION,
+            )
 
             template_name = request.path_url.split("?")[0].split("/")[-1]
             response_body = deepcopy(body)
@@ -2895,7 +2897,7 @@ def test_preview_upgrade_routes_instance_and_backfills_to_profile_api(mocked_cmd
 
     name, resource_group = "preview-instance", "preview-rg"
     scenario = UpgradeScenario().set_extension(
-        EXTENSION_TYPE_OPS, ext_vers="1.6.0-preview.9", ext_train="integration",
+        EXTENSION_TYPE_OPS, ext_vers="1.6.0-preview.19", ext_train="integration",
     )
     scenario.set_instance_mock(mocked_responses, name, resource_group)
     preview_record = deepcopy(scenario.instance_record)

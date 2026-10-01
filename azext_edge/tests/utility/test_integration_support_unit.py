@@ -100,6 +100,124 @@ def test_init_description_assertion_uses_selected_defaults(mocker, use_preview, 
         roles.assert_not_called()
 
 
+@pytest.fixture
+def init_broker_assertion(mocker):
+    from azext_edge.tests.edge.init.int import test_init_int as init_tests
+
+    properties = {
+        "memoryProfile": "Medium",
+        "cardinality": {
+            "backendChain": {"partitions": 2, "redundancyFactor": 2, "workers": 2},
+            "frontend": {"replicas": 2, "workers": 2},
+        },
+    }
+    mocker.patch.object(init_tests, "run", side_effect=[
+        [{"name": "default", "properties": properties}],
+        [{}],
+        [{"name": "default", "properties": {"serviceType": "ClusterIp"}}],
+    ])
+    return init_tests.assert_broker_args, properties
+
+
+@pytest.fixture
+def preview_broker_persistence():
+    return {
+        "maxSize": "3Gi",
+        "encryption": {"mode": "Enabled"},
+        "persistentVolumeClaimSpec": {"accessModes": ["ReadWriteOncePod"]},
+        "retain": {"mode": "None"},
+        "stateStore": {"mode": "Custom", "stateStoreSettings": {"dynamic": {"mode": "Enabled"}}},
+        "subscriberQueue": {"mode": "None"},
+    }
+
+
+@pytest.mark.parametrize("use_preview, has_persistence, matches", [
+    (False, False, True), (True, True, True), (False, True, False), (True, False, False),
+])
+def test_init_broker_defaults_by_channel(
+    init_broker_assertion, preview_broker_persistence, use_preview, has_persistence, matches,
+):
+    from azext_edge.tests.helpers import process_additional_args
+
+    assert_broker, properties = init_broker_assertion
+    if has_persistence:
+        properties["persistence"] = preview_broker_persistence
+    arguments = process_additional_args("--use-preview --yes" if use_preview else "")
+    if matches:
+        assert_broker("instance", "rg", **arguments)
+    else:
+        with pytest.raises(AssertionError):
+            assert_broker("instance", "rg", **arguments)
+
+
+@pytest.mark.parametrize("setting, value", [
+    ("maxSize", "10Gi"),
+    ("retain", {"mode": "All"}),
+    ("subscriberQueue", {"mode": "All"}),
+    ("stateStore", {"mode": "Custom", "stateStoreSettings": {"dynamic": {"mode": "Disabled"}}}),
+    ("encryption", {"mode": "Disabled"}),
+    ("persistentVolumeClaimSpec", {"accessModes": ["ReadWriteOnce"]}),
+])
+def test_init_broker_preview_rejects_wrong_defaults(
+    init_broker_assertion, preview_broker_persistence, setting, value,
+):
+    assert_broker, properties = init_broker_assertion
+    properties["persistence"] = {**preview_broker_persistence, setting: value}
+    with pytest.raises(AssertionError, match=f"Unexpected broker persistence {setting}"):
+        assert_broker("instance", "rg", use_preview=True)
+
+
+@pytest.mark.parametrize("use_preview", [False, True])
+@pytest.mark.parametrize("matches", [False, True])
+def test_init_broker_explicit_size_overrides_channel_defaults(
+    init_broker_assertion, preview_broker_persistence, use_preview, matches,
+):
+    assert_broker, properties = init_broker_assertion
+    properties["persistence"] = preview_broker_persistence
+    preview_broker_persistence["maxSize"] = "10Gi" if matches else "3Gi"
+    for policy in ("retain", "subscriberQueue"):
+        preview_broker_persistence[policy] = {"mode": "Custom", f"{policy}Settings": {"dynamic": {"mode": "Enabled"}}}
+    if matches:
+        assert_broker("instance", "rg", use_preview=use_preview, persist_max_size="10Gi")
+    else:
+        with pytest.raises(AssertionError, match="Unexpected broker persistence maxSize"):
+            assert_broker("instance", "rg", use_preview=use_preview, persist_max_size="10Gi")
+
+
+@pytest.mark.parametrize("use_preview", [False, True])
+@pytest.mark.parametrize("wrapped", [False, True])
+@pytest.mark.parametrize("persistence_mode", ["omitted", "null", "configured"])
+def test_init_broker_custom_file_overrides_channel_defaults(
+    init_broker_assertion, tmp_path, use_preview, wrapped, persistence_mode,
+):
+    assert_broker, properties = init_broker_assertion
+    config = deepcopy(properties)
+    if persistence_mode == "null":
+        config["persistence"] = None
+    elif persistence_mode == "configured":
+        config["persistence"] = {
+            "maxSize": "7Gi", "retain": {"mode": "All"},
+            "persistentVolumeClaimSpec": {"storageClassName": "custom-storage"},
+        }
+        properties["persistence"] = deepcopy(config["persistence"])
+        properties["persistence"]["encryption"] = {"mode": "Enabled"}
+        properties["persistence"]["persistentVolumeClaimSpec"]["accessModes"] = ["ReadWriteOncePod"]
+    config_file = tmp_path / "broker.json"
+    config_file.write_text(json.dumps({"properties": config} if wrapped else config), encoding="utf-8")
+    assert_broker("instance", "rg", use_preview=use_preview, broker_config_file=str(config_file))
+
+
+@pytest.mark.parametrize("use_preview", [False, True])
+def test_init_broker_rejects_custom_persistence_mismatch(init_broker_assertion, tmp_path, use_preview):
+    assert_broker, properties = init_broker_assertion
+    config = {**properties, "persistence": {"maxSize": "7Gi"}}
+    config_file = tmp_path / "broker.json"
+    config_file.write_text(json.dumps(config), encoding="utf-8")
+    properties["persistence"] = {"maxSize": "3Gi"}
+    with pytest.raises(AssertionError, match="Unexpected broker persistence maxSize"):
+        assert_broker("instance", "rg", use_preview=use_preview, broker_config_file=str(config_file))
+
+
 def test_workload_identity_jobs_serialize_through_cleanup():
     config = yaml.safe_load((ROOT / ".github/workflows/int_test.yml").read_text())
     assert "concurrency" not in config
