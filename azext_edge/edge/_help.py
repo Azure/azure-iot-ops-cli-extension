@@ -2501,6 +2501,13 @@ def load_iotops_help():
             scope. Use --ra-scope topic-space for least-privilege assignments scoped to the topic
             space, or --skip-ra to skip role assignment creation.
 
+            Use --user-object-ids to grant Reader directly to one or more Microsoft Entra users from
+            the resource tenant at the Device Registry namespace scope. These assignments are
+            additive, idempotent, unaffected by --ra-scope, and preserved on disable. The command
+            returns their assignment IDs for explicit cleanup. --skip-ra takes precedence and skips
+            these assignments. Individual user assignments are required during Public Preview when
+            group-based authorization is unavailable.
+
         examples:
         - name: Enable Live Data using a system-assigned managed identity and default roles.
           text: >
@@ -2514,6 +2521,11 @@ def load_iotops_help():
           text: >
             az iot ops live-data enable --instance myinstance -g myresourcegroup
             --eg-resource-id $EG_NAMESPACE_RESOURCE_ID --ra-scope topic-space
+        - name: Enable Live Data and grant Reader directly to Microsoft Entra users.
+          text: >
+            az iot ops live-data enable --instance myinstance -g myresourcegroup
+            --eg-resource-id $EG_NAMESPACE_RESOURCE_ID
+            --user-object-ids $USER_OBJECT_ID_1 $USER_OBJECT_ID_2
         - name: Enable Live Data and skip role assignments.
           text: >
             az iot ops live-data enable --instance myinstance -g myresourcegroup
@@ -2531,8 +2543,11 @@ def load_iotops_help():
             entry from the Device Registry namespace last so an interrupted disable can be
             safely re-run.
 
-            Namespace-scoped role assignments are preserved; topic-space-scoped role
-            assignments are removed together with the topic space.
+            Event Grid namespace-scoped managed-identity role assignments are preserved;
+            topic-space-scoped managed-identity assignments are removed together with the topic
+            space. Reader assignments created for --user-object-ids are always scoped to the Device
+            Registry namespace, are unaffected by --ra-scope, and are preserved. Use the assignment
+            IDs returned by enable if explicit cleanup is required.
 
         examples:
         - name: Disable Live Data for an instance.

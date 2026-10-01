@@ -1756,6 +1756,15 @@ def load_iotops_arguments(self, _):
             "Default: 'Event Grid TopicSpaces Publisher'.",
             arg_group="Role Assignment",
         )
+        context.argument(
+            "user_object_ids",
+            options_list=["--user-object-ids"],
+            nargs="+",
+            help="Microsoft Entra user object IDs from the resource tenant to grant Reader on the "
+            "Device Registry namespace. Assignments are additive and preserved on disable. "
+            "Ignored when --skip-ra is used.",
+            arg_group="Role Assignment",
+        )
 
     with self.argument_context("iot ops schema") as context:
         context.argument(

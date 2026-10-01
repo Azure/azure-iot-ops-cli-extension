@@ -27,6 +27,7 @@ from knack.log import get_logger
 from azext_edge.edge.providers.orchestration.common import (
     EG_TOPICSPACES_PUBLISHER_ROLE_ID,
     EG_TOPICSPACES_SUBSCRIBER_ROLE_ID,
+    LIVE_DATA_USER_ROLE_ID,
 )
 from azext_edge.edge.util.az_client import DEFAULT_EVENTGRID_MGMT_API_VERSION
 
@@ -213,6 +214,7 @@ def live_data_setup(request, settings):
         "instanceName": instance_name,
         "resourceGroup": resource_group,
         "egResourceId": eg_resource_id,
+        "adrNamespaceId": ns_id,
     }
 
     try:
@@ -352,3 +354,75 @@ def test_live_data_ra_scope_topic_space(request, live_data_setup) -> None:
     # assignments with it — nothing left orphaned.
     run(f"az iot ops live-data disable {common} -y")
     assert topic_space_name not in _list_topic_space_names(eg_resource_id)
+
+
+@pytest.mark.livedata
+@pytest.mark.serial
+def test_live_data_user_reader_assignment(request, live_data_setup, settings) -> None:
+    """Direct user Reader assignment is idempotent and preserved on disable."""
+    from ...settings import EnvironmentVariables
+
+    settings.add_to_config(EnvironmentVariables.live_data_user_object_id.value)
+    user_object_id = settings.env.azext_edge_live_data_user_object_id
+    if not user_object_id:
+        pytest.skip(
+            "Set azext_edge_live_data_user_object_id to an Entra user object ID "
+            "from the resource tenant to test direct user assignment."
+        )
+
+    instance_name = live_data_setup["instanceName"]
+    resource_group = live_data_setup["resourceGroup"]
+    eg_resource_id = live_data_setup["egResourceId"]
+    adr_namespace_id = live_data_setup["adrNamespaceId"]
+    common = f"-i {instance_name} -g {resource_group}"
+    enable_command = (
+        f'az iot ops live-data enable {common} --eg-resource-id "{eg_resource_id}" '
+        f'--user-object-ids "{user_object_id}"'
+    )
+    cleanup = {"assignmentId": "", "created": False}
+
+    def _cleanup() -> None:
+        try:
+            run(f"az iot ops live-data disable {common} -y")
+        except Exception:
+            logger.error("Failed to disable live-data after the user assignment test.")
+        if cleanup["created"] and cleanup["assignmentId"]:
+            try:
+                run(f'az role assignment delete --ids "{cleanup["assignmentId"]}"')
+            except Exception:
+                logger.error(
+                    f"Failed to remove test-created role assignment {cleanup['assignmentId']}."
+                )
+
+    request.addfinalizer(_cleanup)
+
+    first_result = run(enable_command)
+    first_users = first_result["roleAssignments"]["users"]
+    first_assignment = first_users["assignments"][0]
+    cleanup.update(
+        assignmentId=first_assignment["assignmentId"],
+        created=first_assignment["created"],
+    )
+    assert first_users["roleId"] == LIVE_DATA_USER_ROLE_ID
+    assert first_users["scope"].lower() == adr_namespace_id.lower()
+    assert first_users["preservedOnDisable"] is True
+    assert len(first_users["assignments"]) == 1
+    assert first_assignment["principalId"] == user_object_id.lower()
+    assert first_assignment["assignmentId"]
+    assert_role_assignment(
+        scope=adr_namespace_id,
+        assignee=user_object_id,
+        expected_role_ids=LIVE_DATA_USER_ROLE_ID,
+    )
+
+    second_result = run(enable_command)
+    second_assignment = second_result["roleAssignments"]["users"]["assignments"][0]
+    assert second_assignment["assignmentId"].lower() == first_assignment["assignmentId"].lower()
+    assert second_assignment["created"] is False
+
+    run(f"az iot ops live-data disable {common} -y")
+    assert_role_assignment(
+        scope=adr_namespace_id,
+        assignee=user_object_id,
+        expected_role_ids=LIVE_DATA_USER_ROLE_ID,
+    )
