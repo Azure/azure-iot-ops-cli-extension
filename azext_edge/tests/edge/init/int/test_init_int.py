@@ -351,6 +351,7 @@ def assert_broker_args(
     fw: Optional[str] = None,
     lt: Optional[str] = None,
     mp: Optional[str] = None,
+    use_preview: bool = False,
     **_,
 ):
     if bp:
@@ -374,9 +375,11 @@ def assert_broker_args(
     broker_name = broker["name"]
     assert broker_name == "default"
 
+    broker_config = {}
     if broker_config_file:
         with open(broker_config_file, "r", encoding="utf-8") as bcf:
-            broker_config = json.loads(bcf)
+            broker_config = json.load(bcf)
+            broker_config = broker_config.get("properties", broker_config)
             broker_mem_profile = broker_config.get("memoryProfile", "").lower()
 
             broker_backend = broker_config.get("cardinality", {}).get("backendChain", {})
@@ -399,19 +402,41 @@ def assert_broker_args(
     assert cardinality["frontend"]["workers"] == (broker_frontend_workers or 2)
     # there is diagnostics + generateResourceLimits but nothing from init yet
 
-    if persist_max_size:
-        persistence = broker_props["persistence"]
-        assert persistence["maxSize"] == persist_max_size
-        assert persistence["encryption"]["mode"] == "Enabled"
-        assert persistence["persistentVolumeClaimSpec"]["accessModes"] == ["ReadWriteOncePod"]
-        assert persistence["retain"] == {"mode": "Custom", "retainSettings": {"dynamic": {"mode": "Enabled"}}}
-        assert persistence["stateStore"] == {"mode": "Custom", "stateStoreSettings": {"dynamic": {"mode": "Enabled"}}}
-        assert persistence["subscriberQueue"] == {
-            "mode": "Custom",
-            "subscriberQueueSettings": {"dynamic": {"mode": "Enabled"}},
+    if broker_config_file:
+        expected_persistence = broker_config.get("persistence")
+    elif persist_max_size or use_preview:
+        expected_persistence = {
+            "maxSize": persist_max_size or "3Gi",
+            "encryption": {"mode": "Enabled"},
+            "persistentVolumeClaimSpec": {"accessModes": ["ReadWriteOncePod"]},
+            "retain": (
+                {"mode": "Custom", "retainSettings": {"dynamic": {"mode": "Enabled"}}}
+                if persist_max_size else {"mode": "None"}
+            ),
+            "stateStore": {"mode": "Custom", "stateStoreSettings": {"dynamic": {"mode": "Enabled"}}},
+            "subscriberQueue": (
+                {"mode": "Custom", "subscriberQueueSettings": {"dynamic": {"mode": "Enabled"}}}
+                if persist_max_size else {"mode": "None"}
+            ),
         }
     else:
+        expected_persistence = None
+
+    if expected_persistence is None:
         assert "persistence" not in broker_props
+    else:
+        persistence = broker_props.get("persistence")
+        assert isinstance(persistence, dict), "Expected broker disk persistence."
+        for setting, expected in expected_persistence.items():
+            actual = persistence.get(setting)
+            if isinstance(expected, dict):
+                assert isinstance(actual, dict), f"Missing broker persistence {setting}."
+                for property_name, property_value in expected.items():
+                    assert actual.get(property_name) == property_value, (
+                        f"Unexpected broker persistence {setting}.{property_name}."
+                    )
+            else:
+                assert actual == expected, f"Unexpected broker persistence {setting}."
 
     # nothing interesting in the authn
     authns = run(f"az iot ops broker authn list -g {resource_group} -i {instance_name} -b {broker_name}")

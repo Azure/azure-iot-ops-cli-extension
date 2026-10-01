@@ -43,6 +43,7 @@ from ....util.queryable import Queryable
 from .instances import Instances
 
 if TYPE_CHECKING:
+    from ..runtime_profiles import RuntimeProfile
     from ....vendor.clients.iotopsmgmt.operations import (
         AkriConnectorTemplateOperations,
     )
@@ -217,13 +218,14 @@ class ConnectorTemplates(Queryable):
         template_name: Optional[str] = None,
         headers: Optional[dict] = None,
         no_status: Optional[bool] = None,
+        runtime_profile: Optional["RuntimeProfile"] = None,
     ) -> dict:
         """
         Create the default OPC UA ``akriConnectorTemplates`` resource for an instance.
 
         OPC UA is supervisor-managed, so the template is built directly to mirror the product
         Bicep rather than derived from OCI metadata: the connector image is the supervisor image
-        and the endpoint type is ``Microsoft.OpcUa``. The supervisor discovers it by name prefix.
+        and endpoint types follow the selected runtime profile. The supervisor discovers it by name prefix.
 
         Args:
             resource_group_name: Instance resource group name.
@@ -232,6 +234,7 @@ class ConnectorTemplates(Queryable):
             template_name: Optional explicit template name. Defaults to a prefixed, instance-derived name.
             headers: Optional request headers (e.g. correlation id) forwarded to the service.
             no_status: Suppress the console status spinner (e.g. when already inside a progress bar).
+            runtime_profile: Reviewed runtime inputs; omitted callers retain the GA endpoint type.
 
         Returns:
             dict: The created connector template resource.
@@ -246,6 +249,13 @@ class ConnectorTemplates(Queryable):
 
         if not template_name:
             template_name = self.default_opcua_template_name(instance_name)
+
+        endpoint_types = [{"endpointType": OPCUA_CONNECTOR_ENDPOINT_TYPE}]
+        if runtime_profile is not None:
+            blueprint = runtime_profile.copy_instance_blueprint()
+            endpoint_types = blueprint.get_resource_by_key("opcUaConnectorTemplate")["properties"][
+                "deviceInboundEndpointTypes"
+            ]
 
         template_resource = {
             "extendedLocation": self.instances.get_ext_loc(
@@ -269,7 +279,7 @@ class ConnectorTemplates(Queryable):
                         },
                     },
                 },
-                "deviceInboundEndpointTypes": [{"endpointType": OPCUA_CONNECTOR_ENDPOINT_TYPE}],
+                "deviceInboundEndpointTypes": endpoint_types,
             },
         }
 

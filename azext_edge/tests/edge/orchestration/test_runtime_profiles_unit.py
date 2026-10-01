@@ -57,7 +57,7 @@ def test_bundled_profiles_select_management_api_without_changing_preview_bluepri
     assert catalog.get(RuntimeChannel.STABLE).iotops_api_version == "2026-07-01"
     preview = catalog.get(RuntimeChannel.PREVIEW)
     assert preview.iotops_api_version == "2026-09-01-preview"
-    assert preview.identity.version == "1.6.0-preview.9"
+    assert preview.identity.version == "1.6.0-preview.19"
     assert preview.copy_instance_blueprint().content["resources"]["aioInstance"]["apiVersion"] == "2026-09-01-preview"
 
 

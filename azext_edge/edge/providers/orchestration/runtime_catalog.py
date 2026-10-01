@@ -34,11 +34,11 @@ PREVIEW_PROFILE: Optional[RuntimeProfile] = RuntimeProfile(
     channel=RuntimeChannel.PREVIEW,
     release="prev2610",
     source_ref="preview/v1.6.x/2610",
-    source_commit="6e1521ebb4893f2db20b4d97187c5ff9c211326f",
+    source_commit="1fc001a4bb9148cc30c349af8dff4ca8e4bf42ce",
     instance_blueprint=TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW,
     preview_notice=PREVIEW_NOTICE,
     preview_agreement_url=PREVIEW_AGREEMENT_URL,
-    opcua_connector_version="1.4.0-alpha.164",
+    opcua_connector_version="1.5.12",
     iotops_api_version=IoTOpsMgmtApiVersion.V20260901_preview.value,
 )
 QUALIFICATION_IDENTITIES: Tuple[RuntimeIdentity, ...] = ()

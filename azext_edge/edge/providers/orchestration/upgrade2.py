@@ -307,6 +307,7 @@ class UpgradeManager:
             connector_version=self.runtime_profile.require_opcua_connector_version(),
             headers=headers,
             no_status=True,
+            runtime_profile=self.runtime_profile,
         )
 
     def apply_upgrades(

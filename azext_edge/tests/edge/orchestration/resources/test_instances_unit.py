@@ -297,7 +297,7 @@ def test_instance_show_does_not_hide_instance_read_errors(mocked_cmd, mocked_res
     if phase == "preview":
         record = get_mock_instance_record(name, resource_group)
         mocked_responses.add(responses.GET, endpoint, json=record)
-        mock_runtime_discovery(mocked_responses, record, version="1.6.0-preview.9", train="integration")
+        mock_runtime_discovery(mocked_responses, record, version="1.6.0-preview.19", train="integration")
         endpoint = get_instance_endpoint(resource_group, name, api_version="2026-09-01-preview")
     mocked_responses.add(
         responses.GET, endpoint, status=status, json={"error": {"code": "ReadFailed", "message": "Read failed"}},
@@ -315,7 +315,7 @@ def test_instance_show_does_not_hide_instance_read_errors(mocked_cmd, mocked_res
 def test_preview_instance_api_preserves_response_fields(mocked_cmd, mocked_responses, operation, train):
     name, resource_group = "preview-instance", "preview-rg"
     initial = get_mock_instance_record(name, resource_group)
-    mock_runtime_discovery(mocked_responses, initial, version="1.6.0-preview.9", train=train)
+    mock_runtime_discovery(mocked_responses, initial, version="1.6.0-preview.19", train=train)
     preview = deepcopy(initial)
     preview["properties"]["previewOnlyProperty"] = {"retained": ["value"]}
     if operation == "show":
@@ -346,7 +346,7 @@ def test_preview_instance_api_preserves_response_fields(mocked_cmd, mocked_respo
 ])
 @pytest.mark.parametrize("train,version,api_version", [
     ("stable", "1.4.112", "2026-07-01"),
-    ("integration", "1.6.0-preview.9", "2026-09-01-preview"),
+    ("integration", "1.6.0-preview.19", "2026-09-01-preview"),
 ])
 def test_instance_workflow_preserves_runtime_fields(
     mocker, mocked_cmd, mocked_responses, mocked_get_tenant_id, operation, train, version, api_version,
@@ -436,7 +436,7 @@ def test_instance_workflow_api_failure_prevents_writes(mocker, mocked_cmd, mocke
     if failure == "discovery_http":
         mocker.patch.object(Instances, "get_runtime_context", side_effect=HttpResponseError("Forbidden"))
     else:
-        version = "1.6.0-preview.8" if failure == "unmapped_runtime" else "1.6.0-preview.9"
+        version = "1.6.0-preview.8" if failure == "unmapped_runtime" else "1.6.0-preview.19"
         mock_runtime_discovery(mocked_responses, instance, version=version, train="integration")
         if failure == "preview_http":
             mocked_responses.add(

@@ -110,10 +110,15 @@ def test_bundled_preview_update_preserves_payload_and_selects_connector_tag(mock
     assert body["properties"]["description"] == "updated description"
     assert record == original
     assert connector.call_args.kwargs["connector_version"] == profile.require_opcua_connector_version()
+    assert connector.call_args.kwargs["runtime_profile"] is profile
 
 
-def test_preview_connector_backfill_shape_matches_generated_resource(mocker, mocked_cmd):
-    profile = get_runtime_catalog().for_create(use_preview=True)
+@pytest.mark.parametrize("use_preview, endpoint_types", [
+    (False, [{"endpointType": "Microsoft.OpcUa"}]),
+    (True, [{"endpointType": "Microsoft.OpcUa"}, {"endpointType": "Microsoft.OpcUa.WoT"}]),
+])
+def test_connector_backfill_shape_matches_runtime_profile(mocker, mocked_cmd, use_preview, endpoint_types):
+    profile = get_runtime_catalog().for_create(use_preview=use_preview)
     connectors = ConnectorTemplates(mocked_cmd)
     extended_location = {"name": "/custom/location", "type": "CustomLocation"}
     mocker.patch.object(connectors.instances, "get_ext_loc", return_value=extended_location)
@@ -125,9 +130,10 @@ def test_preview_connector_backfill_shape_matches_generated_resource(mocker, moc
 
     connectors.create_default_opcua_template(
         "rg", "instance", connector_version=profile.require_opcua_connector_version(), no_status=True,
+        runtime_profile=profile,
     )
 
-    resource = TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW.content["resources"]["opcUaConnectorTemplate"]
+    resource = profile.copy_instance_blueprint().get_resource_by_key("opcUaConnectorTemplate")
     expected = deepcopy(resource["properties"])
     tag = profile.require_opcua_connector_version()
     expected["connectorMetadataRef"] = f"mcr.microsoft.com/azureiotoperations/aio-connectors/opcua-metadata:{tag}"
@@ -135,6 +141,11 @@ def test_preview_connector_backfill_shape_matches_generated_resource(mocker, moc
         "tagDigestSettings"
     ]["tag"] = tag
     assert writer.call_args.kwargs["resource"] == {"extendedLocation": extended_location, "properties": expected}
+    assert writer.call_args.kwargs["resource"]["properties"]["deviceInboundEndpointTypes"] == endpoint_types
+    writer.call_args.kwargs["resource"]["properties"]["deviceInboundEndpointTypes"].clear()
+    assert profile.copy_instance_blueprint().get_resource_by_key("opcUaConnectorTemplate")["properties"][
+        "deviceInboundEndpointTypes"
+    ] == endpoint_types
 
 
 @pytest.mark.parametrize("connector_exists", [False, True])
@@ -157,12 +168,16 @@ def test_bundled_preview_upgrade_plan_uses_preview_target_and_shared_foundation(
     assert not [c for c in mocked_responses.calls if c.request.method in {"PUT", "PATCH", "DELETE"}]
 
 
-def test_bundled_preview_upgrade_repairs_same_runtime_without_qualification_block(mocked_cmd, mocked_responses):
+@pytest.mark.parametrize("connector_exists", [False, True])
+def test_bundled_preview_upgrade_repairs_same_runtime_without_qualification_block(
+    mocked_cmd, mocked_responses, connector_exists,
+):
     profile = get_runtime_catalog().for_create(use_preview=True)
     scenario = UpgradeScenario().set_extension(
         EXTENSION_TYPE_OPS, ext_vers=profile.identity.version, ext_train=profile.identity.train,
         provisioning_state="Failed",
     )
+    scenario.set_auxiliary_kwargs(opcua_connector_template_exists=connector_exists, opcua_connector_version="1.5.12")
     scenario.set_instance_mock(mocked_responses, "instance", "rg", iotops_api_version="2026-09-01-preview")
     upgrade_instance(mocked_cmd, "rg", "instance", confirm_yes=True, no_progress=True)
     patches = [c for c in mocked_responses.calls if c.request.method == "PATCH"]
@@ -171,3 +186,17 @@ def test_bundled_preview_upgrade_repairs_same_runtime_without_qualification_bloc
     assert properties["version"] == profile.identity.version
     # Same-train repair does not redundantly patch the unchanged release train.
     assert "releaseTrain" not in properties
+    connector_writes = [
+        request.request for request in mocked_responses.calls
+        if request.request.method == "PUT" and "/akriConnectorTemplates/" in request.request.url
+    ]
+    assert len(connector_writes) == int(not connector_exists)
+    if connector_writes:
+        assert "api-version=2026-09-01-preview" in connector_writes[0].url
+        connector = json.loads(connector_writes[0].body)["properties"]
+        assert connector["deviceInboundEndpointTypes"] == [
+            {"endpointType": "Microsoft.OpcUa"}, {"endpointType": "Microsoft.OpcUa.WoT"},
+        ]
+        assert connector["connectorMetadataRef"] == (
+            "mcr.microsoft.com/azureiotoperations/aio-connectors/opcua-metadata:1.5.12"
+        )

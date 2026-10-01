@@ -351,7 +351,7 @@ class Instances(Queryable):
         return self._update(
             name=name, resource_group_name=resource_group_name, instance=instance, tags=tags,
             description=description, features=features, adr_namespace_resource_id=adr_namespace_resource_id,
-            spc_resource_id=spc_resource_id, connector_version=connector_version, **kwargs,
+            spc_resource_id=spc_resource_id, connector_version=connector_version, runtime_profile=profile, **kwargs,
         )
 
     def _update(
@@ -364,6 +364,7 @@ class Instances(Queryable):
         adr_namespace_resource_id: Optional[str] = None,
         spc_resource_id: Optional[str] = None,
         connector_version: Optional[str] = None,
+        runtime_profile: Optional[RuntimeProfile] = None,
         **kwargs: dict,
     ) -> dict:
         """Write an instance after the caller selects its runtime API and validates the operation."""
@@ -438,6 +439,7 @@ class Instances(Queryable):
                     template_name=repair_name,
                     headers=headers,
                     no_status=True,
+                    runtime_profile=runtime_profile,
                 )
             return result
 
