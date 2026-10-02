@@ -1536,6 +1536,10 @@ def test_apply_essentials_sku(mocker, instance_features, expected_features, conf
     assert _apply_essentials_sku(instance_features) == expected_features
     warnings = [call.args for call in mocked_logger.warning.call_args_list]
     assert "single-node deployments" in warnings[0][0]
+    assert (
+        "https://www.microsoft.com/licensing/terms/productoffering/MicrosoftAzure/MOSA#clause-2792-h3-1"
+        in warnings[0][0]
+    )
 
     if conflict_mode:
         assert warnings[1][1] == conflict_mode

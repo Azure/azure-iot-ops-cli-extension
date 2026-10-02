@@ -43,7 +43,8 @@ def _apply_essentials_sku(instance_features: Optional[List[str]]) -> List[str]:
 
     logger.warning(
         "The Essentials SKU is intended for single-node deployments and does not support OPC UA. "
-        "Review the Azure IoT Operations pricing and licensing terms for applicable limitations."
+        "For Azure IoT Operations pricing and licensing terms, see "
+        "https://www.microsoft.com/licensing/terms/productoffering/MicrosoftAzure/MOSA#clause-2792-h3-1"
     )
     if opcua_mode in ("Stable", "Preview"):
         logger.warning(
