@@ -41,11 +41,6 @@ def _apply_essentials_sku(instance_features: Optional[List[str]]) -> List[str]:
     parsed_features = parse_feature_kvp_nargs(instance_features, strict=True) or {}
     opcua_mode = (parsed_features.get("opcua") or {}).get("mode")
 
-    logger.warning(
-        "The Essentials SKU is intended for single-node deployments and does not support OPC UA. "
-        "For Azure IoT Operations pricing and licensing terms, see "
-        "https://www.microsoft.com/licensing/terms/productoffering/MicrosoftAzure/MOSA#clause-2792-h3-1"
-    )
     if opcua_mode in ("Stable", "Preview"):
         logger.warning(
             "OPC UA mode '%s' is not supported with the Essentials SKU and will be ignored. "
