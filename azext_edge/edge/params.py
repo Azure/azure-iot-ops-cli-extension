@@ -1270,7 +1270,10 @@ def load_iotops_arguments(self, _):
             "sku",
             options_list=["--sku"],
             arg_type=get_enum_type(IoTOperationsSku),
-            help="Billing SKU for the IoT Operations instance. The SKU cannot be changed after creation.",
+            help="Billing SKU for the IoT Operations instance. If omitted, Standard is used. Essentials supports "
+            "single-node deployments, does not support OPC UA, and cannot be changed after creation. For Azure IoT "
+            "Operations pricing and licensing terms, see https://www.microsoft.com/licensing/terms/productoffering/"
+            "MicrosoftAzure/MOSA#clause-2792-h3-1.",
         )
         context.argument(
             "skip_sr_ra",

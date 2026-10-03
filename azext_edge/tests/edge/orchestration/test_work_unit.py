@@ -1535,13 +1535,12 @@ def test_apply_essentials_sku(mocker, instance_features, expected_features, conf
     mocked_logger = mocker.patch("azext_edge.edge.commands_edge.logger", autospec=True)
     assert _apply_essentials_sku(instance_features) == expected_features
     warnings = [call.args for call in mocked_logger.warning.call_args_list]
-    assert "single-node deployments" in warnings[0][0]
 
     if conflict_mode:
-        assert warnings[1][1] == conflict_mode
-        assert "will use opcua.mode=Disabled" in warnings[1][0]
+        assert warnings[0][1] == conflict_mode
+        assert "will use opcua.mode=Disabled" in warnings[0][0]
     else:
-        assert len(warnings) == 1
+        assert not warnings
 
 
 def assert_logger(mocked_logger: Mock, target_scenario: dict):
