@@ -4,26 +4,30 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
+
 """Generated preview instance blueprint for internal qualification.
 
 Development connector registries and the GDS setting are retained by approval.
 Runtime catalog registration preserves these inputs and the actual deployment train.
 
-The pinned source deploys 1.6.0-preview.19 without a runtime-version override.
+The 1.6.0-preview.22 tag defaults to 1.6.0-preview.21. The approved runtime
+version override to 1.6.0-preview.22 is applied to exported Bicep before compiling.
 """
 
-# selected source preview/v1.6.x/2610 @ 1fc001a4bb9148cc30c349af8dff4ca8e4bf42ce
+# selected source 1.6.0-preview.22 @ 5e54c8e8679c8e41a3e08a5e25583d1e185981b5
 # source release prev2610
-# redaction only loadYamlContent three scalar substitutions
+# no loaded-source redactions required
 from .template import TemplateBlueprint
 
 TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW = TemplateBlueprint(
-    commit_id="1fc001a4bb9148cc30c349af8dff4ca8e4bf42ce",
+    commit_id="1dfac78ed54a68cd5458c8d6311ada02514428e3",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "languageVersion": "2.0",
         "contentVersion": "1.0.0.0",
-        "metadata": {"_generator": {"name": "bicep", "version": "0.47.16.16243", "templateHash": "487614640710065287"}},
+        "metadata": {
+            "_generator": {"name": "bicep", "version": "0.47.16.16243", "templateHash": "16127254130986069161"}
+        },
         "definitions": {
             "_1.AdvancedConfig": {
                 "type": "object",
@@ -71,6 +75,7 @@ TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW = TemplateBlueprint(
                         "properties": {
                             "version": {"type": "string", "nullable": True},
                             "registry": {"type": "string", "nullable": True},
+                            "repository": {"type": "string", "nullable": True},
                             "imageRegistry": {"type": "string", "nullable": True},
                         },
                         "nullable": True,
@@ -584,6 +589,7 @@ TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW = TemplateBlueprint(
                         "type": "object",
                         "properties": {},
                         "additionalProperties": {"$ref": "#/definitions/_1.InstanceFeatureSettingValue"},
+                        "nullable": True,
                     },
                 },
                 "metadata": {
@@ -746,7 +752,7 @@ TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW = TemplateBlueprint(
             "advancedConfig": {"$ref": "#/definitions/_1.AdvancedConfig", "defaultValue": {}},
         },
         "variables": {
-            "VERSIONS": {"iotOperations": "1.6.0-preview.19"},
+            "VERSIONS": {"iotOperations": "1.6.0-preview.22", "connectors": "1.5.12"},
             "TRAINS": {"iotOperations": "integration"},
             "HASH": "[coalesce(tryGet(parameters('advancedConfig'), 'resourceSuffix'), take(uniqueString(resourceGroup().id, parameters('clusterName'), parameters('clusterNamespace')), 5))]",
             "AIO_EXTENSION_SUFFIX": "[take(uniqueString(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName'))), 5)]",
@@ -756,8 +762,9 @@ TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW = TemplateBlueprint(
             "ISSUER_NAME": "[if(variables('customerManagedTrust'), parameters('trustConfig').settings.issuerName, format('{0}-aio-certificate-issuer', parameters('clusterNamespace')))]",
             "TRUST_CONFIG_MAP": "[if(variables('customerManagedTrust'), parameters('trustConfig').settings.configMapName, format('{0}-aio-ca-trust-bundle', parameters('clusterNamespace')))]",
             "TRUST_CONFIG_MAP_KEY": "[if(variables('customerManagedTrust'), parameters('trustConfig').settings.configMapKey, 'ca.crt')]",
-            "OPCUA_CONNECTOR_VERSION": "[coalesce(tryGet(tryGet(parameters('advancedConfig'), 'connectors'), 'version'), '1.5.12')]",
+            "OPCUA_CONNECTOR_VERSION": "[coalesce(tryGet(tryGet(parameters('advancedConfig'), 'connectors'), 'version'), variables('VERSIONS').connectors)]",
             "CONNECTORS_CHART_REGISTRY": "[coalesce(tryGet(tryGet(parameters('advancedConfig'), 'connectors'), 'registry'), 'aioconnectorsdev.azurecr.io')]",
+            "CONNECTORS_CHART_REPOSITORY": "[coalesce(tryGet(tryGet(parameters('advancedConfig'), 'connectors'), 'repository'), 'aio-connectors/helmchart/microsoft-aio-connectors')]",
             "CONNECTORS_IMAGE_REGISTRY": "[coalesce(tryGet(tryGet(parameters('advancedConfig'), 'connectors'), 'imageRegistry'), 'aioconnectorsdev.azurecr.io')]",
             "MQTT_SETTINGS": {
                 "brokerListenerServiceName": "aio-broker",
@@ -780,6 +787,7 @@ TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW = TemplateBlueprint(
                 "AgentOperationTimeoutInMinutes": "120",
                 "connectors.image.tag": "[variables('OPCUA_CONNECTOR_VERSION')]",
                 "connectors.image.registry": "[variables('CONNECTORS_CHART_REGISTRY')]",
+                "connectors.image.repository": "[variables('CONNECTORS_CHART_REPOSITORY')]",
                 "connectors.values.image.registry": "[variables('CONNECTORS_IMAGE_REGISTRY')]",
                 "connectors.values.mqttBroker.address": "[format('mqtts://{0}:{1}', variables('MQTT_SETTINGS').brokerListenerHost, variables('MQTT_SETTINGS').brokerListenerPort)]",
                 "connectors.values.mqttBroker.serviceAccountTokenAudience": "[variables('MQTT_SETTINGS').serviceAccountAudience]",
@@ -1048,6 +1056,22 @@ TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW = TemplateBlueprint(
                     ]
                 },
                 "dependsOn": ["aioInstance", "customLocation"],
+            },
+            "mcpAioConnection": {
+                "condition": "[and(equals(tryGet(tryGet(parameters('features'), 'mcp'), 'mode'), 'Preview'), lessOrEquals(length(coalesce(parameters('aioInstanceName'), format('aio-{0}', variables('HASH')))), 32))]",
+                "type": "Microsoft.IoTOperations/instances/mcpServerConnections",
+                "apiVersion": "2026-09-01-preview",
+                "name": "[format('{0}/{1}', coalesce(parameters('aioInstanceName'), format('aio-{0}', variables('HASH'))), 'aio')]",
+                "extendedLocation": "[variables('extendedLocation')]",
+                "properties": {
+                    "service": {
+                        "name": "[format('{0}-mcp', coalesce(parameters('aioInstanceName'), format('aio-{0}', variables('HASH'))))]",
+                        "path": "/mcp",
+                    },
+                    "trustBundle": "/var/run/certs",
+                    "authorization": {"mode": "PolicyBased", "policyRef": {"name": "aio-mcp-policy-v1"}},
+                },
+                "dependsOn": ["aioInstance", "customLocation", "mcpDefaultPolicy"],
             },
         },
         "outputs": {

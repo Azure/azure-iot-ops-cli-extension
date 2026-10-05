@@ -25,6 +25,7 @@ from ..orchestration.common import (
     EXTENSION_MONIKER_CM,
     EXTENSION_MONIKER_OPS,
     EXTENSION_MONIKER_SSC,
+    EXTENSION_TYPE_TO_MONIKER_MAP,
     TRUST_ISSUER_KIND_KEY,
     TRUST_SETTING_KEYS,
 )
@@ -231,6 +232,8 @@ class InitTargets:
         template, _ = get_template_method()
         template_vars = template["variables"]
         for moniker in template_vars["VERSIONS"]:
+            if moniker not in EXTENSION_TYPE_TO_MONIKER_MAP.values():
+                continue
             version_map[moniker] = {"version": template_vars["VERSIONS"][moniker]}
         for moniker in template_vars["TRAINS"]:
             version_map[moniker]["train"] = template_vars["TRAINS"][moniker]
@@ -309,6 +312,10 @@ class InitTargets:
             mcp_default_policy = template.content["resources"].get("mcpDefaultPolicy")
             if mcp_default_policy is not None:
                 mcp_default_policy["name"] = f"{self.instance_name}/aio-mcp-policy-v1"
+            mcp_aio_connection = template.content["resources"].get("mcpAioConnection")
+            if mcp_aio_connection is not None:
+                mcp_aio_connection["name"] = f"{self.instance_name}/aio"
+                mcp_aio_connection["properties"]["service"]["name"] = f"{self.instance_name}-mcp"
 
             template.content["outputs"]["aio"]["value"]["name"] = self.instance_name
 

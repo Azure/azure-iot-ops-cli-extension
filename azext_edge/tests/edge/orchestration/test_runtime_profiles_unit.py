@@ -57,7 +57,7 @@ def test_bundled_profiles_select_management_api_without_changing_preview_bluepri
     assert catalog.get(RuntimeChannel.STABLE).iotops_api_version == "2026-07-01"
     preview = catalog.get(RuntimeChannel.PREVIEW)
     assert preview.iotops_api_version == "2026-09-01-preview"
-    assert preview.identity.version == "1.6.0-preview.19"
+    assert preview.identity.version == "1.6.0-preview.22"
     assert preview.copy_instance_blueprint().content["resources"]["aioInstance"]["apiVersion"] == "2026-09-01-preview"
 
 
@@ -230,7 +230,7 @@ def test_mode_only_features_satisfy_arm_parameter_contract(channel, mode, phase)
 
     settings_schema = template["definitions"]["_1.InstanceFeature"]["properties"]["settings"]
     assert settings_schema["type"] == "object"
-    assert not settings_schema.get("nullable", False)
+    assert settings_schema.get("nullable", False) is (channel == RuntimeChannel.PREVIEW)
     assert parameters["features"] == {"value": {"opcua": {"mode": mode, "settings": {}}}}
     assert targets.instance_features == {"opcua": {"mode": mode}}
     assert profile.copy_instance_blueprint().content == original
