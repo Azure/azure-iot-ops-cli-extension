@@ -2897,7 +2897,7 @@ def test_preview_upgrade_routes_instance_and_backfills_to_profile_api(mocked_cmd
 
     name, resource_group = "preview-instance", "preview-rg"
     scenario = UpgradeScenario().set_extension(
-        EXTENSION_TYPE_OPS, ext_vers="1.6.0-preview.19", ext_train="integration",
+        EXTENSION_TYPE_OPS, ext_vers="1.6.0-preview.22", ext_train="integration",
     )
     scenario.set_instance_mock(mocked_responses, name, resource_group)
     preview_record = deepcopy(scenario.instance_record)

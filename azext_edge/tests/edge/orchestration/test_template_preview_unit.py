@@ -33,6 +33,7 @@ from azext_edge.edge.providers.orchestration.template_preview import TEMPLATE_BL
 EXPECTED_PREVIEW_RESOURCE_KEYS = frozenset({
     "cluster", "aioExtension", "customLocation", "aioInstance", "broker", "brokerAuthn", "brokerListener",
     "dataflowProfile", "dataflowEndpoint", "artifactRegistryEndpoint", "opcUaConnectorTemplate", "mcpDefaultPolicy",
+    "mcpAioConnection",
 })
 EXTENSION_KEYS = {"cluster", "aioExtension"}
 INSTANCE_KEYS = EXTENSION_KEYS | {"customLocation", "aioInstance"}
@@ -44,7 +45,7 @@ def qualification_profile():
     return RuntimeProfile(
         channel=RuntimeChannel.PREVIEW,
         release="prev2610",
-        source_ref="preview/v1.6.x/2610",
+        source_ref="1.6.0-preview.22",
         source_commit="test-commit",
         instance_blueprint=TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW,
     )
@@ -53,18 +54,19 @@ def qualification_profile():
 def test_preview_source_identity_and_contract(qualification_profile):
     blueprint = TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW
     content = blueprint.content
-    assert blueprint.commit_id == "1fc001a4bb9148cc30c349af8dff4ca8e4bf42ce"
+    assert blueprint.commit_id == "1dfac78ed54a68cd5458c8d6311ada02514428e3"
     assert content
-    assert content["variables"]["VERSIONS"] == {"iotOperations": "1.6.0-preview.19"}
+    assert content["variables"]["VERSIONS"] == {"iotOperations": "1.6.0-preview.22", "connectors": "1.5.12"}
     assert content["variables"]["TRAINS"] == {"iotOperations": "integration"}
     assert qualification_profile.identity.train == "integration"
     assert qualification_profile.identity.channel == RuntimeChannel.PREVIEW
     assert set(content["resources"]) == EXPECTED_PREVIEW_RESOURCE_KEYS
     aio_resources = [r for r in content["resources"].values() if r["type"].startswith("Microsoft.IoTOperations/")]
-    assert len(aio_resources) == 9
+    assert len(aio_resources) == 10
     assert {r["apiVersion"] for r in aio_resources} == {"2026-09-01-preview"}
     assert content["resources"]["aioExtension"]["properties"]["autoUpgradeMinorVersion"] is False
     assert "disableOpcUaFeature" not in content["parameters"]
+    assert content["definitions"]["_1.InstanceFeature"]["properties"]["settings"]["nullable"] is True
 
 
 def test_preview_keeps_approved_scalars_without_loaded_source_blob():
@@ -72,9 +74,16 @@ def test_preview_keeps_approved_scalars_without_loaded_source_blob():
     serialized = json.dumps(content)
     assert "$fxv" not in serialized
     assert "AIO_EXTENSION_VALUES" not in serialized
+    assert content["variables"]["OPCUA_CONNECTOR_VERSION"] == (
+        "[coalesce(tryGet(tryGet(parameters('advancedConfig'), 'connectors'), 'version'), "
+        "variables('VERSIONS').connectors)]"
+    )
+    assert content["definitions"]["_1.AdvancedConfig"]["properties"]["connectors"]["properties"]["version"] == {
+        "type": "string", "nullable": True,
+    }
     for variable, key, value in (
-        ("OPCUA_CONNECTOR_VERSION", "version", "1.5.12"),
         ("CONNECTORS_CHART_REGISTRY", "registry", "aioconnectorsdev.azurecr.io"),
+        ("CONNECTORS_CHART_REPOSITORY", "repository", "aio-connectors/helmchart/microsoft-aio-connectors"),
         ("CONNECTORS_IMAGE_REGISTRY", "imageRegistry", "aioconnectorsdev.azurecr.io"),
     ):
         assert content["variables"][variable] == (
@@ -87,6 +96,7 @@ def test_preview_keeps_approved_scalars_without_loaded_source_blob():
     config = content["variables"]["defaultAioConfigurationSettings"]
     assert config["connectors.image.tag"] == "[variables('OPCUA_CONNECTOR_VERSION')]"
     assert config["connectors.image.registry"] == "[variables('CONNECTORS_CHART_REGISTRY')]"
+    assert config["connectors.image.repository"] == "[variables('CONNECTORS_CHART_REPOSITORY')]"
     assert config["connectors.values.image.registry"] == "[variables('CONNECTORS_IMAGE_REGISTRY')]"
     assert content["parameters"]["enableGdsManager"] == {"type": "bool", "defaultValue": True}
     assert config["connectors.values.gdsManager.enabled"] == "[if(parameters('enableGdsManager'), 'true', 'false')]"
@@ -155,6 +165,8 @@ def test_preview_phase_resources_and_defaults(qualification_profile, phase):
             "condition"
         ]
         assert resources["mcpDefaultPolicy"]["name"] == "my-instance/aio-mcp-policy-v1"
+        assert resources["mcpAioConnection"]["name"] == "my-instance/aio"
+        assert resources["mcpAioConnection"]["properties"]["service"]["name"] == "my-instance-mcp"
 
 
 @pytest.mark.parametrize("instance_name", [None, "My_Instance"])
@@ -170,6 +182,38 @@ def test_preview_mcp_policy_preserves_source_contract(qualification_profile, ins
     if instance_name:
         source["name"] = "my-instance/aio-mcp-policy-v1"
     assert policy == source
+
+
+@pytest.mark.parametrize("instance_name", [None, "My_Instance", "a" * 32, "a" * 33])
+def test_preview_mcp_connection_preserves_source_contract(qualification_profile, instance_name):
+    source = deepcopy(TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW.content["resources"]["mcpAioConnection"])
+    targets = InitTargets("cluster", "rg", runtime_profile=qualification_profile, instance_name=instance_name)
+    template, parameters = targets.get_ops_instance_template()
+    connection = template["resources"]["mcpAioConnection"]
+    assert "features" not in parameters
+    assert connection["condition"] == (
+        "[and(equals(tryGet(tryGet(parameters('features'), 'mcp'), 'mode'), 'Preview'), "
+        "lessOrEquals(length(coalesce(parameters('aioInstanceName'), format('aio-{0}', variables('HASH')))), 32))]"
+    )
+    assert connection["type"] == "Microsoft.IoTOperations/instances/mcpServerConnections"
+    assert connection["dependsOn"] == ["aioInstance", "customLocation", "mcpDefaultPolicy"]
+    assert connection["properties"]["authorization"] == {
+        "mode": "PolicyBased", "policyRef": {"name": "aio-mcp-policy-v1"},
+    }
+    assert connection["properties"]["trustBundle"] == "/var/run/certs"
+    assert connection["properties"]["service"]["path"] == "/mcp"
+    if instance_name:
+        assert parameters["aioInstanceName"] == {"value": targets.instance_name}
+        source["name"] = f"{targets.instance_name}/aio"
+        source["properties"]["service"]["name"] = f"{targets.instance_name}-mcp"
+    assert connection == source
+
+
+def test_preview_extension_versions_exclude_connector_metadata(qualification_profile):
+    targets = InitTargets("cluster", "rg", runtime_profile=qualification_profile)
+    assert targets.get_extension_versions(False) == {
+        "iotOperations": {"version": "1.6.0-preview.22", "train": "integration"},
+    }
 
 
 @pytest.mark.parametrize("mode", ["Preview", "Disabled"])
@@ -253,21 +297,23 @@ def test_bundled_preview_registered_without_changing_default_or_train():
     profile = catalog.for_create(use_preview=True)
     assert profile is PREVIEW_PROFILE
     assert profile.copy_instance_blueprint() == TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW
-    assert profile.identity.version == "1.6.0-preview.19"
+    assert profile.identity.version == "1.6.0-preview.22"
     assert profile.identity.train == "integration"
-    assert profile.source_ref == "preview/v1.6.x/2610"
-    assert profile.source_commit == "1fc001a4bb9148cc30c349af8dff4ca8e4bf42ce"
+    assert profile.source_ref == "1.6.0-preview.22"
+    assert profile.source_commit == "5e54c8e8679c8e41a3e08a5e25583d1e185981b5"
     assert resolve_runtime_identity(
         profile.identity.version, profile.identity.train, catalog.qualification_identities
     ) == profile.identity
     assert catalog.for_upgrade(profile.identity) is profile
     assert profile.require_opcua_connector_version() == "1.5.12"
-    assert "'" + profile.require_opcua_connector_version() + "'" in (
-        TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW.content["variables"]["OPCUA_CONNECTOR_VERSION"]
+    assert profile.require_opcua_connector_version() == (
+        TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW.content["variables"]["VERSIONS"]["connectors"]
     )
 
 
-@pytest.mark.parametrize("version", ["1.6.0-preview.9", "1.6.0-preview.18", "1.6.0-preview.20"])
+@pytest.mark.parametrize("version", [
+    "1.6.0-preview.9", "1.6.0-preview.18", "1.6.0-preview.19", "1.6.0-preview.20", "1.6.0-preview.21",
+])
 def test_unqualified_preview_integration_versions_are_not_retained(version):
     from azext_edge.edge.providers.orchestration.runtime_profiles import resolve_runtime_identity
 
