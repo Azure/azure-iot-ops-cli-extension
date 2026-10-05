@@ -21,9 +21,10 @@ import re
 import shutil
 import subprocess
 import sys
+from tempfile import TemporaryDirectory
 from urllib.parse import urlsplit
 from urllib.request import HTTPRedirectHandler, build_opener
-from zipfile import ZipFile
+from zipfile import ZIP_DEFLATED, ZipFile
 
 
 def verify_wheel(path, digest):
@@ -114,6 +115,107 @@ def prepare_baseline(baseline, channel, work_dir):
     return target
 
 
+def schema_resource_summary(resource):
+    metadata = resource.get("metadata", {})
+    status = resource.get("status", {})
+    return {
+        "kind": resource.get("kind"),
+        "name": metadata.get("name"),
+        "namespace": metadata.get("namespace"),
+        "nameLabel": metadata.get("labels", {}).get("app.kubernetes.io/name"),
+        "phase": status.get("phase"),
+        "readyReplicas": status.get("readyReplicas"),
+        "containers": [{"name": container.get("name"), "ready": container.get("ready")}
+                       for container in status.get("containerStatuses", [])],
+    }
+
+
+def capture_schema_inventory(directory, phase):
+    directory = Path(directory)
+    directory.mkdir(parents=True, exist_ok=True)
+    report = {"phase": phase, "resources": []}
+    try:
+        result = subprocess.run(
+            ["kubectl", "get", "pods,statefulsets,deployments,services,configmaps,pvc", "-A", "-o", "json",
+             "--request-timeout=30s"], capture_output=True, text=True, timeout=45, check=False,
+        )
+        report["returncode"] = result.returncode
+        if result.returncode == 0:
+            report["resources"] = [schema_resource_summary(resource)
+                                   for resource in json.loads(result.stdout).get("items", [])]
+    except Exception as error:
+        report["errorType"] = type(error).__name__
+    (directory / f"inventory-{phase}.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
+
+
+def capture_schema_bundle(directory):
+    import yaml
+
+    directory = Path(directory)
+    directory.mkdir(parents=True, exist_ok=True)
+    report = {}
+    try:
+        with TemporaryDirectory(prefix="aio-schema-diagnostics-") as temporary:
+            result = subprocess.run(
+                ["az", "iot", "ops", "support", "create-bundle", "--ops-service", "schemaregistry",
+                 "--bundle-dir", temporary, "--bundle-name", "schema-diagnostics", "--debug"],
+                capture_output=True, text=True, timeout=180, check=False,
+            )
+            report["returncode"] = result.returncode
+            report["failedCollectors"] = sorted(set(re.findall(
+                r"Unable to process schemaregistry ([a-z]+):", result.stderr,
+            )))
+            report["errorTypes"] = sorted(set(re.findall(
+                r"\b([A-Za-z]{1,40}Error|ApiException)\b", result.stderr,
+            )))
+            report["httpStatuses"] = sorted(set(re.findall(r"HTTP/[0-9.]+\" ([45][0-9]{2})\b", result.stderr)))
+            report["schemaPodCounts"] = re.findall(
+                r"Detected (\d+) pods with label '[^'\r\n]*"
+                r"(?:aio-edge-registry|microsoft-iotoperations-schemas)[^'\r\n]*'",
+                result.stderr,
+            )
+            bundle = Path(temporary) / "schema-diagnostics.zip"
+            if bundle.exists():
+                destination_path = directory / "schema-bundle-sanitized.zip"
+                with ZipFile(bundle) as source, ZipFile(destination_path, "w", compression=ZIP_DEFLATED) as destination:
+                    manifest = []
+                    for entry in source.infolist():
+                        parts = entry.filename.split("/")
+                        if (len(parts) != 3 or parts[1] != "schemaregistry"
+                                or any(part in ("", ".", "..") for part in parts)):
+                            continue
+                        manifest.append({"name": entry.filename, "size": entry.file_size})
+                        if entry.filename.endswith(".yaml"):
+                            resource = yaml.safe_load(source.read(entry))
+                            if isinstance(resource, dict):
+                                destination.writestr(
+                                    entry.filename, json.dumps(schema_resource_summary(resource), indent=2),
+                                )
+                    destination.writestr("manifest.json", json.dumps(manifest, indent=2))
+                    report["schemaFiles"] = len(manifest)
+    except Exception as error:
+        report["errorType"] = type(error).__name__
+    (directory / "collection.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
+
+
+def run_with_schema_diagnostics(execute, directory):
+    def capture(operation, *arguments):
+        try:
+            operation(directory, *arguments)
+        except Exception as error:
+            print(f"Schema diagnostics unavailable: {type(error).__name__}", flush=True)
+
+    capture(capture_schema_inventory, "before")
+    result = None
+    try:
+        result = execute()
+        return result
+    finally:
+        capture(capture_schema_inventory, "after")
+        if result != 0:
+            capture(capture_schema_bundle)
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--extension-dir", required=True)
@@ -169,13 +271,19 @@ def main(argv=None):
     integration_files = sorted(str(path) for path in (target / "azext_edge" / "tests").rglob("*_int.py"))
     if not integration_files:
         raise ValueError("No integration test files were staged.")
-    result = pytest.main([
+    arguments = [
         "-c", str(pytest_config), "--rootdir", str(work_dir),
         "--randomly-dont-reorganize", "-vv", "-k", "_int.py", "-m", args.scenario.strip('"'),
         "--import-mode=importlib", *integration_files,
         f"--cov={target / 'azext_edge' / 'edge'}", f"--cov-config={args.coverage_config}", "--cov-append",
         "--cov-report=term:skip-covered", "--durations=0", f"--junitxml={args.junit}", *pytest_args,
-    ])
+    ]
+    if args.scenario.strip('"') == "edge" and not {"--collect-only", "--co"}.intersection(pytest_args):
+        result = run_with_schema_diagnostics(
+            lambda: pytest.main(arguments), Path(args.junit).parent / "schema-diagnostics",
+        )
+    else:
+        result = pytest.main(arguments)
     verify_installed(wheel, target)
     return result
 

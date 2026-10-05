@@ -25,6 +25,16 @@ def test_create_bundle_schemas(cluster_connection, tracked_files):
         expected_workload_types=SCHEMA_WORKLOAD_TYPES,
         prefixes=SCHEMA_PREFIXES,
     )
+    assert any(pre_bundle_workload_items.values()), (
+        f"No schema workloads found for prefixes {SCHEMA_PREFIXES} across {SCHEMA_WORKLOAD_TYPES}. "
+        "Check the deployment before investigating support-bundle collection."
+    )
+    check_cluster_label_coverage(
+        prefixes=SCHEMA_PREFIXES,
+        expected_label=SCHEMA_LABEL,
+        workload_types=SCHEMA_WORKLOAD_TYPES,
+        accepted_labels=["aio-edge-registry"],
+    )
     command = f"az iot ops support create-bundle --ops-service {ops_service}"
     walk_result, bundle_path = run_bundle_command(command=command, tracked_files=tracked_files)
     file_map = get_file_map(walk_result, "schemaregistry")["aio"]
@@ -36,10 +46,4 @@ def test_create_bundle_schemas(cluster_connection, tracked_files):
         pre_bundle_items=pre_bundle_workload_items,
         prefixes=SCHEMA_PREFIXES,
         bundle_path=bundle_path,
-    )
-    check_cluster_label_coverage(
-        prefixes=SCHEMA_PREFIXES,
-        expected_label=SCHEMA_LABEL,
-        workload_types=SCHEMA_WORKLOAD_TYPES,
-        accepted_labels=["aio-edge-registry"],
     )

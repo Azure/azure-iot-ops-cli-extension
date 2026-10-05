@@ -1145,7 +1145,8 @@ def test_create_bundle_schemas(
 def test_schema_bundle_integration_checks_both_layouts(mocker):
     from .create_bundle_int import test_schemaregistry_int as schema_tests
 
-    workloads = mocker.patch.object(schema_tests, "get_multi_kubectl_workload_items", return_value={})
+    inventory = {"pod": {"aio-edge-registry-0": {}}}
+    workloads = mocker.patch.object(schema_tests, "get_multi_kubectl_workload_items", return_value=inventory)
     mocker.patch.object(schema_tests, "run_bundle_command", return_value=({}, "bundle.zip"))
     file_map = {"statefulset": []}
     mocker.patch.object(schema_tests, "get_file_map", return_value={"aio": file_map})
@@ -1158,12 +1159,33 @@ def test_schema_bundle_integration_checks_both_layouts(mocker):
     workload_types = ["configmap", "pod", "service", "statefulset", "pvc"]
     workloads.assert_called_once_with(expected_workload_types=workload_types, prefixes=prefixes)
     check_files.assert_called_once_with(
-        file_objs=file_map, pre_bundle_items={}, prefixes=prefixes, bundle_path="bundle.zip",
+        file_objs=file_map, pre_bundle_items=inventory, prefixes=prefixes, bundle_path="bundle.zip",
     )
     check_labels.assert_called_once_with(
         prefixes=prefixes, expected_label=("app.kubernetes.io/name", "microsoft-iotoperations-schemas"),
         workload_types=workload_types, accepted_labels=["aio-edge-registry"],
     )
+
+
+def test_schema_bundle_reports_absent_workloads_before_collection(mocker):
+    from .create_bundle_int import test_schemaregistry_int as schema_tests
+
+    mocker.patch.object(schema_tests, "get_multi_kubectl_workload_items", return_value={"pod": {}, "service": {}})
+    collect = mocker.patch.object(schema_tests, "run_bundle_command")
+    with pytest.raises(AssertionError, match="No schema workloads found"):
+        schema_tests.test_create_bundle_schemas(None, [])
+    collect.assert_not_called()
+
+
+def test_schema_bundle_reports_label_mismatch_before_collection(mocker):
+    from .create_bundle_int import test_schemaregistry_int as schema_tests
+
+    mocker.patch.object(schema_tests, "get_multi_kubectl_workload_items", return_value={"pod": {"schema": {}}})
+    mocker.patch.object(schema_tests, "check_cluster_label_coverage", side_effect=AssertionError("wrong label"))
+    collect = mocker.patch.object(schema_tests, "run_bundle_command")
+    with pytest.raises(AssertionError, match="wrong label"):
+        schema_tests.test_create_bundle_schemas(None, [])
+    collect.assert_not_called()
 
 
 def test_kind_to_dir_override_functionality():
