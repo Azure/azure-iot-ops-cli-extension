@@ -226,7 +226,7 @@ def test_workload_identity_jobs_serialize_through_cleanup():
     assert job["concurrency"] == {
         "group": (
             "${{ matrix.scenario.tox_env == 'python-wlif-int' && "
-            "format('iot-ops-wlif-{0}', inputs.resource-group || 'ops-cli-int-test-rg') || "
+            "format('iot-ops-wlif-{0}', inputs.resource-group || 'ops-cli-int-test-centralus-rg') || "
             "format('iot-ops-int-{0}-{1}-{2}', github.run_id, github.run_attempt, matrix.scenario.name) }}"
         ),
         "cancel-in-progress": False,
@@ -671,12 +671,17 @@ def test_workflows_default_to_existing_test_resource_group(workflow, input_name)
     for event in ("workflow_call", "workflow_dispatch"):
         input_config = config["on"][event]["inputs"][input_name]
         if event == "workflow_dispatch" or workflow != "cluster_cleanup.yml":
-            assert input_config["default"] == "ops-cli-int-test-rg"
+            assert input_config["default"] == "ops-cli-int-test-centralus-rg"
     if workflow != "container_int_test.yml":
         assert config["env"]["RESOURCE_GROUP"] == (
-            "${{ inputs." + input_name + " || 'ops-cli-int-test-rg' }}"
+            "${{ inputs." + input_name + " || 'ops-cli-int-test-centralus-rg' }}"
         )
-    assert "centralus" not in source.lower()
+    assert "ops-cli-int-test-rg" not in source
+
+
+def test_container_publisher_uses_centralus_test_resource_group():
+    config = yaml.safe_load((ROOT / ".github/workflows/publish_test_container_image.yml").read_text())
+    assert config["jobs"]["int-test"]["with"]["resource-group"] == "ops-cli-int-test-centralus-rg"
 
 
 def test_workflow_builds_once_and_tox_never_installs_checkout():
@@ -780,6 +785,42 @@ def workflow_shell():
         return PurePosixPath(result.stdout.strip())
 
     return SimpleNamespace(run=run, directory=directory)
+
+
+@pytest.mark.parametrize("resource_group,location,lookup_exit", [
+    ("ops-cli-int-test-centralus-rg", "centralus", 0),
+    ("custom-westus2-rg", "westus2", 0),
+    ("ops-cli-int-test-centralus-rg", "centralus", 17),
+])
+def test_smoke_query_uses_resource_group_location(workflow_shell, tmp_path, resource_group, location, lookup_exit):
+    config = yaml.safe_load((ROOT / ".github/workflows/int_test.yml").read_text())
+    script = next(step["run"] for step in config["jobs"]["int-test"]["steps"]
+                  if step.get("name") == "Run smoke tests")
+    shell_dir = workflow_shell.directory(tmp_path)
+    environment = dict(os.environ, RESOURCE_GROUP=resource_group, LOCATION=location,
+                       LOOKUP_EXIT=str(lookup_exit), AZ_ARGS=str(shell_dir / "az-args"))
+    az_stub = '''
+az() {
+    printf '%s\\0' "$@" >> "$AZ_ARGS"
+    printf '\\0' >> "$AZ_ARGS"
+    if [[ "$1 $2" == "group show" ]]; then
+        if [[ "$LOOKUP_EXIT" != 0 ]]; then
+            return "$LOOKUP_EXIT"
+        fi
+        printf '%s\\n' "$LOCATION"
+    fi
+    return 0
+}
+'''
+    result = workflow_shell.run(az_stub + script, tmp_path, environment)
+    assert result.returncode == lookup_exit, result.stdout + result.stderr
+    calls = [call.split("\0") for call in (tmp_path / "az-args").read_bytes().decode().split("\0\0") if call]
+    lookup = ["group", "show", "--name", resource_group, "--query", "location", "-o", "tsv"]
+    assert calls[0] == lookup
+    if lookup_exit:
+        assert calls == [lookup]
+    else:
+        assert ["iot", "ops", "asset", "query", "-g", resource_group, "--location", location, "-o", "table"] in calls
 
 
 @pytest.mark.parametrize("git_relative", ["cmd/git.exe", "mingw64/bin/git.exe"])

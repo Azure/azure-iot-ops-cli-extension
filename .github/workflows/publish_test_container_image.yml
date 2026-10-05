@@ -21,7 +21,7 @@ jobs:
   int-test:
       uses: ./.github/workflows/container_int_test.yml
       with:
-        resource-group: ops-cli-int-test-rg
+        resource-group: ops-cli-int-test-centralus-rg
       secrets:
           AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
           AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}

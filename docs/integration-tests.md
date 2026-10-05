@@ -25,6 +25,21 @@ There are, however, some prerequisites and caveats that users should be made awa
   You should provide a dedicated resource group for these testing resources.
   During the tests, resources will be created that may not be automatically cleaned up and are typically hidden from default Azure Portal UI views.
 
+  The integration and container-test workflows on this branch default to **ops-cli-int-test-centralus-rg**
+  for regional comparison in **centralus**. This dedicated group must already exist in the pipeline's
+  subscription, with the federated pipeline identity granted the required permissions. The workflows do not
+  provision the group. Runtime versions, management APIs, and stable/preview selection are unchanged.
+
+  ADR namespaces and schema registries inherit the group's location; custom locations and AIO instances
+  follow the Arc cluster's location. The smoke-test asset query also uses the selected group's location.
+  To compare another region, supply a dedicated group there through the `resource-group` input.
+  Existing resources are not relocated by changing this input; verify actual locations on the live run.
+
+  The [cleanup workflow](../.github/workflows/cluster_cleanup.yml) in this branch defaults to the same group
+  and deletes **all resources** inside it, but preserves the group itself. Do not share it with non-test
+  workloads or overlap tests with cleanup. Branch-only changes do not redirect the default branch's scheduled
+  cleanup; use the `resource_group` input for manual cleanup of this group. No cleanup is triggered by this change.
+
   Our tests use `az-iot-ops-test-cluster` prefixes for cluster resources and `opskv` for keyvaults.
 
 - #### Understanding the test scenario matrix
