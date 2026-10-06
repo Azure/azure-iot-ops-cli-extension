@@ -291,8 +291,6 @@ def test_evaluate_brokers_pod_read_denied_preserves_findings(mocker, status):
         "azext_edge.edge.providers.edge_api.base.EdgeResourceApi.get_resources",
         return_value={"items": [broker]},
     )
-    # diagnostics service read succeeds; pod reads are denied
-    mocker.patch("azext_edge.edge.providers.check.mq.get_namespaced_service", return_value={"spec": {}})
     mocker.patch(
         "azext_edge.edge.providers.check.mq.get_namespaced_pods_by_prefix",
         side_effect=ClusterAccessDeniedError(status=status, resource="pods"),
@@ -307,25 +305,6 @@ def test_evaluate_brokers_pod_read_denied_preserves_findings(mocker, status):
     # broker findings preserved: at least one non-denial evaluation remains
     evals = [e for ns_data in result["targets"][target].values() for e in ns_data.get("evaluations", [])]
     assert any("Access denied" not in str(e.get("value")) for e in evals)
-
-
-@pytest.mark.parametrize("status", [401, 403])
-def test_broker_diagnostics_service_denied_reports_inline(mocker, status):
-    # A denied diagnostics service read renders an inline access-denied row without raising.
-    from azext_edge.edge.providers.check.mq import _evaluate_broker_diagnostics_service
-    from azext_edge.edge.providers.check.base import CheckManager
-
-    mocker.patch(
-        "azext_edge.edge.providers.check.mq.get_namespaced_service",
-        side_effect=ClusterAccessDeniedError(status=status, resource="service/aio-broker-diagnostics-service"),
-    )
-    check_manager = CheckManager(check_name="evalBrokers", check_desc="Evaluate MQTT Brokers")
-    check_manager.add_target(target_name="brokers", namespace="ns")
-    _evaluate_broker_diagnostics_service(check_manager=check_manager, target_brokers="brokers", namespace="ns")
-
-    text = _target_display_text(check_manager.as_dict(as_list=True), "brokers")
-    assert "Access denied" in text
-    assert str(status) in text
 
 
 @pytest.mark.parametrize("status", [401, 403])

@@ -16,7 +16,7 @@ from .helpers import (
     assert_general_eval_custom_resources,
     run_check_command
 )
-from ....helpers import get_kubectl_custom_items
+from ....helpers import get_kubectl_custom_items, run
 
 logger = get_logger(__name__)
 
@@ -62,6 +62,24 @@ def test_mq_check(cluster_connection, detail_level, resource_match, resource_kin
     )
 
 
+@pytest.mark.parametrize("detail_level", ResourceOutputDetailLevel.list())
+def test_mq_check_text_without_diagnostics_service(cluster_connection, detail_level):
+    brokers = run(f"kubectl get brokers.{MQ_ACTIVE_API.group} -A -o json")
+    if not brokers["items"]:
+        pytest.skip("A deployed broker is required to check runtime health output.")
+
+    output = run(
+        "az iot ops check --post --svc broker --resources broker --resource-name '*' "
+        f"--detail-level {detail_level}"
+    )
+
+    assert isinstance(output, str)
+    assert "MQTT Brokers" in output
+    assert "Runtime Health" in output
+    assert "aio-broker-diagnostics-service" not in output
+    assert "aio-broker-diagnostics-probe" in output
+
+
 def assert_eval_broker(
     post_deployment: Dict[str, Any],
     custom_resources: Dict[str, Any],
@@ -76,7 +94,11 @@ def assert_eval_broker(
         resource_api=MQ_ACTIVE_API,
         resource_kind_present=resource_kind_present
     )
-    # TODO: add more as --as-object gets fixed, such as success conditions
+    if resource_kind_present:
+        targets = post_deployment["evalBrokers"]["targets"][f"brokers.{MQ_ACTIVE_API.group}"]
+        for namespace_target in targets.values():
+            for evaluation in namespace_target["evaluations"]:
+                assert "aio-broker-diagnostics-service" not in evaluation.get("name", "")
 
 
 def assert_eval_broker_listener(

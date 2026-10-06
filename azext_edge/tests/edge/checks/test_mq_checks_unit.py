@@ -29,6 +29,76 @@ from .conftest import (
 from ...generators import generate_random_string
 
 
+@pytest.mark.parametrize("detail_level", ResourceOutputDetailLevel.list())
+@pytest.mark.parametrize("as_list", [False, True])
+@pytest.mark.parametrize("resource_name", [None, "mock*", "mock-name"])
+def test_broker_checks_without_diagnostics_service(
+    mock_broker_without_diagnostics_service, detail_level, as_list, resource_name
+):
+    fixture = mock_broker_without_diagnostics_service
+    result = evaluate_brokers(detail_level=detail_level, as_list=as_list, resource_name=resource_name)
+    target = result["targets"]["brokers.mqttbroker.iotoperations.azure.com"]["mock_namespace"]
+
+    assert result["status"] == target["status"] == "success"
+    assert all(evaluation["status"] == "success" for evaluation in target["evaluations"])
+    fixture["get_service"].assert_not_called()
+    assert {call.kwargs["prefix"] for call in fixture["get_pods"].call_args_list} == set(fixture["pods"])
+    assert {evaluation["name"] for evaluation in target["evaluations"]} == {
+        "mock-name",
+        *(f"pod/{prefix}-0" for prefix in fixture["pods"]),
+    }
+    assert any(
+        evaluation.get("value", {}).get("spec.diagnostics") == fixture["broker"]["spec"]["diagnostics"]
+        for evaluation in target["evaluations"]
+    )
+    if as_list:
+        from rich.console import Console
+
+        console = Console(width=120, color_system=None)
+        with console.capture() as capture:
+            for display in target["displays"]:
+                console.print(display)
+        output = capture.get()
+        assert "aio-broker-diagnostics-service" not in output
+        assert "aio-broker-diagnostics-probe-0" in output
+        if detail_level != ResourceOutputDetailLevel.summary.value:
+            assert "Broker Diagnostics" in output
+
+
+@pytest.mark.parametrize(
+    "prefix",
+    [
+        "aio-broker-diagnostics-probe",
+        "aio-broker-frontend",
+        "aio-broker-backend",
+        "aio-broker-authentication",
+        "aio-broker-health-manager",
+        "aio-broker-operator",
+    ],
+)
+@pytest.mark.parametrize("pod_state, expected_status", [(None, "warning"), ("Failed", "error")])
+def test_broker_checks_preserve_runtime_health_without_diagnostics_service(
+    mock_broker_without_diagnostics_service, prefix, pod_state, expected_status
+):
+    fixture = mock_broker_without_diagnostics_service
+    if pod_state is None:
+        fixture["pods"][prefix] = []
+        resource_name = prefix
+    else:
+        fixture["pods"][prefix][0].status.phase = pod_state
+        resource_name = f"pod/{prefix}-0"
+
+    result = evaluate_brokers()
+    target = result["targets"]["brokers.mqttbroker.iotoperations.azure.com"]["mock_namespace"]
+
+    assert result["status"] == target["status"] == expected_status
+    assert any(
+        evaluation["name"] == resource_name and evaluation["status"] == expected_status
+        for evaluation in target["evaluations"]
+    )
+    fixture["get_service"].assert_not_called()
+
+
 @pytest.mark.parametrize(
     "resource_kinds",
     [
@@ -56,7 +126,7 @@ def test_check_mq_by_resource_types(ops_service, mocker, mock_resource_types, re
 @pytest.mark.parametrize("detail_level", ResourceOutputDetailLevel.list())
 @pytest.mark.parametrize("resource_name", [None, "mock*", "mock-name"])
 @pytest.mark.parametrize(
-    "broker, service, conditions, evaluations",
+    "broker, conditions, evaluations",
     [
         (
             # broker (distributed)
@@ -78,18 +148,6 @@ def test_check_mq_by_resource_types(ops_service, mocker, mock_resource_types, re
                         "status": ResourceState.available.value,
                         "description": "All replicas are running.",
                     }
-                },
-            ),
-            # service obj
-            generate_resource_stub(
-                metadata={"name": "mock-name"},
-                spec={
-                    "clusterIP": "10.0.222.134",
-                    "ports": [
-                        {"name": "bincode-listener-service", "port": 9700, "protocol": "TCP", "targetPort": 9700},
-                        {"name": "protobuf-listener-service", "port": 9800, "protocol": "TCP", "targetPort": 9800},
-                        {"name": "aio-broker-metrics-service", "port": 9600, "protocol": "TCP", "targetPort": 9600},
-                    ],
                 },
             ),
             # conditions str
@@ -152,18 +210,6 @@ def test_check_mq_by_resource_types(ops_service, mocker, mock_resource_types, re
                     },
                 },
             ),
-            # service obj
-            generate_resource_stub(
-                metadata={"name": "mock-name"},
-                spec={
-                    "clusterIP": "10.0.222.134",
-                    "ports": [
-                        {"name": "bincode-listener-service", "port": 9700, "protocol": "TCP", "targetPort": 9700},
-                        {"name": "protobuf-listener-service", "port": 9800, "protocol": "TCP", "targetPort": 9800},
-                        {"name": "aio-broker-metrics-service", "port": 9600, "protocol": "TCP", "targetPort": 9600},
-                    ],
-                },
-            ),
             # conditions
             [
                 "len(brokers)==1",
@@ -224,18 +270,6 @@ def test_check_mq_by_resource_types(ops_service, mocker, mock_resource_types, re
                     }
                 },
             ),
-            # service obj
-            generate_resource_stub(
-                metadata={"name": "mock-name"},
-                spec={
-                    "clusterIP": "10.0.222.134",
-                    "ports": [
-                        {"name": "bincode-listener-service", "port": 9700, "protocol": "TCP", "targetPort": 9700},
-                        {"name": "protobuf-listener-service", "port": 9800, "protocol": "TCP", "targetPort": 9800},
-                        {"name": "aio-broker-metrics-service", "port": 9600, "protocol": "TCP", "targetPort": 9600},
-                    ],
-                },
-            ),
             # conditions str
             [
                 "len(brokers)==1",
@@ -279,17 +313,13 @@ def test_check_mq_by_resource_types(ops_service, mocker, mock_resource_types, re
     ],
 )
 def test_broker_checks(
-    mocker, mock_evaluate_mq_pod_health, broker, service, conditions, evaluations, detail_level, resource_name
+    mocker, mock_evaluate_mq_pod_health, broker, conditions, evaluations, detail_level, resource_name
 ):
     namespace = generate_random_string()
     broker["metadata"]["namespace"] = namespace
     mocker.patch(
         "azext_edge.edge.providers.edge_api.base.EdgeResourceApi.get_resources",
         return_value={"items": [broker]},
-    )
-    mocker.patch(
-        "azext_edge.edge.providers.check.mq.get_namespaced_service",
-        return_value=service,
     )
     result = evaluate_brokers(detail_level=detail_level, resource_name=resource_name)
 

@@ -9,11 +9,38 @@ from azure.cli.core.azclierror import ArgumentUsageError
 
 from azext_edge.edge.commands_edge import check
 from azext_edge.edge.providers.checks import run_checks
+from azext_edge.edge.providers.check.summary import check_summary
 from azext_edge.edge.providers.edge_api import (
     DATAFLOW_ACTIVE_API,
     DEVICEREGISTRY_API_V1,
     MQ_ACTIVE_API,
 )
+
+
+@pytest.mark.parametrize("as_list", [False, True])
+@pytest.mark.parametrize("pod_state, expected_status", [("Running", "success"), ("Failed", "error")])
+def test_summary_without_broker_diagnostics_service(
+    mocker, mock_broker_without_diagnostics_service, as_list, pod_state, expected_status
+):
+    fixture = mock_broker_without_diagnostics_service
+    fixture["pods"]["aio-broker-backend"][0].status.phase = pod_state
+    mocker.patch(
+        "azext_edge.edge.providers.check.base.deployment.enumerate_ops_service_resources",
+        return_value=(
+            {"name": "enumerateBrokerApi", "description": "Enumerate MQTT Broker API resources", "status": "success"},
+            {"Broker": []},
+        ),
+    )
+    for service in ["akri", "deviceregistry", "opcua", "dataflows"]:
+        mocker.patch(f"azext_edge.edge.providers.check.summary.check_{service}_deployment", return_value=[])
+
+    result = check_summary(resource_name=None, resource_kinds=None, as_list=as_list)
+
+    assert result["status"] == expected_status
+    broker_target = result["targets"][MQ_ACTIVE_API.as_str()]["_all_"]
+    assert broker_target["status"] == expected_status
+    assert {"status": expected_status, "value": {"evalBrokers": expected_status}} in broker_target["evaluations"]
+    fixture["get_service"].assert_not_called()
 
 
 @pytest.mark.parametrize(
