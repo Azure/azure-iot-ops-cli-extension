@@ -228,7 +228,9 @@ def test_update_does_not_mutate_supplied_record(mocker, mocked_cmd, mocked_respo
 
 @pytest.mark.parametrize("force", [False, True])
 @pytest.mark.usefixtures("mocked_upgrade_manager")
-def test_upgrade_prevalidates_dependencies_before_delete(mocked_cmd, mocked_responses, force):
+def test_upgrade_prevalidates_dependencies_before_delete(mocked_cmd, mocked_responses, mocked_sleep, force):
+    import json
+
     from azext_edge.edge.commands_edge import upgrade_instance
     from azext_edge.edge.providers.orchestration.common import EXTENSION_TYPE_CM, EXTENSION_TYPE_PLATFORM
     from .test_upgrade2_unit import UpgradeScenario
@@ -237,9 +239,17 @@ def test_upgrade_prevalidates_dependencies_before_delete(mocked_cmd, mocked_resp
     scenario.set_extension(EXTENSION_TYPE_CM, remove=True)
     scenario.set_extension(EXTENSION_TYPE_OPS, ext_vers="1.4.0")
     scenario.set_instance_mock(mocked_responses, "instance", "rg")
-    with pytest.raises(ValidationError, match="downgrade"):
-        upgrade_instance(mocked_cmd, "rg", "instance", ops_version="1.3.0", force=force, confirm_yes=True)
-    assert not [c for c in mocked_responses.calls if c.request.method in {"PUT", "PATCH", "DELETE"}]
+    if force:
+        upgrade_instance(mocked_cmd, "rg", "instance", ops_version="1.3.0", force=True, confirm_yes=True)
+        assert scenario.delete_record[EXTENSION_TYPE_PLATFORM]
+        assert EXTENSION_TYPE_CM in scenario.create_record
+        writes = [c.request for c in mocked_responses.calls if c.request.method == "PATCH"]
+        assert len(writes) == 1
+        assert json.loads(writes[0].body)["properties"]["version"] == "1.3.0"
+    else:
+        with pytest.raises(ValidationError, match="downgrade"):
+            upgrade_instance(mocked_cmd, "rg", "instance", ops_version="1.3.0", confirm_yes=True)
+        assert not [c for c in mocked_responses.calls if c.request.method in {"PUT", "PATCH", "DELETE"}]
 
 
 @pytest.mark.usefixtures("mocked_upgrade_manager")
@@ -295,6 +305,10 @@ def test_runtime_boundaries_apply_even_with_force(source, target, train, match, 
         ext_type=EXTENSION_TYPE_OPS, current_version=source, current_train=train,
         built_in_version=target, built_in_train=train, version_override=target, force=force,
     )
+    if force and train == "stable":
+        state.validate_upgrade()
+        assert state.get_patch()["properties"]["version"] == target
+        return
     with pytest.raises(ValidationError, match=match):
         state.validate_upgrade()
     with pytest.raises(ValidationError, match=match):

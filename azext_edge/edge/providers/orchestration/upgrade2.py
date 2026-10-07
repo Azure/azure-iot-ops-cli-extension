@@ -37,7 +37,6 @@ from .common import (
     MIN_INSTANCE_VERSION_FOR_OPCUA_CONNECTOR_TEMPLATE,
     MIN_INSTANCE_VERSION_V1_FOR_V2_UPGRADE,
     MIN_INSTANCE_VERSION_V2,
-    OPCUA_CONNECTOR_ENDPOINT_TYPE,
     PROVISIONING_STATE_SUCCESS,
     ConfigSyncModeType,
 )
@@ -211,6 +210,9 @@ class UpgradeManager:
             self._validate_foundation_plan(state)
             if state.connector_template_needed:
                 state.connector_template_version = self.runtime_profile.require_opcua_connector_version()
+                state.connector_template_endpoint_types = ConnectorTemplates.default_opcua_endpoint_types(
+                    self.runtime_profile
+                )
             return state
 
     def _validate_foundation_plan(self, state: "ClusterUpgradeState") -> None:
@@ -748,6 +750,9 @@ def render_upgrade_table(upgrade_state: "ClusterUpgradeState"):  # noqa: C901
         if upgrade_state.connector_template_needed:
             try:
                 repair_name = getattr(upgrade_state, "connector_template_repair_name", None)
+                endpoint_types = ", ".join(
+                    endpoint["endpointType"] for endpoint in upgrade_state.connector_template_endpoint_types
+                )
                 if repair_name:
                     table.add_row(
                         "opc-ua connector template",
@@ -755,7 +760,7 @@ def render_upgrade_table(upgrade_state: "ClusterUpgradeState"):  # noqa: C901
                         "[yellow]Replaced[/yellow]",
                         f"[yellow]•[/yellow] Replace failed template [bold]{repair_name}[/bold]\n"
                         f"[yellow]•[/yellow] Existing template settings are reset to defaults\n"
-                        f"[green]•[/green] Endpoint: [bold]{OPCUA_CONNECTOR_ENDPOINT_TYPE}[/bold]\n"
+                        f"[green]•[/green] Endpoints: [bold]{endpoint_types}[/bold]\n"
                         f"[green]•[/green] Version: [bold]{upgrade_state.connector_template_version}[/bold]",
                     )
                 else:
@@ -764,7 +769,7 @@ def render_upgrade_table(upgrade_state: "ClusterUpgradeState"):  # noqa: C901
                         "[dim]Not configured[/dim]",
                         "[green]Created[/green]",
                         f"[green]•[/green] Create default OPC UA connector template\n"
-                        f"[green]•[/green] Endpoint: [bold]{OPCUA_CONNECTOR_ENDPOINT_TYPE}[/bold]\n"
+                        f"[green]•[/green] Endpoints: [bold]{endpoint_types}[/bold]\n"
                         f"[green]•[/green] Version: [bold]{upgrade_state.connector_template_version}[/bold]",
                     )
                 table.add_section()
@@ -855,6 +860,7 @@ class ClusterUpgradeState:
         self.semver = scoped_semver_import()
         self.connector_template_repair_name = None
         self.connector_template_version = None
+        self.connector_template_endpoint_types = []
         self.extension_upgrades = self._refresh_upgrade_state()
         self.instance_upgrade = self._check_instance_upgrade()
         self.registry_endpoint_needed = self._check_registry_endpoint_needed()
@@ -1322,8 +1328,7 @@ class ExtensionUpgradeState:
                 "or repair. To explicitly transfer ownership, run 'az k8s-extension update "
                 "--subscription <cluster-subscription> --resource-group <cluster-resource-group> "
                 "--cluster-name <cluster-name> --cluster-type connectedClusters "
-                "--name <aio-extension-name> --auto-upgrade false', then retry. "
-                "--force cannot override upgrade ownership."
+                "--name <aio-extension-name> --auto-upgrade false', then retry."
             )
 
     def _validate_ops_boundary(self) -> None:
@@ -1351,6 +1356,8 @@ class ExtensionUpgradeState:
         if target_train.lower() != current_train.lower():
             raise ValidationError("Cross-train upgrades are not supported. GA stays GA; preview stays preview.")
         target = resolve_runtime_identity(target_version, target_train, self.qualification_identities)
+        if self.force and installed.channel == target.channel == RuntimeChannel.STABLE:
+            return
         validate_upgrade_boundary(installed, target)
 
     def _get_reconcile_version(self) -> Optional[str]:
@@ -1528,6 +1535,17 @@ class ExtensionUpgradeState:
                 "Cannot validate upgrade path."
             )
 
+        if self.moniker == EXTENSION_MONIKER_OPS:
+            installed = resolve_runtime_identity(
+                self.current_version[0], self.current_version[1], self.qualification_identities
+            )
+            target = resolve_runtime_identity(target_version, self.desired_version[1], self.qualification_identities)
+            if (
+                self.force and installed.channel == target.channel == RuntimeChannel.STABLE
+                and self.current_version[1].lower() == self.desired_version[1].lower()
+            ):
+                return
+
         parsed_current = self.semver.parse(self.current_version[0])
         parsed_desired = self.semver.parse(target_version)
 
@@ -1541,9 +1559,6 @@ class ExtensionUpgradeState:
         if self.moniker != EXTENSION_MONIKER_OPS:
             return
 
-        installed = resolve_runtime_identity(
-            self.current_version[0], self.current_version[1], self.qualification_identities
-        )
         if installed.channel == RuntimeChannel.PREVIEW:
             if parsed_desired.major != parsed_current.major:
                 raise ValidationError(

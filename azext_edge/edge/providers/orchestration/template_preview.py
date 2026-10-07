@@ -7,7 +7,8 @@
 
 """Generated preview instance blueprint for internal qualification.
 
-Development connector registries and the GDS setting are retained by approval.
+Development connector registries are retained for internal qualification by approval.
+The source GDS parameter and configuration default are retained by explicit approval.
 Runtime catalog registration preserves these inputs and the actual deployment train.
 
 The 1.6.0-preview.22 tag defaults to 1.6.0-preview.21. The approved runtime

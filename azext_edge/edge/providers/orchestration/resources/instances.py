@@ -226,7 +226,7 @@ class Instances(Queryable):
             try:
                 runtime = self.get_runtime_context(result, catalog.qualification_identities)
             except (ValidationError, HttpResponseError) as error:
-                logger.warning(
+                logger.debug(
                     "Unable to resolve the AIO runtime. Returning the instance using API %s; "
                     "preview-specific fields may be incomplete. %s",
                     self.iotops_api_version, error,
@@ -331,13 +331,27 @@ class Instances(Queryable):
         spc_resource_id: Optional[str] = None,
         **kwargs: dict,
     ) -> dict:
+        if tags is not None and all(
+            value is None for value in (description, features, adr_namespace_resource_id, spc_resource_id)
+        ):
+            status_context = nullcontext() if kwargs.get("no_status") else console.status(
+                kwargs.get("status_text", "Working...")
+            )
+            with status_context:
+                return self.iotops_mgmt_client.instance.update(
+                    instance_name=name,
+                    resource_group_name=resource_group_name,
+                    properties={"tags": tags},
+                    headers=kwargs.get("headers") or {"CommandName": "iot ops update"},
+                )
         instance = deepcopy(
             kwargs.pop("instance", None) or self.show(name=name, resource_group_name=resource_group_name)
         )
         desired_features = parse_feature_kvp_nargs(features, strict=True) if features else None
         catalog = get_runtime_catalog()
         runtime = self.get_runtime_context(instance, catalog.qualification_identities)
-        runtime.require_ready()
+        if (desired_features or {}).get("opcua", {}).get("mode") not in (None, "Disabled"):
+            runtime.require_ready()
         requested_arguments = {
             "instance_features": features, "description": description, "tags": tags,
             "adr_namespace_resource_id": adr_namespace_resource_id, "spc_resource_id": spc_resource_id,
