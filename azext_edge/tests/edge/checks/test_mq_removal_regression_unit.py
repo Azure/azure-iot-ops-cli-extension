@@ -9,6 +9,7 @@ from copy import deepcopy
 import pytest
 from azure.cli.core.azclierror import CLIInternalError
 
+from ... import helpers
 from .int import test_mq_int as live_checks
 
 
@@ -63,11 +64,13 @@ def removal_cluster(mocker):
             return responses["check"]
         return responses["text"]
 
+    mocked_run = mocker.patch.object(live_checks, "run", side_effect=run)
+    mocker.patch.object(helpers, "run", mocked_run)
     return {
         "responses": responses,
         "broker_target": broker_target,
         "summary_target": summary_target,
-        "run": mocker.patch.object(live_checks, "run", side_effect=run),
+        "run": mocked_run,
     }
 
 
@@ -86,7 +89,11 @@ def test_removal_regression_checks_all_modes_and_ignores_other_service_health(re
 
 @pytest.mark.parametrize(
     "kind, name",
-    [("Service", "aio-broker-diagnostics-service"), ("Pod", "aio-broker-diagnostics-service-abc")],
+    [
+        ("Service", "aio-broker-diagnostics-service"),
+        ("Pod", "aio-broker-diagnostics-service-abc"),
+        ("StatefulSet", "aio-broker-diagnostics-service"),
+    ],
 )
 def test_removal_regression_rejects_retired_resources(removal_cluster, kind, name):
     removal_cluster["responses"]["resources"]["items"] = [

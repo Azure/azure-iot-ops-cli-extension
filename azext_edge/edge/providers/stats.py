@@ -29,6 +29,10 @@ if TYPE_CHECKING:
     from opentelemetry.proto.trace.v1.trace_pb2 import TracesData
 
 
+class DiagnosticsServiceNotFoundError(ResourceNotFoundError):
+    """A successful pod lookup found no broker diagnostics service pod."""
+
+
 def _preprocess_stats(
     namespace: Optional[str] = None, diag_service_pod_prefix: str = AIO_BROKER_DIAGNOSTICS_SERVICE
 ) -> Tuple[str, V1Pod]:
@@ -37,9 +41,11 @@ def _preprocess_stats(
 
         namespace = DEFAULT_NAMESPACE
 
-    target_pods = get_namespaced_pods_by_prefix(prefix=diag_service_pod_prefix, namespace=namespace)
+    target_pods = get_namespaced_pods_by_prefix(
+        prefix=diag_service_pod_prefix, namespace=namespace, raise_on_error=True
+    )
     if not target_pods:
-        raise ResourceNotFoundError(
+        raise DiagnosticsServiceNotFoundError(
             f"Diagnostics service pod '{diag_service_pod_prefix}' does not exist in namespace '{namespace}'."
         )
     for pod in target_pods:

@@ -19,7 +19,7 @@ from .helpers import (
     assert_general_eval_custom_resources,
     run_check_command
 )
-from ....helpers import get_kubectl_custom_items, run
+from ....helpers import assert_broker_diagnostics_service_absent, get_kubectl_custom_items, run
 from ....settings import convert_flag
 
 logger = get_logger(__name__)
@@ -105,7 +105,7 @@ def test_mq_check_diagnostics_removal(cluster_connection):
     )
     assert brokers["items"], "The diagnostics-removal scenario requires a deployed broker; no brokers were found."
     namespaces = {broker["metadata"]["namespace"] for broker in brokers["items"]}
-    _assert_diagnostics_service_absent(namespaces)
+    assert_broker_diagnostics_service_absent(namespaces)
     _wait_for_broker_summary_health()
 
     for detail_level in ResourceOutputDetailLevel.list():
@@ -143,27 +143,7 @@ def test_mq_check_diagnostics_removal(cluster_connection):
         if detail_level != ResourceOutputDetailLevel.summary.value:
             assert "Broker Diagnostics" in output, output
 
-    _assert_diagnostics_service_absent(namespaces)
-
-
-def _assert_diagnostics_service_absent(namespaces):
-    resources = run(
-        split("kubectl get services,pods -A -o json --request-timeout=20s"), shell_mode=False, timeout=30
-    )
-    remaining = [
-        f"{resource['kind']}/{resource['metadata']['namespace']}/{resource['metadata']['name']}"
-        for resource in resources["items"]
-        if resource["metadata"]["namespace"] in namespaces
-        and (
-            resource["kind"] == "Service" and resource["metadata"]["name"] == "aio-broker-diagnostics-service"
-            or resource["kind"] == "Pod"
-            and resource["metadata"]["name"].startswith("aio-broker-diagnostics-service")
-        )
-    ]
-    assert not remaining, (
-        "This scenario requires a backend release without the diagnostics Service and pods. "
-        f"Retired resources still present: {remaining}. Select the removal release using runtime-create-args."
-    )
+    assert_broker_diagnostics_service_absent(namespaces)
 
 
 def _wait_for_broker_summary_health():
