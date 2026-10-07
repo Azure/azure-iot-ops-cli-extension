@@ -54,7 +54,7 @@ def test_bundled_profiles_select_management_api_without_changing_preview_bluepri
     from azext_edge.edge.providers.orchestration.runtime_catalog import get_runtime_catalog
 
     catalog = get_runtime_catalog()
-    assert catalog.get(RuntimeChannel.STABLE).iotops_api_version == "2026-10-01"
+    assert catalog.get(RuntimeChannel.STABLE).iotops_api_version == "2026-07-01"
     preview = catalog.get(RuntimeChannel.PREVIEW)
     assert preview.iotops_api_version == "2026-09-01-preview"
     assert preview.identity.version == "1.6.0-preview.22"

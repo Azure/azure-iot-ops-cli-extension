@@ -13,8 +13,9 @@ AZ_CLIENT_PATH = "azext_edge.edge.util.az_client"
 
 
 @pytest.mark.parametrize("api_version,expected", [
-    (None, "2026-10-01"),
+    (None, "2026-07-01"),
     ("2026-07-01", "2026-07-01"),
+    ("2026-10-01", "2026-10-01"),
     ("2026-09-01-preview", "2026-09-01-preview"),
 ])
 def test_iotops_management_api_default_and_overrides(api_version, expected):
@@ -23,7 +24,7 @@ def test_iotops_management_api_default_and_overrides(api_version, expected):
     kwargs = {"api_version": api_version} if api_version else {}
     client = get_iotops_mgmt_client(subscription_id="00000000-0000-0000-0000-000000000000", **kwargs)
 
-    assert DEFAULT_IOTOPS_MGMT_API_VERSION.value == "2026-10-01"
+    assert DEFAULT_IOTOPS_MGMT_API_VERSION.value == "2026-07-01"
     assert client._config.api_version == expected
 
 
