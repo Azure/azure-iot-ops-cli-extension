@@ -18,10 +18,11 @@ scenarios:
     tox_env: python-edge-int
 
   - name: broker-diagnostics-removal
-    description: "Broker health after diagnostics service removal"
+    description: "Broker checks and bundles after diagnostics service removal"
     tox_env: python-edge-int
     manual_only: true
     parallel: false
+    create_args: "--ops-version 1.5.33 --ops-train integration"
     env:
       - azext_edge_broker_diagnostics_removal: "true"
 

@@ -43,11 +43,17 @@ Run **Integration tests** on a branch containing the PR changes with
 selected branch, not an arbitrary fork PR head; use an upstream branch containing
 the changes, or a fork configured with the required Azure credentials and OIDC access.
 
-Set `runtime-create-args` to the version/train arguments for the backend release
-that removes `aio-broker-diagnostics-service` (2610 GA/preview or later). An exact
-deployable version/train containing the removal has not yet been identified.
-Running against a deployment with the Service, pods, or StatefulSet still present fails explicitly; the tests do not delete
-resources or treat missing prerequisites as a successful skip.
+The scenario pins `--ops-version 1.5.33 --ops-train integration`, the 2610 release
+candidate containing broker 1.6.2 with diagnostics-service removal. Leave
+`runtime-create-args` empty to use this pin. This is an integration-train build
+of the 2610 release, not a claim that it is already published on `stable`.
+After release promotion, use `runtime-create-args` to override the version/train
+with the published stable build. Runtime arguments are appended after scenario
+arguments and take precedence. Default/scheduled scenarios retain their existing versions.
+
+Running against a deployment with the Service, pods, or StatefulSet still present
+fails explicitly; the tests do not delete resources or treat missing prerequisites
+as a successful skip.
 
 The scenario enables `azext_edge_broker_diagnostics_removal=true` and runs the
 existing edge suite, including `test_mq_check_diagnostics_removal`. This focused

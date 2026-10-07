@@ -40,6 +40,8 @@ def test_explicit_removal_scenario_enables_live_regression(scenario_matrix, sele
 
     assert removal["tox_env"] == "python-edge-int"
     assert removal["parallel"] is False
+    assert removal["create_args"] == "--ops-version 1.5.33 --ops-train integration"
+    assert removal["init_args"] == ""
     assert {"name": "azext_edge_broker_diagnostics_removal", "value": "true"} in removal["env"]
 
 
@@ -48,3 +50,4 @@ def test_explicit_edge_selection_is_unchanged(scenario_matrix):
     result = process_scenarios(scenarios, "edge")
     assert [scenario["name"] for scenario in result] == ["edge"]
     assert not result[0]["env"]
+    assert result[0]["create_args"] == ""
