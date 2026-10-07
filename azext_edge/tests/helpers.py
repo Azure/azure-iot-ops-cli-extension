@@ -263,7 +263,7 @@ def assert_role_assignment(
 
 
 def run(
-    command: str,
+    command: Union[str, List[str]],
     shell_mode: bool = True,
     expect_failure: bool = False,
     timeout: Optional[int] = None,

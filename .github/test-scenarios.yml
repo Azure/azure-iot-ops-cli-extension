@@ -10,11 +10,20 @@
 # - test_redeploy: Optional boolean to test redeployment in the scenario (default: false)
 # - env: Optional list of environment variable dictionaries with key-value pairs
 # - parallel: Optional boolean controlling parallel execution in pytest-xdist (default: true)
+# - manual_only: Optional boolean requiring explicit selection (excluded from default/scheduled runs)
 
 scenarios:
   - name: edge
     description: "Edge tests"
     tox_env: python-edge-int
+
+  - name: broker-diagnostics-removal
+    description: "Broker health after diagnostics service removal"
+    tox_env: python-edge-int
+    manual_only: true
+    parallel: false
+    env:
+      - azext_edge_broker_diagnostics_removal: "true"
 
   - name: insecure-listener
     description: "Insecure listener deploy, long running tests"

@@ -1,5 +1,5 @@
 name: Integration tests
-run-name: "Integration tests [${{ inputs.test-scenarios != '' && inputs.test-scenarios || 'all' }}]"
+run-name: "Integration tests [${{ inputs.test-scenarios != '' && inputs.test-scenarios || 'default' }}]"
 on:
   schedule:
     - cron: "0 9 * * *" # Run daily at 1:00 AM Pacific Time (9:00 AM UTC)
@@ -11,7 +11,7 @@ on:
         required: true
         default: ops-cli-int-test-rg
       test-scenarios:
-        description: "Run specific scenarios (comma-separated list)"
+        description: "Run specific scenarios (comma-separated list); empty runs all non-manual scenarios"
         type: string
         required: false
         default: ""
@@ -55,7 +55,7 @@ on:
         required: true
         default: ops-cli-int-test-rg
       test-scenarios:
-        description: "Run specific scenarios (comma-separated list)"
+        description: "Run specific scenarios (comma-separated list); empty runs all non-manual scenarios"
         type: string
         required: false
         default: ""
