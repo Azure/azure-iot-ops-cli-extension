@@ -1269,7 +1269,7 @@ def load_iotops_arguments(self, _):
             "use_preview",
             options_list=["--use-preview"],
             arg_type=get_three_state_flag(),
-            help="Create using the bundled Public Preview runtime profile instead of the GA profile. "
+            help="Create using the bundled preview runtime profile instead of the GA profile. "
             "Requires acceptance of the displayed preview terms; use --yes for noninteractive execution.",
         )
         context.argument(
@@ -1385,7 +1385,9 @@ def load_iotops_arguments(self, _):
         context.argument(
             "persist_max_size",
             options_list=["--persist-max-size"],
-            help="The max size of the message buffer on disk. Setting a value will enable disk persistence. "
+            help="The max size of the message buffer on disk. Setting a value enables disk persistence on GA. "
+            "Preview enables a 3Gi buffer and dynamic state store persistence by default; use --broker-config-file "
+            "to replace the generated broker configuration. "
             "Kubernetes resource units must be used e.g. the following value suffixes are supported: "
             "E, P, T, G, M, K. You can also use the power-of-two equivalents: Ei, Pi, Ti, Gi, Mi, Ki.",
             arg_group="Disk Persistence",
@@ -1540,8 +1542,8 @@ def load_iotops_arguments(self, _):
             "force",
             options_list=["--force"],
             arg_type=get_three_state_flag(),
-            help="Force eligible repair operations. Does not bypass AIO runtime compatibility, "
-            "cross-train or downgrade restrictions.",
+            help="Bypass version compatibility checks for stable-to-stable upgrades. "
+            "Does not bypass preview, cross-train or upgrade ownership restrictions.",
             arg_group="Extension Config",
             deprecate_info=context.deprecate(hide=True),
         )

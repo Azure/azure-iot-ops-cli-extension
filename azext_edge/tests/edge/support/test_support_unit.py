@@ -57,7 +57,7 @@ from azext_edge.edge.providers.support.common import COMPONENT_LABEL_FORMAT
 from azext_edge.edge.providers.support.dataflow import DATAFLOW_NAME_LABEL
 from azext_edge.edge.providers.support.meta import META_DIRECTORY_PATH, META_NAME_LABEL, META_PREFIX_NAMES
 from azext_edge.edge.providers.support.mq import MQ_DIRECTORY_PATH, MQ_NAME_LABEL
-from azext_edge.edge.providers.support.schemaregistry import SCHEMAS_DIRECTORY_PATH, SCHEMAS_NAME_LABEL
+from azext_edge.edge.providers.support.schemaregistry import SCHEMAS_NAME_LABEL
 from azext_edge.edge.providers.support_bundle import (
     COMPAT_META_APIS,
     COMPAT_CLUSTER_CONFIG_APIS,
@@ -1080,7 +1080,15 @@ def test_create_bundle_arc_agents(
             )
 
 
-def test_create_bundle_schemas(
+@pytest.mark.parametrize("ops_service, label_selector, directory_path", [
+    (OpsServiceType.schemaregistry.value,
+     "app.kubernetes.io/name in (microsoft-iotoperations-schemas)", "schemaregistry"),
+    (OpsServiceType.edgeregistry.value, "app.kubernetes.io/name in (microsoft-iotoperations-registry)", "edgeregistry"),
+])
+def test_create_bundle_registries(
+    ops_service,
+    label_selector,
+    directory_path,
     mocked_client,
     mocked_config,
     mocked_os_makedirs,
@@ -1096,11 +1104,11 @@ def test_create_bundle_schemas(
     mocked_root_logger,
     mocked_get_config_map,
 ):
-    assert SCHEMAS_NAME_LABEL == "app.kubernetes.io/name in (microsoft-iotoperations-schemas,aio-edge-registry)"
+    assert SCHEMAS_NAME_LABEL == "app.kubernetes.io/name in (microsoft-iotoperations-schemas)"
     since_seconds = random.randint(86400, 172800)
     result = support_bundle(
         None,
-        ops_services=[OpsServiceType.schemaregistry.value],
+        ops_services=[ops_service],
         bundle_dir=a_bundle_dir,
         log_age_seconds=since_seconds,
     )
@@ -1112,69 +1120,85 @@ def test_create_bundle_schemas(
         mocked_client,
         mocked_zipfile,
         mocked_list_pods,
-        label_selector=SCHEMAS_NAME_LABEL,
-        directory_path=SCHEMAS_DIRECTORY_PATH,
+        label_selector=label_selector,
+        directory_path=directory_path,
         since_seconds=since_seconds,
     )
     assert_list_config_maps(
         mocked_client,
         mocked_zipfile,
-        label_selector=SCHEMAS_NAME_LABEL,
-        directory_path=SCHEMAS_DIRECTORY_PATH,
+        label_selector=label_selector,
+        directory_path=directory_path,
     )
     assert_list_stateful_sets(
         mocked_client,
         mocked_zipfile,
-        label_selector=SCHEMAS_NAME_LABEL,
-        directory_path=SCHEMAS_DIRECTORY_PATH,
+        label_selector=label_selector,
+        directory_path=directory_path,
     )
     assert_list_services(
         mocked_client,
         mocked_zipfile,
-        label_selector=SCHEMAS_NAME_LABEL,
-        directory_path=SCHEMAS_DIRECTORY_PATH,
+        label_selector=label_selector,
+        directory_path=directory_path,
     )
     assert_list_persistent_volume_claims(
         mocked_client,
         mocked_zipfile,
-        directory_path=SCHEMAS_DIRECTORY_PATH,
-        label_selector=SCHEMAS_NAME_LABEL,
+        directory_path=directory_path,
+        label_selector=label_selector,
     )
 
 
-def test_schema_bundle_integration_checks_both_layouts(mocker):
+@pytest.mark.parametrize("ops_service, prefixes, expected_label", [
+    (OpsServiceType.schemaregistry.value, ["adr-schema-registry"],
+     ("app.kubernetes.io/name", "microsoft-iotoperations-schemas")),
+    (OpsServiceType.edgeregistry.value, ["aio-edge-registry"],
+     ("app.kubernetes.io/name", "microsoft-iotoperations-registry")),
+])
+@pytest.mark.parametrize("deployed", [False, True])
+def test_registry_bundle_integration_checks(mocker, ops_service, prefixes, expected_label, deployed):
     from .create_bundle_int import test_schemaregistry_int as schema_tests
 
-    inventory = {"pod": {"aio-edge-registry-0": {}}}
-    workloads = mocker.patch.object(schema_tests, "get_multi_kubectl_workload_items", return_value=inventory)
-    mocker.patch.object(schema_tests, "run_bundle_command", return_value=({}, "bundle.zip"))
+    pre_bundle_items = {"statefulset": {"registry": {}} if deployed else {}}
+    workloads = mocker.patch.object(schema_tests, "get_multi_kubectl_workload_items", return_value=pre_bundle_items)
+    bundle_command = mocker.patch.object(schema_tests, "run_bundle_command", return_value=({}, "bundle.zip"))
     file_map = {"statefulset": []}
-    mocker.patch.object(schema_tests, "get_file_map", return_value={"aio": file_map})
+    map_files = mocker.patch.object(schema_tests, "get_file_map", return_value={"aio": file_map})
     check_files = mocker.patch.object(schema_tests, "check_workload_resource_files")
     check_labels = mocker.patch.object(schema_tests, "check_cluster_label_coverage")
 
-    schema_tests.test_create_bundle_schemas(None, [])
+    schema_tests.test_create_bundle_registries(None, [], ops_service, prefixes, expected_label)
 
-    prefixes = ["adr-schema-registry", "aio-edge-registry"]
     workload_types = ["configmap", "pod", "service", "statefulset", "pvc"]
     workloads.assert_called_once_with(expected_workload_types=workload_types, prefixes=prefixes)
-    check_files.assert_called_once_with(
-        file_objs=file_map, pre_bundle_items=inventory, prefixes=prefixes, bundle_path="bundle.zip",
+    bundle_command.assert_called_once_with(
+        command=f"az iot ops support create-bundle --ops-service {ops_service}", tracked_files=[],
     )
+    if deployed:
+        map_files.assert_called_once_with({}, ops_service)
+        check_files.assert_called_once_with(
+            file_objs=file_map, pre_bundle_items=pre_bundle_items, prefixes=prefixes, bundle_path="bundle.zip",
+        )
+    else:
+        map_files.assert_not_called()
+        check_files.assert_not_called()
     check_labels.assert_called_once_with(
-        prefixes=prefixes, expected_label=("app.kubernetes.io/name", "microsoft-iotoperations-schemas"),
-        workload_types=workload_types, accepted_labels=["aio-edge-registry"],
+        prefixes=prefixes, expected_label=expected_label, workload_types=workload_types,
     )
 
 
-def test_schema_bundle_reports_absent_workloads_before_collection(mocker):
+def test_schema_bundle_handles_absent_workloads(mocker):
     from .create_bundle_int import test_schemaregistry_int as schema_tests
 
     mocker.patch.object(schema_tests, "get_multi_kubectl_workload_items", return_value={"pod": {}, "service": {}})
-    collect = mocker.patch.object(schema_tests, "run_bundle_command")
-    with pytest.raises(AssertionError, match="No schema workloads found"):
-        schema_tests.test_create_bundle_schemas(None, [])
-    collect.assert_not_called()
+    mocker.patch.object(schema_tests, "check_cluster_label_coverage")
+    collect = mocker.patch.object(schema_tests, "run_bundle_command", return_value=({}, "bundle.zip"))
+    schema_tests.test_create_bundle_registries(
+        None, [], "schemaregistry", ["adr-schema-registry"],
+        ("app.kubernetes.io/name", "microsoft-iotoperations-schemas"),
+    )
+    collect.assert_called_once()
 
 
 def test_schema_bundle_reports_label_mismatch_before_collection(mocker):
@@ -1184,8 +1208,76 @@ def test_schema_bundle_reports_label_mismatch_before_collection(mocker):
     mocker.patch.object(schema_tests, "check_cluster_label_coverage", side_effect=AssertionError("wrong label"))
     collect = mocker.patch.object(schema_tests, "run_bundle_command")
     with pytest.raises(AssertionError, match="wrong label"):
-        schema_tests.test_create_bundle_schemas(None, [])
+        schema_tests.test_create_bundle_registries(
+            None, [], "schemaregistry", ["adr-schema-registry"],
+            ("app.kubernetes.io/name", "microsoft-iotoperations-schemas"),
+        )
     collect.assert_not_called()
+
+
+@pytest.mark.parametrize("ops_service", [None, "schemaregistry", "edgeregistry"])
+@pytest.mark.parametrize("deployed", ["schemaregistry", "edgeregistry", "both", "neither"])
+def test_auto_bundle_expected_registries(mocker, ops_service, deployed):
+    from .create_bundle_int import test_auto_int as auto_tests
+
+    def resources(expected_workload_types, prefixes):
+        service = "schemaregistry" if prefixes == ["adr-schema-registry"] else "edgeregistry"
+        return {"pod": {"registry": {}} if deployed in (service, "both") else {}}
+
+    mocker.patch.object(auto_tests, "get_multi_kubectl_workload_items", side_effect=resources)
+    result = auto_tests._get_expected_services({}, ops_service, "azure-iot-operations")
+    for service in ("schemaregistry", "edgeregistry"):
+        assert (service in result) == (ops_service in (None, service) and deployed in (service, "both"))
+
+
+@pytest.mark.parametrize("prefix, expected_label", [
+    ("adr-schema-registry", "microsoft-iotoperations-schemas"),
+    ("aio-edge-registry", "microsoft-iotoperations-registry"),
+])
+@pytest.mark.parametrize("label_case", ["correct", "other_component", "obsolete", "missing"])
+def test_registry_label_coverage_rejects_wrong_labels(mocker, prefix, expected_label, label_case):
+    from .create_bundle_int import helpers as bundle_helpers
+
+    actual_label = {
+        "correct": expected_label,
+        "other_component": (
+            "microsoft-iotoperations-registry" if prefix == "adr-schema-registry"
+            else "microsoft-iotoperations-schemas"
+        ),
+        "obsolete": "aio-edge-registry",
+        "missing": None,
+    }[label_case]
+    mocker.patch.object(bundle_helpers, "run", return_value={"items": [{"metadata": {
+        "name": prefix + "-0", "namespace": "azure-iot-operations",
+        "labels": {"app.kubernetes.io/name": actual_label} if actual_label else {},
+    }}]})
+    arguments = {
+        "prefixes": [prefix], "expected_label": ("app.kubernetes.io/name", expected_label),
+        "workload_types": ["pod"],
+    }
+    if label_case == "correct":
+        bundle_helpers.check_cluster_label_coverage(**arguments)
+    else:
+        with pytest.raises(AssertionError, match="missing/wrong label"):
+            bundle_helpers.check_cluster_label_coverage(**arguments)
+
+
+@pytest.mark.parametrize("ops_service, prefixes, label", [
+    ("schemaregistry", ["adr-schema-registry"], "microsoft-iotoperations-schemas"),
+    ("edgeregistry", ["aio-edge-registry"], "microsoft-iotoperations-registry"),
+])
+def test_absent_registry_rejects_unexpected_bundle_section(mocker, ops_service, prefixes, label):
+    from .create_bundle_int import test_schemaregistry_int as registry_tests
+
+    mocker.patch.object(registry_tests, "get_multi_kubectl_workload_items", return_value={"pod": {}})
+    mocker.patch.object(registry_tests, "check_cluster_label_coverage")
+    mocker.patch.object(registry_tests, "run_bundle_command", return_value=(
+        {join("support_bundle", "azure-iot-operations", ops_service): {}}, "bundle.zip",
+    ))
+    with pytest.raises(AssertionError):
+        registry_tests.test_create_bundle_registries(
+            None, [], ops_service, prefixes, ("app.kubernetes.io/name", label),
+        )
 
 
 def test_kind_to_dir_override_functionality():

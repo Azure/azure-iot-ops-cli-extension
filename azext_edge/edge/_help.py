@@ -1954,10 +1954,15 @@ def load_iotops_help():
           The result of the command nets an IoT Operations instance with
           a set of default resources configured for cohesive function.
 
-          To enable broker disk persistence at least a value for --persist-max-size
-          must be provided. When enabled the default configuration is constrained to
+          On GA, broker disk persistence requires a value for --persist-max-size.
+          When enabled the default configuration is constrained to
           dynamic persistence across state store, retain messages and subscriber
           queues.
+
+          The bundled preview runtime enables disk persistence by default with a 3Gi
+          buffer and dynamic state store persistence. The --persist-* options do not
+          disable it. Use --broker-config-file to replace the generated broker
+          configuration when different persistence settings are required.
 
           To enable edge to cloud resource hydration please use the
           `az iot ops enable-rsync` command post instance creation.
@@ -2102,8 +2107,7 @@ def load_iotops_help():
                       with the built-in deployment that would be executed with `az iot ops init`
                       and `az iot ops create`.
                       Version-pinned upgrades and repairs require `autoUpgradeMinorVersion=false`.
-                      Disable Arc automatic upgrades explicitly before proceeding;
-                      `--force` cannot override this requirement.
+                      Disable Arc automatic upgrades explicitly before proceeding.
         examples:
         - name: Upgrade the instance with minimal inputs.
           text: >
@@ -3166,10 +3170,13 @@ def load_iotops_help():
         type: command
         short-summary: Opens the version guide located at {GET_VERSIONS_URL} in the default browser.
         long-summary: |
-          Use --inline to report local package versions and bundled runtime profiles without authentication.
-          The extensions field retains the shared foundation and default create versions. runtimeProfiles
-          lists each bundled channel's target version, actual deployment train and source provenance.
-          These are package inputs, not installed cluster versions or a list of qualified upgrade paths.
+          Use --inline to report local package versions and bundled runtime profiles
+          without authentication.
+          The extensions field retains the shared foundation and default create versions.
+          runtimeProfiles lists each bundled channel's target version, actual deployment
+          train and source provenance.
+          These are package inputs, not installed cluster versions or a list of qualified
+          upgrade paths.
 
         examples:
         - name: Route to the version guide in a new browser window.

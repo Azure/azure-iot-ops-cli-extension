@@ -156,7 +156,9 @@ def test_preview_phase_resources_and_defaults(qualification_profile, phase):
             existing.add("aioInstance")
         assert all(resources[key]["existing"] for key in existing)
     if phase in (None, InstancePhase.INSTANCE):
-        assert resources["aioInstance"]["properties"] == source["resources"]["aioInstance"]["properties"]
+        assert resources["aioInstance"]["properties"] == {
+            **source["resources"]["aioInstance"]["properties"], "description": None,
+        }
     if phase in (None, InstancePhase.RESOURCES):
         for resource in resources.values():
             if resource["type"].startswith("Microsoft.IoTOperations/instances/"):

@@ -294,8 +294,7 @@ class InitTargets:
         opcua_connector_template = template.get_resource_by_key("opcUaConnectorTemplate")
 
         properties = instance.setdefault("properties", {})
-        if self.instance_description is not None:
-            properties["description"] = self.instance_description
+        properties["description"] = self.instance_description
         self._apply_instance_features(template, parameters, properties)
 
         if self.instance_name:

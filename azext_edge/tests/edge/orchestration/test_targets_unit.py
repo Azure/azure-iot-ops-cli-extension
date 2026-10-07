@@ -441,7 +441,7 @@ def test_init_targets(target_scenario: dict, mocked_feature_keys: Mock):
 
     # Verify instance properties
     aio_instance = instance_template["resources"]["aioInstance"]
-    assert aio_instance["properties"]["description"] == (targets.instance_description or "An AIO instance.")
+    assert aio_instance["properties"]["description"] == targets.instance_description
     assert aio_instance["properties"]["features"] == "[variables('effectiveFeatures')]"
     if targets.instance_features:
         assert instance_parameters["features"]["value"] == targets.instance_features

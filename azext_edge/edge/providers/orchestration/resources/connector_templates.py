@@ -210,6 +210,15 @@ class ConnectorTemplates(Queryable):
             )
             return wait_for_terminal_state(poller=poller, logger=logger)
 
+    @staticmethod
+    def default_opcua_endpoint_types(runtime_profile: Optional["RuntimeProfile"] = None) -> List[dict]:
+        from ..common import OPCUA_CONNECTOR_ENDPOINT_TYPE
+
+        if runtime_profile is None:
+            return [{"endpointType": OPCUA_CONNECTOR_ENDPOINT_TYPE}]
+        blueprint = runtime_profile.copy_instance_blueprint()
+        return blueprint.get_resource_by_key("opcUaConnectorTemplate")["properties"]["deviceInboundEndpointTypes"]
+
     def create_default_opcua_template(
         self,
         resource_group_name: str,
@@ -241,7 +250,6 @@ class ConnectorTemplates(Queryable):
         """
         from ..common import (
             OPCUA_CONNECTOR_AIO_MIN_VERSION,
-            OPCUA_CONNECTOR_ENDPOINT_TYPE,
             OPCUA_CONNECTOR_METADATA_REF,
             OPCUA_CONNECTOR_REGISTRY,
             OPCUA_CONNECTOR_SUPERVISOR_IMAGE_NAME,
@@ -250,12 +258,7 @@ class ConnectorTemplates(Queryable):
         if not template_name:
             template_name = self.default_opcua_template_name(instance_name)
 
-        endpoint_types = [{"endpointType": OPCUA_CONNECTOR_ENDPOINT_TYPE}]
-        if runtime_profile is not None:
-            blueprint = runtime_profile.copy_instance_blueprint()
-            endpoint_types = blueprint.get_resource_by_key("opcUaConnectorTemplate")["properties"][
-                "deviceInboundEndpointTypes"
-            ]
+        endpoint_types = self.default_opcua_endpoint_types(runtime_profile)
 
         template_resource = {
             "extendedLocation": self.instances.get_ext_loc(

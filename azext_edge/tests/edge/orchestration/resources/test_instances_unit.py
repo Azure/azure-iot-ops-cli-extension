@@ -276,13 +276,17 @@ def test_instance_discovery_failure_only_falls_back_for_show(
     mocker.patch.object(Instances, "get_runtime_context", side_effect=discovery_error)
 
     if operation == "show":
-        assert show_instance(mocked_cmd, name, resource_group) == record
+        with caplog.at_level("DEBUG"):
+            assert show_instance(mocked_cmd, name, resource_group) == record
         assert "Returning the instance using API 2026-07-01" in caplog.text
         assert "preview-specific fields may be incomplete" in caplog.text
         assert str(discovery_error) in caplog.text
+        assert not [record for record in caplog.records if record.levelname in {"WARNING", "ERROR", "CRITICAL"}]
     else:
         with pytest.raises(type(discovery_error)) as caught:
-            update_instance(mocked_cmd, name, resource_group, tags={"updated": "yes"})
+            update_instance(
+                mocked_cmd, name, resource_group, tags={"updated": "yes"}, instance_description="Updated description",
+            )
         assert caught.value is discovery_error
         assert "Returning the instance" not in caplog.text
     assert len(mocked_responses.calls) == 1
@@ -328,8 +332,12 @@ def test_preview_instance_api_preserves_response_fields(mocked_cmd, mocked_respo
     expected = deepcopy(preview)
     if operation == "update":
         expected["tags"] = {"updated": "yes"}
+        expected["properties"]["description"] = "Updated description"
         mocked_responses.add(responses.PUT, preview_endpoint, json=expected)
-        result = update_instance(mocked_cmd, name, resource_group, tags=expected["tags"], wait_sec=0)
+        result = update_instance(
+            mocked_cmd, name, resource_group, tags=expected["tags"],
+            instance_description="Updated description", wait_sec=0,
+        )
         writes = [call.request for call in mocked_responses.calls if call.request.method != "GET"]
         assert len(writes) == 1
         assert json.loads(writes[0].body) == expected
@@ -469,7 +477,10 @@ def test_instance_workflow_api_failure_prevents_writes(mocker, mocked_cmd, mocke
         side_effect.assert_not_called()
 
 
-def mock_runtime_discovery(mocked_responses, instance, version="1.1.15", train="stable"):
+def mock_runtime_discovery(
+    mocked_responses, instance, version="1.1.15", train="stable", connectivity="Connected",
+    extension_state="Succeeded", extension_statuses=None,
+):
     """Serve associated live ARM records; discovery/eligibility itself remains unmocked."""
     from ..test_upgrade2_unit import get_cluster_endpoint, get_cluster_extensions_endpoint
     from azext_edge.edge.providers.orchestration.common import EXTENSION_TYPE_OPS
@@ -485,15 +496,47 @@ def mock_runtime_discovery(mocked_responses, instance, version="1.1.15", train="
     )
     mocked_responses.add(
         responses.GET, get_cluster_endpoint(resource_group),
-        json={"id": cluster_id, "properties": {"connectivityStatus": "Connected"}},
+        json={"id": cluster_id, "properties": {"connectivityStatus": connectivity}},
     )
     mocked_responses.add(
         responses.GET, get_cluster_extensions_endpoint(resource_group),
         json={"value": [{"id": extension_id, "properties": {
             "extensionType": EXTENSION_TYPE_OPS, "version": version, "currentVersion": version,
-            "releaseTrain": train, "provisioningState": "Succeeded",
+            "releaseTrain": train, "provisioningState": extension_state, "statuses": extension_statuses or [],
         }}]},
     )
+
+
+@pytest.mark.parametrize("unready", ["offline", "failed_instance", "updating_extension", "extension_error"])
+@pytest.mark.parametrize("enable_opcua", [False, True])
+def test_metadata_update_allows_unready_runtime_but_opcua_enable_does_not(
+    mocked_cmd, mocked_responses, unready, enable_opcua,
+):
+    name, resource_group = "instance", "rg"
+    record = get_mock_instance_record(name, resource_group)
+    if unready == "failed_instance":
+        record["properties"]["provisioningState"] = "Failed"
+    mock_runtime_discovery(
+        mocked_responses, record,
+        connectivity="Offline" if unready == "offline" else "Connected",
+        extension_state="Updating" if unready == "updating_extension" else "Succeeded",
+        extension_statuses=[{"level": "Error", "message": "Extension error"}] if unready == "extension_error" else None,
+    )
+    endpoint = get_instance_endpoint(resource_group, name)
+    mocked_responses.add(responses.GET, endpoint, json=record)
+    if enable_opcua:
+        with pytest.raises(ValidationError, match="runtime is not ready"):
+            update_instance(mocked_cmd, name, resource_group, instance_features=["opcua.mode=Stable"])
+        assert all(call.request.method == "GET" for call in mocked_responses.calls)
+    else:
+        mocked_responses.add(responses.PUT, endpoint, json=record)
+        update_instance(
+            mocked_cmd, name, resource_group, tags={"updated": "yes"},
+            instance_description="Updated description", wait_sec=0,
+        )
+        writes = [call.request for call in mocked_responses.calls if call.request.method == "PUT"]
+        assert len(writes) == 1
+        assert json.loads(writes[0].body)["tags"] == {"updated": "yes"}
 
 
 def test_instance_get_resource_map(mocker, mocked_cmd, mocked_responses: responses):
@@ -613,20 +656,22 @@ def test_instance_update(
     resource_group_name = generate_random_string()
     instance_endpoint = get_instance_endpoint(resource_group_name=resource_group_name, instance_name=instance_name)
 
+    tags_only = tags is not None and description is None and features_scenario.get("inputs") is None
     initial_feat_state = features_scenario.get("initialState")
     initial_record = get_mock_instance_record(
         name=instance_name,
         resource_group_name=resource_group_name,
         features=initial_feat_state,
     )
-    mock_runtime_discovery(mocked_responses, initial_record)
-    mocked_responses.add(
-        method=responses.GET,
-        url=instance_endpoint,
-        json=initial_record,
-        status=200,
-        content_type="application/json",
-    )
+    if not tags_only:
+        mock_runtime_discovery(mocked_responses, initial_record)
+        mocked_responses.add(
+            method=responses.GET,
+            url=instance_endpoint,
+            json=initial_record,
+            status=200,
+            content_type="application/json",
+        )
     updated_record = get_mock_instance_record(
         name=instance_name,
         resource_group_name=resource_group_name,
@@ -635,7 +680,7 @@ def test_instance_update(
         features=features_scenario.get("expected"),
     )
     mocked_responses.add(
-        method=responses.PUT,
+        method=responses.PATCH if tags_only else responses.PUT,
         url=instance_endpoint,
         json=updated_record,
         status=200,
@@ -651,9 +696,10 @@ def test_instance_update(
         instance_description=description,
         wait_sec=0,
     )
-    assert len(mocked_responses.calls) == 5
+    assert len(mocked_responses.calls) == (1 if tags_only else 5)
 
-    update_request = json.loads(next(c.request.body for c in mocked_responses.calls if c.request.method == "PUT"))
+    method = "PATCH" if tags_only else "PUT"
+    update_request = json.loads(next(c.request.body for c in mocked_responses.calls if c.request.method == method))
     if description:
         assert update_request["properties"]["description"] == description
 
@@ -663,8 +709,69 @@ def test_instance_update(
     if features_scenario:
         assert update_request["properties"]["features"] == features_scenario["expected"]
 
-    assert update_request == updated_record
+    assert update_request == ({"tags": tags} if tags_only else updated_record)
     assert result == updated_record
+
+
+@pytest.mark.parametrize("property_changes", [
+    {"description": "Updated description"},
+    {"description": ""},
+    {"features": ["opcua.mode=Disabled"]},
+    {"features": []},
+    {"adr_namespace_resource_id": "/namespace"},
+    {"spc_resource_id": "/spc"},
+])
+def test_tags_with_properties_retains_discovery(mocker, mocked_cmd, property_changes):
+    instances = Instances(mocked_cmd)
+    record = get_mock_instance_record("instance", "rg")
+    mocker.patch.object(instances, "show", return_value=record)
+    discovery = mocker.patch.object(instances, "get_runtime_context", side_effect=ValidationError("Discovery required"))
+    patch = mocker.patch.object(instances.iotops_mgmt_client.instance, "update")
+
+    with pytest.raises(ValidationError, match="Discovery required"):
+        instances.update("instance", "rg", tags={}, **property_changes)
+
+    discovery.assert_called_once()
+    patch.assert_not_called()
+
+
+@pytest.mark.parametrize("tags", [{"updated": "yes"}, {}])
+@pytest.mark.parametrize("version", ["1.4.112", "1.6.0-preview.22"])
+def test_tags_only_update_patches_without_discovery(mocker, mocked_cmd, mocked_responses, tags, version):
+    name, resource_group = "instance", "rg"
+    record = get_mock_instance_record(name, resource_group, tags=tags)
+    record["properties"]["version"] = version
+    record["properties"]["previewOnlyProperty"] = {"retained": ["value"]}
+    mocked_responses.add(responses.PATCH, get_instance_endpoint(resource_group, name), json=record)
+    show = mocker.patch.object(Instances, "show", side_effect=AssertionError("Unexpected instance read"))
+    discovery = mocker.patch.object(
+        Instances, "get_runtime_context", side_effect=AssertionError("Unexpected discovery"),
+    )
+    put = mocker.patch.object(Instances, "_update", side_effect=AssertionError("Unexpected PUT"))
+
+    result = update_instance(mocked_cmd, name, resource_group, tags=tags, no_status=True)
+
+    assert result == record
+    assert len(mocked_responses.calls) == 1
+    request = mocked_responses.calls[0].request
+    assert request.method == "PATCH"
+    assert json.loads(request.body) == {"tags": tags}
+    assert request.headers["CommandName"] == "iot ops update"
+    show.assert_not_called()
+    discovery.assert_not_called()
+    put.assert_not_called()
+
+
+@pytest.mark.parametrize("status", [400, 403, 404, 409, 500])
+def test_tags_only_update_propagates_patch_errors(mocked_cmd, mocked_responses, status):
+    mocked_responses.add(
+        responses.PATCH, get_instance_endpoint("rg", "instance"), status=status,
+        json={"error": {"code": "PatchFailed", "message": "Tags PATCH failed"}},
+    )
+    with pytest.raises(HttpResponseError) as caught:
+        update_instance(mocked_cmd, "instance", "rg", tags={"updated": "yes"}, no_status=True)
+    assert caught.value.status_code == status
+    assert all(call.request.method == "PATCH" for call in mocked_responses.calls)
 
 
 @pytest.mark.parametrize(

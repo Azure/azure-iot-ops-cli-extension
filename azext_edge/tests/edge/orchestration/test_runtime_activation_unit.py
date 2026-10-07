@@ -48,6 +48,9 @@ def test_bundled_preview_create_with_yes_reaches_work(mocker, isolated_work, no_
     }
     template, _ = manager._targets.get_ops_instance_template()
     assert template["parameters"]["enableGdsManager"]["defaultValue"] is True
+    assert template["variables"]["defaultAioConfigurationSettings"]["connectors.values.gdsManager.enabled"] == (
+        "[if(parameters('enableGdsManager'), 'true', 'false')]"
+    )
     assert template["variables"]["CONNECTORS_CHART_REGISTRY"] == (
         TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW.content["variables"]["CONNECTORS_CHART_REGISTRY"]
     )

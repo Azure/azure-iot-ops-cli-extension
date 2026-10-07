@@ -198,20 +198,25 @@ def test_targets_preserve_additional_instance_properties(profiles):
     assert profile.copy_instance_blueprint().content == blueprint.content
 
 
-def test_generated_instance_defaults_and_new_child_names_are_preserved(profiles):
+@pytest.mark.parametrize("description", [None, "", "custom description"])
+def test_generated_instance_defaults_and_new_child_names_are_preserved(profiles, description):
     blueprint = profiles[1].copy_instance_blueprint()
     original_properties = deepcopy(blueprint.content["resources"]["aioInstance"]["properties"])
     child = {"type": "Microsoft.IoTOperations/instances/testResources",
              "name": "[format('{0}/extra', parameters('aioInstanceName'))]"}
     blueprint.content["resources"]["newChild"] = child
     profile = RuntimeProfile(RuntimeChannel.PREVIEW, "test", "branch", "commit", blueprint)
-    targets = InitTargets("cluster", "rg", runtime_profile=profile, instance_name="My_Instance")
+    targets = InitTargets(
+        "cluster", "rg", runtime_profile=profile, instance_name="My_Instance", instance_description=description,
+    )
     for phase in (None, 1, 2, 3):
         template, parameters = targets.get_ops_instance_template(phase=phase)
         assert parameters["aioInstanceName"] == {"value": "my-instance"}
         assert "features" not in parameters
         if phase in (None, 2):
-            assert template["resources"]["aioInstance"]["properties"] == original_properties
+            assert template["resources"]["aioInstance"]["properties"] == {
+                **original_properties, "description": description,
+            }
         if phase in (None, 3):
             assert template["resources"]["newChild"] == child
     assert profile.copy_instance_blueprint().content == blueprint.content

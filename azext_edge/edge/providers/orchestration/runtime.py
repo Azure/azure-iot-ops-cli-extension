@@ -84,20 +84,19 @@ class RuntimeContext:
             ))
 
     def require_upgradeable(self) -> None:
-        # A known failed extension can be reconciled, but not while another operation
-        # is in flight. Missing identity/association information has already failed discovery.
-        if _lower(self.provisioning_state) not in {"failed", "canceled"}:
-            self.require_ready()
-            return
         blockers = [
             issue for issue in self.readiness_issues
             if not (
-                issue.resource == "extension"
-                and issue.code in {
-                    RuntimeIssueCode.PROVISIONING_STATE,
-                    RuntimeIssueCode.EXTENSION_ERROR,
-                    RuntimeIssueCode.VERSION_MISMATCH,
-                }
+                (
+                    issue.code == RuntimeIssueCode.PROVISIONING_STATE
+                    and issue.resource in {"instance", "custom location", "extension"}
+                    and _lower(issue.state) in {"failed", "canceled"}
+                )
+                or (
+                    issue.resource == "extension"
+                    and _lower(self.provisioning_state) in {"failed", "canceled"}
+                    and issue.code in {RuntimeIssueCode.EXTENSION_ERROR, RuntimeIssueCode.VERSION_MISMATCH}
+                )
             )
         ]
         if blockers:

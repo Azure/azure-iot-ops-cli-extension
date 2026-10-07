@@ -437,6 +437,10 @@ class UpgradeScenario:
                 adr_namespace_name="default-adr",
             )
 
+        mock_instance_record["properties"]["provisioningState"] = self.aux_kwargs.get(
+            "instance_provisioning_state", PROVISIONING_STATE_SUCCESS
+        )
+
         # Add existing SPC reference if specified in aux_kwargs
         if self.aux_kwargs.get("has_existing_spc_ref"):
             mock_instance_record["properties"]["defaultSecretProviderClassRef"] = {
@@ -506,6 +510,9 @@ class UpgradeScenario:
         cl_name = generate_random_string()
         mock_cl_record = get_mock_cl_record(name=cl_name, resource_group_name=resource_group_name)
         mock_cl_record["id"] = mock_instance_record["extendedLocation"]["name"]
+        mock_cl_record["properties"]["provisioningState"] = self.aux_kwargs.get(
+            "custom_location_provisioning_state", PROVISIONING_STATE_SUCCESS
+        )
         cluster_id = mock_cl_record["properties"]["hostResourceId"]
         for extension in self.extensions.values():
             extension["id"] = (
@@ -1202,11 +1209,10 @@ def assert_operation_order(target_scenario: UpgradeScenario, upgrade_result: Lis
             {},
         ),
         (
-            UpgradeScenario("Major version blocked with force")
+            UpgradeScenario("Major version allowed with force")
             .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="0.1.0")
-            .set_user_kwargs(ops_version="1.0.0", force=True)
-            .expecting_validation_error(r"incompatible \(different major version\)"),
-            {},
+            .set_user_kwargs(ops_version="1.0.0", force=True),
+            {EXTENSION_TYPE_OPS: build_extension_props(EXTENSION_TYPE_OPS, version="1.0.0")},
         ),
         # ========== Minor version gap validation (ops only) ==========
         (
@@ -1223,11 +1229,10 @@ def assert_operation_order(target_scenario: UpgradeScenario, upgrade_result: Lis
             {EXTENSION_TYPE_OPS: build_extension_props(EXTENSION_TYPE_OPS, version="1.2.0")},
         ),
         (
-            UpgradeScenario("Minor version blocked with force: 3+ versions")
+            UpgradeScenario("Minor version allowed with force: 3+ versions")
             .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.0.0")
-            .set_user_kwargs(ops_version="1.3.0", force=True)
-            .expecting_validation_error(r"incompatible \(more than 2 minor versions ahead\)"),
-            {},
+            .set_user_kwargs(ops_version="1.3.0", force=True),
+            {EXTENSION_TYPE_OPS: build_extension_props(EXTENSION_TYPE_OPS, version="1.3.0")},
         ),
         # ========== Minimum version requirement for v2 (ops only) ==========
         (
@@ -1263,11 +1268,10 @@ def assert_operation_order(target_scenario: UpgradeScenario, upgrade_result: Lis
             {EXTENSION_TYPE_OPS: build_extension_props(EXTENSION_TYPE_OPS, version="1.2.35")},
         ),
         (
-            UpgradeScenario("Min v2 blocked with force")
+            UpgradeScenario("Min v2 allowed with force")
             .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.0.0")
-            .set_user_kwargs(ops_version="1.2.36", force=True)
-            .expecting_validation_error(r"min compatible upgrade version.*1\.1\.59"),
-            {},
+            .set_user_kwargs(ops_version="1.2.36", force=True),
+            {EXTENSION_TYPE_OPS: build_extension_props(EXTENSION_TYPE_OPS, version="1.2.36")},
         ),
         # ========== Preview runtime progression and non-bypassable channel boundary ==========
         (
@@ -2174,13 +2178,14 @@ def assert_operation_order(target_scenario: UpgradeScenario, upgrade_result: Lis
             {},
         ),
         (
-            UpgradeScenario("Early Validation: Force cannot bypass migration policy")
+            UpgradeScenario("Early Validation: Force allows stable migration")
             .set_extension(ext_type=EXTENSION_TYPE_PLATFORM, ext_vers="1.0.0")
             .set_extension(ext_type=EXTENSION_TYPE_CM, remove=True)
             .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.0.0")
-            .set_user_kwargs(ops_version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE, force=True)
-            .expecting_validation_error("min compatible upgrade version"),
-            {},
+            .set_user_kwargs(ops_version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE, force=True),
+            {EXTENSION_TYPE_OPS: build_extension_props(
+                EXTENSION_TYPE_OPS, version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE,
+            )},
         ),
     ],
 )
@@ -2238,7 +2243,10 @@ def test_ops_upgrade(
             )
         if isinstance(err.value, ValidationError):
             assert not [call for call in mocked_responses.calls if call.request.method in {"PUT", "PATCH", "DELETE"}]
-        assert_displays(spy_upgrade_displays, no_progress, error_context=err)
+        assert_displays(
+            spy_upgrade_displays, no_progress, error_context=err,
+            progress_count=0 if target_scenario.cluster_connected_status != "Connected" else None,
+        )
         return
 
     upgrade_result = upgrade_instance(**call_kwargs)
@@ -2928,6 +2936,9 @@ def test_preview_upgrade_routes_instance_and_backfills_to_profile_api(mocked_cmd
     manager = UpgradeManager(mocked_cmd, resource_group, name, adr_namespace_resource_id=adr_id, no_progress=True)
     plan = manager.analyze_cluster()
     assert plan.instance_upgrade and plan.registry_endpoint_needed and plan.connector_template_needed
+    assert plan.connector_template_endpoint_types == [
+        {"endpointType": "Microsoft.OpcUa"}, {"endpointType": "Microsoft.OpcUa.WoT"},
+    ]
     manager.apply_upgrades(plan)
 
     aio_requests = [call.request for call in mocked_responses.calls if "/Microsoft.IoTOperations/" in call.request.url]
@@ -2940,6 +2951,64 @@ def test_preview_upgrade_routes_instance_and_backfills_to_profile_api(mocked_cmd
     assert payload["properties"]["previewOnlyProperty"] == {"retained": ["value"]}
     assert payload["properties"]["adrNamespaceRef"]["resourceId"] == adr_id
     assert "previewOnlyProperty" not in scenario.instance_record["properties"]
+    assert (
+        json.loads(writes[2].body)["properties"]["deviceInboundEndpointTypes"] == plan.connector_template_endpoint_types
+    )
+
+
+@pytest.mark.parametrize("channel", ["stable", "preview"])
+@pytest.mark.parametrize("repair", [False, True])
+def test_connector_confirmation_renders_profile_endpoint_types(mocker, channel, repair):
+    from io import StringIO
+    from rich.console import Console
+    from azext_edge.edge.providers.orchestration.runtime_catalog import get_runtime_catalog
+    from azext_edge.edge.providers.orchestration.resources.connector_templates import ConnectorTemplates
+    from azext_edge.edge.providers.orchestration.upgrade2 import render_upgrade_table
+
+    profile = get_runtime_catalog().get(channel)
+    state = Mock(
+        no_cm_install=False, extension_upgrades=[], instance_upgrade=None, registry_endpoint_needed=False,
+        connector_template_needed=True, connector_template_repair_name="failed-template" if repair else None,
+        connector_template_version=profile.require_opcua_connector_version(), secretsync_migration_needed=False,
+        connector_template_endpoint_types=ConnectorTemplates.default_opcua_endpoint_types(profile),
+    )
+    output = StringIO()
+    mocker.patch(
+        "azext_edge.edge.providers.orchestration.upgrade2.console", Console(file=output, width=240, color_system=None),
+    )
+    render_upgrade_table(state)
+    rendered = output.getvalue()
+    assert "Microsoft.OpcUa" in rendered
+    assert ("Microsoft.OpcUa.WoT" in rendered) is (channel == "preview")
+    assert ("Replace failed template" if repair else "Create default OPC UA") in rendered
+    assert profile.require_opcua_connector_version() in rendered
+
+
+@pytest.mark.parametrize("resource", ["instance", "custom_location"])
+@pytest.mark.parametrize("state", ["Failed", "Canceled"])
+@pytest.mark.parametrize("repair", [False, True])
+def test_terminal_resource_state_allows_upgrade_writes(
+    mocked_cmd, mocked_responses, mocked_sleep, resource, state, repair,
+):
+    from azext_edge.edge.commands_edge import upgrade_instance
+
+    scenario = UpgradeScenario().set_extension(
+        EXTENSION_TYPE_OPS, ext_vers="1.4.0" if not repair else BUILT_IN_VALUE,
+        provisioning_state=PROVISIONING_STATE_FAILED if repair else PROVISIONING_STATE_SUCCESS,
+    )
+    scenario.aux_kwargs[f"{resource}_provisioning_state"] = state
+    scenario.set_instance_mock(mocked_responses, "instance", "rg")
+
+    upgrade_instance(mocked_cmd, "rg", "instance", confirm_yes=True, no_progress=True)
+
+    ops_name = scenario.extensions[EXTENSION_TYPE_OPS]["name"]
+    writes = [
+        call.request for call in mocked_responses.calls
+        if call.request.method == "PATCH" and f"/extensions/{ops_name}?" in call.request.url
+    ]
+    assert len(writes) == 1
+    expected_version = scenario.init_version_map[EXTENSION_MONIKER_OPS]["version"]
+    assert json.loads(writes[0].body)["properties"]["version"] == expected_version
 
 
 @pytest.mark.parametrize("force", [False, True])
@@ -2985,7 +3054,7 @@ def test_ops_version_pinning_requires_manual_ownership(force, auto_upgrade, oper
                 "--resource-group <cluster-resource-group> --cluster-name <cluster-name> "
                 "--cluster-type connectedClusters --name <aio-extension-name> --auto-upgrade false"
             ) in str(caught.value)
-            assert "--force cannot override upgrade ownership" in str(caught.value)
+            assert "--force" not in str(caught.value)
     else:
         ext.validate_upgrade()
         patch_properties = ext.get_patch().get("properties", {})
@@ -3220,8 +3289,11 @@ def test_explicit_downgrade_still_blocked(provisioning_state):
 
 
 @pytest.mark.parametrize("provisioning_state", [PROVISIONING_STATE_SUCCESS, PROVISIONING_STATE_FAILED])
-def test_explicit_downgrade_allowed_with_force(provisioning_state):
-    ext = build_ext_upgrade_state(version_override="1.0.0", provisioning_state=provisioning_state, force=True)
+@pytest.mark.parametrize("ext_type", [EXTENSION_TYPE_CM, EXTENSION_TYPE_OPS])
+def test_explicit_downgrade_allowed_with_force(provisioning_state, ext_type):
+    ext = build_ext_upgrade_state(
+        ext_type=ext_type, version_override="1.0.0", provisioning_state=provisioning_state, force=True,
+    )
 
     ext.validate_upgrade()
     assert ext.get_patch()["properties"]["version"] == "1.0.0"

@@ -130,10 +130,10 @@ def test_known_failed_runtime_can_be_reconciled(records, state, error_source):
 
 @pytest.mark.parametrize("state", ["Failed", "Canceled"])
 @pytest.mark.parametrize("record_name,field,value,code,resource", [
-    ("instance", "provisioningState", "Failed", RuntimeIssueCode.PROVISIONING_STATE, "instance"),
-    ("instance", "provisioningState", "Canceled", RuntimeIssueCode.PROVISIONING_STATE, "instance"),
-    ("custom_location", "provisioningState", "Failed", RuntimeIssueCode.PROVISIONING_STATE, "custom location"),
-    ("custom_location", "provisioningState", "Canceled", RuntimeIssueCode.PROVISIONING_STATE, "custom location"),
+    ("instance", "provisioningState", "Updating", RuntimeIssueCode.PROVISIONING_STATE, "instance"),
+    ("instance", "provisioningState", None, RuntimeIssueCode.PROVISIONING_STATE, "instance"),
+    ("custom_location", "provisioningState", "Updating", RuntimeIssueCode.PROVISIONING_STATE, "custom location"),
+    ("custom_location", "provisioningState", None, RuntimeIssueCode.PROVISIONING_STATE, "custom location"),
     ("cluster", "connectivityStatus", "Disconnected", RuntimeIssueCode.CLUSTER_CONNECTIVITY, "cluster"),
     ("cluster", "connectivityStatus", None, RuntimeIssueCode.CLUSTER_CONNECTIVITY, "cluster"),
     ("extension", "statuses", {}, RuntimeIssueCode.INVALID_EXTENSION_STATUS, "extension"),
@@ -171,11 +171,47 @@ def test_unready_runtime_rejected(records, state, record_name):
     )
     with pytest.raises(ValidationError, match="not ready"):
         OperationRequirements("update").validate(runtime)
-    if record_name == "extension" and state in {"Failed", "Canceled"}:
+    if state in {"Failed", "Canceled"}:
         runtime.require_upgradeable()
     else:
         with pytest.raises(ValidationError):
             runtime.require_upgradeable()
+
+
+@pytest.mark.parametrize("preview", [False, True])
+@pytest.mark.parametrize("instance_state", ["Succeeded", "Failed", "Canceled"])
+@pytest.mark.parametrize("location_state", ["Succeeded", "Failed", "Canceled"])
+@pytest.mark.parametrize("extension_state", ["Succeeded", "Failed", "Canceled"])
+def test_terminal_resource_states_allow_recovery(
+    records, preview, instance_state, location_state, extension_state,
+):
+    records["instance"]["properties"]["provisioningState"] = instance_state
+    records["custom_location"]["properties"]["provisioningState"] = location_state
+    properties = records["extensions"][0]["properties"]
+    properties["provisioningState"] = extension_state
+    if preview:
+        properties.update(currentVersion="1.6.0-preview.4", version="1.6.0-preview.4", releaseTrain="preview")
+    runtime = resolve_runtime(**records)
+    runtime.require_upgradeable()
+    reworded = replace(runtime, readiness_issues=tuple(
+        replace(issue, message="Independent diagnostic wording") for issue in runtime.readiness_issues
+    ))
+    reworded.require_upgradeable()
+    if runtime.readiness_issues:
+        with pytest.raises(ValidationError, match="not ready"):
+            runtime.require_ready()
+
+
+@pytest.mark.parametrize("record_name", ["instance", "custom_location", "extension"])
+@pytest.mark.parametrize("state", [None, "Unknown", "Creating", "Updating", "Deleting", "Accepted"])
+def test_terminal_failures_do_not_hide_blocking_resource_states(records, record_name, state):
+    for record in (records["instance"], records["custom_location"], records["extensions"][0]):
+        record["properties"]["provisioningState"] = "Failed"
+    record = records["extensions"][0] if record_name == "extension" else records[record_name]
+    record["properties"]["provisioningState"] = state
+    runtime = resolve_runtime(**records)
+    with pytest.raises(ValidationError, match=f"{record_name.replace('_', ' ')} provisioning state"):
+        runtime.require_upgradeable()
 
 
 @pytest.mark.parametrize("error", ["disconnected", "errorInfo", "statuses"])
