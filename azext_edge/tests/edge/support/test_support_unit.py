@@ -1188,33 +1188,6 @@ def test_registry_bundle_integration_checks(mocker, ops_service, prefixes, expec
     )
 
 
-def test_schema_bundle_handles_absent_workloads(mocker):
-    from .create_bundle_int import test_schemaregistry_int as schema_tests
-
-    mocker.patch.object(schema_tests, "get_multi_kubectl_workload_items", return_value={"pod": {}, "service": {}})
-    mocker.patch.object(schema_tests, "check_cluster_label_coverage")
-    collect = mocker.patch.object(schema_tests, "run_bundle_command", return_value=({}, "bundle.zip"))
-    schema_tests.test_create_bundle_registries(
-        None, [], "schemaregistry", ["adr-schema-registry"],
-        ("app.kubernetes.io/name", "microsoft-iotoperations-schemas"),
-    )
-    collect.assert_called_once()
-
-
-def test_schema_bundle_reports_label_mismatch_before_collection(mocker):
-    from .create_bundle_int import test_schemaregistry_int as schema_tests
-
-    mocker.patch.object(schema_tests, "get_multi_kubectl_workload_items", return_value={"pod": {"schema": {}}})
-    mocker.patch.object(schema_tests, "check_cluster_label_coverage", side_effect=AssertionError("wrong label"))
-    collect = mocker.patch.object(schema_tests, "run_bundle_command")
-    with pytest.raises(AssertionError, match="wrong label"):
-        schema_tests.test_create_bundle_registries(
-            None, [], "schemaregistry", ["adr-schema-registry"],
-            ("app.kubernetes.io/name", "microsoft-iotoperations-schemas"),
-        )
-    collect.assert_not_called()
-
-
 @pytest.mark.parametrize("ops_service", [None, "schemaregistry", "edgeregistry"])
 @pytest.mark.parametrize("deployed", ["schemaregistry", "edgeregistry", "both", "neither"])
 def test_auto_bundle_expected_registries(mocker, ops_service, deployed):

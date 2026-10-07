@@ -238,12 +238,29 @@ def get_mock_cl_record(name: str, resource_group_name: str) -> dict:
     return resource
 
 
+@pytest.mark.parametrize("version", ["1.5.30", "1.6.0-preview.40"])
+def test_instance_write_read_does_not_discover_runtime(mocker, mocked_cmd, mocked_responses, version):
+    name, resource_group = "instance", "rg"
+    record = get_mock_instance_record(name, resource_group, version=version)
+    record["properties"]["retainedConfiguration"] = {"values": ["custom"]}
+    record["identity"] = {"type": "None"}
+    endpoint = get_instance_endpoint(resource_group, name, api_version="2026-10-01")
+    mocked_responses.add(responses.GET, endpoint, json=record)
+    discovery = mocker.patch.object(
+        Instances, "get_runtime_context", side_effect=HttpResponseError("AuthorizationFailed: discovery forbidden"),
+    )
+
+    assert Instances(mocked_cmd)._get_instance_for_write(name, resource_group) == record
+    discovery.assert_not_called()
+    assert len(mocked_responses.calls) == 1
+    assert mocked_responses.calls[0].request.url == endpoint
+
+
 def test_instance_show(mocked_cmd, mocked_responses: responses):
     instance_name = generate_random_string()
     resource_group_name = generate_random_string()
 
     mock_instance_record = get_mock_instance_record(name=instance_name, resource_group_name=resource_group_name)
-    mock_runtime_discovery(mocked_responses, mock_instance_record)
     mocked_responses.add(
         method=responses.GET,
         url=get_instance_endpoint(resource_group_name=resource_group_name, instance_name=instance_name),
@@ -255,7 +272,7 @@ def test_instance_show(mocked_cmd, mocked_responses: responses):
     result = show_instance(cmd=mocked_cmd, instance_name=instance_name, resource_group_name=resource_group_name)
 
     assert result == mock_instance_record
-    assert len(mocked_responses.calls) == 4
+    assert len(mocked_responses.calls) == 1
 
 
 @pytest.mark.parametrize("operation", ["show", "update"])
@@ -267,42 +284,40 @@ def test_instance_show(mocked_cmd, mocked_responses: responses):
     HttpResponseError("AuthorizationFailed: cluster read forbidden"),
     HttpResponseError("ResourceNotFound: connected cluster not found"),
 ])
-def test_instance_discovery_failure_only_falls_back_for_show(
+def test_instance_discovery_failure_does_not_block_ordinary_operations(
     mocker, mocked_cmd, mocked_responses, caplog, operation, discovery_error,
 ):
     name, resource_group = "instance", "rg"
     record = get_mock_instance_record(name, resource_group)
     mocked_responses.add(responses.GET, get_instance_endpoint(resource_group, name), json=record)
-    mocker.patch.object(Instances, "get_runtime_context", side_effect=discovery_error)
+    discovery = mocker.patch.object(Instances, "get_runtime_context", side_effect=discovery_error)
 
     if operation == "show":
         with caplog.at_level("DEBUG"):
             assert show_instance(mocked_cmd, name, resource_group) == record
-        assert "Returning the instance using API 2026-07-01" in caplog.text
-        assert "preview-specific fields may be incomplete" in caplog.text
-        assert str(discovery_error) in caplog.text
         assert not [record for record in caplog.records if record.levelname in {"WARNING", "ERROR", "CRITICAL"}]
     else:
-        with pytest.raises(type(discovery_error)) as caught:
-            update_instance(
-                mocked_cmd, name, resource_group, tags={"updated": "yes"}, instance_description="Updated description",
-            )
-        assert caught.value is discovery_error
-        assert "Returning the instance" not in caplog.text
-    assert len(mocked_responses.calls) == 1
+        expected = deepcopy(record)
+        expected["tags"] = {"updated": "yes"}
+        expected["properties"]["description"] = "Updated description"
+        mocked_responses.add_callback(
+            responses.PUT, get_instance_endpoint(resource_group, name), callback=echo_callback,
+        )
+        assert update_instance(
+            mocked_cmd, name, resource_group, tags=expected["tags"],
+            instance_description="Updated description", wait_sec=0,
+        ) == expected
+        assert mocked_responses.calls[-1].request.method == "PUT"
+        assert json.loads(mocked_responses.calls[-1].request.body) == expected
+    discovery.assert_not_called()
+    assert len(mocked_responses.calls) == (1 if operation == "show" else 2)
     assert mocked_responses.calls[0].request.method == "GET"
 
 
-@pytest.mark.parametrize("phase", ["initial", "preview"])
 @pytest.mark.parametrize("status", [403, 404, 500])
-def test_instance_show_does_not_hide_instance_read_errors(mocked_cmd, mocked_responses, caplog, phase, status):
+def test_instance_show_does_not_hide_instance_read_errors(mocked_cmd, mocked_responses, caplog, status):
     name, resource_group = "instance", "rg"
     endpoint = get_instance_endpoint(resource_group, name)
-    if phase == "preview":
-        record = get_mock_instance_record(name, resource_group)
-        mocked_responses.add(responses.GET, endpoint, json=record)
-        mock_runtime_discovery(mocked_responses, record, version="1.6.0-preview.22", train="integration")
-        endpoint = get_instance_endpoint(resource_group, name, api_version="2026-09-01-preview")
     mocked_responses.add(
         responses.GET, endpoint, status=status, json={"error": {"code": "ReadFailed", "message": "Read failed"}},
     )
@@ -315,25 +330,24 @@ def test_instance_show_does_not_hide_instance_read_errors(mocked_cmd, mocked_res
 
 
 @pytest.mark.parametrize("operation", ["show", "update"])
-@pytest.mark.parametrize("train", ["preview", "integration"])
-def test_preview_instance_api_preserves_response_fields(mocked_cmd, mocked_responses, operation, train):
+@pytest.mark.parametrize("version", ["1.5.30", "1.6.0-preview.40"])
+def test_ga_instance_api_preserves_response_fields(mocker, mocked_cmd, mocked_responses, operation, version):
     name, resource_group = "preview-instance", "preview-rg"
-    initial = get_mock_instance_record(name, resource_group)
-    mock_runtime_discovery(mocked_responses, initial, version="1.6.0-preview.22", train=train)
-    preview = deepcopy(initial)
-    preview["properties"]["previewOnlyProperty"] = {"retained": ["value"]}
+    record = get_mock_instance_record(name, resource_group, version=version)
+    record["properties"]["retainedConfiguration"] = {"retained": ["value"]}
+    record["properties"]["previewOnlyProperty"] = {"enabled": True}
+    discovery = mocker.patch.object(
+        Instances, "get_runtime_context", side_effect=HttpResponseError("AuthorizationFailed: discovery forbidden"),
+    )
     if operation == "show":
-        initial["properties"]["provisioningState"] = "Failed"
-        preview["properties"]["provisioningState"] = "Failed"
-    ga_endpoint = get_instance_endpoint(resource_group, name)
-    preview_endpoint = get_instance_endpoint(resource_group, name, api_version="2026-09-01-preview")
-    mocked_responses.add(responses.GET, ga_endpoint, json=initial)
-    mocked_responses.add(responses.GET, preview_endpoint, json=preview)
-    expected = deepcopy(preview)
+        record["properties"]["provisioningState"] = "Failed"
+    endpoint = get_instance_endpoint(resource_group, name, api_version="2026-10-01")
+    mocked_responses.add(responses.GET, endpoint, json=record)
+    expected = deepcopy(record)
     if operation == "update":
         expected["tags"] = {"updated": "yes"}
         expected["properties"]["description"] = "Updated description"
-        mocked_responses.add(responses.PUT, preview_endpoint, json=expected)
+        mocked_responses.add_callback(responses.PUT, endpoint, callback=echo_callback)
         result = update_instance(
             mocked_cmd, name, resource_group, tags=expected["tags"],
             instance_description="Updated description", wait_sec=0,
@@ -341,20 +355,21 @@ def test_preview_instance_api_preserves_response_fields(mocked_cmd, mocked_respo
         writes = [call.request for call in mocked_responses.calls if call.request.method != "GET"]
         assert len(writes) == 1
         assert json.loads(writes[0].body) == expected
-        assert writes[0].url == preview_endpoint
+        assert writes[0].url == endpoint
     else:
         result = show_instance(mocked_cmd, name, resource_group)
         assert all(call.request.method == "GET" for call in mocked_responses.calls)
     assert result == expected
-    assert initial["properties"].get("previewOnlyProperty") is None
+    discovery.assert_not_called()
+    assert len(mocked_responses.calls) == (1 if operation == "show" else 2)
 
 
 @pytest.mark.parametrize("operation", [
     "add_mi_user_assigned", "remove_mi_user_assigned", "enable_secretsync", "disable_secretsync",
 ])
 @pytest.mark.parametrize("train,version,api_version", [
-    ("stable", "1.4.112", "2026-07-01"),
-    ("integration", "1.6.0-preview.22", "2026-09-01-preview"),
+    ("stable", "1.5.30", "2026-10-01"),
+    ("integration", "1.6.0-preview.40", "2026-10-01"),
 ])
 def test_instance_workflow_preserves_runtime_fields(
     mocker, mocked_cmd, mocked_responses, mocked_get_tenant_id, operation, train, version, api_version,
@@ -369,23 +384,26 @@ def test_instance_workflow_preserves_runtime_fields(
         name, resource_group, identity_map={existing_id: {}}, default_spc_resource_id=f"{spc['id']}-old",
     )
     initial["properties"]["version"] = version
-    mock_runtime_discovery(mocked_responses, initial, version=version, train=train)
+    initial["properties"]["retainedConfiguration"] = {"values": ["custom"]}
+    if train == "integration":
+        initial["properties"]["previewOnlyProperty"] = {"retained": ["value"]}
     initial_endpoint = get_instance_endpoint(resource_group, name)
     mocked_responses.add(responses.GET, initial_endpoint, json=initial)
     selected = deepcopy(initial)
     selected_endpoint = get_instance_endpoint(resource_group, name, api_version=api_version)
-    if train == "integration":
-        selected["properties"]["previewOnlyProperty"] = {"retained": ["value"]}
-        mocked_responses.add(responses.GET, selected_endpoint, json=selected)
     mocked_responses.add_callback(responses.PUT, selected_endpoint, callback=echo_callback)
 
     instances = Instances(mocked_cmd)
+    discovery = mocker.patch.object(
+        instances, "get_runtime_context", side_effect=HttpResponseError("AuthorizationFailed: discovery forbidden"),
+    )
+    mocker.patch.object(instances, "get_associated_cl", return_value=get_mock_cl_record("location", resource_group))
     resource_map = mocker.patch.object(instances, "get_resource_map").return_value
     resource_map.connected_cluster.resource = {"name": "cluster", "location": "westus2"}
     resource_map.connected_cluster.get_cl_resources_by_type.return_value = {}
     mocker.patch.object(instances, "_ensure_oidc_issuer", return_value="https://issuer.example/cluster")
-    mocker.patch.object(instances, "federate_msi")
-    mocker.patch.object(instances, "unfederate_msi")
+    federate = mocker.patch.object(instances, "federate_msi")
+    unfederate = mocker.patch.object(instances, "unfederate_msi")
     mocker.patch.object(instances, "_attempt_keyvault_role_assignments")
     if operation in {"add_mi_user_assigned", "enable_secretsync"}:
         mocked_responses.add(
@@ -430,27 +448,25 @@ def test_instance_workflow_preserves_runtime_fields(
         assert result is None
     reads = [call.request.url for call in mocked_responses.calls
              if call.request.method == "GET" and "/instances/" in call.request.url]
-    assert reads == ([initial_endpoint, selected_endpoint] if train == "integration" else [initial_endpoint])
+    assert reads == [initial_endpoint]
+    discovery.assert_not_called()
+    assert not any(call.request.method == "PATCH" for call in mocked_responses.calls)
+    if operation in {"add_mi_user_assigned", "enable_secretsync"}:
+        federate.assert_called_once()
+    if operation == "remove_mi_user_assigned":
+        unfederate.assert_called_once()
 
 
 @pytest.mark.parametrize("operation", [
     "add_mi_user_assigned", "remove_mi_user_assigned", "enable_secretsync", "disable_secretsync",
 ])
-@pytest.mark.parametrize("failure", ["unmapped_runtime", "discovery_http", "preview_http"])
-def test_instance_workflow_api_failure_prevents_writes(mocker, mocked_cmd, mocked_responses, operation, failure):
+@pytest.mark.parametrize("status", [403, 404, 500])
+def test_instance_workflow_api_failure_prevents_writes(mocker, mocked_cmd, mocked_responses, operation, status):
     name, resource_group = "preview-instance", "preview-rg"
-    instance = get_mock_instance_record(name, resource_group)
-    mocked_responses.add(responses.GET, get_instance_endpoint(resource_group, name), json=instance)
-    if failure == "discovery_http":
-        mocker.patch.object(Instances, "get_runtime_context", side_effect=HttpResponseError("Forbidden"))
-    else:
-        version = "1.6.0-preview.8" if failure == "unmapped_runtime" else "1.6.0-preview.22"
-        mock_runtime_discovery(mocked_responses, instance, version=version, train="integration")
-        if failure == "preview_http":
-            mocked_responses.add(
-                responses.GET, get_instance_endpoint(resource_group, name, api_version="2026-09-01-preview"),
-                status=403, json={"error": {"code": "AuthorizationFailed", "message": "Forbidden"}},
-            )
+    mocked_responses.add(
+        responses.GET, get_instance_endpoint(resource_group, name), status=status,
+        json={"error": {"code": "ReadFailed", "message": "Instance read failed"}},
+    )
     instances = Instances(mocked_cmd)
     side_effects = [mocker.patch.object(instances, method) for method in (
         "federate_msi", "unfederate_msi", "_attempt_keyvault_role_assignments", "_ensure_oidc_issuer",
@@ -469,9 +485,9 @@ def test_instance_workflow_api_failure_prevents_writes(mocker, mocked_cmd, mocke
         },
         "disable_secretsync": {"confirm_yes": True},
     }
-    expected_error = ValidationError if failure == "unmapped_runtime" else HttpResponseError
-    with pytest.raises(expected_error):
+    with pytest.raises(HttpResponseError) as caught:
         getattr(instances, operation)(name=name, resource_group_name=resource_group, **operation_kwargs[operation])
+    assert caught.value.status_code == status
     assert all(call.request.method == "GET" for call in mocked_responses.calls)
     for side_effect in side_effects:
         side_effect.assert_not_called()
@@ -516,12 +532,14 @@ def test_metadata_update_allows_unready_runtime_but_opcua_enable_does_not(
     record = get_mock_instance_record(name, resource_group)
     if unready == "failed_instance":
         record["properties"]["provisioningState"] = "Failed"
-    mock_runtime_discovery(
-        mocked_responses, record,
-        connectivity="Offline" if unready == "offline" else "Connected",
-        extension_state="Updating" if unready == "updating_extension" else "Succeeded",
-        extension_statuses=[{"level": "Error", "message": "Extension error"}] if unready == "extension_error" else None,
-    )
+    if enable_opcua:
+        mock_runtime_discovery(
+            mocked_responses, record,
+            connectivity="Offline" if unready == "offline" else "Connected",
+            extension_state="Updating" if unready == "updating_extension" else "Succeeded",
+            extension_statuses=[{"level": "Error", "message": "Extension error"}]
+            if unready == "extension_error" else None,
+        )
     endpoint = get_instance_endpoint(resource_group, name)
     mocked_responses.add(responses.GET, endpoint, json=record)
     if enable_opcua:
@@ -664,7 +682,6 @@ def test_instance_update(
         features=initial_feat_state,
     )
     if not tags_only:
-        mock_runtime_discovery(mocked_responses, initial_record)
         mocked_responses.add(
             method=responses.GET,
             url=instance_endpoint,
@@ -696,7 +713,7 @@ def test_instance_update(
         instance_description=description,
         wait_sec=0,
     )
-    assert len(mocked_responses.calls) == (1 if tags_only else 5)
+    assert len(mocked_responses.calls) == (1 if tags_only else 2)
 
     method = "PATCH" if tags_only else "PUT"
     update_request = json.loads(next(c.request.body for c in mocked_responses.calls if c.request.method == method))
@@ -721,17 +738,38 @@ def test_instance_update(
     {"adr_namespace_resource_id": "/namespace"},
     {"spc_resource_id": "/spc"},
 ])
-def test_tags_with_properties_retains_discovery(mocker, mocked_cmd, property_changes):
+@pytest.mark.parametrize("version", ["1.5.30", "1.6.0-preview.40"])
+def test_tags_with_properties_uses_put_without_discovery(
+    mocker, mocked_cmd, mocked_responses, property_changes, version,
+):
     instances = Instances(mocked_cmd)
-    record = get_mock_instance_record("instance", "rg")
-    mocker.patch.object(instances, "show", return_value=record)
-    discovery = mocker.patch.object(instances, "get_runtime_context", side_effect=ValidationError("Discovery required"))
+    record = get_mock_instance_record("instance", "rg", version=version)
+    record["properties"]["retainedConfiguration"] = {"values": ["custom"]}
+    endpoint = get_instance_endpoint("rg", "instance", api_version="2026-10-01")
+    mocked_responses.add(responses.GET, endpoint, json=record)
+    mocked_responses.add_callback(responses.PUT, endpoint, callback=echo_callback)
+    discovery = mocker.patch.object(
+        instances, "get_runtime_context", side_effect=HttpResponseError("AuthorizationFailed: discovery forbidden"),
+    )
     patch = mocker.patch.object(instances.iotops_mgmt_client.instance, "update")
 
-    with pytest.raises(ValidationError, match="Discovery required"):
-        instances.update("instance", "rg", tags={}, **property_changes)
+    result = instances.update("instance", "rg", tags={}, wait_sec=0, **property_changes)
 
-    discovery.assert_called_once()
+    expected = deepcopy(record)
+    expected["tags"] = {}
+    if property_changes.get("description"):
+        expected["properties"]["description"] = property_changes["description"]
+    if property_changes.get("features"):
+        expected["properties"]["features"] = {"opcua": {"mode": "Disabled"}}
+    if property_changes.get("adr_namespace_resource_id"):
+        expected["properties"]["adrNamespaceRef"] = {"resourceId": property_changes["adr_namespace_resource_id"]}
+    if property_changes.get("spc_resource_id"):
+        expected["properties"]["defaultSecretProviderClassRef"] = {"resourceId": property_changes["spc_resource_id"]}
+    assert result == expected
+    assert len(mocked_responses.calls) == 2
+    assert mocked_responses.calls[-1].request.method == "PUT"
+    assert json.loads(mocked_responses.calls[-1].request.body) == expected
+    discovery.assert_not_called()
     patch.assert_not_called()
 
 
@@ -988,7 +1026,6 @@ def test_instance_update_opcua_mode(
         resource_group_name=resource_group_name,
         features=features_scenario["expected"],
     )
-    mock_runtime_discovery(mocked_responses, initial_record)
     mocked_responses.add(
         method=responses.PUT,
         url=instance_endpoint,
@@ -1001,6 +1038,7 @@ def test_instance_update_opcua_mode(
     new_opcua_mode = features_scenario["expected"].get("opcua", {}).get("mode")
     expects_backfill = new_opcua_mode not in (None, "Disabled")
     if expects_backfill:
+        mock_runtime_discovery(mocked_responses, initial_record)
         base_url = instance_endpoint.split("?")[0]
         list_re = re.compile(re.escape(base_url) + r"/akriConnectorTemplates(\?|$)")
         mocked_responses.add(
@@ -1038,7 +1076,7 @@ def test_instance_update_opcua_mode(
         put_paths = [c.request.url for c in mocked_responses.calls if c.request.method == "PUT"]
         assert any("/akriConnectorTemplates/" in p for p in put_paths), "expected connector template backfill PUT"
     else:
-        assert len(mocked_responses.calls) == 5
+        assert len(mocked_responses.calls) == 2
 
 
 # Placeholder for a Bicep-named template; resolved to a perturbed derived default inside the test.

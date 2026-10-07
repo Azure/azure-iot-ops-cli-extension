@@ -48,93 +48,6 @@ matrix = load_tool("integration_matrix", ".github/actions/build-int-test-matrix/
 runner = load_tool("integration_runner", "tools/integration_runner.py")
 
 
-@pytest.mark.parametrize("exit_code", [0, 1])
-def test_schema_diagnostics_preserve_test_result(mocker, tmp_path, exit_code):
-    inventory = mocker.patch.object(runner, "capture_schema_inventory")
-    bundle = mocker.patch.object(runner, "capture_schema_bundle")
-    execute = mocker.Mock(return_value=exit_code)
-    assert runner.run_with_schema_diagnostics(execute, tmp_path) == exit_code
-    assert inventory.call_args_list == [mocker.call(tmp_path, "before"), mocker.call(tmp_path, "after")]
-    assert bundle.call_count == exit_code
-
-
-def test_schema_diagnostics_preserve_test_exception(mocker, tmp_path):
-    inventory = mocker.patch.object(runner, "capture_schema_inventory", side_effect=OSError("private error"))
-    bundle = mocker.patch.object(runner, "capture_schema_bundle")
-    execute = mocker.Mock(side_effect=RuntimeError("test failure"))
-    with pytest.raises(RuntimeError, match="test failure"):
-        runner.run_with_schema_diagnostics(execute, tmp_path)
-    assert inventory.call_count == 2
-    bundle.assert_called_once_with(tmp_path)
-
-
-def test_schema_inventory_retains_only_resource_identity_and_readiness(mocker, tmp_path):
-    resource = {"kind": "Pod", "metadata": {"name": "aio-edge-registry-0", "namespace": "aio",
-                "labels": {"app.kubernetes.io/name": "aio-edge-registry", "private": "private-value"},
-                "annotations": {"credential": "private-value"}}, "data": {"secret": "private-value"},
-                "status": {"phase": "Running", "containerStatuses": [{"name": "registry", "ready": True}]}}
-    command = mocker.patch.object(runner.subprocess, "run", return_value=SimpleNamespace(
-        returncode=0, stdout=json.dumps({"items": [resource]}), stderr="private-value",
-    ))
-    runner.capture_schema_inventory(tmp_path, "before")
-    payload = (tmp_path / "inventory-before.json").read_text()
-    assert "private-value" not in payload
-    item = json.loads(payload)["resources"][0]
-    assert item["nameLabel"] == "aio-edge-registry" and item["containers"][0]["ready"]
-    assert command.call_args.kwargs["timeout"] == 45
-
-
-def test_schema_diagnostics_sanitize_bundle_and_debug_output(mocker, tmp_path):
-    def collect(arguments, **kwargs):
-        directory = Path(arguments[arguments.index("--bundle-dir") + 1])
-        with ZipFile(directory / "schema-diagnostics.zip", "w") as archive:
-            archive.writestr("aio/schemaregistry/pod.aio-edge-registry-0.yaml", json.dumps({
-                "kind": "Pod", "metadata": {"name": "aio-edge-registry-0", "namespace": "aio"},
-                "spec": {"credential": "private-value"},
-            }))
-            archive.writestr("aio/schemaregistry/pod.registry.log", "private-value")
-            archive.writestr("aio/meta/configmap.yaml", "private-value")
-            archive.writestr("../schemaregistry/unsafe.yaml", "private-value")
-        assert kwargs["timeout"] == 180
-        return SimpleNamespace(returncode=0, stdout="private-value", stderr=(
-            "DEBUG: Unable to process schemaregistry services:\nApiException: private-value\n"
-            "DEBUG: Detected 1 pods with label 'app.kubernetes.io/name in (aio-edge-registry)'.\n"
-            'DEBUG: GET /api HTTP/1.1" 403 0\n'
-        ))
-
-    mocker.patch.object(runner.subprocess, "run", side_effect=collect)
-    runner.capture_schema_bundle(tmp_path)
-    report = json.loads((tmp_path / "collection.json").read_text())
-    assert report == {"returncode": 0, "failedCollectors": ["services"], "errorTypes": ["ApiException"],
-                      "httpStatuses": ["403"], "schemaPodCounts": ["1"], "schemaFiles": 2}
-    with ZipFile(tmp_path / "schema-bundle-sanitized.zip") as archive:
-        assert len(archive.namelist()) == 2
-        assert len(json.loads(archive.read("manifest.json"))) == 2
-        assert all(b"private-value" not in archive.read(name) for name in archive.namelist())
-
-
-def test_schema_diagnostics_upload_precedes_cleanup_even_on_failure():
-    config = yaml.safe_load((ROOT / ".github/workflows/int_test.yml").read_text())
-    steps = config["jobs"]["int-test"]["steps"]
-    names = [step.get("name") for step in steps]
-    upload_name = "Upload Edge schema diagnostics before cleanup"
-    assert names.index("${{ matrix.scenario.description }}") < names.index(upload_name)
-    assert names.index(upload_name) < names.index("Keep cluster alive") < names.index("Delete AIO resources")
-    upload = steps[names.index(upload_name)]
-    assert upload["if"] == "${{ always() && matrix.scenario.tox_env == 'python-edge-int' }}"
-    assert upload["with"]["path"] == "junit/schema-diagnostics/"
-    assert upload["with"]["name"] == "schema-diagnostics-${{ matrix.scenario.name }}"
-    assert upload["with"]["retention-days"] == 7
-
-
-def test_schema_collection_timeout_does_not_expose_partial_output(mocker, tmp_path):
-    mocker.patch.object(runner.subprocess, "run", side_effect=subprocess.TimeoutExpired(
-        "az", 180, output="private-value", stderr="private-value",
-    ))
-    runner.capture_schema_bundle(tmp_path)
-    assert json.loads((tmp_path / "collection.json").read_text()) == {"errorType": "TimeoutExpired"}
-
-
 def baseline():
     return {
         "wheel_url": "https://example.invalid/azure_iot_ops-1.0.0-py3-none-any.whl",
@@ -143,32 +56,31 @@ def baseline():
 
 
 @pytest.mark.parametrize("use_preview", [False, True])
-@pytest.mark.parametrize("description", [None, "", "custom description"])
+@pytest.mark.parametrize("description,include_description", [
+    pytest.param(None, False, id="omitted"),
+    pytest.param(None, True, id="null"),
+    pytest.param("", True, id="empty"),
+    pytest.param("custom description", True, id="custom"),
+])
 @pytest.mark.parametrize("matches", [False, True])
-def test_init_description_assertion_uses_selected_defaults(mocker, use_preview, description, matches):
-    from dataclasses import replace
-    from azext_edge.edge.providers.orchestration.runtime_catalog import get_runtime_catalog
+def test_init_description_assertion_uses_requested_value(
+    mocker, use_preview, description, include_description, matches,
+):
     from azext_edge.tests.edge.init.int import test_init_int as init_tests
     from azext_edge.tests.helpers import process_additional_args
 
-    profiles = []
-    for channel in RuntimeChannel:
-        profile = get_runtime_catalog().get(channel)
-        blueprint = profile.copy_instance_blueprint()
-        blueprint.get_resource_by_key("aioInstance")["properties"]["description"] = f"{channel.value} default"
-        profiles.append(replace(profile, instance_blueprint=blueprint))
-    catalog = RuntimeProfileCatalog(profiles)
-    mocker.patch.object(init_tests, "get_runtime_catalog", return_value=catalog)
-    expected = description if description is not None else ("preview default" if use_preview else "stable default")
-    actual = expected if matches else "incorrect description"
+    actual = description if matches else "An AIO instance."
+    properties = {
+        "description": actual, "schemaRegistryRef": {"resourceId": "/registry"},
+        "adrNamespaceRef": {"resourceId": "/namespace"},
+    }
+    if matches and not include_description:
+        properties.pop("description")
     command = mocker.patch.object(init_tests, "run", side_effect=[
         {"id": "/cluster"},
         {"value": [{"properties": {"extensionType": init_tests.EXTENSION_TYPE_OPS},
                     "identity": {"principalId": "principal"}}]},
-        {"extendedLocation": {"name": "/locations/location"}, "properties": {
-            "description": actual, "schemaRegistryRef": {"resourceId": "/registry"},
-            "adrNamespaceRef": {"resourceId": "/namespace"},
-        }},
+        {"extendedLocation": {"name": "/locations/location"}, "properties": properties},
         "location cert-manager",
     ])
     roles = mocker.patch.object(init_tests, "assert_role_assignment")

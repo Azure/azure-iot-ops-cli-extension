@@ -219,11 +219,11 @@ def test_shared_update_with_restricted_parameter_value(mocker, mocked_cmd, mocke
 def test_update_does_not_mutate_supplied_record(mocker, mocked_cmd, mocked_responses):
     instance = get_mock_instance_record("instance", "rg", features={"opcua": {"mode": "Stable"}})
     original = deepcopy(instance)
-    mock_runtime_discovery(mocked_responses, instance)
     endpoint = get_instance_endpoint(resource_group_name="rg", instance_name="instance")
     mocked_responses.add(responses.PUT, endpoint, json=instance)
     Instances(mocked_cmd).update("instance", "rg", instance=instance, features=["opcua.mode=Disabled"], wait_sec=0)
     assert instance == original
+    assert len(mocked_responses.calls) == 1
 
 
 @pytest.mark.parametrize("force", [False, True])

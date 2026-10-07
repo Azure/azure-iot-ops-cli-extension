@@ -349,14 +349,6 @@ jobs:
           fi
           tox r -e "${{ matrix.scenario.tox_env }}" --skip-pkg-install -- $PYTEST_ARGS
           tox r -e report
-      - name: "Upload Edge schema diagnostics before cleanup"
-        if: ${{ always() && matrix.scenario.tox_env == 'python-edge-int' }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: schema-diagnostics-${{ matrix.scenario.name }}
-          path: junit/schema-diagnostics/
-          retention-days: 7
-          if-no-files-found: warn
       - name: "Run smoke tests"
         run: |
           az iot ops support create-bundle
