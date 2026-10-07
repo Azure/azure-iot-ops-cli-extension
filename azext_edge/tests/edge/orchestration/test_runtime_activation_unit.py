@@ -87,12 +87,10 @@ def test_bundled_preview_update_preserves_payload_and_selects_connector_tag(mock
     })
     record["properties"]["additionalProperty"] = {"preserved": True}
     original = deepcopy(record)
-    endpoint = get_instance_endpoint(resource_group_name="rg", instance_name="instance")
+    endpoint = get_instance_endpoint(resource_group_name="rg", instance_name="instance", api_version="2026-10-01")
     mocked_responses.add(responses.GET, endpoint, json=record)
     mock_runtime_discovery(mocked_responses, record, profile.identity.version, profile.identity.train)
-    preview_endpoint = get_instance_endpoint("rg", "instance", api_version="2026-09-01-preview")
-    mocked_responses.add(responses.GET, preview_endpoint, json=record)
-    mocked_responses.add(responses.PUT, preview_endpoint, json=record)
+    mocked_responses.add(responses.PUT, endpoint, json=record)
     mocker.patch.object(ConnectorTemplates, "check_default_opcua_template_needed", return_value=(True, None))
     connector = mocker.patch.object(ConnectorTemplates, "create_default_opcua_template")
 
@@ -103,7 +101,7 @@ def test_bundled_preview_update_preserves_payload_and_selects_connector_tag(mock
 
     writes = [c for c in mocked_responses.calls if c.request.method == "PUT"]
     assert len(writes) == 1
-    assert writes[0].request.url == preview_endpoint
+    assert writes[0].request.url == endpoint
     body = json.loads(writes[0].request.body)
     assert body["properties"]["features"] == {
         "opcua": {"mode": "Preview", "settings": {"retained": "Enabled"}},

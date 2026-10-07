@@ -63,7 +63,7 @@ from ..resource_map import IoTOperationsResourceMap
 from ..runtime import RuntimeContext, get_runtime_cluster_id, resolve_runtime
 from ..runtime_profiles import RuntimeIdentity, RuntimeProfile
 from ..runtime_catalog import get_runtime_catalog
-from ..runtime_requirements import validate_runtime_requirements
+from ..runtime_requirements import get_runtime_requirements, requested_selections, validate_runtime_requirements
 
 logger = get_logger(__name__)
 
@@ -221,18 +221,6 @@ class Instances(Queryable):
         self, name: str, resource_group_name: str, show_tree: Optional[bool] = None, resolve_api: bool = False,
     ) -> Optional[dict]:
         result = self.iotops_mgmt_client.instance.get(instance_name=name, resource_group_name=resource_group_name)
-        if resolve_api:
-            catalog = get_runtime_catalog()
-            try:
-                runtime = self.get_runtime_context(result, catalog.qualification_identities)
-            except (ValidationError, HttpResponseError) as error:
-                logger.debug(
-                    "Unable to resolve the AIO runtime. Returning the instance using API %s; "
-                    "preview-specific fields may be incomplete. %s",
-                    self.iotops_api_version, error,
-                )
-            else:
-                result = self.use_runtime_profile(catalog.get(runtime.identity.channel), result)
 
         if show_tree:
             self._show_tree(result)
@@ -254,10 +242,7 @@ class Instances(Queryable):
         )
 
     def _get_instance_for_write(self, name: str, resource_group_name: str) -> dict:
-        instance = self.show(name=name, resource_group_name=resource_group_name)
-        catalog = get_runtime_catalog()
-        runtime = self.get_runtime_context(instance, catalog.qualification_identities)
-        return self.use_runtime_profile(catalog.get(runtime.identity.channel), instance)
+        return self.show(name=name, resource_group_name=resource_group_name)
 
     def get_ext_loc(
         self,
@@ -348,20 +333,24 @@ class Instances(Queryable):
             kwargs.pop("instance", None) or self.show(name=name, resource_group_name=resource_group_name)
         )
         desired_features = parse_feature_kvp_nargs(features, strict=True) if features else None
-        catalog = get_runtime_catalog()
-        runtime = self.get_runtime_context(instance, catalog.qualification_identities)
-        if (desired_features or {}).get("opcua", {}).get("mode") not in (None, "Disabled"):
-            runtime.require_ready()
         requested_arguments = {
             "instance_features": features, "description": description, "tags": tags,
             "adr_namespace_resource_id": adr_namespace_resource_id, "spc_resource_id": spc_resource_id,
         }
-        validate_runtime_requirements("iot ops update", runtime.identity, requested_arguments, cmd=self.cmd)
-        profile = catalog.get(runtime.identity.channel)
-        instance = self.use_runtime_profile(profile, instance)
+        requirements, parameters = get_runtime_requirements("iot ops update", cmd=self.cmd)
+        selections = requested_selections(vars(self.cmd).get("runtime_requested_arguments", requested_arguments))
+        enable_opcua = (desired_features or {}).get("opcua", {}).get("mode") not in (None, "Disabled")
+        profile = None
         connector_version = None
-        if (desired_features or {}).get("opcua", {}).get("mode") not in (None, "Disabled"):
-            connector_version = profile.require_opcua_connector_version()
+        if enable_opcua or requirements is not None or any(parameter.applies(selections) for parameter in parameters):
+            catalog = get_runtime_catalog()
+            runtime = self.get_runtime_context(instance, catalog.qualification_identities)
+            if enable_opcua:
+                runtime.require_ready()
+            validate_runtime_requirements("iot ops update", runtime.identity, requested_arguments, cmd=self.cmd)
+            if enable_opcua:
+                profile = catalog.get(runtime.identity.channel)
+                connector_version = profile.require_opcua_connector_version()
         return self._update(
             name=name, resource_group_name=resource_group_name, instance=instance, tags=tags,
             description=description, features=features, adr_namespace_resource_id=adr_namespace_resource_id,
