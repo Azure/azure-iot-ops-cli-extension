@@ -61,7 +61,9 @@ test requires a deployed broker, verifies Service/pod/StatefulSet absence before
 checks, waits up to five minutes for the broker portion of the summary to become
 healthy, and validates successful structured output and retained runtime/configuration
 checks at all three detail levels. Other services do not have to be healthy for
-this focused test.
+this focused test. Optional summary evaluations may be `skipped` when their
+resources are not configured (for example, no BrokerAuthorization CR); the
+broker evaluation itself must succeed, and warnings/errors are not accepted.
 
 `test_create_bundle_mq_diagnostics_removal` additionally runs with broker traces
 enabled and disabled. Both cases require absent diagnostics resources before and

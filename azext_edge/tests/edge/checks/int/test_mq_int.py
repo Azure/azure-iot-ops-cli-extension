@@ -161,7 +161,15 @@ def _wait_for_broker_summary_health():
             f"Broker summary has no broker evaluation: {broker_target}"
         )
         if broker_target["status"] == "success":
-            assert all(evaluation["status"] == "success" for evaluation in broker_target["evaluations"]), broker_target
+            assert any(
+                evaluation["status"] == "success"
+                and evaluation.get("value", {}).get("evalBrokers") == "success"
+                for evaluation in broker_target["evaluations"]
+            ), f"Broker evaluation did not succeed: {broker_target}"
+            # Optional resource checks (e.g. no BrokerAuthorization CR) legitimately skip.
+            assert all(
+                evaluation["status"] in ("success", "skipped") for evaluation in broker_target["evaluations"]
+            ), broker_target
             return
         logger.info("Waiting for broker health; current broker summary: %s", broker_target)
         sleep(min(10, max(0, deadline - monotonic())))

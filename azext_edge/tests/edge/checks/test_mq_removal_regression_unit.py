@@ -27,7 +27,13 @@ def removal_cluster(mocker):
     }
     summary_target = {
         "status": "success",
-        "evaluations": [{"status": "success", "value": {"evalBrokers": "success"}}],
+        "evaluations": [
+            {"status": "success", "value": {"enumerateBrokerApi": "success"}},
+            {"status": "success", "value": {"evalBrokers": "success"}},
+            {"status": "success", "value": {"evalBrokerListeners": "success"}},
+            {"status": "success", "value": {"evalBrokerAuthentications": "success"}},
+            {"status": "skipped", "value": {"evalBrokerAuthorizations": "skipped"}},
+        ],
     }
     responses = {
         "brokers": {"items": [{"metadata": {"name": "default", "namespace": "ns"}}]},
@@ -181,4 +187,25 @@ def test_broker_summary_readiness_does_not_hide_cli_errors(mocker, removal_clust
 def test_broker_summary_readiness_rejects_empty_evaluations(removal_cluster):
     removal_cluster["summary_target"]["evaluations"] = []
     with pytest.raises(AssertionError, match="has no broker evaluation"):
+        live_checks._wait_for_broker_summary_health()
+
+
+@pytest.mark.parametrize("status", ["skipped", "warning", "error"])
+def test_broker_summary_readiness_requires_successful_broker_evaluation(removal_cluster, status):
+    evaluation = next(
+        evaluation for evaluation in removal_cluster["summary_target"]["evaluations"]
+        if "evalBrokers" in evaluation["value"]
+    )
+    evaluation.update({"status": status, "value": {"evalBrokers": status}})
+
+    with pytest.raises(AssertionError, match="Broker evaluation did not succeed"):
+        live_checks._wait_for_broker_summary_health()
+
+
+@pytest.mark.parametrize("status", ["warning", "error"])
+def test_broker_summary_readiness_rejects_unhealthy_optional_checks(removal_cluster, status):
+    evaluation = removal_cluster["summary_target"]["evaluations"][-1]
+    evaluation.update({"status": status, "value": {"evalBrokerAuthorizations": status}})
+
+    with pytest.raises(AssertionError):
         live_checks._wait_for_broker_summary_health()
