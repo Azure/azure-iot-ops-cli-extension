@@ -5,11 +5,12 @@
 # ----------------------------------------------------------------------------------------------
 
 from copy import deepcopy
-from dataclasses import FrozenInstanceError
+from dataclasses import FrozenInstanceError, replace
 
 import pytest
 from azure.cli.core.azclierror import ValidationError
 
+from azext_edge.edge.providers.orchestration.common import AIO_INSECURE_LISTENER_NAME
 from azext_edge.edge.providers.orchestration.runtime_profiles import (
     RuntimeChannel,
     RuntimeIdentity,
@@ -22,6 +23,7 @@ from azext_edge.edge.providers.orchestration.targets import InitTargets, merge_t
 from azext_edge.edge.providers.orchestration.template import (
     TEMPLATE_BLUEPRINT_ENABLEMENT,
     TEMPLATE_BLUEPRINT_INSTANCE,
+    get_insecure_listener,
 )
 
 
@@ -178,6 +180,55 @@ def test_targets_use_selected_profile_without_changing_foundation(profiles):
         assert targets.get_extension_versions(False)["iotOperations"]["version"]
     assert TEMPLATE_BLUEPRINT_INSTANCE.content == original_instance
     assert TEMPLATE_BLUEPRINT_ENABLEMENT.content == original_enablement
+
+
+@pytest.mark.parametrize("channel", [None, RuntimeChannel.STABLE, RuntimeChannel.PREVIEW])
+@pytest.mark.parametrize("add_insecure_listener", [False, True])
+def test_optional_listener_uses_selected_blueprint_api(channel, add_insecure_listener):
+    from azext_edge.edge.providers.orchestration.runtime_catalog import get_runtime_catalog
+
+    profile = get_runtime_catalog().get(channel) if channel is not None else None
+    blueprint = profile.copy_instance_blueprint() if profile is not None else TEMPLATE_BLUEPRINT_INSTANCE.copy()
+    original = deepcopy(blueprint.content)
+    targets = InitTargets(
+        "cluster", "rg", runtime_profile=profile, instance_name="instance",
+        add_insecure_listener=add_insecure_listener,
+    )
+    template, _ = targets.get_ops_instance_template()
+    resources = template["resources"]
+
+    if add_insecure_listener:
+        expected = get_insecure_listener("instance", "default")
+        if channel == RuntimeChannel.PREVIEW:
+            expected["apiVersion"] = original["resources"]["brokerListener"]["apiVersion"]
+        assert resources["brokerListenerInsecure"] == expected
+        assert expected["name"] == f"instance/default/{AIO_INSECURE_LISTENER_NAME}"
+        if channel != RuntimeChannel.PREVIEW:
+            assert expected["apiVersion"] == "2026-10-01"
+    else:
+        assert "brokerListenerInsecure" not in resources
+    for key, resource in original["resources"].items():
+        if resource["type"].startswith("Microsoft.IoTOperations/"):
+            assert resources[key]["apiVersion"] == resource["apiVersion"]
+    if profile is not None:
+        assert profile.copy_instance_blueprint().content == original
+    else:
+        assert TEMPLATE_BLUEPRINT_INSTANCE.content == original
+
+
+@pytest.mark.parametrize("listener_api", ["2026-09-01-preview", "2026-09-02-preview", "2026-09-03-preview"])
+def test_preview_optional_listener_follows_blueprint_api_changes(listener_api):
+    from azext_edge.edge.providers.orchestration.runtime_catalog import get_runtime_catalog
+
+    original_profile = get_runtime_catalog().get(RuntimeChannel.PREVIEW)
+    blueprint = original_profile.copy_instance_blueprint()
+    blueprint.content["resources"]["brokerListener"]["apiVersion"] = listener_api
+    profile = replace(original_profile, instance_blueprint=blueprint)
+    targets = InitTargets("cluster", "rg", runtime_profile=profile, add_insecure_listener=True)
+
+    template, _ = targets.get_ops_instance_template()
+
+    assert template["resources"]["brokerListenerInsecure"]["apiVersion"] == listener_api
 
 
 def test_targets_reject_conflicting_overrides(profiles):
