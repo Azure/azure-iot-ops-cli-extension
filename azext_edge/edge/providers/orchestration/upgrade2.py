@@ -1578,7 +1578,7 @@ class ExtensionUpgradeState:
                 )
             if parsed_desired.minor - parsed_current.minor > 1:
                 raise ValidationError(
-                    "Preview upgrades more than one minor version ahead are not supported, including with --force."
+                    "Preview upgrades more than one minor version ahead are not supported."
                 )
             return
 
