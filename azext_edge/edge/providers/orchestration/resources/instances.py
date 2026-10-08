@@ -270,7 +270,7 @@ class Instances(Queryable):
 
     def get_runtime_context(
         self, instance: dict, qualification_identities: Iterable[RuntimeIdentity] = (),
-        *, allow_ga_integration: bool = False,
+        *, allow_unbundled_integration: bool = False,
     ) -> RuntimeContext:
         """Read the associated runtime using the cluster's subscription, without mutations.
 
@@ -294,7 +294,7 @@ class Instances(Queryable):
         )
         return resolve_runtime(
             instance, custom_location, cluster_record, extensions, qualification_identities,
-            allow_ga_integration=allow_ga_integration,
+            allow_unbundled_integration=allow_unbundled_integration,
         )
 
     def get_resource_map(self, instance: dict) -> IoTOperationsResourceMap:
