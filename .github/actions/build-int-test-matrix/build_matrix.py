@@ -135,7 +135,7 @@ def expand_channels(scenarios, channels="stable,preview", baselines=None, init_a
             row["description"] = f"{scenario['description']} [{channel}]"
             row["channel"] = channel
             row["init_args"] = f"{scenario['init_args']} {init_args}".strip()
-            selector = "--use-preview --yes" if channel == "preview" else ""
+            selector = "--use-preview" if channel == "preview" else ""
             row["create_args"] = f"{scenario['create_args']} {create_args} {selector}".strip()
             row["baseline"] = None
             if row["requires_baseline"]:

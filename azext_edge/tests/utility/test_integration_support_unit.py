@@ -84,7 +84,7 @@ def test_init_description_assertion_uses_requested_value(
         "location cert-manager",
     ])
     roles = mocker.patch.object(init_tests, "assert_role_assignment")
-    arguments = process_additional_args("--use-preview --yes" if use_preview else "")
+    arguments = process_additional_args("--use-preview" if use_preview else "")
     if description is not None:
         arguments["description"] = description
     arguments.update(instance_name="instance", cluster_name="cluster", resource_group="rg",
@@ -141,7 +141,7 @@ def test_init_broker_defaults_by_channel(
     assert_broker, properties = init_broker_assertion
     if has_persistence:
         properties["persistence"] = preview_broker_persistence
-    arguments = process_additional_args("--use-preview --yes" if use_preview else "")
+    arguments = process_additional_args("--use-preview" if use_preview else "")
     if matches:
         assert_broker("instance", "rg", **arguments)
     else:
@@ -717,7 +717,7 @@ def test_container_workflow_builds_once_for_both_channels_and_includes_runner():
     scenarios = yaml.safe_load((ROOT / ".github/test-container-scenarios.yml").read_text())["scenarios"]
     rows = matrix.expand_channels(matrix.process_scenarios(scenarios, ""))
     assert [row["name"] for row in rows] == ["container-e2e-stable", "container-e2e-preview"]
-    assert [row["create_args"] for row in rows] == ["", "--use-preview --yes"]
+    assert [row["create_args"] for row in rows] == ["", "--use-preview"]
     assert all(row["tox_env"] == "python-e2e-int" and not row["init_args"] for row in rows)
     assert "--use-preview" not in steps["Run az iot ops init"]["run"]
     assert steps["Containerized tests"]["env"]["azext_edge_instance"] == "${{ env.INSTANCE_NAME }}"
@@ -903,7 +903,7 @@ def test_container_init_is_shared_and_create_uses_selected_channel(workflow_shel
         args = result.stdout.split("\0")
         assert args[:3] == ["iot", "ops", verb]
         assert ("--use-preview" in args) == (verb == "create" and channel == "preview")
-        assert ("--yes" in args) == (verb == "create" and channel == "preview")
+        assert "--yes" not in args
 
 
 @pytest.mark.parametrize("missing", ["", "SCHEMA_REGISTRY_ID", "ADR_NAMESPACE_ID", "STORAGE_ID", "all"])
