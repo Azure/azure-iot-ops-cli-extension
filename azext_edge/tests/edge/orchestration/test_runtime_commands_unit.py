@@ -5,14 +5,14 @@
 # ----------------------------------------------------------------------------------------------
 
 from copy import deepcopy
-from unittest.mock import Mock, call
+from unittest.mock import Mock
 
 import pytest
 import responses
 from azure.cli.core.azclierror import ValidationError
 
 from azext_edge.edge.commands_edge import create_instance, update_instance
-from azext_edge.edge.providers.orchestration import preview, runtime_requirements
+from azext_edge.edge.providers.orchestration import runtime_requirements
 from azext_edge.edge.providers.orchestration.common import EXTENSION_TYPE_OPS
 from azext_edge.edge.providers.orchestration.resources.instances import Instances
 from azext_edge.edge.providers.orchestration.runtime import OperationRequirements, ParameterRequirement
@@ -27,53 +27,8 @@ from .test_work_unit import CallKey, ServiceGenerator, build_target_scenario
 @pytest.fixture
 def preview_profile():
     return make_profile(
-        RuntimeChannel.PREVIEW, "1.6.0-preview.10", preview_notice="Test-only preview terms",
-        preview_agreement_url="https://example.invalid/test-agreement", opcua_connector_version="test-preview-tag",
+        RuntimeChannel.PREVIEW, "1.6.0-preview.10", opcua_connector_version="test-preview-tag",
     )
-
-
-@pytest.mark.parametrize("answer", [True, False])
-def test_preview_explicit_consent(mocker, preview_profile, answer):
-    output = mocker.patch.object(preview.console, "print")
-    mocker.patch.object(preview.sys.stdin, "isatty", return_value=True)
-    ask = mocker.patch.object(preview.Confirm, "ask", return_value=answer)
-    assert preview.confirm_preview_creation(preview_profile) is answer
-    assert ask.call_args.kwargs["default"] is True
-    assert output.call_args_list == [
-        call(preview_profile.preview_notice, markup=False),
-        call(preview_profile.preview_agreement_url, markup=False),
-    ]
-
-
-@pytest.mark.parametrize("error", [EOFError, KeyboardInterrupt])
-def test_preview_cancel_stops(mocker, preview_profile, error):
-    mocker.patch.object(preview.sys.stdin, "isatty", return_value=True)
-    mocker.patch.object(preview.Confirm, "ask", side_effect=error)
-    assert preview.confirm_preview_creation(preview_profile) is False
-
-
-@pytest.mark.parametrize("answer, accepted", [("", True), ("y", True), ("Y", True), ("n", False), ("N", False)])
-def test_preview_prompt_responses(mocker, preview_profile, answer, accepted):
-    mocker.patch.object(preview.sys.stdin, "isatty", return_value=True)
-    mocker.patch.object(preview.console, "input", side_effect=[answer])
-    assert preview.confirm_preview_creation(preview_profile) is accepted
-
-
-def test_preview_automation_still_displays_notice(mocker, preview_profile):
-    output = mocker.patch.object(preview.console, "print")
-    mocker.patch.object(preview.sys.stdin, "isatty", return_value=False)
-    ask = mocker.patch.object(preview.Confirm, "ask")
-    with pytest.raises(ValidationError, match="--yes"):
-        preview.confirm_preview_creation(preview_profile)
-    assert preview.confirm_preview_creation(preview_profile, confirm_yes=True)
-    assert output.call_count == 4
-    ask.assert_not_called()
-
-
-def test_preview_cannot_skip_missing_approved_terms():
-    profile = make_profile(RuntimeChannel.PREVIEW, "1.6.0-preview.1")
-    with pytest.raises(ValidationError, match="approved notice"):
-        preview.confirm_preview_creation(profile, confirm_yes=True)
 
 
 @pytest.fixture
@@ -103,7 +58,7 @@ def create_args():
 
 
 @pytest.mark.parametrize("no_preflight", [True, False])
-@pytest.mark.parametrize("invalid", ["unbundled", "train", "version", "decline"])
+@pytest.mark.parametrize("invalid", ["unbundled", "train", "version"])
 def test_create_runtime_gates_precede_all_work(mocker, isolated_work, preview_profile, no_preflight, invalid):
     manager, writer = isolated_work
     stable = make_profile(RuntimeChannel.STABLE, "1.5.7")
@@ -111,44 +66,42 @@ def test_create_runtime_gates_precede_all_work(mocker, isolated_work, preview_pr
     mocker.patch(
         "azext_edge.edge.providers.orchestration.work.get_runtime_catalog", return_value=RuntimeProfileCatalog(profiles)
     )
-    mocker.patch("azext_edge.edge.providers.orchestration.work.confirm_preview_creation", return_value=False)
     args = {**create_args(), "use_preview": True, "no_preflight": no_preflight}
     if invalid == "train":
         args["ops_train"] = "stable"
     if invalid == "version":
         args["ops_version"] = "1.6.0"
-    if invalid == "decline":
+    with pytest.raises(ValidationError):
         create_instance(**args)
-    else:
-        with pytest.raises(ValidationError):
-            create_instance(**args)
     writer.assert_not_called()
     manager._bootstrap_ux.assert_not_called()
 
 
 @pytest.mark.parametrize("use_preview", [False, True])
-def test_create_selects_isolated_profile(mocker, isolated_work, preview_profile, use_preview):
+@pytest.mark.parametrize("no_preflight", [False, True])
+def test_create_selects_isolated_profile_without_consent(
+    mocker, isolated_work, preview_profile, use_preview, no_preflight,
+):
     manager, writer = isolated_work
     stable = make_profile(RuntimeChannel.STABLE, "1.5.7")
     mocker.patch(
         "azext_edge.edge.providers.orchestration.work.get_runtime_catalog",
         return_value=RuntimeProfileCatalog([stable, preview_profile]),
     )
-    consent = mocker.patch("azext_edge.edge.providers.orchestration.work.confirm_preview_creation", return_value=True)
-    create_instance(**create_args(), use_preview=use_preview, confirm_yes=True)
+    mocker.patch("sys.stdin.isatty", return_value=False)
+    ask = mocker.patch("rich.prompt.Confirm.ask", side_effect=AssertionError("Unexpected confirmation prompt"))
+    create_instance(**create_args(), use_preview=use_preview, no_preflight=no_preflight)
     assert manager._targets.runtime_profile is (preview_profile if use_preview else stable)
-    assert consent.call_count == int(use_preview)
+    ask.assert_not_called()
     writer.assert_called_once()
 
 
-def test_init_does_not_select_runtime_or_request_consent(mocker, isolated_work):
+def test_init_does_not_select_runtime(mocker, isolated_work):
     manager, writer = isolated_work
     catalog = mocker.patch("azext_edge.edge.providers.orchestration.work.get_runtime_catalog")
-    consent = mocker.patch("azext_edge.edge.providers.orchestration.work.confirm_preview_creation")
     manager.execute_ops_init(apply_foundation=True, cluster_name="cluster", resource_group_name="rg")
     assert manager._targets.runtime_profile is None
     catalog.assert_not_called()
-    consent.assert_not_called()
     writer.assert_called_once()
 
 
@@ -342,7 +295,11 @@ def test_extension_writes_use_cluster_subscription(mocker, mocked_cmd):
 
 
 def test_runtime_selector_is_normal_create_only_option_and_requires_no_authentication(mocker):
+    from inspect import signature
     from azure.cli.core import AzCli
+    from knack.help_files import helps
+    from azext_edge.constants import PREVIEW_AGREEMENT_URL, PREVIEW_NOTICE
+    from azext_edge.edge import _help
     from azext_edge import OpsExtensionCommandsLoader
 
     mocker.patch("azure.cli.core.commands.client_factory.get_subscription_id", side_effect=AssertionError("auth"))
@@ -367,9 +324,17 @@ def test_runtime_selector_is_normal_create_only_option_and_requires_no_authentic
         if name == "iot ops create":
             assert option["options_list"] == ["--use-preview"]
             assert not option.get("is_preview")
+            assert PREVIEW_NOTICE in option["help"]
+            assert PREVIEW_AGREEMENT_URL in option["help"]
+            assert "constitutes acceptance" in option["help"]
+            assert "--yes" not in option["help"]
+            assert "confirm_yes" not in signature(create_instance).parameters
         else:
             assert not option
         assert getattr(loader.command_table[name], "preview_info", None) is None
+    _help.load_iotops_help()
+    assert PREVIEW_NOTICE in helps["iot ops create"]
+    assert PREVIEW_AGREEMENT_URL in helps["iot ops create"]
 
 
 def test_backfill_missing_version_is_rejected_before_instance_write(mocker, mocked_cmd):

@@ -442,7 +442,7 @@ def test_init_targets(target_scenario: dict, mocked_feature_keys: Mock):
     # Verify instance properties
     aio_instance = instance_template["resources"]["aioInstance"]
     assert aio_instance["properties"]["description"] == targets.instance_description
-    assert aio_instance["properties"]["features"] == "[variables('effectiveFeatures')]"
+    assert aio_instance["properties"]["features"] == "[parameters('features')]"
     if targets.instance_features:
         assert instance_parameters["features"]["value"] == targets.instance_features
     else:
@@ -497,7 +497,7 @@ def test_init_targets_opcua_mode(target_scenario: dict):
     instance_template, _instance_parameters = targets.get_ops_instance_template(extension_ids)
 
     aio_instance = instance_template["resources"]["aioInstance"]
-    assert aio_instance["properties"]["features"] == "[variables('effectiveFeatures')]"
+    assert aio_instance["properties"]["features"] == "[parameters('features')]"
     assert _instance_parameters["features"]["value"] == {"opcua": {"mode": "Stable", "settings": {}}}
 
 

@@ -9,6 +9,7 @@ Help content for Azure IoT Operations commands.
 
 from knack.help_files import helps
 
+from azext_edge.constants import PREVIEW_AGREEMENT_URL, PREVIEW_NOTICE
 from azext_edge.edge.providers.edge_api import (
     ARCCONTAINERSTORAGE_API_V1,
     CERTMANAGER_API_V1,
@@ -1945,7 +1946,7 @@ def load_iotops_help():
 
     helps[
         "iot ops create"
-    ] = """
+    ] = f"""
         type: command
         short-summary: Create an IoT Operations instance.
         long-summary: |
@@ -1953,6 +1954,11 @@ def load_iotops_help():
 
           The result of the command nets an IoT Operations instance with
           a set of default resources configured for cohesive function.
+
+          Use --use-preview to select the bundled preview runtime.
+          {PREVIEW_NOTICE}
+          {PREVIEW_AGREEMENT_URL}
+          Using --use-preview constitutes acceptance of these terms.
 
           On GA, broker disk persistence requires a value for --persist-max-size.
           When enabled the default configuration is constrained to

@@ -113,7 +113,9 @@ def test_inline_versions_preserve_legacy_fields_and_actual_train(mocker):
     stable = result["runtimeProfiles"]["stable"]
     assert stable["version"] == result["extensions"]["iotOperations"]["version"]
     assert stable["train"] == TEMPLATE_BLUEPRINT_INSTANCE.content["variables"]["TRAINS"]["iotOperations"]
-    assert stable["sourceCommit"] == TEMPLATE_BLUEPRINT_INSTANCE.commit_id
+    stable_profile = get_runtime_catalog().for_create()
+    assert stable["sourceRef"] == stable_profile.source_ref
+    assert stable["sourceCommit"] == stable_profile.source_commit
     preview = result["runtimeProfiles"]["preview"]
     preview_profile = get_runtime_catalog().for_create(use_preview=True)
     assert preview == {

@@ -216,7 +216,7 @@ class IoTOpsMgmtApiVersion(Enum):
     V20241101 = "2024-11-01"
 
 
-DEFAULT_IOTOPS_MGMT_API_VERSION = IoTOpsMgmtApiVersion.V20260701
+DEFAULT_IOTOPS_MGMT_API_VERSION = IoTOpsMgmtApiVersion.V20261001
 
 
 def get_iotops_mgmt_client(

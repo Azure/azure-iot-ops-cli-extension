@@ -1472,10 +1472,11 @@ def assert_operation_order(target_scenario: UpgradeScenario, upgrade_result: Lis
         (
             UpgradeScenario("Migration: Platform already deleted, create CertManager")
             .set_extension(ext_type=EXTENSION_TYPE_CM, remove=True)
-            .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE),
+            .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE)
+            .set_user_kwargs(ops_version="1.4.112"),
             {
                 EXTENSION_TYPE_CM: build_extension_props(EXTENSION_TYPE_CM, version=BUILT_IN_VALUE),
-                EXTENSION_TYPE_OPS: build_extension_props(EXTENSION_TYPE_OPS, version=BUILT_IN_VALUE),
+                EXTENSION_TYPE_OPS: build_extension_props(EXTENSION_TYPE_OPS, version="1.4.112"),
             },
         ),
         (
@@ -2829,13 +2830,13 @@ def test_opcua_connector_version_matches_template_tag():
     constant. Nothing else couples them, so this fails if a template regeneration bumps one without
     the other (which would otherwise stamp two different tags on the same release).
     """
-    import re
-
     opcua_var = TEMPLATE_BLUEPRINT_INSTANCE.content["variables"].get("OPCUA_CONNECTOR_VERSION")
     assert opcua_var, "OPCUA_CONNECTOR_VERSION variable missing from the instance template."
-    # The connectors tag is the coalesce fallback literal, i.e. the last single-quoted token.
-    quoted_literals = re.findall(r"'([^']*)'", opcua_var)
-    template_tag = quoted_literals[-1] if quoted_literals else None
+    assert opcua_var == (
+        "[coalesce(tryGet(tryGet(parameters('advancedConfig'), 'connectors'), 'version'), "
+        "variables('VERSIONS').connectors)]"
+    )
+    template_tag = TEMPLATE_BLUEPRINT_INSTANCE.content["variables"]["VERSIONS"]["connectors"]
     assert template_tag == OPCUA_CONNECTOR_VERSION, (
         f"OPCUA_CONNECTOR_VERSION constant ({OPCUA_CONNECTOR_VERSION}) does not match the connectors "
         f"tag stamped by the instance template ({template_tag}); update the constant during the "
@@ -2905,7 +2906,7 @@ def test_preview_upgrade_routes_instance_and_backfills_to_profile_api(mocked_cmd
 
     name, resource_group = "preview-instance", "preview-rg"
     scenario = UpgradeScenario().set_extension(
-        EXTENSION_TYPE_OPS, ext_vers="1.6.0-preview.22", ext_train="integration",
+        EXTENSION_TYPE_OPS, ext_vers="1.6.0-preview.43", ext_train="integration",
     )
     scenario.set_instance_mock(mocked_responses, name, resource_group)
     preview_record = deepcopy(scenario.instance_record)
@@ -2979,7 +2980,7 @@ def test_connector_confirmation_renders_profile_endpoint_types(mocker, channel, 
     render_upgrade_table(state)
     rendered = output.getvalue()
     assert "Microsoft.OpcUa" in rendered
-    assert ("Microsoft.OpcUa.WoT" in rendered) is (channel == "preview")
+    assert "Microsoft.OpcUa.WoT" in rendered
     assert ("Replace failed template" if repair else "Create default OPC UA") in rendered
     assert profile.require_opcua_connector_version() in rendered
 
@@ -2988,7 +2989,7 @@ def test_connector_confirmation_renders_profile_endpoint_types(mocker, channel, 
 @pytest.mark.parametrize("state", ["Failed", "Canceled"])
 @pytest.mark.parametrize("repair", [False, True])
 def test_terminal_resource_state_allows_upgrade_writes(
-    mocked_cmd, mocked_responses, mocked_sleep, resource, state, repair,
+    mocked_cmd, mocked_responses, mocked_sleep, mocked_upgrade_manager, resource, state, repair,
 ):
     from azext_edge.edge.commands_edge import upgrade_instance
 
@@ -3013,7 +3014,9 @@ def test_terminal_resource_state_allows_upgrade_writes(
 
 @pytest.mark.parametrize("force", [False, True])
 @pytest.mark.parametrize("auto_upgrade", [True, None])
-def test_upgrade_ownership_failure_prevents_all_writes(mocked_cmd, mocked_responses, force, auto_upgrade):
+def test_upgrade_ownership_failure_prevents_all_writes(
+    mocked_cmd, mocked_responses, mocked_upgrade_manager, force, auto_upgrade,
+):
     from azext_edge.edge.commands_edge import upgrade_instance
 
     scenario = UpgradeScenario().set_extension(EXTENSION_TYPE_OPS, ext_vers="1.4.0")

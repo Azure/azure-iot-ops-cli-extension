@@ -104,7 +104,6 @@ def test_dependency_gate_blocks_create_before_registration(
     mocker.patch("azext_edge.edge.providers.orchestration.work.get_runtime_catalog", return_value=(
         RuntimeProfileCatalog([profile], dependency_requirements=(requirement(),))
     ))
-    mocker.patch("azext_edge.edge.providers.orchestration.work.confirm_preview_creation", return_value=True)
     scenario = build_target_scenario(extension_config_settings={EXTENSION_TYPE_SSC: installed(currentVersion=None)})
     service = ServiceGenerator(scenario=scenario, mocked_responses=mocked_responses, action="create")
     mocked_responses.assert_all_requests_are_fired = False
@@ -134,6 +133,7 @@ def test_customer_managed_trust_does_not_require_cert_manager(mocker):
 def test_incompatible_dependency_target_blocks_all_upgrade_writes(mocker, mocked_cmd, mocked_responses, force):
     scenario = UpgradeScenario().set_extension(EXTENSION_TYPE_PLATFORM, ext_vers="1.0.0")
     scenario.set_extension(EXTENSION_TYPE_OPS, ext_vers="1.4.0")
+    scenario.set_extension(EXTENSION_TYPE_SSC, ext_vers="1.5.3")
     scenario.set_instance_mock(mocked_responses, "instance", "rg")
     profile = make_profile(RuntimeChannel.STABLE, "1.4.105", opcua_connector_version="test-tag")
     # The override is valid semver but not a reviewed dependency identity.

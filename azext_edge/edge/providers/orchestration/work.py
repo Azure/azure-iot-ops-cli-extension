@@ -49,7 +49,6 @@ from .common import (
 from .permissions import ROLE_DEF_FORMAT_STR, PermissionManager, PrincipalType, get_ra_user_error_msg
 from .resource_map import IoTOperationsResourceMap
 from .resources.custom_locations import CustomLocations
-from .preview import confirm_preview_creation
 from .runtime_catalog import get_runtime_catalog
 from .runtime_requirements import validate_runtime_requirements
 from .rp_namespace import HEALTH_PROVIDER, register_providers
@@ -334,11 +333,8 @@ class WorkManager:
         show_progress: bool = True,
         pre_flight: bool = True,
         use_preview: bool = False,
-        confirm_yes: bool = False,
         **kwargs,
     ):
-        # Profile/consent validation is mandatory and precedes all deployment work.
-        # Init never selects a runtime profile or prompts for preview acceptance.
         self._dependency_requirements = ()
         if not apply_foundation:
             catalog = get_runtime_catalog()
@@ -347,8 +343,6 @@ class WorkManager:
             identity = profile.validate_overrides(version=kwargs.get("ops_version"), train=kwargs.get("ops_train"))
             validate_runtime_requirements("iot ops create", identity, kwargs, cmd=self.cmd)
             kwargs["runtime_profile"] = profile
-            if use_preview and not confirm_preview_creation(profile, confirm_yes=confirm_yes):
-                return
         self._bootstrap_ux(show_progress=show_progress)
         self._work_id = str(uuid4())
         self._work_format_str = f"aziotops.{{op}}.{self._work_id}"

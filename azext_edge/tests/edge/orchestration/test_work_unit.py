@@ -1659,7 +1659,7 @@ def assert_instance_deployment_body(body_str: str, target_scenario: dict, phase:
         if target_scenario["instance"]["tags"]:
             assert resources["aioInstance"]["tags"] == target_scenario["instance"]["tags"]
         instance_features = target_scenario.get("instance_features")
-        assert resources["aioInstance"]["properties"]["features"] == "[variables('effectiveFeatures')]"
+        assert resources["aioInstance"]["properties"]["features"] == "[parameters('features')]"
         if instance_features:
             assert parameters["features"]["value"]
         else:

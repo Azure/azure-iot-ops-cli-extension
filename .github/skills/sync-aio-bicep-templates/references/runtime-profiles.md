@@ -15,10 +15,12 @@ Resolve these from the request and existing release handoff; ask only for missin
    the branch name into a release or guessing a runtime version. If no moniker was supplied, report the discovered
    value instead of treating an inferred branch suffix as a conflicting input.
 - Approved public-content exclusions, deliberate train overrides, and connector/backfill compatibility inputs.
+- GDS Manager exclusion is mandatory for both selected GA and preview instance templates, as defined in the
+   parent skill. Earlier internal-preview retention approval is superseded; no new approval is needed to exclude it.
 - Reviewed IoT Operations management API version for each selected profile, from the release handoff or confirmed
    API contract. Do not infer it from the release moniker, runtime version, or the newest available API constant.
-- Approved preview notice/agreement URL only when activating preview creation, not as a prerequisite for dry-run
-  generation. Never invent legal text or a URL.
+- Approved preview notice/agreement URL in `--use-preview` help and the create long summary. Reuse the existing
+   approved help during a refresh; never invent legal text or a URL.
 
 Use the following layout for this repository:
 
@@ -93,7 +95,9 @@ not by itself authorize client regeneration, API fallback, or silently dropping 
 
 Apply public-content exclusions and behavior-preserving loaded-file substitutions to the exported source only,
 then recompile. Use the exclusions already approved through the release handoff and ask about newly unclassified
-settings; do not ask for the same settled decision repeatedly. Preserve the pre-redaction output as
+settings; do not ask for the same settled decision repeatedly. Apply the mandatory GDS Manager exclusion to each
+selected profile's exported source, removing its inputs and readers rather than merely disabling its default.
+Record this approved behavioral override separately from behavior-preserving substitutions. Preserve the pre-redaction output as
 `opt_instance_unredacted.json` **inside that profile's temporary directory**. Resolve each literal from that same
 profile/ref, not the other profile's YAML or the previous release's constant.
 
@@ -112,9 +116,11 @@ After the generated content is approved:
 3. In `runtime_catalog.py`, register the reviewed preview as `PREVIEW_PROFILE` only when its shared-foundation and
    runtime/API assumptions are reviewed. If still pending, leave it `None` and state that the generated blueprint
    is staged but not selectable. Do not create a dummy profile to bypass validation.
-4. Keep approved preview notice/URL absent until supplied. Even a registered profile without them must fail closed
-   on preview create, including `--yes`; generating a template does not authorize accepting terms for the user.
-   Registration also exposes update/upgrade inputs, so the create consent guard is not a substitute for review.
+4. Treat `--use-preview` as the explicit opt-in and terms acceptance. Keep the approved notice and terms URL in
+   that option's help and the create long summary, not in deployment output or runtime-profile metadata. Do not
+   restore a consent prompt, TTY check, create-only `--yes`, or separate `--accept-terms` parameter. Preserve
+   confirmation options on other commands. Registration also exposes update/upgrade inputs, so help text is not
+   a substitute for runtime/API review.
 5. Maintain exact historical `QUALIFICATION_IDENTITIES` and `SHARED_DEPENDENCY_REQUIREMENTS` only from reviewed
    handoff data. A generated target does not prove historical upgrades or every newer dependency compatible.
 6. Review whether connector backfills and new resources are compatible with existing instances. Create defaults
@@ -209,6 +215,9 @@ not skipped checks. Compare protected assignments with their pre-run snapshots i
 For every selected output independently:
 
 - Check exact generated dictionary equality and no surviving `$fxv` strings/references.
+- Check both keys and string values in every selected final blueprint for surviving GDS Manager inputs, resources,
+  configuration, and readers. Use the source-specific symbol inventory and a case-insensitive scan; any survivor
+  blocks integration. Update assertions and module provenance that previously expected GDS retention.
 - Check all substituted literals against its unredacted compile and loaded source files; enumerate every reader.
   Missing unredacted evidence is blocking when redactions occurred, not merely an informational warning.
 - Check profile identity/release/provenance, connector tag, schema and API inputs, and manual-upgrade settings.
@@ -226,8 +235,9 @@ Run the parent template/targets/work/upgrade unit suites plus runtime profile/di
 version-reporting tests. Add tests for the actual new artifact, including catalog wiring if activated. Lint all
 changed Python files and run `git diff --check`. No live tests or workflow dispatch without explicit authorization.
 
-Report mechanical generation/test success separately from runtime qualification and consent readiness. A missing
-preview profile/notice must remain visible rather than being replaced with synthetic test fixtures in production.
+Report mechanical generation/test success separately from runtime qualification and public-release readiness.
+A missing reviewed preview profile must remain visible rather than being replaced with synthetic test fixtures
+in production. Verify flag-only preview creation is noninteractive and does not print a separate consent notice.
 
 ## 6. Handoff without publication
 

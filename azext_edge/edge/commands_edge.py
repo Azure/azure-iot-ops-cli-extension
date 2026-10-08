@@ -192,7 +192,6 @@ def create_instance(
     health_checks_max: int = DEFAULT_HEALTH_CHECKS_MAX,
     health_checks_interval: int = DEFAULT_HEALTH_CHECKS_INTERVAL,
     use_preview: Optional[bool] = None,
-    confirm_yes: Optional[bool] = None,
     **kwargs,
 ) -> Union[Dict[str, Any], None]:
     _validate_health_check_args(health_checks_max, health_checks_interval)
@@ -211,7 +210,6 @@ def create_instance(
         pre_flight=not (no_preflight or feature_config.is_enabled(FeatureFlag.PREFLIGHT_DISABLED)),
         apply_foundation=False,
         use_preview=use_preview,
-        confirm_yes=confirm_yes,
         cluster_name=cluster_name,
         resource_group_name=resource_group_name,
         cluster_namespace=cluster_namespace,
