@@ -63,6 +63,13 @@ console = Console()
 IOT_OPS_DELAY = 30  # seconds
 
 
+def _allows_unbundled_ga_integration(force: Optional[bool], version: Optional[str], train: Optional[str]) -> bool:
+    return bool(
+        force and version and train and train.lower() == "integration"
+        and parse_runtime_version(version).prerelease is None
+    )
+
+
 class ExtensionOperation(Enum):
     CREATE = "create"
     UPDATE = "update"
@@ -88,6 +95,8 @@ def upgrade_ops_instance(
         no_progress=no_progress,
         force=force,
         no_cm_install=no_cm_install,
+        ops_version=kwargs.get("ops_version"),
+        ops_train=kwargs.get("ops_train"),
     )
 
     upgrade_state = upgrade_manager.analyze_cluster(**kwargs)
@@ -126,6 +135,8 @@ class UpgradeManager:
         no_progress: Optional[bool] = None,
         force: Optional[bool] = None,
         no_cm_install: Optional[bool] = None,
+        ops_version: Optional[str] = None,
+        ops_train: Optional[str] = None,
     ):
         self.cmd = cmd
         self.instance_name = instance_name
@@ -141,7 +152,8 @@ class UpgradeManager:
         )
         self.runtime_catalog = get_runtime_catalog()
         self.runtime_context = self.instances.get_runtime_context(
-            self.instance_record, self.runtime_catalog.qualification_identities
+            self.instance_record, self.runtime_catalog.qualification_identities,
+            allow_ga_integration=_allows_unbundled_ga_integration(force, ops_version, ops_train),
         )
         self.runtime_context.require_upgradeable()
         self.runtime_profile = self.runtime_catalog.for_upgrade(self.runtime_context.identity)
@@ -1331,6 +1343,14 @@ class ExtensionUpgradeState:
                 "--name <aio-extension-name> --auto-upgrade false', then retry."
             )
 
+    def _resolve_ops_identity(self, version: str, train: str) -> RuntimeIdentity:
+        return resolve_runtime_identity(
+            version, train, self.qualification_identities,
+            allow_ga_integration=_allows_unbundled_ga_integration(
+                self.force, self.override.version, self.override.train,
+            ),
+        )
+
     def _validate_ops_boundary(self) -> None:
         current_version, current_train = self.current_version
         if not current_version:
@@ -1342,7 +1362,7 @@ class ExtensionUpgradeState:
             raise ValidationError(
                 "Unable to determine release train for installed iotOperations extension. Cannot validate upgrade path."
             )
-        installed = resolve_runtime_identity(current_version, current_train, self.qualification_identities)
+        installed = self._resolve_ops_identity(current_version, current_train)
         desired_version = self.desired_version[0]
         # A stale CLI leaves the installed version alone unless explicitly overridden.
         target_version = self.override.version or current_version
@@ -1355,12 +1375,12 @@ class ExtensionUpgradeState:
             self.force and installed.channel == RuntimeChannel.STABLE
             and target_train.lower() in (RuntimeChannel.STABLE.value, "integration")
         ):
-            target = resolve_runtime_identity(target_version, target_train, self.qualification_identities)
+            target = self._resolve_ops_identity(target_version, target_train)
             if target.channel == RuntimeChannel.STABLE:
                 return
         if target_train.lower() != current_train.lower():
             raise ValidationError("Cross-train upgrades are not supported. GA stays GA; preview stays preview.")
-        target = resolve_runtime_identity(target_version, target_train, self.qualification_identities)
+        target = self._resolve_ops_identity(target_version, target_train)
         validate_upgrade_boundary(installed, target)
 
     def _get_reconcile_version(self) -> Optional[str]:
@@ -1539,10 +1559,8 @@ class ExtensionUpgradeState:
             )
 
         if self.moniker == EXTENSION_MONIKER_OPS:
-            installed = resolve_runtime_identity(
-                self.current_version[0], self.current_version[1], self.qualification_identities
-            )
-            target = resolve_runtime_identity(target_version, self.desired_version[1], self.qualification_identities)
+            installed = self._resolve_ops_identity(self.current_version[0], self.current_version[1])
+            target = self._resolve_ops_identity(target_version, self.desired_version[1])
             if self.force and installed.channel == target.channel == RuntimeChannel.STABLE:
                 return
 

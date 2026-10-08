@@ -109,6 +109,7 @@ def resolve_runtime(
     cluster: dict,
     extensions: Iterable[dict],
     qualification_identities: Iterable[RuntimeIdentity] = (),
+    *, allow_ga_integration: bool = False,
 ) -> RuntimeContext:
     """Validate live ARM records without guessing an installed version from the requested pin."""
     cluster_id = get_runtime_cluster_id(instance, custom_location)
@@ -142,7 +143,10 @@ def resolve_runtime(
     installed_version = properties.get("currentVersion")
     if not installed_version:
         raise ValidationError("Unable to determine installed AIO version: extension currentVersion is missing.")
-    identity = resolve_runtime_identity(installed_version, properties.get("releaseTrain"), qualification_identities)
+    identity = resolve_runtime_identity(
+        installed_version, properties.get("releaseTrain"), qualification_identities,
+        allow_ga_integration=allow_ga_integration,
+    )
     issues = []
     for name, record in (("instance", instance), ("custom location", custom_location), ("extension", extension)):
         state = (record.get("properties") or {}).get("provisioningState")

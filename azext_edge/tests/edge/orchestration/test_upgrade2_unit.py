@@ -3286,6 +3286,120 @@ def test_ga_catalog_train_change_preserves_force_behavior(explicit_target, force
                 validate()
 
 
+@pytest.mark.parametrize("current_version,current_train", [("1.4.112", "stable"), ("1.5.40", "integration")])
+@pytest.mark.parametrize("force", [False, True])
+def test_explicit_unbundled_ga_integration_force_upgrade(current_version, current_train, force):
+    from azext_edge.edge.providers.orchestration.runtime_catalog import get_runtime_catalog
+    from azext_edge.edge.providers.orchestration.runtime_profiles import RuntimeChannel
+
+    catalog = get_runtime_catalog()
+    target = catalog.get(RuntimeChannel.STABLE).identity
+    ext = build_ext_upgrade_state(
+        ext_type=EXTENSION_TYPE_OPS,
+        current_version=current_version,
+        current_train=current_train,
+        built_in_version=target.version,
+        built_in_train=target.train,
+        version_override="1.5.40",
+        train_override="integration",
+        force=force,
+        qualification_identities=catalog.qualification_identities,
+    )
+
+    if force:
+        ext.validate_upgrade()
+        properties = ext.get_patch()["properties"]
+        assert properties["version"] == "1.5.40"
+        assert properties["releaseTrain"] == "integration"
+    else:
+        for validate in (ext.validate_upgrade, ext.get_patch):
+            with pytest.raises(ValidationError):
+                validate()
+
+
+@pytest.mark.parametrize(
+    "current_version,current_train,force,ops_version,ops_train,error",
+    [
+        ("1.4.112", "stable", True, "1.5.40", "integration", None),
+        ("1.5.40", "integration", True, "1.5.40", "integration", None),
+        ("1.4.112", "stable", False, "1.5.40", "integration", "Cross-train upgrades"),
+        ("1.5.40", "integration", False, "1.5.40", "integration", "supported runtime profile mapping"),
+        ("1.5.40", "integration", True, None, "integration", "supported runtime profile mapping"),
+        ("1.5.40", "integration", True, "1.5.40", None, "supported runtime profile mapping"),
+        ("preview", "integration", True, "1.5.40", "integration", "GA clusters must remain GA"),
+        ("1.4.112", "stable", True, "1.6.0-preview.999", "integration", "supported runtime profile mapping"),
+    ],
+)
+def test_unbundled_integration_force_command_preserves_boundaries(
+    mocked_cmd, mocked_responses, mocked_sleep,
+    current_version, current_train, force, ops_version, ops_train, error,
+):
+    from azext_edge.edge.commands_edge import upgrade_instance
+    from azext_edge.edge.providers.orchestration.runtime_catalog import get_runtime_catalog
+    from azext_edge.edge.providers.orchestration.runtime_profiles import RuntimeChannel
+
+    profile = get_runtime_catalog().get(
+        RuntimeChannel.PREVIEW if current_version == "preview" else RuntimeChannel.STABLE
+    )
+    if current_version == "preview":
+        current_version = profile.identity.version
+    scenario = UpgradeScenario().set_extension(
+        EXTENSION_TYPE_OPS, ext_vers=current_version, ext_train=current_train,
+    )
+    scenario.set_instance_mock(mocked_responses, "instance", "rg", iotops_api_version=profile.iotops_api_version)
+    kwargs = {"force": force, "ops_version": ops_version, "ops_train": ops_train,
+              "confirm_yes": True, "no_progress": True}
+
+    if error:
+        with pytest.raises(ValidationError, match=error):
+            upgrade_instance(mocked_cmd, "rg", "instance", **kwargs)
+        assert not [call for call in mocked_responses.calls if call.request.method in {"PUT", "PATCH", "DELETE"}]
+    else:
+        upgrade_instance(mocked_cmd, "rg", "instance", **kwargs)
+        ops_name = scenario.extensions[EXTENSION_TYPE_OPS]["name"]
+        patches = [
+            json.loads(call.request.body)["properties"] for call in mocked_responses.calls
+            if call.request.method == "PATCH" and f"/extensions/{ops_name}?" in call.request.url
+        ]
+        assert len(patches) == 1
+        assert patches[0]["version"] == ops_version
+        assert patches[0]["releaseTrain"] == ops_train
+
+
+@pytest.mark.parametrize(
+    "auto_upgrade,connectivity,instance_state,error",
+    [
+        (True, "Connected", "Succeeded", "autoUpgradeMinorVersion is explicitly false"),
+        (None, "Connected", "Succeeded", "autoUpgradeMinorVersion is explicitly false"),
+        (False, "Disconnected", "Succeeded", "disconnected"),
+        (False, "Connected", "Deleting", "instance provisioning state"),
+    ],
+)
+def test_unbundled_integration_force_preserves_readiness_and_ownership(
+    mocked_cmd, mocked_responses, auto_upgrade, connectivity, instance_state, error,
+):
+    from azext_edge.edge.commands_edge import upgrade_instance
+
+    scenario = UpgradeScenario().set_extension(
+        EXTENSION_TYPE_OPS, ext_vers="1.5.40", ext_train="integration",
+    )
+    properties = scenario.extensions[EXTENSION_TYPE_OPS]["properties"]
+    if auto_upgrade is None:
+        properties.pop("autoUpgradeMinorVersion")
+    else:
+        properties["autoUpgradeMinorVersion"] = auto_upgrade
+    scenario.set_cluster_connected_status(connectivity)
+    scenario.aux_kwargs["instance_provisioning_state"] = instance_state
+    scenario.set_instance_mock(mocked_responses, "instance", "rg")
+
+    with pytest.raises(ValidationError, match=error):
+        upgrade_instance(
+            mocked_cmd, "rg", "instance", force=True, ops_version="1.5.40", ops_train="integration",
+            confirm_yes=True, no_progress=True,
+        )
+    assert not [call for call in mocked_responses.calls if call.request.method in {"PUT", "PATCH", "DELETE"}]
+
+
 def test_reconcile_train_delta_validates_the_version_the_patch_sends():
     # A train override re-runs the guard, it must compare the reconcile version, not the stale built-in.
     ext = build_ext_upgrade_state(
