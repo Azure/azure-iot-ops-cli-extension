@@ -1783,10 +1783,10 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
 )
 
 
-def get_insecure_listener(instance_name: str, broker_name: str) -> dict:
+def get_insecure_listener(instance_name: str, broker_name: str, api_version: Optional[str] = None) -> dict:
     return {
         "type": "Microsoft.IoTOperations/instances/brokers/listeners",
-        "apiVersion": DEFAULT_IOTOPS_MGMT_API_VERSION.value,
+        "apiVersion": api_version or DEFAULT_IOTOPS_MGMT_API_VERSION.value,
         "name": f"{instance_name}/{broker_name}/{AIO_INSECURE_LISTENER_NAME}",
         "extendedLocation": {
             "name": "[resourceId('Microsoft.ExtendedLocation/customLocations', parameters('customLocationName'))]",

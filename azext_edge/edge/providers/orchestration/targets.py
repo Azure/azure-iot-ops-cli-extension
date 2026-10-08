@@ -32,7 +32,7 @@ from ..orchestration.common import (
 from ..orchestration.resources.brokers import Brokers
 from ..orchestration.resources.connector_templates import ConnectorTemplates
 from ..orchestration.resources.instances import parse_feature_kvp_nargs
-from .runtime_profiles import RuntimeProfile
+from .runtime_profiles import RuntimeChannel, RuntimeProfile
 from .template import (
     TEMPLATE_BLUEPRINT_ENABLEMENT,
     TEMPLATE_BLUEPRINT_INSTANCE,
@@ -329,7 +329,15 @@ class InitTargets:
         if self.add_insecure_listener:
             template.add_resource(
                 resource_key="brokerListenerInsecure",
-                resource_def=get_insecure_listener(instance_name=self.instance_name, broker_name=DEFAULT_BROKER),
+                resource_def=get_insecure_listener(
+                    instance_name=self.instance_name,
+                    broker_name=DEFAULT_BROKER,
+                    api_version=(
+                        broker_listener["apiVersion"]
+                        if self.runtime_profile is not None and self.runtime_profile.channel == RuntimeChannel.PREVIEW
+                        else None
+                    ),
+                ),
             )
 
         resources: Dict[str, Dict[str, dict]] = template.content.get("resources", {})
