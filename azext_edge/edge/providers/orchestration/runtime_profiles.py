@@ -155,12 +155,13 @@ class RuntimeProfileCatalog:
 
 def resolve_runtime_identity(
     version: str, train: str, qualification_identities: Iterable[RuntimeIdentity] = (),
-    *, allow_ga_integration: bool = False,
+    *, allow_unbundled_integration: bool = False,
 ) -> RuntimeIdentity:
     """Resolve public trains directly; integration requires an exact internal qualification mapping.
 
     A version suffix alone is not proof that a runtime is an approved Public Preview.
     Historical integration baselines can be supplied independently of the target catalog.
+    Upgrade callers may opt into channel classification for unbundled integration builds.
     """
     if not isinstance(train, str) or not train:
         raise ValidationError("Unable to determine AIO release train.")
@@ -174,8 +175,11 @@ def resolve_runtime_identity(
         }
         if len(matches) == 1:
             return matches.pop()
-        if not matches and allow_ga_integration and parse_runtime_version(version).prerelease is None:
-            return RuntimeIdentity(RuntimeChannel.STABLE, version, normalized_train)
+        if not matches and allow_unbundled_integration:
+            channel = (
+                RuntimeChannel.STABLE if parse_runtime_version(version).prerelease is None else RuntimeChannel.PREVIEW
+            )
+            return RuntimeIdentity(channel, version, normalized_train)
     raise ValidationError(f"AIO runtime {version!r} on train {train!r} has no supported runtime profile mapping.")
 
 
