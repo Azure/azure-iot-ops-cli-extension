@@ -1351,13 +1351,16 @@ class ExtensionUpgradeState:
         target_train = current_train
         if self._has_delta_in_train():
             target_train = self.desired_version[1]
-        # Check train changes before constructing the target identity, so even a
-        # version-preserving train-only override is rejected with an actionable error.
+        if (
+            self.force and installed.channel == RuntimeChannel.STABLE
+            and target_train.lower() in (RuntimeChannel.STABLE.value, "integration")
+        ):
+            target = resolve_runtime_identity(target_version, target_train, self.qualification_identities)
+            if target.channel == RuntimeChannel.STABLE:
+                return
         if target_train.lower() != current_train.lower():
             raise ValidationError("Cross-train upgrades are not supported. GA stays GA; preview stays preview.")
         target = resolve_runtime_identity(target_version, target_train, self.qualification_identities)
-        if self.force and installed.channel == target.channel == RuntimeChannel.STABLE:
-            return
         validate_upgrade_boundary(installed, target)
 
     def _get_reconcile_version(self) -> Optional[str]:
@@ -1540,10 +1543,7 @@ class ExtensionUpgradeState:
                 self.current_version[0], self.current_version[1], self.qualification_identities
             )
             target = resolve_runtime_identity(target_version, self.desired_version[1], self.qualification_identities)
-            if (
-                self.force and installed.channel == target.channel == RuntimeChannel.STABLE
-                and self.current_version[1].lower() == self.desired_version[1].lower()
-            ):
+            if self.force and installed.channel == target.channel == RuntimeChannel.STABLE:
                 return
 
         parsed_current = self.semver.parse(self.current_version[0])

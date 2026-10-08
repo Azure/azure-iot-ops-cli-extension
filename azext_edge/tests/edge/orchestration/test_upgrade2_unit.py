@@ -2877,6 +2877,7 @@ def build_ext_upgrade_state(
     desired_config: Optional[Dict[str, str]] = None,
     force: bool = False,
     operation_type=None,
+    qualification_identities=(),
 ):
     """Build an ExtensionUpgradeState directly, bypassing cluster discovery."""
     from azext_edge.edge.providers.orchestration.upgrade2 import ConfigOverride, ExtensionUpgradeState
@@ -2897,6 +2898,7 @@ def build_ext_upgrade_state(
         override=ConfigOverride(version=version_override, train=train_override),
         force=force,
         operation_type=operation_type,
+        qualification_identities=qualification_identities,
     )
 
 
@@ -3235,7 +3237,8 @@ def test_validate_upgrade_skips_non_update_operations(op_type_name):
         pytest.param("stable", "preview", id="train delta from --ops-train override"),
     ],
 )
-def test_reconcile_cannot_bypass_release_train_guard(built_in_train, train_override):
+@pytest.mark.parametrize("force", [False, True])
+def test_reconcile_cannot_bypass_release_train_guard(built_in_train, train_override, force):
     """Both routes are covered: an --ops-train override short circuits before the version compare."""
     ext = build_ext_upgrade_state(
         ext_type=EXTENSION_TYPE_OPS,
@@ -3243,12 +3246,44 @@ def test_reconcile_cannot_bypass_release_train_guard(built_in_train, train_overr
         built_in_train=built_in_train,
         train_override=train_override,
         provisioning_state=PROVISIONING_STATE_FAILED,
+        force=force,
     )
 
     with pytest.raises(ValidationError, match="Cross-train upgrades"):
         ext.validate_upgrade()
     with pytest.raises(ValidationError, match="Cross-train upgrades"):
         ext.get_patch()
+
+
+@pytest.mark.parametrize("explicit_target", [False, True])
+@pytest.mark.parametrize("force", [False, True])
+def test_ga_catalog_train_change_preserves_force_behavior(explicit_target, force):
+    from azext_edge.edge.providers.orchestration.runtime_catalog import get_runtime_catalog
+    from azext_edge.edge.providers.orchestration.runtime_profiles import RuntimeChannel
+
+    catalog = get_runtime_catalog()
+    target = catalog.get(RuntimeChannel.STABLE).identity
+    ext = build_ext_upgrade_state(
+        ext_type=EXTENSION_TYPE_OPS,
+        current_version="1.4.112",
+        current_train="stable",
+        built_in_version=target.version,
+        built_in_train=target.train,
+        version_override=target.version if explicit_target else None,
+        train_override=target.train if explicit_target else None,
+        force=force,
+        qualification_identities=catalog.qualification_identities,
+    )
+
+    if force:
+        ext.validate_upgrade()
+        properties = ext.get_patch()["properties"]
+        assert properties["version"] == target.version
+        assert properties["releaseTrain"] == target.train
+    else:
+        for validate in (ext.validate_upgrade, ext.get_patch):
+            with pytest.raises(ValidationError, match="Cross-train upgrades"):
+                validate()
 
 
 def test_reconcile_train_delta_validates_the_version_the_patch_sends():
