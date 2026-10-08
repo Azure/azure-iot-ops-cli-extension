@@ -1341,6 +1341,11 @@ class ExtensionUpgradeState:
             allow_unbundled_integration=installed or bool(self.force and self.override.version),
         )
 
+    def _resolve_ops_target_identity(self, installed: RuntimeIdentity, version: str, train: str) -> RuntimeIdentity:
+        if not self.override.version and (version, train.lower()) == (installed.version, installed.train):
+            return installed
+        return self._resolve_ops_identity(version, train)
+
     def _validate_ops_boundary(self) -> None:
         current_version, current_train = self.current_version
         if not current_version:
@@ -1361,20 +1366,17 @@ class ExtensionUpgradeState:
         target_train = current_train
         if self._has_delta_in_train():
             target_train = self.desired_version[1]
+        target = None
         if (
             self.force and installed.channel == RuntimeChannel.STABLE
             and target_train.lower() in (RuntimeChannel.STABLE.value, "integration")
         ):
-            target = self._resolve_ops_identity(target_version, target_train)
+            target = self._resolve_ops_target_identity(installed, target_version, target_train)
             if target.channel == RuntimeChannel.STABLE:
                 return
         if target_train.lower() != current_train.lower():
             raise ValidationError("Cross-train upgrades are not supported. GA stays GA; preview stays preview.")
-        target = (
-            installed
-            if not self.override.version and (target_version, target_train) == (current_version, current_train)
-            else self._resolve_ops_identity(target_version, target_train)
-        )
+        target = target or self._resolve_ops_target_identity(installed, target_version, target_train)
         validate_upgrade_boundary(installed, target)
 
     def _get_reconcile_version(self) -> Optional[str]:
@@ -1554,7 +1556,7 @@ class ExtensionUpgradeState:
 
         if self.moniker == EXTENSION_MONIKER_OPS:
             installed = self._resolve_ops_identity(self.current_version[0], self.current_version[1], installed=True)
-            target = self._resolve_ops_identity(target_version, self.desired_version[1])
+            target = self._resolve_ops_target_identity(installed, target_version, self.desired_version[1])
             if self.force and installed.channel == target.channel == RuntimeChannel.STABLE:
                 return
 

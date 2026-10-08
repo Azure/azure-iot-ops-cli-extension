@@ -3324,7 +3324,7 @@ def test_explicit_unbundled_ga_integration_force_upgrade(current_version, curren
         ("1.5.40", "integration", True, "1.5.40", "integration", None),
         ("1.4.112", "stable", False, "1.5.40", "integration", "Cross-train upgrades"),
         ("1.5.40", "integration", False, "1.5.40", "integration", "supported runtime profile mapping"),
-        ("1.5.40", "integration", True, None, "integration", "supported runtime profile mapping"),
+        ("1.5.40", "integration", True, None, "integration", None),
         ("1.5.40", "integration", True, "1.5.40", None, None),
         ("1.4.112", "stable", True, "1.5.40", None, None),
         ("preview", "preview", True, "1.6.0-preview.50", None, None),
@@ -3332,7 +3332,9 @@ def test_explicit_unbundled_ga_integration_force_upgrade(current_version, curren
         ("1.6.0-preview.50", "integration", True, "1.6.0-preview.50", "integration", None),
         ("1.6.0-preview.50", "integration", True, "1.6.0-preview.50", None, None),
         ("1.5.40", "integration", False, None, None, None),
+        ("1.5.40", "integration", True, None, None, None),
         ("1.6.0-preview.50", "integration", False, None, None, None),
+        ("1.6.0-preview.50", "integration", True, None, None, None),
         ("preview", "integration", True, "1.5.40", "integration", "GA clusters must remain GA"),
         ("1.4.112", "stable", True, "1.6.0-preview.999", "integration", "Cross-train upgrades"),
         ("1.5.40", "integration", True, "1.6.0-preview.50", None, "GA clusters must remain GA"),
@@ -3380,16 +3382,69 @@ def test_unbundled_integration_force_command_preserves_boundaries(
             json.loads(call.request.body)["properties"] for call in mocked_responses.calls
             if call.request.method == "PATCH" and f"/extensions/{ops_name}?" in call.request.url
         ]
-        if ops_version is None:
+        if ops_version is None and ops_train is None:
             assert not patches
             assert not [call for call in mocked_responses.calls if call.request.method in {"PUT", "PATCH", "DELETE"}]
         else:
             assert len(patches) == 1
-            assert patches[0]["version"] == ops_version
+            if ops_version is None:
+                assert "version" not in patches[0]
+            else:
+                assert patches[0]["version"] == ops_version
             if ops_train is None:
                 assert "releaseTrain" not in patches[0]
             else:
                 assert patches[0]["releaseTrain"] == ops_train
+
+
+@pytest.mark.parametrize("current_version", ["1.5.40", "1.6.0-preview.50"])
+@pytest.mark.parametrize("force", [False, True])
+@pytest.mark.parametrize("provisioning_state", ["Succeeded", "Failed", "Canceled"])
+@pytest.mark.parametrize("ops_train", [None, "integration"])
+@pytest.mark.parametrize("auto_upgrade", [False, True, None])
+def test_unbundled_installed_runtime_force_and_repair_contract(
+    mocked_cmd, mocked_responses, mocked_sleep,
+    current_version, force, provisioning_state, ops_train, auto_upgrade,
+):
+    from azext_edge.edge.commands_edge import upgrade_instance
+    from azext_edge.edge.providers.orchestration.runtime_catalog import get_runtime_catalog
+    from azext_edge.edge.providers.orchestration.runtime_profiles import RuntimeChannel
+
+    scenario = UpgradeScenario().set_extension(
+        EXTENSION_TYPE_OPS, ext_vers=current_version, ext_train="integration", provisioning_state=provisioning_state,
+    )
+    properties = scenario.extensions[EXTENSION_TYPE_OPS]["properties"]
+    if auto_upgrade is None:
+        properties.pop("autoUpgradeMinorVersion")
+    else:
+        properties["autoUpgradeMinorVersion"] = auto_upgrade
+    profile = get_runtime_catalog().get(
+        RuntimeChannel.PREVIEW if "preview" in current_version else RuntimeChannel.STABLE
+    )
+    scenario.set_instance_mock(mocked_responses, "instance", "rg", iotops_api_version=profile.iotops_api_version)
+    kwargs = {"force": force, "ops_train": ops_train, "confirm_yes": True, "no_progress": True}
+
+    if provisioning_state != "Succeeded" and auto_upgrade is not False:
+        with pytest.raises(ValidationError, match="autoUpgradeMinorVersion is explicitly false"):
+            upgrade_instance(mocked_cmd, "rg", "instance", **kwargs)
+        assert not [call for call in mocked_responses.calls if call.request.method in {"PUT", "PATCH", "DELETE"}]
+        return
+
+    upgrade_instance(mocked_cmd, "rg", "instance", **kwargs)
+    writes = [call.request for call in mocked_responses.calls if call.request.method in {"PUT", "PATCH", "DELETE"}]
+    if provisioning_state == "Succeeded" and ops_train is None:
+        assert not writes
+        return
+
+    assert len(writes) == 1
+    assert writes[0].method == "PATCH"
+    assert f"/extensions/{scenario.extensions[EXTENSION_TYPE_OPS]['name']}?" in writes[0].url
+    expected = {}
+    if provisioning_state != "Succeeded":
+        expected["version"] = current_version
+    if ops_train is not None:
+        expected["releaseTrain"] = ops_train
+    assert json.loads(writes[0].body)["properties"] == expected
 
 
 @pytest.mark.parametrize("current_version", ["1.5.40", "1.6.0-preview.50"])
