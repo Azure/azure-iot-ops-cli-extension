@@ -65,8 +65,6 @@ class RuntimeProfile:
     source_ref: str
     source_commit: str
     instance_blueprint: InitVar[TemplateBlueprint]
-    preview_notice: Optional[str] = None
-    preview_agreement_url: Optional[str] = None
     opcua_connector_version: Optional[str] = None
     iotops_api_version: str = DEFAULT_IOTOPS_MGMT_API_VERSION.value
     identity: RuntimeIdentity = field(init=False)

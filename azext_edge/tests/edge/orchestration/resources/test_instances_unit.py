@@ -244,7 +244,7 @@ def test_instance_write_read_does_not_discover_runtime(mocker, mocked_cmd, mocke
     record = get_mock_instance_record(name, resource_group, version=version)
     record["properties"]["retainedConfiguration"] = {"values": ["custom"]}
     record["identity"] = {"type": "None"}
-    endpoint = get_instance_endpoint(resource_group, name, api_version="2026-07-01")
+    endpoint = get_instance_endpoint(resource_group, name, api_version="2026-10-01")
     mocked_responses.add(responses.GET, endpoint, json=record)
     discovery = mocker.patch.object(
         Instances, "get_runtime_context", side_effect=HttpResponseError("AuthorizationFailed: discovery forbidden"),
@@ -341,7 +341,7 @@ def test_ga_instance_api_preserves_response_fields(mocker, mocked_cmd, mocked_re
     )
     if operation == "show":
         record["properties"]["provisioningState"] = "Failed"
-    endpoint = get_instance_endpoint(resource_group, name, api_version="2026-07-01")
+    endpoint = get_instance_endpoint(resource_group, name, api_version="2026-10-01")
     mocked_responses.add(responses.GET, endpoint, json=record)
     expected = deepcopy(record)
     if operation == "update":
@@ -368,8 +368,8 @@ def test_ga_instance_api_preserves_response_fields(mocker, mocked_cmd, mocked_re
     "add_mi_user_assigned", "remove_mi_user_assigned", "enable_secretsync", "disable_secretsync",
 ])
 @pytest.mark.parametrize("train,version,api_version", [
-    ("stable", "1.5.30", "2026-07-01"),
-    ("integration", "1.6.0-preview.40", "2026-07-01"),
+    ("stable", "1.5.30", "2026-10-01"),
+    ("integration", "1.6.0-preview.40", "2026-10-01"),
 ])
 def test_instance_workflow_preserves_runtime_fields(
     mocker, mocked_cmd, mocked_responses, mocked_get_tenant_id, operation, train, version, api_version,
@@ -745,7 +745,7 @@ def test_tags_with_properties_uses_put_without_discovery(
     instances = Instances(mocked_cmd)
     record = get_mock_instance_record("instance", "rg", version=version)
     record["properties"]["retainedConfiguration"] = {"values": ["custom"]}
-    endpoint = get_instance_endpoint("rg", "instance", api_version="2026-07-01")
+    endpoint = get_instance_endpoint("rg", "instance", api_version="2026-10-01")
     mocked_responses.add(responses.GET, endpoint, json=record)
     mocked_responses.add_callback(responses.PUT, endpoint, callback=echo_callback)
     discovery = mocker.patch.object(

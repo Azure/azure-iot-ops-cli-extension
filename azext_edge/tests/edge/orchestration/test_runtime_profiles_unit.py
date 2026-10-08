@@ -54,10 +54,10 @@ def test_bundled_profiles_select_management_api_without_changing_preview_bluepri
     from azext_edge.edge.providers.orchestration.runtime_catalog import get_runtime_catalog
 
     catalog = get_runtime_catalog()
-    assert catalog.get(RuntimeChannel.STABLE).iotops_api_version == "2026-07-01"
+    stable = catalog.get(RuntimeChannel.STABLE)
+    assert stable.iotops_api_version == "2026-10-01"
     preview = catalog.get(RuntimeChannel.PREVIEW)
     assert preview.iotops_api_version == "2026-09-01-preview"
-    assert preview.identity.version == "1.6.0-preview.22"
     assert preview.copy_instance_blueprint().content["resources"]["aioInstance"]["apiVersion"] == "2026-09-01-preview"
 
 
@@ -263,7 +263,7 @@ def test_explicit_features_merge_nested_generated_defaults(profiles, parameter_d
                       "otherComponent": {"mode": "Preview"}}
     assert properties["description"] == ""
     if parameter_defaults:
-        assert properties["features"] == "[variables('effectiveFeatures')]"
+        assert properties["features"] == "[parameters('features')]"
     actual["opcua"]["settings"].clear()
     assert profile.copy_instance_blueprint().content == blueprint.content
 
@@ -283,7 +283,7 @@ def test_feature_expression_merge_stays_in_template_scope(profiles, parameter_de
     assert "features" not in parameters
     expression = (template["parameters"]["features"]["defaultValue"] if parameter_defaults
                   else template["resources"]["aioInstance"]["properties"]["features"])
-    source = "parameters('featureDefaults')" if parameter_defaults else "variables('effectiveFeatures')"
+    source = "parameters('featureDefaults')" if parameter_defaults else "parameters('features')"
     override = ('{"opcua":{"mode":"Preview","settings":{}}}' if parameter_defaults
                 else '{"opcua":{"mode":"Preview"}}')
     assert expression == (

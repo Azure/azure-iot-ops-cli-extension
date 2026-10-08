@@ -1,6 +1,6 @@
 ---
 name: sync-aio-bicep-templates
-description: Generate and safely integrate GA or preview AIO runtime templates from azure-iot-operations-tests at explicit source refs. Use for template sync, adding a separate preview blueprint, or refreshing release inputs without changing the other runtime profile or shared init dependencies.
+description: Generate and safely integrate GA or preview AIO runtime templates from azure-iot-operations-tests at explicit source refs, excluding GDS Manager from both profiles. Use for template sync, adding a separate preview blueprint, or refreshing release inputs without changing the other runtime profile or shared init dependencies.
 ---
 
 # Synchronize AIO Bicep templates
@@ -230,6 +230,28 @@ The symptom to look for when auditing an existing release: content that changed 
 not. That combination is only possible if someone edited generated output by hand.
 
 ### Source redactions
+
+#### Required GDS Manager exclusion for GA and preview
+
+Exclude GDS Manager from every selected GA and preview instance template, including same-release refreshes.
+This approved policy supersedes earlier approval to retain GDS in internal preview qualification templates.
+Do not ask for that settled exclusion again or treat the upstream default as permission to restore it.
+A single-profile sync must still preserve the nonselected profile and shared enablement; when both profiles are
+selected, apply and validate the exclusion independently in both exports.
+
+Treat this as an approved behavioral release-policy override, not a behavior-preserving substitution:
+
+- Inspect the selected source's compiled dependency closure for GDS-only parameters, variables, resources,
+  configuration settings, conditions, and their readers. Include `enableGdsManager` and
+  `connectors.values.gdsManager.enabled`, plus any additional GDS symbols introduced by that ref.
+- Remove those inputs and all GDS-only readers from the exported Bicep source before recompiling. Remove orphaned
+  decorators too. Preserve unrelated expressions and components when an expression contains both GDS and non-GDS
+  content. Do not merely set the default to `false`, hand-edit generated Python/JSON, or change the source checkout.
+- Report the removed source paths and symbols per profile, record the override in provenance, and update stale
+  generated-module notes and release-specific test expectations that previously claimed GDS was retained.
+- Validate each final compiled blueprint independently: no GDS Manager parameter, configuration entry, resource,
+  or reference may remain. Scan both keys and string values case-insensitively, accounting for the GDS names found
+  in the selected source. Stop integration if any GDS input or reader survives.
 
 `template.py` is normally byte-identical to the compiled Bicep, and that is the invariant this skill maintains.
 Redactions are a deliberate, bounded exception to it: the goal is a template that deploys identically, not one that

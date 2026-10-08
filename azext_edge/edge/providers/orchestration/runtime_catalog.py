@@ -18,14 +18,6 @@ from .template import TEMPLATE_BLUEPRINT_INSTANCE
 from .template_preview import TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW
 
 
-# Point to the supplied terms rather than reproducing or adding legal terms here.
-PREVIEW_AGREEMENT_URL = "https://azure.microsoft.com/en-us/support/legal/preview-supplemental-terms/"
-PREVIEW_NOTICE = (
-    "You are creating an Azure IoT Operations preview instance. "
-    "Use of the preview is subject to the Supplemental Terms of Use for Microsoft Azure Previews "
-    "at the following URL."
-)
-
 # Keep the existing GA-bound blueprint and its actual train unchanged. In an alpha
 # build this may still deploy from integration; it is not silently promoted to stable.
 # Register the preview source as supplied, including its actual integration train.
@@ -33,12 +25,10 @@ PREVIEW_NOTICE = (
 PREVIEW_PROFILE: Optional[RuntimeProfile] = RuntimeProfile(
     channel=RuntimeChannel.PREVIEW,
     release="prev2610",
-    source_ref="1.6.0-preview.22",
-    source_commit="5e54c8e8679c8e41a3e08a5e25583d1e185981b5",
+    source_ref="preview/v1.6.x/2610",
+    source_commit="abcf0ed770cb12256c3ffc272cc0636e44dee0ff",
     instance_blueprint=TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW,
-    preview_notice=PREVIEW_NOTICE,
-    preview_agreement_url=PREVIEW_AGREEMENT_URL,
-    opcua_connector_version="1.5.12",
+    opcua_connector_version="1.5.18",
     iotops_api_version=IoTOpsMgmtApiVersion.V20260901_preview.value,
 )
 QUALIFICATION_IDENTITIES: Tuple[RuntimeIdentity, ...] = ()
@@ -52,8 +42,8 @@ def get_runtime_catalog() -> RuntimeProfileCatalog:
     stable = RuntimeProfile(
         channel=RuntimeChannel.STABLE,
         release=str(AIO_RELEASE),
-        source_ref=TEMPLATE_BLUEPRINT_INSTANCE.commit_id,
-        source_commit=TEMPLATE_BLUEPRINT_INSTANCE.commit_id,
+        source_ref="releases/v1.5.x/2610",
+        source_commit="67613dc8b60abdfa08bfb138f1d8fa3cbef329f7",
         instance_blueprint=TEMPLATE_BLUEPRINT_INSTANCE,
         opcua_connector_version=OPCUA_CONNECTOR_VERSION,
     )

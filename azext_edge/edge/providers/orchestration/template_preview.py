@@ -8,27 +8,24 @@
 """Generated preview instance blueprint for internal qualification.
 
 Development connector registries are retained for internal qualification by approval.
-The source GDS parameter and configuration default are retained by explicit approval.
+Public release is blocked until the development registry, repository, and tag
+coordinates are replaced with release-owner-approved public artifact locations.
+The source GDS parameter and configuration reader are removed before compiling.
 Runtime catalog registration preserves these inputs and the actual deployment train.
-
-The 1.6.0-preview.22 tag defaults to 1.6.0-preview.21. The approved runtime
-version override to 1.6.0-preview.22 is applied to exported Bicep before compiling.
 """
 
-# selected source 1.6.0-preview.22 @ 5e54c8e8679c8e41a3e08a5e25583d1e185981b5
+# selected source preview/v1.6.x/2610 @ abcf0ed770cb12256c3ffc272cc0636e44dee0ff
 # source release prev2610
 # no loaded-source redactions required
 from .template import TemplateBlueprint
 
 TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW = TemplateBlueprint(
-    commit_id="1dfac78ed54a68cd5458c8d6311ada02514428e3",
+    commit_id="f91dee8af923eceea4b8c68ab9a863aee53630c8",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "languageVersion": "2.0",
         "contentVersion": "1.0.0.0",
-        "metadata": {
-            "_generator": {"name": "bicep", "version": "0.47.16.16243", "templateHash": "16127254130986069161"}
-        },
+        "metadata": {"_generator": {"name": "bicep", "version": "0.48.1.52935", "templateHash": "1528966886690281907"}},
         "definitions": {
             "_1.AdvancedConfig": {
                 "type": "object",
@@ -730,6 +727,63 @@ TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW = TemplateBlueprint(
                             "__bicep_imported_from!": {"sourceTemplate": "utils.bicep"},
                         },
                     },
+                    "mcpDefaultPolicies": {
+                        "parameters": [],
+                        "output": {
+                            "type": "array",
+                            "items": {"type": "object"},
+                            "value": [
+                                {
+                                    "action": "tool-call",
+                                    "principal": {"principalType": "Role", "role": "Reader"},
+                                    "resources": [
+                                        "documentation_overview",
+                                        "documentation",
+                                        "list_edge_registry_groups",
+                                        "get_edge_registry_group",
+                                        "get_edge_registry_generic_resource",
+                                        "get_edge_registry_resource",
+                                        "list_edge_registry_resources",
+                                        "list_edge_registry_resource_versions",
+                                        "get_edge_registry_schema_from_asset",
+                                        "list_assets",
+                                        "get_asset",
+                                        "asset_details",
+                                        "list_devices",
+                                        "get_device",
+                                        "device_details",
+                                        "list_connectors",
+                                        "get_connector",
+                                        "connector_details",
+                                        "find_connector_by_device",
+                                        "list_brokers",
+                                        "get_broker",
+                                        "broker_details",
+                                        "list_dataflows",
+                                        "get_dataflow",
+                                        "dataflow_details",
+                                        "list_dataflow_graphs",
+                                        "get_dataflow_graph",
+                                        "dataflow_graph_details",
+                                    ],
+                                },
+                                {
+                                    "action": "tool-call",
+                                    "principal": {"principalType": "Role", "role": "DataReader"},
+                                    "resources": ["mq_messages", "dss_get"],
+                                },
+                                {
+                                    "action": "tool-call",
+                                    "principal": {"principalType": "Role", "role": "Admin"},
+                                    "resources": ["*"],
+                                },
+                            ],
+                        },
+                        "metadata": {
+                            "description": "Returns the default Role-based MCP authorization policy rules (aio-mcp-policy-v1). Shared by the instance deployment (azure-iot-operations-instance.bicep) and the MCP E2E test fixture (aio-mcp.bicep) so both stay in sync.",
+                            "__bicep_imported_from!": {"sourceTemplate": "utils.bicep"},
+                        },
+                    },
                 },
             }
         ],
@@ -749,11 +803,10 @@ TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW = TemplateBlueprint(
             "enablePersistence": {"type": "bool", "defaultValue": True},
             "trustConfig": {"$ref": "#/definitions/_1.TrustConfig", "defaultValue": {"source": "SelfSigned"}},
             "defaultDataflowInstanceCount": {"type": "int", "defaultValue": 1},
-            "enableGdsManager": {"type": "bool", "defaultValue": True},
             "advancedConfig": {"$ref": "#/definitions/_1.AdvancedConfig", "defaultValue": {}},
         },
         "variables": {
-            "VERSIONS": {"iotOperations": "1.6.0-preview.22", "connectors": "1.5.12"},
+            "VERSIONS": {"iotOperations": "1.6.0-preview.43", "connectors": "1.5.18"},
             "TRAINS": {"iotOperations": "integration"},
             "HASH": "[coalesce(tryGet(parameters('advancedConfig'), 'resourceSuffix'), take(uniqueString(resourceGroup().id, parameters('clusterName'), parameters('clusterNamespace')), 5))]",
             "AIO_EXTENSION_SUFFIX": "[take(uniqueString(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName'))), 5)]",
@@ -794,7 +847,6 @@ TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW = TemplateBlueprint(
                 "connectors.values.mqttBroker.serviceAccountTokenAudience": "[variables('MQTT_SETTINGS').serviceAccountAudience]",
                 "connectors.values.securityPki.applicationUri": "[format('urn:microsoft.com:aio:opc:ua:broker:{0}', variables('AIO_EXTENSION_SUFFIX'))]",
                 "connectors.values.securityPki.subjectName": "[format('CN=aio-opc-opcuabroker-{0}', variables('AIO_EXTENSION_SUFFIX'))]",
-                "connectors.values.gdsManager.enabled": "[if(parameters('enableGdsManager'), 'true', 'false')]",
                 "dataFlows.values.tinyKube.mqttBroker.hostName": "[variables('MQTT_SETTINGS').brokerListenerHost]",
                 "dataFlows.values.tinyKube.mqttBroker.port": "[variables('MQTT_SETTINGS').brokerListenerPort]",
                 "dataFlows.values.tinyKube.mqttBroker.authentication.serviceAccountTokenAudience": "[variables('MQTT_SETTINGS').serviceAccountAudience]",
@@ -815,7 +867,6 @@ TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW = TemplateBlueprint(
                 "type": "CustomLocation",
             },
             "opcUaConnectorTemplateName": "[format('azureiotoperationsconnectorforopcua-{0}', substring(uniqueString(resourceId('Microsoft.IoTOperations/instances', coalesce(parameters('aioInstanceName'), format('aio-{0}', variables('HASH'))))), 0, 4))]",
-            "opcUaFeature": "[coalesce(coalesce(tryGet(parameters('features'), 'opcua'), tryGet(parameters('features'), 'connectors')), createObject())]",
         },
         "resources": {
             "cluster": {
@@ -979,7 +1030,6 @@ TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW = TemplateBlueprint(
                 "dependsOn": ["aioInstance", "customLocation"],
             },
             "opcUaConnectorTemplate": {
-                "condition": "[not(equals(coalesce(tryGet(variables('opcUaFeature'), 'mode'), 'Stable'), 'Disabled'))]",
                 "type": "Microsoft.IoTOperations/instances/akriConnectorTemplates",
                 "apiVersion": "2026-09-01-preview",
                 "name": "[format('{0}/{1}', coalesce(parameters('aioInstanceName'), format('aio-{0}', variables('HASH'))), variables('opcUaConnectorTemplateName'))]",
@@ -1012,64 +1062,20 @@ TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW = TemplateBlueprint(
                 "dependsOn": ["aioInstance", "customLocation"],
             },
             "mcpDefaultPolicy": {
-                "condition": "[equals(tryGet(tryGet(parameters('features'), 'mcp'), 'mode'), 'Preview')]",
                 "type": "Microsoft.IoTOperations/instances/mcpAuthorizationPolicies",
-                "apiVersion": "2026-09-01-preview",
+                "apiVersion": "2026-09-02-preview",
                 "name": "[format('{0}/{1}', coalesce(parameters('aioInstanceName'), format('aio-{0}', variables('HASH'))), 'aio-mcp-policy-v1')]",
                 "extendedLocation": "[variables('extendedLocation')]",
-                "properties": {
-                    "policies": [
-                        {
-                            "action": "tool-call",
-                            "principal": {"principalType": "Role", "role": "Reader"},
-                            "resources": [
-                                "documentation_overview",
-                                "documentation",
-                                "get_schema",
-                                "get_schema_from_asset",
-                                "list_assets",
-                                "get_asset",
-                                "asset_details",
-                                "list_devices",
-                                "get_device",
-                                "device_details",
-                                "list_brokers",
-                                "get_broker",
-                                "broker_details",
-                                "list_dataflows",
-                                "get_dataflow",
-                                "dataflow_details",
-                                "list_dataflow_graphs",
-                                "get_dataflow_graph",
-                                "dataflow_graph_details",
-                            ],
-                        },
-                        {
-                            "action": "tool-call",
-                            "principal": {"principalType": "Role", "role": "DataReader"},
-                            "resources": ["mq_messages", "dss_get"],
-                        },
-                        {
-                            "action": "tool-call",
-                            "principal": {"principalType": "Role", "role": "Admin"},
-                            "resources": ["*"],
-                        },
-                    ]
-                },
+                "properties": {"policies": "[_2.mcpDefaultPolicies()]"},
                 "dependsOn": ["aioInstance", "customLocation"],
             },
             "mcpAioConnection": {
-                "condition": "[and(equals(tryGet(tryGet(parameters('features'), 'mcp'), 'mode'), 'Preview'), lessOrEquals(length(coalesce(parameters('aioInstanceName'), format('aio-{0}', variables('HASH')))), 32))]",
                 "type": "Microsoft.IoTOperations/instances/mcpServerConnections",
-                "apiVersion": "2026-09-01-preview",
+                "apiVersion": "2026-09-02-preview",
                 "name": "[format('{0}/{1}', coalesce(parameters('aioInstanceName'), format('aio-{0}', variables('HASH'))), 'aio')]",
                 "extendedLocation": "[variables('extendedLocation')]",
                 "properties": {
-                    "service": {
-                        "name": "[format('{0}-mcp', coalesce(parameters('aioInstanceName'), format('aio-{0}', variables('HASH'))))]",
-                        "path": "/mcp",
-                    },
-                    "trustBundle": "/var/run/certs",
+                    "service": {"name": "aio-mcp", "path": "/mcp"},
                     "authorization": {"mode": "PolicyBased", "policyRef": {"name": "aio-mcp-policy-v1"}},
                 },
                 "dependsOn": ["aioInstance", "customLocation", "mcpDefaultPolicy"],

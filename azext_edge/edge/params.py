@@ -15,6 +15,7 @@ from azure.cli.core.commands.parameters import (
 )
 from knack.arguments import CaseInsensitiveList
 
+from azext_edge.constants import PREVIEW_AGREEMENT_URL, PREVIEW_NOTICE
 from azext_edge.edge.providers.edge_api.dataflow import DataflowResourceKinds
 
 from ._validators import validate_namespace, validate_resource_name
@@ -1265,12 +1266,14 @@ def load_iotops_arguments(self, _):
         )
 
     with self.argument_context("iot ops create") as context:
+        context.ignore("confirm_yes")
         context.argument(
             "use_preview",
             options_list=["--use-preview"],
             arg_type=get_three_state_flag(),
             help="Create using the bundled preview runtime profile instead of the GA profile. "
-            "Requires acceptance of the displayed preview terms; use --yes for noninteractive execution.",
+            f"{PREVIEW_NOTICE} {PREVIEW_AGREEMENT_URL} "
+            "Using --use-preview constitutes acceptance of these terms.",
         )
         context.argument(
             "skip_sr_ra",

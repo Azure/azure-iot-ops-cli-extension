@@ -8,13 +8,11 @@
 
 import json
 from copy import deepcopy
-from unittest.mock import call
 
 import pytest
 import responses
 
 from azext_edge.edge.commands_edge import create_instance, update_instance, upgrade_instance
-from azext_edge.edge.providers.orchestration import preview
 from azext_edge.edge.providers.orchestration.common import EXTENSION_TYPE_OPS
 from azext_edge.edge.providers.orchestration.resources.connector_templates import ConnectorTemplates
 from azext_edge.edge.providers.orchestration.runtime_catalog import get_runtime_catalog
@@ -31,14 +29,13 @@ isolated_work = isolated_work_fixture
 
 
 @pytest.mark.parametrize("no_preflight", [False, True])
-def test_bundled_preview_create_with_yes_reaches_work(mocker, isolated_work, no_preflight):
+def test_bundled_preview_create_reaches_work_without_consent(mocker, isolated_work, no_preflight, capsys):
     manager, writer = isolated_work
-    output = mocker.patch.object(preview.console, "print")
-    mocker.patch.object(preview.sys.stdin, "isatty", return_value=False)
-    ask = mocker.patch.object(preview.Confirm, "ask")
+    mocker.patch("sys.stdin.isatty", return_value=False)
+    ask = mocker.patch("rich.prompt.Confirm.ask", side_effect=AssertionError("Unexpected confirmation prompt"))
     profile = get_runtime_catalog().for_create(use_preview=True)
 
-    create_instance(**create_args(), use_preview=True, confirm_yes=True, no_preflight=no_preflight)
+    create_instance(**create_args(), use_preview=True, no_preflight=no_preflight)
 
     writer.assert_called_once()
     ask.assert_not_called()
@@ -47,35 +44,20 @@ def test_bundled_preview_create_with_yes_reaches_work(mocker, isolated_work, no_
         "version": profile.identity.version, "train": profile.identity.train,
     }
     template, _ = manager._targets.get_ops_instance_template()
-    assert template["parameters"]["enableGdsManager"]["defaultValue"] is True
-    assert template["variables"]["defaultAioConfigurationSettings"]["connectors.values.gdsManager.enabled"] == (
-        "[if(parameters('enableGdsManager'), 'true', 'false')]"
-    )
+    assert "gds" not in json.dumps(template).lower()
     assert template["variables"]["CONNECTORS_CHART_REGISTRY"] == (
         TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW.content["variables"]["CONNECTORS_CHART_REGISTRY"]
     )
-    assert output.call_args_list == [
-        call(profile.preview_notice, markup=False), call(profile.preview_agreement_url, markup=False),
-    ]
-
-
-@pytest.mark.parametrize("answer", [False, True])
-def test_bundled_preview_create_respects_interactive_choice(mocker, isolated_work, answer):
-    manager, writer = isolated_work
-    mocker.patch.object(preview.console, "print")
-    mocker.patch.object(preview.sys.stdin, "isatty", return_value=True)
-    mocker.patch.object(preview.Confirm, "ask", return_value=answer)
-    create_instance(**create_args(), use_preview=True)
-    assert writer.call_count == int(answer)
-    assert manager._bootstrap_ux.call_count == int(answer)
+    output = capsys.readouterr()
+    assert "Supplemental Terms" not in output.out + output.err
 
 
 def test_default_create_still_selects_ga_without_preview_consent(mocker, isolated_work):
     manager, writer = isolated_work
-    consent = mocker.patch.object(preview.console, "print")
+    ask = mocker.patch("rich.prompt.Confirm.ask")
     create_instance(**create_args())
     writer.assert_called_once()
-    consent.assert_not_called()
+    ask.assert_not_called()
     assert manager._targets.runtime_profile.channel == RuntimeChannel.STABLE
 
 
@@ -87,7 +69,7 @@ def test_bundled_preview_update_preserves_payload_and_selects_connector_tag(mock
     })
     record["properties"]["additionalProperty"] = {"preserved": True}
     original = deepcopy(record)
-    endpoint = get_instance_endpoint(resource_group_name="rg", instance_name="instance", api_version="2026-07-01")
+    endpoint = get_instance_endpoint(resource_group_name="rg", instance_name="instance", api_version="2026-10-01")
     mocked_responses.add(responses.GET, endpoint, json=record)
     mock_runtime_discovery(mocked_responses, record, profile.identity.version, profile.identity.train)
     mocked_responses.add(responses.PUT, endpoint, json=record)
@@ -115,7 +97,7 @@ def test_bundled_preview_update_preserves_payload_and_selects_connector_tag(mock
 
 
 @pytest.mark.parametrize("use_preview, endpoint_types", [
-    (False, [{"endpointType": "Microsoft.OpcUa"}]),
+    (False, [{"endpointType": "Microsoft.OpcUa"}, {"endpointType": "Microsoft.OpcUa.WoT"}]),
     (True, [{"endpointType": "Microsoft.OpcUa"}, {"endpointType": "Microsoft.OpcUa.WoT"}]),
 ])
 def test_connector_backfill_shape_matches_runtime_profile(mocker, mocked_cmd, use_preview, endpoint_types):
@@ -178,7 +160,7 @@ def test_bundled_preview_upgrade_repairs_same_runtime_without_qualification_bloc
         EXTENSION_TYPE_OPS, ext_vers=profile.identity.version, ext_train=profile.identity.train,
         provisioning_state="Failed",
     )
-    scenario.set_auxiliary_kwargs(opcua_connector_template_exists=connector_exists, opcua_connector_version="1.5.12")
+    scenario.set_auxiliary_kwargs(opcua_connector_template_exists=connector_exists, opcua_connector_version="1.5.18")
     scenario.set_instance_mock(mocked_responses, "instance", "rg", iotops_api_version="2026-09-01-preview")
     upgrade_instance(mocked_cmd, "rg", "instance", confirm_yes=True, no_progress=True)
     patches = [c for c in mocked_responses.calls if c.request.method == "PATCH"]
@@ -199,5 +181,5 @@ def test_bundled_preview_upgrade_repairs_same_runtime_without_qualification_bloc
             {"endpointType": "Microsoft.OpcUa"}, {"endpointType": "Microsoft.OpcUa.WoT"},
         ]
         assert connector["connectorMetadataRef"] == (
-            "mcr.microsoft.com/azureiotoperations/aio-connectors/opcua-metadata:1.5.12"
+            "mcr.microsoft.com/azureiotoperations/aio-connectors/opcua-metadata:1.5.18"
         )
