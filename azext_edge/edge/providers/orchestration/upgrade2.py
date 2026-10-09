@@ -37,8 +37,6 @@ from .common import (
     MIN_INSTANCE_VERSION_FOR_OPCUA_CONNECTOR_TEMPLATE,
     MIN_INSTANCE_VERSION_V1_FOR_V2_UPGRADE,
     MIN_INSTANCE_VERSION_V2,
-    OPCUA_CONNECTOR_ENDPOINT_TYPE,
-    OPCUA_CONNECTOR_VERSION,
     PROVISIONING_STATE_SUCCESS,
     ConfigSyncModeType,
 )
@@ -47,6 +45,15 @@ from .resources import RegistryEndpoints
 from .resources.connector_templates import ConnectorTemplates
 from .resources.instances import SECRET_SYNC_RESOURCE_TYPE, SPC_RESOURCE_TYPE, Instances
 from .targets import InitTargets
+from .runtime_catalog import get_runtime_catalog
+from .runtime_profiles import (
+    RuntimeChannel,
+    RuntimeIdentity,
+    parse_runtime_version,
+    resolve_runtime_identity,
+    validate_upgrade_boundary,
+)
+from .runtime_requirements import validate_runtime_requirements
 
 logger = get_logger(__name__)
 
@@ -127,18 +134,27 @@ class UpgradeManager:
         self.force = force
         self.no_cm_install = no_cm_install
         self.instances = Instances(self.cmd)
-        self.registry_endpoints = RegistryEndpoints(self.cmd)
-        self.connector_templates = ConnectorTemplates(self.cmd)
         # Name of an existing failed OPC UA template to repair in place (set during the check).
         self._opcua_template_name_to_repair = None
         self.instance_record = self.instances.show(
             name=self.instance_name, resource_group_name=self.resource_group_name
         )
+        self.runtime_catalog = get_runtime_catalog()
+        self.runtime_context = self.instances.get_runtime_context(
+            self.instance_record, self.runtime_catalog.qualification_identities,
+            allow_unbundled_integration=True,
+        )
+        self.runtime_context.require_upgradeable()
+        self.runtime_profile = self.runtime_catalog.for_upgrade(self.runtime_context.identity)
+        self.instance_record = self.instances.use_runtime_profile(self.runtime_profile, self.instance_record)
+        self.registry_endpoints = RegistryEndpoints(self.cmd, instances=self.instances)
+        self.connector_templates = ConnectorTemplates(self.cmd, instances=self.instances)
         self.resource_map = self.instances.get_resource_map(self.instance_record)
         self.targets = InitTargets(
             cluster_name=self.resource_map.connected_cluster.cluster_name,
             resource_group_name=resource_group_name,
             adr_namespace_resource_id=adr_namespace_resource_id,
+            runtime_profile=self.runtime_profile,
         )
         self.secretsync_migration = SecretSyncMigrationManager(
             cmd=self.cmd,
@@ -162,6 +178,7 @@ class UpgradeManager:
         # }
 
     def analyze_cluster(self, **override_kwargs: dict) -> "ClusterUpgradeState":
+        validate_runtime_requirements("iot ops upgrade", self.runtime_context.identity, override_kwargs, cmd=self.cmd)
         with Progress(
             SpinnerColumn("star"),
             *Progress.get_default_columns(),
@@ -174,10 +191,8 @@ class UpgradeManager:
             if not self.resource_map.connected_cluster.connected:
                 raise ValidationError(f"Cluster {self.resource_map.connected_cluster.cluster_name} is not connected.")
 
-            return ClusterUpgradeState(
-                extensions_map=self.resource_map.connected_cluster.get_extensions_by_type(
-                    *list(EXTENSION_TYPE_TO_MONIKER_MAP.keys())
-                ),
+            state = ClusterUpgradeState(
+                extensions_map=self._get_extensions_for_plan(),
                 init_version_map={
                     **self.targets.get_extension_versions(),
                     **self.targets.get_extension_versions(False),
@@ -191,7 +206,66 @@ class UpgradeManager:
                 secretsync_migration=self.secretsync_migration,
                 force=self.force,
                 no_cm_install=self.no_cm_install,
+                qualification_identities=self.runtime_catalog.qualification_identities,
             )
+            self._validate_foundation_plan(state)
+            if state.connector_template_needed:
+                state.connector_template_version = self.runtime_profile.require_opcua_connector_version()
+                state.connector_template_endpoint_types = ConnectorTemplates.default_opcua_endpoint_types(
+                    self.runtime_profile
+                )
+            return state
+
+    def _validate_foundation_plan(self, state: "ClusterUpgradeState") -> None:
+        by_type = {extension.extension_type: extension for extension in state.extension_upgrades}
+        for requirement in self.runtime_catalog.dependency_requirements:
+            extension = by_type.get(requirement.extension_type)
+            if extension is None and requirement.extension_type == EXTENSION_TYPE_CM:
+                # Preserve the supported customer-managed trust topology.
+                continue
+            if extension is None or extension.operation_type == ExtensionOperation.DELETE:
+                raise ValidationError(
+                    f"Required foundation extension {requirement.extension_type} is missing from plan."
+                )
+            if extension.operation_type == ExtensionOperation.CREATE:
+                properties = self._build_creation_payload(extension)["properties"]
+                version, train = properties.get("version"), properties.get("releaseTrain")
+                configuration = properties.get("configurationSettings") or {}
+            else:
+                properties = extension.extension.get("properties") or {}
+                patch = extension.get_patch().get("properties", {})
+                if not patch:
+                    requirement.validate_installed(extension.extension)
+                    continue
+                requirement.validate_observed(extension.extension, allow_repair=bool(patch.get("version")))
+                version = patch.get("version", properties.get("currentVersion"))
+                train = patch.get("releaseTrain", properties.get("releaseTrain"))
+                configuration = {**(properties.get("configurationSettings") or {})}
+                configuration.update(patch.get("configurationSettings") or {})
+            requirement.validate_identity(version, train, configuration)
+
+    def _get_extensions_for_plan(self) -> Dict[str, dict]:
+        extensions = {}
+        for extension in self.resource_map.connected_cluster.extensions:
+            ext_type = (extension.get("properties", {}).get("extensionType") or "").lower()
+            if ext_type not in EXTENSION_TYPE_TO_MONIKER_MAP:
+                continue
+            if ext_type in extensions:
+                raise ValidationError(f"Multiple extensions of type {ext_type} detected; upgrade cannot continue.")
+            extensions[ext_type] = extension
+        ops = extensions.get(EXTENSION_TYPE_OPS, {})
+        properties = ops.get("properties", {})
+        observed = self.runtime_context
+        if (
+            (ops.get("id") or "").lower() != observed.extension_id.lower()
+            or properties.get("currentVersion") != observed.identity.version
+            or (properties.get("releaseTrain") or "").lower() != observed.identity.train
+            or properties.get("version") != observed.requested_version
+            or properties.get("provisioningState") != observed.provisioning_state
+            or properties.get("autoUpgradeMinorVersion") is not observed.auto_upgrade_minor_version
+        ):
+            raise ValidationError("AIO runtime changed during discovery. Retry after the active operation completes.")
+        return extensions
 
     def _check_default_registry_needed(self) -> bool:
         try:
@@ -204,8 +278,7 @@ class UpgradeManager:
                     return False
             return True
         except HttpResponseError as e:
-            logger.debug(f"Error checking registry endpoints: {e}")
-            return False
+            raise ValidationError("Unable to validate the default registry endpoint before upgrade.") from e
 
     def _check_opcua_connector_template_needed(self) -> Tuple[bool, Optional[str]]:
         """Return (needed, repair_name) for the default OPC UA connector template.
@@ -225,10 +298,7 @@ class UpgradeManager:
                 instance_name=self.instance_name, resource_group_name=self.resource_group_name
             )
         except HttpResponseError as e:
-            # Upgrade re-evaluates every run and has not mutated the instance, so a transient list
-            # failure is non-fatal here; treat it as nothing to do.
-            logger.debug(f"Error checking OPC UA connector template: {e}")
-            return False, None
+            raise ValidationError("Unable to validate the OPC UA connector template before upgrade.") from e
         self._opcua_template_name_to_repair = repair_name
         return needed, repair_name
 
@@ -237,15 +307,20 @@ class UpgradeManager:
             resource_group_name=self.resource_group_name,
             instance_name=self.instance_name,
             template_name=self._opcua_template_name_to_repair,
-            connector_version=OPCUA_CONNECTOR_VERSION,
+            connector_version=self.runtime_profile.require_opcua_connector_version(),
             headers=headers,
             no_status=True,
+            runtime_profile=self.runtime_profile,
         )
 
     def apply_upgrades(
         self,
         upgrade_state: "ClusterUpgradeState",
     ) -> List[dict]:
+        # Validate every patch before the first DELETE/CREATE/UPDATE, not midway
+        # through a dependency migration. Validation errors never become partial writes.
+        upgrade_state.validate_plan()
+        self._validate_foundation_plan(upgrade_state)
         with Progress(
             SpinnerColumn("star"),
             TextColumn("[progress.description]{task.description}"),
@@ -351,7 +426,7 @@ class UpgradeManager:
         if needs_spc_update and self.secretsync_migration and self.secretsync_migration.spc_default:
             spc_resource_id = self.secretsync_migration.spc_default.get("id")
 
-        return self.instances.update(
+        return self.instances._update(
             name=self.instance_name,
             resource_group_name=self.resource_group_name,
             instance=self.instance_record,
@@ -381,10 +456,11 @@ class UpgradeManager:
 
     def _apply_single_operation(self, ext: "ExtensionUpgradeState", op_type: ExtensionOperation, headers: dict) -> dict:
         cluster_name = self.resource_map.connected_cluster.cluster_name
+        cluster_resource_group = self.resource_map.connected_cluster.resource_group_name
 
         if op_type == ExtensionOperation.DELETE:
             self.resource_map.connected_cluster.clusters.extensions.delete_cluster_extension(
-                resource_group_name=self.resource_group_name,
+                resource_group_name=cluster_resource_group,
                 cluster_name=cluster_name,
                 extension_name=ext.extension["name"],
                 headers=headers,
@@ -396,7 +472,7 @@ class UpgradeManager:
             }
         elif op_type == ExtensionOperation.CREATE:
             return self.resource_map.connected_cluster.clusters.extensions.create_cluster_extension(
-                resource_group_name=self.resource_group_name,
+                resource_group_name=cluster_resource_group,
                 cluster_name=cluster_name,
                 extension_name="cert-manager",
                 create_payload=self._build_creation_payload(ext),
@@ -404,7 +480,7 @@ class UpgradeManager:
             )
         else:  # UPDATE
             result = self.resource_map.connected_cluster.clusters.extensions.update_cluster_extension(
-                resource_group_name=self.resource_group_name,
+                resource_group_name=cluster_resource_group,
                 cluster_name=cluster_name,
                 extension_name=ext.extension["name"],
                 update_payload=ext.get_patch(),
@@ -675,6 +751,9 @@ def render_upgrade_table(upgrade_state: "ClusterUpgradeState"):  # noqa: C901
         if upgrade_state.connector_template_needed:
             try:
                 repair_name = getattr(upgrade_state, "connector_template_repair_name", None)
+                endpoint_types = ", ".join(
+                    endpoint["endpointType"] for endpoint in upgrade_state.connector_template_endpoint_types
+                )
                 if repair_name:
                     table.add_row(
                         "opc-ua connector template",
@@ -682,8 +761,8 @@ def render_upgrade_table(upgrade_state: "ClusterUpgradeState"):  # noqa: C901
                         "[yellow]Replaced[/yellow]",
                         f"[yellow]•[/yellow] Replace failed template [bold]{repair_name}[/bold]\n"
                         f"[yellow]•[/yellow] Existing template settings are reset to defaults\n"
-                        f"[green]•[/green] Endpoint: [bold]{OPCUA_CONNECTOR_ENDPOINT_TYPE}[/bold]\n"
-                        f"[green]•[/green] Version: [bold]{OPCUA_CONNECTOR_VERSION}[/bold]",
+                        f"[green]•[/green] Endpoints: [bold]{endpoint_types}[/bold]\n"
+                        f"[green]•[/green] Version: [bold]{upgrade_state.connector_template_version}[/bold]",
                     )
                 else:
                     table.add_row(
@@ -691,8 +770,8 @@ def render_upgrade_table(upgrade_state: "ClusterUpgradeState"):  # noqa: C901
                         "[dim]Not configured[/dim]",
                         "[green]Created[/green]",
                         f"[green]•[/green] Create default OPC UA connector template\n"
-                        f"[green]•[/green] Endpoint: [bold]{OPCUA_CONNECTOR_ENDPOINT_TYPE}[/bold]\n"
-                        f"[green]•[/green] Version: [bold]{OPCUA_CONNECTOR_VERSION}[/bold]",
+                        f"[green]•[/green] Endpoints: [bold]{endpoint_types}[/bold]\n"
+                        f"[green]•[/green] Version: [bold]{upgrade_state.connector_template_version}[/bold]",
                     )
                 table.add_section()
             except Exception as e:
@@ -765,6 +844,7 @@ class ClusterUpgradeState:
         secretsync_migration: Optional["SecretSyncMigrationManager"] = None,
         force: Optional[bool] = None,
         no_cm_install: Optional[bool] = None,
+        qualification_identities: Tuple[RuntimeIdentity, ...] = (),
     ):
         self.extensions_map = extensions_map
         self.init_version_map = init_version_map
@@ -777,8 +857,11 @@ class ClusterUpgradeState:
         self.secretsync_migration = secretsync_migration
         self.force = force
         self.no_cm_install = no_cm_install
+        self.qualification_identities = qualification_identities
         self.semver = scoped_semver_import()
         self.connector_template_repair_name = None
+        self.connector_template_version = None
+        self.connector_template_endpoint_types = []
         self.extension_upgrades = self._refresh_upgrade_state()
         self.instance_upgrade = self._check_instance_upgrade()
         self.registry_endpoint_needed = self._check_registry_endpoint_needed()
@@ -793,6 +876,12 @@ class ClusterUpgradeState:
             or bool(self.connector_template_needed)
             or bool(self.secretsync_migration_needed)
         )
+
+    def validate_plan(self) -> None:
+        for extension in self.extension_upgrades:
+            extension.validate_upgrade()
+            if extension.operation_type == ExtensionOperation.UPDATE:
+                extension.get_patch()
 
     def get_stale_cli_extensions(self) -> List[str]:
         return [ext_state.moniker for ext_state in self.extension_upgrades if ext_state.is_cli_behind_cluster()]
@@ -933,6 +1022,7 @@ class ClusterUpgradeState:
             desired_config=self.desired_config_map.get(ops_moniker),
             override=self.override_map.get(ops_moniker),
             force=self.force,
+            qualification_identities=self.qualification_identities,
         )
         ops_upgrade_state.validate_upgrade()
 
@@ -998,6 +1088,10 @@ class ClusterUpgradeState:
                     )
                 )
 
+        for state in ext_queue:
+            state.validate_upgrade()
+            if state.operation_type == ExtensionOperation.UPDATE:
+                state.get_patch()
         return ext_queue
 
     def _should_delete_platform(self) -> bool:
@@ -1038,12 +1132,13 @@ class ClusterUpgradeState:
 
         ops_override = self.override_map.get(EXTENSION_MONIKER_OPS) or ConfigOverride()
 
-        # Priority: override > init_version_map > current version
-        return (
-            ops_override.version
-            or self.init_version_map.get(EXTENSION_MONIKER_OPS, {}).get("version")
-            or ops_extension.get("properties", {}).get("version")
-        )
+        if ops_override.version:
+            return ops_override.version
+        current = ops_extension.get("properties", {}).get("currentVersion")
+        target = self.init_version_map.get(EXTENSION_MONIKER_OPS, {}).get("version")
+        if current and target:
+            return max((current, target), key=parse_runtime_version)
+        return current or target
 
     def _is_target_version_at_least(self, min_version: str) -> bool:
         target_version = self._get_target_ops_version()
@@ -1065,6 +1160,7 @@ class ExtensionUpgradeState:
         force: Optional[bool] = None,
         operation_type: Optional[ExtensionOperation] = None,
         extension_type: Optional[str] = None,
+        qualification_identities: Tuple[RuntimeIdentity, ...] = (),
     ):
         self.extension = extension
         self.extension_type = extension_type or (
@@ -1078,6 +1174,7 @@ class ExtensionUpgradeState:
         self.operation_type = operation_type or ExtensionOperation.UPDATE
         self._mqtt_migration_config = None
         self.semver = scoped_semver_import()
+        self.qualification_identities = qualification_identities
 
     @property
     def moniker(self) -> str:
@@ -1090,13 +1187,17 @@ class ExtensionUpgradeState:
         if not self.extension:
             return (None, None)
         props = self.extension.get("properties", {})
-        return (props.get("version"), props.get("releaseTrain"))
+        version_key = "currentVersion" if self.moniker == EXTENSION_MONIKER_OPS else "version"
+        return (props.get(version_key), props.get("releaseTrain"))
 
     @property
     def desired_version(self) -> Tuple[Optional[str], Optional[str]]:
+        train = self.override.train or self.desired_version_map.get("train")
+        if self.moniker == EXTENSION_MONIKER_OPS and self.override.version and not self.override.train:
+            train = self.current_version[1] or train
         return (
             self.override.version or self.desired_version_map.get("version"),
-            self.override.train or self.desired_version_map.get("train"),
+            train,
         )
 
     @property
@@ -1144,6 +1245,8 @@ class ExtensionUpgradeState:
         if self.operation_type != ExtensionOperation.UPDATE:
             return {}
 
+        if self.moniker == EXTENSION_MONIKER_OPS:
+            self._validate_ops_boundary()
         if not self.can_upgrade():
             return {}
 
@@ -1195,8 +1298,11 @@ class ExtensionUpgradeState:
         self._validate_and_resolve_version()
 
     def _validate_and_resolve_version(self) -> Optional[str]:
+        if self.moniker == EXTENSION_MONIKER_OPS:
+            self._validate_ops_boundary()
         if self._has_delta_in_version():
             self._validate_version_upgrade()
+            self._require_manual_upgrade()
             return self.desired_version[0]
 
         if self._has_non_success_state():
@@ -1211,9 +1317,67 @@ class ExtensionUpgradeState:
             # reapplies the current version and sends no train.
             if self._has_delta_in_train():
                 self._validate_version_upgrade(target_version=reconcile_version)
+            self._require_manual_upgrade()
             return reconcile_version
 
         return None
+
+    def _require_manual_upgrade(self) -> None:
+        if self.moniker != EXTENSION_MONIKER_OPS:
+            return
+        if self.extension["properties"].get("autoUpgradeMinorVersion") is not False:
+            raise ValidationError(
+                "Cannot pin an AIO extension version unless autoUpgradeMinorVersion is explicitly false. "
+                "Arc-managed upgrades must be disabled through an explicit ownership decision before CLI upgrade "
+                "or repair. To explicitly transfer ownership, run 'az k8s-extension update "
+                "--subscription <cluster-subscription> --resource-group <cluster-resource-group> "
+                "--cluster-name <cluster-name> --cluster-type connectedClusters "
+                "--name <aio-extension-name> --auto-upgrade false', then retry."
+            )
+
+    def _resolve_ops_identity(self, version: str, train: str, *, installed: bool = False) -> RuntimeIdentity:
+        return resolve_runtime_identity(
+            version, train, self.qualification_identities,
+            allow_unbundled_integration=installed or bool(self.force and self.override.version),
+        )
+
+    def _resolve_ops_target_identity(self, installed: RuntimeIdentity, version: str, train: str) -> RuntimeIdentity:
+        if not self.override.version and (version, train.lower()) == (installed.version, installed.train):
+            return installed
+        return self._resolve_ops_identity(version, train)
+
+    def _validate_ops_boundary(self) -> None:
+        current_version, current_train = self.current_version
+        if not current_version:
+            raise ValidationError(
+                "Unable to determine installed version for iotOperations extension (currentVersion missing). "
+                "Cannot validate upgrade path."
+            )
+        if not current_train:
+            raise ValidationError(
+                "Unable to determine release train for installed iotOperations extension. Cannot validate upgrade path."
+            )
+        installed = self._resolve_ops_identity(current_version, current_train, installed=True)
+        desired_version = self.desired_version[0]
+        # A stale CLI leaves the installed version alone unless explicitly overridden.
+        target_version = self.override.version or current_version
+        if not self.override.version and desired_version:
+            target_version = max((current_version, desired_version), key=parse_runtime_version)
+        target_train = current_train
+        if self._has_delta_in_train():
+            target_train = self.desired_version[1]
+        target = None
+        if (
+            self.force and installed.channel == RuntimeChannel.STABLE
+            and target_train.lower() in (RuntimeChannel.STABLE.value, "integration")
+        ):
+            target = self._resolve_ops_target_identity(installed, target_version, target_train)
+            if target.channel == RuntimeChannel.STABLE:
+                return
+        if target_train.lower() != current_train.lower():
+            raise ValidationError("Cross-train upgrades are not supported. GA stays GA; preview stays preview.")
+        target = target or self._resolve_ops_target_identity(installed, target_version, target_train)
+        validate_upgrade_boundary(installed, target)
 
     def _get_reconcile_version(self) -> Optional[str]:
         if self.current_version[0]:
@@ -1365,7 +1529,7 @@ class ExtensionUpgradeState:
         if self.operation_type in [ExtensionOperation.CREATE, ExtensionOperation.DELETE]:
             return
 
-        if self.force:
+        if self.force and self.moniker != EXTENSION_MONIKER_OPS:
             return
 
         target_version = target_version or self.desired_version[0]
@@ -1390,11 +1554,14 @@ class ExtensionUpgradeState:
                 "Cannot validate upgrade path."
             )
 
+        if self.moniker == EXTENSION_MONIKER_OPS:
+            installed = self._resolve_ops_identity(self.current_version[0], self.current_version[1], installed=True)
+            target = self._resolve_ops_target_identity(installed, target_version, self.desired_version[1])
+            if self.force and installed.channel == target.channel == RuntimeChannel.STABLE:
+                return
+
         parsed_current = self.semver.parse(self.current_version[0])
         parsed_desired = self.semver.parse(target_version)
-
-        current_is_preview = self.current_version[1].lower() != "stable"
-        desired_is_preview = self.desired_version[1].lower() != "stable"
 
         # Check for downgrade
         if parsed_desired < parsed_current:
@@ -1404,6 +1571,17 @@ class ExtensionUpgradeState:
             )
 
         if self.moniker != EXTENSION_MONIKER_OPS:
+            return
+
+        if installed.channel == RuntimeChannel.PREVIEW:
+            if parsed_desired.major != parsed_current.major:
+                raise ValidationError(
+                    "Preview upgrades across major versions are not supported."
+                )
+            if parsed_desired.minor - parsed_current.minor > 1:
+                raise ValidationError(
+                    "Preview upgrades more than one minor version ahead are not supported."
+                )
             return
 
         # Check version compatibility (within 2 minor versions)
@@ -1430,14 +1608,6 @@ class ExtensionUpgradeState:
                 f"Please first upgrade to at least {min_v2_semver_broker_upgrade}/AIO2506. "
                 "See https://aka.ms/aio-versions for version details."
             )
-
-        if current_is_preview or desired_is_preview:
-            if parsed_current != parsed_desired or self.current_version[1].lower() != self.desired_version[1].lower():
-                raise ValidationError(
-                    f"Installed {self.moniker} extension is on train {self.current_version[1]}.\n"
-                    f"Desired version would be on train {self.desired_version[1]}.\n"
-                    f"Upgrades to or from non-stable release trains are not supported."
-                )
 
 
 def calculate_config_delta(current: Dict[str, str], target: Dict[str, str], sync_mode: Optional[str] = None) -> dict:
