@@ -1266,7 +1266,6 @@ def load_iotops_arguments(self, _):
         )
 
     with self.argument_context("iot ops create") as context:
-        context.ignore("confirm_yes")
         context.argument(
             "use_preview",
             options_list=["--use-preview"],
