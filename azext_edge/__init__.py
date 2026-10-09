@@ -6,7 +6,7 @@
 
 from azure.cli.core import AzCommandsLoader
 from azext_edge.constants import VERSION
-from knack.events import EVENT_INVOKER_POST_PARSE_ARGS
+from knack.events import EVENT_INVOKER_POST_PARSE_ARGS, EVENT_INVOKER_PRE_PARSE_ARGS
 
 
 def version_check_handler(cli_ctx, **kwargs):
@@ -24,14 +24,25 @@ def version_check_handler(cli_ctx, **kwargs):
 
 class OpsExtensionCommandsLoader(AzCommandsLoader):
     def __init__(self, cli_ctx=None):
-        super(OpsExtensionCommandsLoader, self).__init__(cli_ctx=cli_ctx)
+        from .edge.providers.orchestration.runtime_commands import (
+            RuntimeCommandGroup, runtime_notice_handler, runtime_validation_handler,
+        )
+
+        super(OpsExtensionCommandsLoader, self).__init__(cli_ctx=cli_ctx, command_group_cls=RuntimeCommandGroup)
         if cli_ctx:
+            if not cli_ctx.data.get("runtime_notice_registered"):
+                cli_ctx.register_event(EVENT_INVOKER_PRE_PARSE_ARGS, runtime_notice_handler)
+                cli_ctx.data["runtime_notice_registered"] = True
             cli_ctx.register_event(EVENT_INVOKER_POST_PARSE_ARGS, version_check_handler)
+            cli_ctx.register_event(EVENT_INVOKER_POST_PARSE_ARGS, runtime_validation_handler)
 
     def load_command_table(self, args):
         from azext_edge.edge.command_map import load_iotops_commands
+        from .edge.providers.orchestration.runtime_commands import get_runtime_notice_targets
 
         load_iotops_commands(self, args)
+        if self.cli_ctx:
+            self.cli_ctx.data["runtime_notice_targets"] = get_runtime_notice_targets(self.command_table)
 
         return self.command_table
 

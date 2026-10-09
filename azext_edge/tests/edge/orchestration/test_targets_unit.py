@@ -82,8 +82,11 @@ INSTANCE_PARAM_CONVERSION_MAP = {
     "clusterNamespace": "cluster_namespace",
     "clusterLocation": "location",
     "customLocationName": "custom_location_name",
+    "aioInstanceName": "instance_name",
+    "features": "instance_features",
     "schemaRegistryId": "schema_registry_resource_id",
     "adrNamespaceId": "adr_namespace_resource_id",
+    "sku": "sku",
     "defaultDataflowInstanceCount": "dataflow_profile_instances",
     "brokerConfig": "broker_config",
     "trustConfig": "trust_config",
@@ -440,7 +443,11 @@ def test_init_targets(target_scenario: dict, mocked_feature_keys: Mock):
     # Verify instance properties
     aio_instance = instance_template["resources"]["aioInstance"]
     assert aio_instance["properties"]["description"] == targets.instance_description
-    assert aio_instance["properties"]["features"] == targets.instance_features
+    assert aio_instance["properties"]["features"] == "[parameters('features')]"
+    if targets.instance_features:
+        assert instance_parameters["features"]["value"] == targets.instance_features
+    else:
+        assert "features" not in instance_parameters
 
     if targets.tags:
         assert aio_instance["tags"] == targets.tags
@@ -491,15 +498,16 @@ def test_init_targets_opcua_mode(target_scenario: dict):
     instance_template, _instance_parameters = targets.get_ops_instance_template(extension_ids)
 
     aio_instance = instance_template["resources"]["aioInstance"]
-    assert aio_instance["properties"]["features"] == expected_features
+    assert aio_instance["properties"]["features"] == "[parameters('features')]"
+    assert _instance_parameters["features"]["value"] == {"opcua": {"mode": "Stable", "settings": {}}}
 
 
 @pytest.mark.parametrize(
     "sku, expected_sku",
     [
         (None, None),
-        ("Standard", {"name": "Standard"}),
-        ("Essentials", {"name": "Essentials"}),
+        ("Standard", "Standard"),
+        ("Essentials", "Essentials"),
     ],
 )
 def test_init_targets_instance_sku(sku, expected_sku):
@@ -512,13 +520,16 @@ def test_init_targets_instance_sku(sku, expected_sku):
         sku=sku,
     )
 
-    instance_template, _ = targets.get_ops_instance_template([generate_random_string()])
+    instance_template, instance_parameters = targets.get_ops_instance_template([generate_random_string()])
     aio_instance = instance_template["resources"]["aioInstance"]
 
-    if expected_sku:
-        assert aio_instance["sku"] == expected_sku
+    assert aio_instance["sku"] == (
+        "[if(not(equals(parameters('sku'), null())), createObject('name', parameters('sku')), null())]"
+    )
+    if expected_sku is not None:
+        assert instance_parameters["sku"] == {"value": expected_sku}
     else:
-        assert "sku" not in aio_instance
+        assert "sku" not in instance_parameters
 
 
 @pytest.mark.parametrize(

@@ -5,6 +5,9 @@
 # ----------------------------------------------------------------------------------------------
 
 import json
+import os
+import shlex
+import subprocess
 from os.path import isfile
 from typing import List, Optional
 
@@ -24,6 +27,7 @@ from azext_edge.edge.providers.orchestration.common import (
 
 from ....generators import generate_random_string
 from ....helpers import assert_role_assignment, process_additional_args, run, strip_quotes
+from ....runtime_checks import assert_runtime, configured_baseline
 
 logger = get_logger(__name__)
 
@@ -125,7 +129,30 @@ def test_init_scenario(init_test_setup: dict, tracked_files: list):
         f"--no-progress {additional_create_args} "
     )
     # TODO: assert create when return be returning
-    run(create_command)
+    baseline = configured_baseline()
+    if baseline:
+        # Candidate init remains shared and unchanged. Only source-runtime provisioning
+        # uses an explicitly pinned older wheel; every assertion/upgrade uses the candidate.
+        baseline_root = os.environ["azext_edge_baseline_extension_dir"]
+        environment = dict(os.environ, AZURE_EXTENSION_DIR=baseline_root)
+        environment["PYTHONPATH"] = os.path.join(baseline_root, "azure-iot-ops")
+        baseline_command = [
+            "az", "iot", "ops", "create", "-g", resource_group, "--cluster", cluster_name, "-n", instance_name,
+            "--sr-resource-id", registry_id, "--ns-resource-id", adr_namespace_id, "--no-progress",
+            *shlex.split(baseline["create_args"]),
+        ]
+        subprocess.run(baseline_command, env=environment, check=True)
+    else:
+        run(create_command)
+
+    channel = os.environ.get("azext_edge_runtime_channel")
+    if channel:
+        # Hard gate: never downgrade identity/version/readiness failures to pytest.skip.
+        assert_runtime(instance_name, resource_group, channel, baseline)
+    if baseline:
+        # Target-template defaults do not describe an older source deployment.
+        # Its readiness/identity were checked above; upgrade tests check the target.
+        return
 
     if init_test_setup["redeployment"]:
         run(f"az iot ops delete --name {instance_name} -g {resource_group} -y --no-progress --force")
@@ -137,6 +164,8 @@ def test_init_scenario(init_test_setup: dict, tracked_files: list):
         )
 
         run(create_command)
+        if channel:
+            assert_runtime(instance_name, resource_group, channel)
 
     # Missing:
     # init
@@ -166,7 +195,7 @@ def test_init_scenario(init_test_setup: dict, tracked_files: list):
         # KeyError: one of the expected keys in the result is not present
         # TypeError: one of the values changes expected types and cannot be evaluated correctly (ex: len(None))
         # and more
-        if init_test_setup["continueOnError"]:
+        if init_test_setup["continueOnError"] and not channel:
             pytest.skip(f"Deployment succeeded but init assertions failed. \n{e}")
         raise e
 
@@ -223,6 +252,7 @@ def assert_aio_instance(
     trust_settings: Optional[dict] = None,
     feature: Optional[str] = None,
     sku: Optional[str] = None,
+    use_preview: bool = False,
     **_,
 ):
     # check extensions installed
@@ -267,7 +297,7 @@ def assert_aio_instance(
         assert custom_location == expected_custom_location
 
     instance_props = instance_show["properties"]
-    assert instance_props.get("description") == description
+    assert instance_props.get("description") == description, "Unexpected instance description."
     assert instance_props["schemaRegistryRef"] == {"resourceId": schema_registry_id}
     assert instance_props["adrNamespaceRef"] == {"resourceId": adr_namespace_id}
     if sku:
@@ -327,6 +357,7 @@ def assert_broker_args(
     fw: Optional[str] = None,
     lt: Optional[str] = None,
     mp: Optional[str] = None,
+    use_preview: bool = False,
     **_,
 ):
     if bp:
@@ -350,9 +381,11 @@ def assert_broker_args(
     broker_name = broker["name"]
     assert broker_name == "default"
 
+    broker_config = {}
     if broker_config_file:
         with open(broker_config_file, "r", encoding="utf-8") as bcf:
-            broker_config = json.loads(bcf)
+            broker_config = json.load(bcf)
+            broker_config = broker_config.get("properties", broker_config)
             broker_mem_profile = broker_config.get("memoryProfile", "").lower()
 
             broker_backend = broker_config.get("cardinality", {}).get("backendChain", {})
@@ -375,19 +408,41 @@ def assert_broker_args(
     assert cardinality["frontend"]["workers"] == (broker_frontend_workers or 2)
     # there is diagnostics + generateResourceLimits but nothing from init yet
 
-    if persist_max_size:
-        persistence = broker_props["persistence"]
-        assert persistence["maxSize"] == persist_max_size
-        assert persistence["encryption"]["mode"] == "Enabled"
-        assert persistence["persistentVolumeClaimSpec"]["accessModes"] == ["ReadWriteOncePod"]
-        assert persistence["retain"] == {"mode": "Custom", "retainSettings": {"dynamic": {"mode": "Enabled"}}}
-        assert persistence["stateStore"] == {"mode": "Custom", "stateStoreSettings": {"dynamic": {"mode": "Enabled"}}}
-        assert persistence["subscriberQueue"] == {
-            "mode": "Custom",
-            "subscriberQueueSettings": {"dynamic": {"mode": "Enabled"}},
+    if broker_config_file:
+        expected_persistence = broker_config.get("persistence")
+    elif persist_max_size or use_preview:
+        expected_persistence = {
+            "maxSize": persist_max_size or "3Gi",
+            "encryption": {"mode": "Enabled"},
+            "persistentVolumeClaimSpec": {"accessModes": ["ReadWriteOncePod"]},
+            "retain": (
+                {"mode": "Custom", "retainSettings": {"dynamic": {"mode": "Enabled"}}}
+                if persist_max_size else {"mode": "None"}
+            ),
+            "stateStore": {"mode": "Custom", "stateStoreSettings": {"dynamic": {"mode": "Enabled"}}},
+            "subscriberQueue": (
+                {"mode": "Custom", "subscriberQueueSettings": {"dynamic": {"mode": "Enabled"}}}
+                if persist_max_size else {"mode": "None"}
+            ),
         }
     else:
+        expected_persistence = None
+
+    if expected_persistence is None:
         assert "persistence" not in broker_props
+    else:
+        persistence = broker_props.get("persistence")
+        assert isinstance(persistence, dict), "Expected broker disk persistence."
+        for setting, expected in expected_persistence.items():
+            actual = persistence.get(setting)
+            if isinstance(expected, dict):
+                assert isinstance(actual, dict), f"Missing broker persistence {setting}."
+                for property_name, property_value in expected.items():
+                    assert actual.get(property_name) == property_value, (
+                        f"Unexpected broker persistence {setting}.{property_name}."
+                    )
+            else:
+                assert actual == expected, f"Unexpected broker persistence {setting}."
 
     # nothing interesting in the authn
     authns = run(f"az iot ops broker authn list -g {resource_group} -i {instance_name} -b {broker_name}")

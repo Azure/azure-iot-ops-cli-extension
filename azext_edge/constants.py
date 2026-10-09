@@ -7,8 +7,13 @@
 
 import os
 
-VERSION = "2.10.0"
+VERSION = "2.11.0a2"
 EXTENSION_NAME = "azure-iot-ops"
 EXTENSION_ROOT = os.path.dirname(os.path.abspath(__file__))
 USER_AGENT = "IotOperationsCliExtension/{}".format(VERSION)
-AIO_RELEASE = "2609"
+AIO_RELEASE = "2610"
+PREVIEW_AGREEMENT_URL = "https://azure.microsoft.com/en-us/support/legal/preview-supplemental-terms/"
+PREVIEW_NOTICE = (
+    "Creating an Azure IoT Operations preview instance is subject to the Supplemental Terms of Use "
+    "for Microsoft Azure Previews at the following URL."
+)

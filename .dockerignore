@@ -16,7 +16,8 @@ docs/
 *.zip
 
 # tools
-tools/
+tools/*
+!tools/integration_runner.py
 
 # non-code files
 *.md
@@ -27,6 +28,7 @@ tools/
 
 # venv
 env*/
+.venv/
 
 # pycache
 **/__pycache__/
@@ -36,7 +38,14 @@ env*/
 .pylintrc
 
 # coverage
-.coveragerc
+.coverage*
+!.coveragerc
+htmlcov/
+
+# runtime inputs/results are mounted explicitly, never baked into the image
+.artifacts/
+junit/
+pytest.ini
 
 # devcontainer
 .devcontainer/

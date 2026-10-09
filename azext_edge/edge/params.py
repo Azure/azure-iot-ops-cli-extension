@@ -15,6 +15,7 @@ from azure.cli.core.commands.parameters import (
 )
 from knack.arguments import CaseInsensitiveList
 
+from azext_edge.constants import PREVIEW_AGREEMENT_URL, PREVIEW_NOTICE
 from azext_edge.edge.providers.edge_api.dataflow import DataflowResourceKinds
 
 from ._validators import validate_namespace, validate_resource_name
@@ -1276,6 +1277,14 @@ def load_iotops_arguments(self, _):
             "MicrosoftAzure/MOSA#clause-2792-h3-1.",
         )
         context.argument(
+            "use_preview",
+            options_list=["--use-preview"],
+            arg_type=get_three_state_flag(),
+            help="Create using the bundled preview runtime profile instead of the GA profile. "
+            f"{PREVIEW_NOTICE} {PREVIEW_AGREEMENT_URL} "
+            "Using --use-preview constitutes acceptance of these terms.",
+        )
+        context.argument(
             "skip_sr_ra",
             options_list=["--skip-sr-ra"],
             arg_type=get_three_state_flag(),
@@ -1388,7 +1397,9 @@ def load_iotops_arguments(self, _):
         context.argument(
             "persist_max_size",
             options_list=["--persist-max-size"],
-            help="The max size of the message buffer on disk. Setting a value will enable disk persistence. "
+            help="The max size of the message buffer on disk. Setting a value enables disk persistence on GA. "
+            "Preview enables a 3Gi buffer and dynamic state store persistence by default; use --broker-config-file "
+            "to replace the generated broker configuration. "
             "Kubernetes resource units must be used e.g. the following value suffixes are supported: "
             "E, P, T, G, M, K. You can also use the power-of-two equivalents: Ei, Pi, Ti, Gi, Mi, Ki.",
             arg_group="Disk Persistence",
@@ -1543,7 +1554,8 @@ def load_iotops_arguments(self, _):
             "force",
             options_list=["--force"],
             arg_type=get_three_state_flag(),
-            help="Force the operation to continue. Use to get around guards, such as those preventing downgrade.",
+            help="Bypass version compatibility checks for stable-to-stable upgrades. "
+            "Does not bypass preview, cross-train or upgrade ownership restrictions.",
             arg_group="Extension Config",
             deprecate_info=context.deprecate(hide=True),
         )
@@ -2872,5 +2884,6 @@ def load_iotops_arguments(self, _):
             "inline",
             options_list=["--inline"],
             arg_type=get_three_state_flag(),
-            help="Provides key version attributes in console output.",
+            help="Reports bundled versions and runtime profiles without contacting a cluster. "
+            "The extensions field describes shared dependencies and the default create profile.",
         )
