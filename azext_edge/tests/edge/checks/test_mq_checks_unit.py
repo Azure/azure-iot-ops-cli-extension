@@ -321,7 +321,13 @@ def test_broker_checks(
         "azext_edge.edge.providers.edge_api.base.EdgeResourceApi.get_resources",
         return_value={"items": [broker]},
     )
+    service_reader = mocker.patch(
+        "azext_edge.edge.providers.check.mq.get_namespaced_service",
+        side_effect=AssertionError("Broker checks must not query the retired diagnostics Service"),
+    )
     result = evaluate_brokers(detail_level=detail_level, resource_name=resource_name)
+    service_reader.assert_not_called()
+    assert "aio-broker-diagnostics-service" not in str(result)
 
     # all evalBroker assertions
     assert result["name"] == "evalBrokers"

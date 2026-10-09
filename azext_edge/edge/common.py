@@ -147,6 +147,7 @@ class OpsServiceType(ListableEnum):
     billing = "billing"
     dataflow = "dataflow"
     schemaregistry = "schemaregistry"
+    edgeregistry = "edgeregistry"
     arccontainerstorage = "acs"
     secretstore = "secretstore"
     azuremonitor = "azuremonitor"

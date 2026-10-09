@@ -43,6 +43,7 @@ from ....util.queryable import Queryable
 from .instances import Instances
 
 if TYPE_CHECKING:
+    from ..runtime_profiles import RuntimeProfile
     from ....vendor.clients.iotopsmgmt.operations import (
         AkriConnectorTemplateOperations,
     )
@@ -60,9 +61,9 @@ VALID_ALLOCATION_POLICIES = ["Bucketized"]
 class ConnectorTemplates(Queryable):
     """Provider for connector template operations."""
 
-    def __init__(self, cmd):
+    def __init__(self, cmd, instances: Optional[Instances] = None):
         super().__init__(cmd=cmd)
-        self.instances = Instances(cmd=cmd)
+        self.instances = instances if instances is not None else Instances(cmd=cmd)
         self.iotops_mgmt_client = self.instances.iotops_mgmt_client
         self.ops: "AkriConnectorTemplateOperations" = (
             self.iotops_mgmt_client.akri_connector_template
@@ -209,6 +210,15 @@ class ConnectorTemplates(Queryable):
             )
             return wait_for_terminal_state(poller=poller, logger=logger)
 
+    @staticmethod
+    def default_opcua_endpoint_types(runtime_profile: Optional["RuntimeProfile"] = None) -> List[dict]:
+        from ..common import OPCUA_CONNECTOR_ENDPOINT_TYPE
+
+        if runtime_profile is None:
+            return [{"endpointType": OPCUA_CONNECTOR_ENDPOINT_TYPE}]
+        blueprint = runtime_profile.copy_instance_blueprint()
+        return blueprint.get_resource_by_key("opcUaConnectorTemplate")["properties"]["deviceInboundEndpointTypes"]
+
     def create_default_opcua_template(
         self,
         resource_group_name: str,
@@ -217,13 +227,14 @@ class ConnectorTemplates(Queryable):
         template_name: Optional[str] = None,
         headers: Optional[dict] = None,
         no_status: Optional[bool] = None,
+        runtime_profile: Optional["RuntimeProfile"] = None,
     ) -> dict:
         """
         Create the default OPC UA ``akriConnectorTemplates`` resource for an instance.
 
         OPC UA is supervisor-managed, so the template is built directly to mirror the product
         Bicep rather than derived from OCI metadata: the connector image is the supervisor image
-        and the endpoint type is ``Microsoft.OpcUa``. The supervisor discovers it by name prefix.
+        and endpoint types follow the selected runtime profile. The supervisor discovers it by name prefix.
 
         Args:
             resource_group_name: Instance resource group name.
@@ -232,13 +243,13 @@ class ConnectorTemplates(Queryable):
             template_name: Optional explicit template name. Defaults to a prefixed, instance-derived name.
             headers: Optional request headers (e.g. correlation id) forwarded to the service.
             no_status: Suppress the console status spinner (e.g. when already inside a progress bar).
+            runtime_profile: Reviewed runtime inputs; omitted callers retain the GA endpoint type.
 
         Returns:
             dict: The created connector template resource.
         """
         from ..common import (
             OPCUA_CONNECTOR_AIO_MIN_VERSION,
-            OPCUA_CONNECTOR_ENDPOINT_TYPE,
             OPCUA_CONNECTOR_METADATA_REF,
             OPCUA_CONNECTOR_REGISTRY,
             OPCUA_CONNECTOR_SUPERVISOR_IMAGE_NAME,
@@ -246,6 +257,8 @@ class ConnectorTemplates(Queryable):
 
         if not template_name:
             template_name = self.default_opcua_template_name(instance_name)
+
+        endpoint_types = self.default_opcua_endpoint_types(runtime_profile)
 
         template_resource = {
             "extendedLocation": self.instances.get_ext_loc(
@@ -269,7 +282,7 @@ class ConnectorTemplates(Queryable):
                         },
                     },
                 },
-                "deviceInboundEndpointTypes": [{"endpointType": OPCUA_CONNECTOR_ENDPOINT_TYPE}],
+                "deviceInboundEndpointTypes": endpoint_types,
             },
         }
 
@@ -302,8 +315,8 @@ class ConnectorTemplates(Queryable):
         customizations and in-flight provisioning are preserved. If none exists, a new default is
         needed. Shared by the upgrade backfill and the update re-enable path.
 
-        List failures propagate; the caller decides whether to surface them (update, which has
-        already mutated the instance) or ignore them (upgrade, which re-evaluates every run).
+        List failures propagate. Update and upgrade callers perform this discovery before
+        mutations, so a failed lookup cannot silently skip a required backfill.
         """
         from ..common import OPCUA_CONNECTOR_TEMPLATE_NAME_PREFIX, PROVISIONING_STATE_FAILED
 

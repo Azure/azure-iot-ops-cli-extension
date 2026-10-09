@@ -22,6 +22,8 @@ Cluster name, schema registry, and instance name will be auto-populated during t
   - Inputs:
     - `resource-group`: `string` - Resource Group to test in
     - `test-scenarios`: `string` - Comma-separated list of scenarios to run (e.g., "rpsaas,upgrade"). If empty, all non-manual scenarios run.
+    - `runtime-channels`: `string` - Runtime profiles to test (`stable,preview` by default), each on an independent cluster.
+    - `upgrade-baselines`: `string` - Pinned baseline definitions by channel, required for the explicit `upgrade-path` scenario.
     - `custom-locations-oid`: `string` - Custom Locations OID
     - `runtime-init-args`: `string` - Additional init arguments (beyond cluster name, resource group, schema registry)
     - `runtime-create-args`: `string` - Additional create arguments (beyond cluster name, resource group, instance name)
@@ -43,13 +45,15 @@ Run **Integration tests** on a branch containing the PR changes with
 selected branch, not an arbitrary fork PR head; use an upstream branch containing
 the changes, or a fork configured with the required Azure credentials and OIDC access.
 
-The scenario pins `--ops-version 1.5.33 --ops-train integration`, the 2610 release
-candidate containing broker 1.6.2 with diagnostics-service removal. Leave
-`runtime-create-args` empty to use this pin. This is an integration-train build
-of the 2610 release, not a claim that it is already published on `stable`.
-After release promotion, use `runtime-create-args` to override the version/train
-with the published stable build. Runtime arguments are appended after scenario
-arguments and take precedence. Default/scheduled scenarios retain their existing versions.
+The scenario uses the candidate CLI's bundled runtime profiles, with independent
+`stable` and `preview` jobs by default. Set `runtime-channels` to `stable` for a
+GA-only run. The current GA profile targets AIO 1.5.33 on the integration train,
+the same 2610 diagnostics-removal build previously pinned by this scenario.
+Channel labels do not imply that a build has already been published on that train.
+Leave `runtime-create-args` empty for the default deployment; runtime selection
+flags (`--ops-version`, `--ops-train`, `--use-preview`) are rejected there because
+the channel matrix owns runtime selection. Release promotion is reflected in
+the bundled profiles rather than extra-argument overrides.
 
 Running against a deployment with the Service, pods, or StatefulSet still present
 fails explicitly; the tests do not delete resources or treat missing prerequisites

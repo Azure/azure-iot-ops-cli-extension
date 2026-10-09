@@ -71,6 +71,7 @@ def build_bundle(
     from .support.connectors import prepare_bundle as prepare_connector_bundle
     from .support.dataflow import prepare_bundle as prepare_dataflow_bundle
     from .support.deviceregistry import prepare_bundle as prepare_deviceregistry_bundle
+    from .support.edgeregistry import prepare_bundle as prepare_edge_registry_bundle
     from .support.meso import prepare_bundle as prepare_meso_bundle
     from .support.meta import prepare_bundle as prepare_meta_bundle
     from .support.mq import prepare_bundle as prepare_mq_bundle
@@ -117,6 +118,10 @@ def build_bundle(
             "apis": None,
             "prepare_bundle": prepare_schema_registry_bundle,
         },
+        OpsServiceType.edgeregistry.value: {
+            "apis": None,
+            "prepare_bundle": prepare_edge_registry_bundle,
+        },
         OpsServiceType.arccontainerstorage.value: {
             "apis": COMPAT_ARCCONTAINERSTORAGE_APIS,
             "prepare_bundle": prepare_arccontainerstorage_bundle,
@@ -153,6 +158,7 @@ def build_bundle(
 
         if not deployed_apis and service_moniker not in [
             OpsServiceType.schemaregistry.value,
+            OpsServiceType.edgeregistry.value,
             OpsServiceType.connectors.value,
             OpsServiceType.meso.value,
             OpsServiceType.arccontainerstorage.value,  # No longer required.
@@ -174,6 +180,7 @@ def build_bundle(
             bundle = bundle_method(log_age_seconds, deployed_apis, include_mq_traces)
         elif service_moniker in [
             OpsServiceType.schemaregistry.value,
+            OpsServiceType.edgeregistry.value,
             OpsServiceType.connectors.value,
             OpsServiceType.meso.value,
         ]:
