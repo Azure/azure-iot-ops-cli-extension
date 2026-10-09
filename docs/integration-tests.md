@@ -36,6 +36,7 @@ There are, however, some prerequisites and caveats that users should be made awa
   ##### **Available Scenarios**
 
   - **edge**: Default edge/cluster tests (non-cloud)
+  - **broker-diagnostics-removal**: Explicit-only, serial broker checks and support-bundle tests requiring absent retired diagnostics resources; see the [regression guide](../.github/workflows/README.md#broker-diagnostics-removal-regression)
   - **insecure-listener**: Tests with insecure listener deployment
   - **rpsaas**: Cloud-side (RPSaaS) tests
   - **upgrade**: Azure IoT Operations upgrade tests (runs serially)
@@ -54,6 +55,7 @@ There are, however, some prerequisites and caveats that users should be made awa
   - `needs_trust`: Whether trust bundle setup is required
   - `test_redeploy`: Whether to test redeployment
   - `parallel`: Whether tests run in parallel (default: true)
+  - `manual_only`: Whether explicit selection is required (excluded from default/scheduled runs)
   - `env`: Custom environment variables for the scenario
 
   ##### **Selecting Scenarios**
@@ -66,6 +68,7 @@ There are, however, some prerequisites and caveats that users should be made awa
 
   If not specified, all standard scenarios run on both channels. The `upgrade-path`
   scenario requires explicit selection and baseline definitions.
+  The `broker-diagnostics-removal` scenario also requires explicit selection.
 
 ### GA and preview qualification
 
@@ -193,7 +196,7 @@ channel jobs and the approved upgrade paths; a default green run alone does not 
 | Input | Description |
 |---|---|
 **resource-group** | *The resource group to run tests in*
-**test-scenarios** | *Comma-separated scenarios (e.g., "rpsaas,upgrade"). Empty selects standard scenarios, excluding opt-in upgrade-path.*
+**test-scenarios** | *Comma-separated scenarios (e.g., "rpsaas,upgrade"). Empty selects standard scenarios, excluding opt-in upgrade-path and broker-diagnostics-removal.*
 **runtime-channels** | *Comma-separated channels; defaults to stable,preview with independent clusters.*
 **upgrade-baselines** | *Pinned baseline definitions keyed by channel; required when selecting upgrade-path.*
 **custom-locations-oid** | *Custom Locations Object ID - used to enable cluster-connect feature.*

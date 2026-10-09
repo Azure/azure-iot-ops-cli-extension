@@ -440,11 +440,18 @@ def process_nodes() -> Dict[str, Union[dict, str]]:
     }
 
 
-def get_mq_namespaces(use_cache: Optional[bool] = False) -> List[str]:
+def get_mq_namespaces(use_cache: Optional[bool] = False, raise_on_error: bool = False) -> List[str]:
     from ..edge_api import MQ_ACTIVE_API, MqResourceKinds
 
     namespaces = []
-    cluster_brokers = MQ_ACTIVE_API.get_resources(MqResourceKinds.BROKER, use_cache=use_cache)
+    if raise_on_error:
+        # The broker plural is fixed; avoid best-effort API discovery on this strict read.
+        cluster_brokers = get_custom_objects(
+            group=MQ_ACTIVE_API.group, version=MQ_ACTIVE_API.version, plural="brokers",
+            use_cache=use_cache, raise_on_error=True,
+        )
+    else:
+        cluster_brokers = MQ_ACTIVE_API.get_resources(MqResourceKinds.BROKER, use_cache=use_cache)
     if cluster_brokers and cluster_brokers["items"]:
         namespaces.extend([b["metadata"]["namespace"] for b in cluster_brokers["items"]])
 

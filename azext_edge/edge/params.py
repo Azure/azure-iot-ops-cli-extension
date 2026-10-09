@@ -219,7 +219,9 @@ def load_iotops_arguments(self, _):
             "include_mq_traces",
             options_list=["--broker-traces"],
             arg_type=get_three_state_flag(),
-            help="Include mqtt broker traces in the support bundle. "
+            help="Include internal MQTT broker traces from deployments with a diagnostics service. "
+            "The service is removed in AIO 2610 and later; when no diagnostics pod is found, "
+            "a warning is shown and the bundle continues without these traces. "
             "Usage may add considerable size to the produced bundle.",
         )
         context.argument(
