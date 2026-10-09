@@ -37,6 +37,7 @@ from .providers.orchestration.common import (
     DataflowEndpointFabricPathType,
     DataflowEndpointKafkaAcksType,
     IdentityUsageType,
+    IoTOperationsSku,
     KafkaCloudEventAttributeType,
     KafkaCompressionType,
     KafkaPartitionStrategyType,
@@ -1266,6 +1267,15 @@ def load_iotops_arguments(self, _):
         )
 
     with self.argument_context("iot ops create") as context:
+        context.argument(
+            "sku",
+            options_list=["--sku"],
+            arg_type=get_enum_type(IoTOperationsSku),
+            help="Billing SKU for the IoT Operations instance. If omitted, Standard is used. Essentials supports "
+            "single-node deployments, does not support OPC UA, and cannot be changed after creation. For Azure IoT "
+            "Operations pricing and licensing terms, see https://www.microsoft.com/licensing/terms/productoffering/"
+            "MicrosoftAzure/MOSA#clause-2792-h3-1.",
+        )
         context.argument(
             "use_preview",
             options_list=["--use-preview"],

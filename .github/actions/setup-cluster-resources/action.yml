@@ -59,8 +59,8 @@ runs:
         echo "SCHEMA_REGISTRY_ID=$registry_id" >> $GITHUB_OUTPUT
         echo "Schema registry created: $registry_id"
 
-        # ADR namespace - limit name to 30 chars
-        adr_namespace_name=$(echo "init-adr-ns-${{ inputs.suffix }}" | cut -c 1-30)
+        # ADR namespace - limit name to 30 chars without leaving an invalid trailing hyphen
+        adr_namespace_name=$(echo "init-adr-ns-${{ inputs.suffix }}" | cut -c 1-30 | sed 's/-*$//')
         echo "Creating ADR namespace: $adr_namespace_name"
 
         adr_namespace_id=$(az iot ops ns create \

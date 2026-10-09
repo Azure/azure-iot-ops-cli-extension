@@ -19,6 +19,7 @@ from .providers.orchestration.common import (
     DEFAULT_HEALTH_CHECKS_INTERVAL,
     DEFAULT_HEALTH_CHECKS_MAX,
     IdentityUsageType,
+    IoTOperationsSku,
     MqMemoryProfile,
 )
 from .providers.orchestration.resources import Instances
@@ -32,6 +33,28 @@ def _validate_health_check_args(health_checks_max: int, health_checks_interval: 
         raise InvalidArgumentValueError("--health-checks-max must be >= 0.")
     if health_checks_interval < 0:
         raise InvalidArgumentValueError("--health-checks-int must be >= 0.")
+
+
+def _apply_essentials_sku(instance_features: Optional[List[str]]) -> List[str]:
+    from .providers.orchestration.resources.instances import parse_feature_kvp_nargs
+
+    parsed_features = parse_feature_kvp_nargs(instance_features, strict=True) or {}
+    opcua_mode = (parsed_features.get("opcua") or {}).get("mode")
+
+    if opcua_mode in ("Stable", "Preview"):
+        logger.warning(
+            "OPC UA mode '%s' is not supported with the Essentials SKU and will be ignored. "
+            "The instance will use opcua.mode=Disabled.",
+            opcua_mode,
+        )
+
+    effective_features = [
+        feature
+        for feature in (instance_features or [])
+        if feature.partition("=")[0] != "opcua.mode"
+    ]
+    effective_features.append("opcua.mode=Disabled")
+    return effective_features
 
 
 def support_bundle(
@@ -164,6 +187,7 @@ def create_instance(
     custom_location_name: Optional[str] = None,
     instance_description: Optional[str] = None,
     instance_features: Optional[List[str]] = None,
+    sku: Optional[str] = None,
     dataflow_profile_instances: int = 1,
     trust_settings: Optional[List[str]] = None,
     # Ops Extension
@@ -196,6 +220,9 @@ def create_instance(
 ) -> Union[Dict[str, Any], None]:
     _validate_health_check_args(health_checks_max, health_checks_interval)
 
+    if sku == IoTOperationsSku.ESSENTIALS.value:
+        instance_features = _apply_essentials_sku(instance_features)
+
     from .providers.orchestration.work import WorkManager
     from .util import read_file_content
 
@@ -220,6 +247,7 @@ def create_instance(
         instance_name=instance_name,
         instance_description=instance_description,
         instance_features=instance_features,
+        sku=sku,
         add_insecure_listener=add_insecure_listener,
         dataflow_profile_instances=dataflow_profile_instances,
         trust_settings=trust_settings,
