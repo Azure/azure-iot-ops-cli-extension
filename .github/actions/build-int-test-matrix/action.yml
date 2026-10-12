@@ -13,6 +13,18 @@ inputs:
     description: Comma-separated list of scenarios to run
     required: false
     default: ''
+  runtime-channels:
+    description: Comma-separated runtime channels (stable,preview)
+    default: stable,preview
+  upgrade-baselines:
+    description: JSON object of pinned baseline wheels and runtime identities, keyed by channel
+    default: '{}'
+  runtime-init-args:
+    description: Additional shared foundation arguments
+    default: ''
+  runtime-create-args:
+    description: Additional runtime arguments, excluding channel/version/train selection
+    default: ''
 
 outputs:
   matrix:
@@ -32,5 +44,9 @@ runs:
       env:
         TEST_SCENARIO_FILE: ${{ inputs.config-file }}
         TEST_SCENARIOS: ${{ inputs.test-scenarios }}
+        RUNTIME_CHANNELS: ${{ inputs.runtime-channels }}
+        UPGRADE_BASELINES: ${{ inputs.upgrade-baselines }}
+        RUNTIME_INIT_ARGS: ${{ inputs.runtime-init-args }}
+        RUNTIME_CREATE_ARGS: ${{ inputs.runtime-create-args }}
       run: |
         python "${{ github.action_path }}/build_matrix.py"

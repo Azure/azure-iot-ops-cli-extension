@@ -19,6 +19,7 @@ from .providers.orchestration.common import (
     DEFAULT_HEALTH_CHECKS_INTERVAL,
     DEFAULT_HEALTH_CHECKS_MAX,
     IdentityUsageType,
+    IoTOperationsSku,
     MqMemoryProfile,
 )
 from .providers.orchestration.resources import Instances
@@ -32,6 +33,28 @@ def _validate_health_check_args(health_checks_max: int, health_checks_interval: 
         raise InvalidArgumentValueError("--health-checks-max must be >= 0.")
     if health_checks_interval < 0:
         raise InvalidArgumentValueError("--health-checks-int must be >= 0.")
+
+
+def _apply_essentials_sku(instance_features: Optional[List[str]]) -> List[str]:
+    from .providers.orchestration.resources.instances import parse_feature_kvp_nargs
+
+    parsed_features = parse_feature_kvp_nargs(instance_features, strict=True) or {}
+    opcua_mode = (parsed_features.get("opcua") or {}).get("mode")
+
+    if opcua_mode in ("Stable", "Preview"):
+        logger.warning(
+            "OPC UA mode '%s' is not supported with the Essentials SKU and will be ignored. "
+            "The instance will use opcua.mode=Disabled.",
+            opcua_mode,
+        )
+
+    effective_features = [
+        feature
+        for feature in (instance_features or [])
+        if feature.partition("=")[0] != "opcua.mode"
+    ]
+    effective_features.append("opcua.mode=Disabled")
+    return effective_features
 
 
 def support_bundle(
@@ -164,6 +187,7 @@ def create_instance(
     custom_location_name: Optional[str] = None,
     instance_description: Optional[str] = None,
     instance_features: Optional[List[str]] = None,
+    sku: Optional[str] = None,
     dataflow_profile_instances: int = 1,
     trust_settings: Optional[List[str]] = None,
     # Ops Extension
@@ -191,9 +215,13 @@ def create_instance(
     no_preflight: Optional[bool] = None,
     health_checks_max: int = DEFAULT_HEALTH_CHECKS_MAX,
     health_checks_interval: int = DEFAULT_HEALTH_CHECKS_INTERVAL,
+    use_preview: Optional[bool] = None,
     **kwargs,
 ) -> Union[Dict[str, Any], None]:
     _validate_health_check_args(health_checks_max, health_checks_interval)
+
+    if sku == IoTOperationsSku.ESSENTIALS.value:
+        instance_features = _apply_essentials_sku(instance_features)
 
     from .providers.orchestration.work import WorkManager
     from .util import read_file_content
@@ -208,6 +236,7 @@ def create_instance(
         show_progress=not no_progress,
         pre_flight=not (no_preflight or feature_config.is_enabled(FeatureFlag.PREFLIGHT_DISABLED)),
         apply_foundation=False,
+        use_preview=use_preview,
         cluster_name=cluster_name,
         resource_group_name=resource_group_name,
         cluster_namespace=cluster_namespace,
@@ -218,6 +247,7 @@ def create_instance(
         instance_name=instance_name,
         instance_description=instance_description,
         instance_features=instance_features,
+        sku=sku,
         add_insecure_listener=add_insecure_listener,
         dataflow_profile_instances=dataflow_profile_instances,
         trust_settings=trust_settings,
@@ -326,7 +356,9 @@ def delete(
 
 
 def show_instance(cmd, instance_name: str, resource_group_name: str, show_tree: Optional[bool] = None) -> dict:
-    return Instances(cmd).show(name=instance_name, resource_group_name=resource_group_name, show_tree=show_tree)
+    return Instances(cmd).show(
+        name=instance_name, resource_group_name=resource_group_name, show_tree=show_tree, resolve_api=True,
+    )
 
 
 def list_instances(cmd, resource_group_name: Optional[str] = None) -> Iterable[dict]:
@@ -454,19 +486,24 @@ def enable_rsync(
 
 
 def get_versions(inline: Optional[bool] = None):
-    # TODO: quick and dirty, refactor this in the future.
     if inline:
         from ..constants import AIO_RELEASE, VERSION
+        from .providers.orchestration.runtime_catalog import get_runtime_catalog
         from .providers.orchestration.targets import InitTargets
 
-        targets = InitTargets("", "")
+        catalog = get_runtime_catalog()
+        default_profile = catalog.for_create()
+        targets = InitTargets("", "", runtime_profile=default_profile)
         return {
             "cliVersion": VERSION,
             "iotOpsRelease": AIO_RELEASE,
+            # Preserve existing query paths for shared dependencies and default create.
             "extensions": {
                 **targets.get_extension_versions(),
                 **targets.get_extension_versions(False),
             },
+            "defaultRuntimeChannel": default_profile.channel.value,
+            "runtimeProfiles": catalog.describe_profiles(),
         }
     else:
         import webbrowser

@@ -1,11 +1,27 @@
 ---
 name: sync-aio-bicep-templates
-description: Generate and safely integrate updated template.py blueprints from the azure-iot-operations-tests deployment repository and an explicit release ref.
+description: Generate and safely integrate GA or preview AIO runtime templates from azure-iot-operations-tests at explicit source refs, excluding GDS Manager from both profiles. Use for template sync, adding a separate preview blueprint, or refreshing release inputs without changing the other runtime profile or shared init dependencies.
 ---
 
 # Synchronize AIO Bicep templates
 
-Use this workflow when a teammate asks to generate `template.py` for a new AIO release.
+Use this workflow when a teammate asks to generate deployment blueprints for an AIO release.
+
+## Choose the synchronization scope first
+
+For a **preview template**, an explicit runtime profile, or a package supporting **both GA and preview**, first read
+[Runtime-profile synchronization](./references/runtime-profiles.md). It defines the target files, independent source
+refs, review gates, and validation mapping for that scope. Its scope-specific rules replace the single-template
+write targets, global constants/version policy, and publication hand-off below; the source safety, provenance,
+redaction, and compile checks still apply. Never run the legacy two-assignment replacement against a preview ref.
+
+The existing single-release workflow below remains for a request to refresh the legacy GA/shared templates. It is
+not a reason to replace the GA instance blueprint, shared enablement blueprint, or package version when adding a
+preview profile. With runtime profiles present, use the profile workflow even for a GA-only instance refresh.
+
+An unspecified scope must be resolved before generation; do not infer it from the source train. A branch explicitly
+supplied as the preview source selects preview scope, but does not establish its actual deployment train, final
+release approval, or permission to publish it.
 
 ## Required inputs
 
@@ -54,8 +70,10 @@ Do not require the user to know repository implementation details after these in
    version, stop and ask, because recompiling with it rewrites `_generator.version` backwards. Never change the
    machine's Bicep installation as a side effect of this workflow — it is shared with everything else on the system.
 10. Parse `Deployment/release.json` from the selected ref and confirm its `release` value equals the supplied release
-    moniker. Fail on a mismatch rather than combining metadata from different releases. The value is stored as an
-    integer and the moniker is a string, so coerce before comparing. Compare it against the **supplied moniker**,
+  moniker. Fail on a mismatch rather than combining metadata from different releases. The value may be an integer
+  or a prefixed string, so coerce to a string without stripping a prefix. If the user supplied only a source ref,
+  report the discovered moniker; do not invent an expected value from the branch name. Compare an explicitly
+  supplied moniker against that source value,
     never against `AIO_RELEASE`: that constant still holds the *previous* release until section 4 updates it, so
     comparing against it here fails every genuinely new release and lets only a re-sync through.
 11. Note whether `AIO_RELEASE` in `azext_edge/constants.py` already equals the supplied moniker. If it does, this is
@@ -213,6 +231,28 @@ not. That combination is only possible if someone edited generated output by han
 
 ### Source redactions
 
+#### Required GDS Manager exclusion for GA and preview
+
+Exclude GDS Manager from every selected GA and preview instance template, including same-release refreshes.
+This approved policy supersedes earlier approval to retain GDS in internal preview qualification templates.
+Do not ask for that settled exclusion again or treat the upstream default as permission to restore it.
+A single-profile sync must still preserve the nonselected profile and shared enablement; when both profiles are
+selected, apply and validate the exclusion independently in both exports.
+
+Treat this as an approved behavioral release-policy override, not a behavior-preserving substitution:
+
+- Inspect the selected source's compiled dependency closure for GDS-only parameters, variables, resources,
+  configuration settings, conditions, and their readers. Include `enableGdsManager` and
+  `connectors.values.gdsManager.enabled`, plus any additional GDS symbols introduced by that ref.
+- Remove those inputs and all GDS-only readers from the exported Bicep source before recompiling. Remove orphaned
+  decorators too. Preserve unrelated expressions and components when an expression contains both GDS and non-GDS
+  content. Do not merely set the default to `false`, hand-edit generated Python/JSON, or change the source checkout.
+- Report the removed source paths and symbols per profile, record the override in provenance, and update stale
+  generated-module notes and release-specific test expectations that previously claimed GDS was retained.
+- Validate each final compiled blueprint independently: no GDS Manager parameter, configuration entry, resource,
+  or reference may remain. Scan both keys and string values case-insensitively, accounting for the GDS names found
+  in the selected source. Stop integration if any GDS input or reader survives.
+
 `template.py` is normally byte-identical to the compiled Bicep, and that is the invariant this skill maintains.
 Redactions are a deliberate, bounded exception to it: the goal is a template that deploys identically, not one that
 matches the compiler byte for byte. Apply a redaction only when it is provably behavior-preserving and there is a
@@ -297,6 +337,13 @@ somewhere whole, is indexed by an expression rather than a literal field name, o
 depends on the file's structure rather than on one scalar within it.
 
 ### Constants and test expectations
+
+For profile-aware syncs, complete the [release-test maintenance steps](./references/runtime-profiles.md#maintain-release-tracking-tests)
+in the same change as the selected blueprint and catalog. The GA-only list below is not sufficient for preview.
+Do not leave release-specific test updates as a manual task for the user.
+Also complete [management API maintenance](./references/runtime-profiles.md#maintain-release-specific-management-apis)
+from the approved release inputs. Keep runtime-profile API selection separate from generated deployment API values;
+an intentionally pinned blueprint must not be regenerated merely to align those values.
 
 Also update, from the same generated output:
 

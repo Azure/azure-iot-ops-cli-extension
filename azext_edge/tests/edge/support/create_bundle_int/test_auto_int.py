@@ -15,7 +15,7 @@ from .helpers import (
     run_bundle_command,
     BASE_ZIP_PATH,
 )
-from ....helpers import assert_extra_or_missing_names
+from ....helpers import assert_extra_or_missing_names, get_multi_kubectl_workload_items
 
 logger = get_logger(__name__)
 
@@ -174,6 +174,18 @@ def _get_expected_services(walk_result: Dict[str, Dict[str, List[str]]], ops_ser
 
         if not exists and service in expected_services:
             expected_services.remove(service)
+
+    for service, prefixes in [
+        (OpsServiceType.schemaregistry.value, ["adr-schema-registry"]),
+        (OpsServiceType.edgeregistry.value, ["aio-edge-registry"]),
+    ]:
+        if service in expected_services:
+            resources = get_multi_kubectl_workload_items(
+                expected_workload_types=["configmap", "pod", "service", "statefulset", "pvc"],
+                prefixes=prefixes,
+            )
+            if not any(resources.values()):
+                expected_services.remove(service)
 
     # Add meta and meso if they're not already present
     # These are always included as common services

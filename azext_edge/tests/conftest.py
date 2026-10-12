@@ -32,12 +32,16 @@ MARKERS = [
     MarkerDefinition("e2e", "mark end-to-end containerized tests (support bundles, checks)", False),
     MarkerDefinition("rpsaas", "mark tests that are cloud-side", True),
     MarkerDefinition("upgrade", "mark tests that will run az iot ops upgrade", True),
+    MarkerDefinition("runtime_channel", "isolated serial runtime-channel integration checks", True),
     MarkerDefinition("mgmtactions", "mark tests that exercise az iot ops mgmt-actions end to end", True),
     MarkerDefinition("livedata", "mark tests that exercise az iot ops live-data end to end", True),
     MarkerDefinition("init_scenario_test", "mark tests that will run az iot ops init", True),
     MarkerDefinition("require_wlif_setup", "mark tests that require workload identity trust setup", True),
     MarkerDefinition("long_running", "mark tests that take a long time to run", False),
     MarkerDefinition("serial", "mark tests that must run serially (not parallelized by xdist)", False),
+    MarkerDefinition("integration", "integration tests that may require network access", False),
+    MarkerDefinition("requires_network", "tests requiring network connectivity", False),
+    MarkerDefinition("acr", "tests requiring an Azure Container Registry", False),
 ]
 
 
@@ -59,6 +63,22 @@ def pytest_collection_modifyitems(items):
         # Auto-mark as 'edge' if no exclude marks exist
         if not existing_marks.intersection(exclude_marks):
             item.add_marker(pytest.mark.edge)
+
+
+@pytest.fixture(scope="session", autouse=True)
+def verify_integration_runtime(request):
+    """Qualification jobs must not silently run on the wrong channel or an unready runtime."""
+    channel = os.environ.get("azext_edge_runtime_channel")
+    integration = [item for item in request.session.items if item.path.name.endswith("_int.py")]
+    if not channel or not integration:
+        return
+    # Init performs this assertion immediately after creating the instance, outside
+    # the legacy continue-on-error block. Other suites validate before their first test.
+    if all(item.get_closest_marker("init_scenario_test") for item in integration):
+        return
+    from .runtime_checks import assert_runtime, configured_baseline
+
+    assert_runtime(os.environ["azext_edge_instance"], os.environ["azext_edge_rg"], channel, configured_baseline())
 
 
 # Sets current working directory to the directory of the executing file

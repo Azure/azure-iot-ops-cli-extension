@@ -1,0 +1,5 @@
+# Each channel uses an independent cluster but the same candidate wheel.
+scenarios:
+  - name: container-e2e
+    description: Containerized end-to-end tests
+    tox_env: python-e2e-int

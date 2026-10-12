@@ -5,6 +5,7 @@
 # ----------------------------------------------------------------------------------------------
 
 import random
+import os
 from copy import deepcopy
 from typing import Any, Dict, List
 
@@ -19,6 +20,7 @@ from azext_edge.edge.util import parse_kvp_nargs
 
 from ...generators import generate_random_string
 from ...helpers import process_additional_args, run, strip_quotes
+from ...runtime_checks import assert_runtime, configured_baseline
 
 EXTENSION_TYPE_TO_ALIAS_MAP = {
     val: key
@@ -53,6 +55,12 @@ def test_upgrade(upgrade_int_setup):
     additional_args = upgrade_int_setup["additionalUpgradeArgs"] or ""
     resource_group = upgrade_int_setup["resourceGroup"]
     instance_name = upgrade_int_setup["instanceName"]
+    channel = os.environ.get("azext_edge_runtime_channel")
+    baseline = configured_baseline()
+    if channel:
+        source = assert_runtime(instance_name, resource_group, channel, baseline)
+        # Qualification always targets the bundled profile, not arbitrary overrides.
+        assert not additional_args, "Do not override the target in a channel qualification job."
 
     # make tree get us the cluster
     instance_tree = run(f"az iot ops show -n {instance_name} -g {resource_group} --tree")
@@ -75,6 +83,18 @@ def test_upgrade(upgrade_int_setup):
 
     # run first command with only additional args from input
     run(f"{command} {additional_args}")
+    if channel:
+        target = assert_runtime(instance_name, resource_group, channel)
+        assert source.instance_id == target.instance_id
+        assert source.identity.channel == target.identity.channel
+        assert source.identity.train == target.identity.train
+        if baseline:
+            from azext_edge.edge.providers.orchestration.runtime_profiles import parse_runtime_version
+
+            assert parse_runtime_version(source.identity.version) < parse_runtime_version(target.identity.version)
+            # This is an actual version upgrade, not the random configuration/repair
+            # scenario below. Migration-specific assertions belong to the supplied path.
+            return
     assert_extensions(cluster_id=cluster_id, original_ext_map=original_ext_map, additional_args=additional_args)
     # if additional args present, only run once
     if additional_args:
@@ -90,6 +110,8 @@ def test_upgrade(upgrade_int_setup):
 
     run(f"{command} {additional_args}")
     assert_extensions(cluster_id=cluster_id, original_ext_map=original_ext_map, additional_args=additional_args)
+    if channel:
+        assert_runtime(instance_name, resource_group, channel)
 
 
 def assert_extensions(cluster_id: str, original_ext_map: Dict[str, Any], additional_args: str = ""):

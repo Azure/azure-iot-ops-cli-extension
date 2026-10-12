@@ -6,7 +6,7 @@
 
 import pytest
 from typing import List
-from .helpers import split_name
+from .helpers import assert_file_names, convert_file_names, split_name
 
 
 @pytest.mark.parametrize("input, expected", [
@@ -30,3 +30,29 @@ from .helpers import split_name
 def test_split_name(input: str, expected: List[str]):
     result = split_name(input)
     assert result == expected
+
+
+@pytest.mark.parametrize("pod_name", [
+    "aio-akri-upgrade-status-job-1.4.0-preview.2-lktm8",
+    "aio-akri-upgrade-status-job-1.4.14-lktm8",
+    "aio-akri-operator-0",
+])
+@pytest.mark.parametrize("suffix, descriptors, extension", [
+    ("yaml", [], "yaml"),
+    ("aio-akri-upgrade-status-job.log", ["aio-akri-upgrade-status-job"], "log"),
+    ("aio-akri-upgrade-status-job.previous.log", ["aio-akri-upgrade-status-job", "previous"], "log"),
+    ("aio-akri-upgrade-status-job.init.log", ["aio-akri-upgrade-status-job", "init"], "log"),
+    ("metric.yaml", ["metric"], "yaml"),
+])
+def test_pod_filenames_preserve_versioned_names(pod_name, suffix, descriptors, extension):
+    filename = f"pod.{pod_name}.{suffix}"
+    assert split_name(filename) == ["pod", pod_name, *descriptors, extension]
+    assert_file_names([filename])
+
+    file_type = "podmetric" if suffix == "metric.yaml" else "pod"
+    expected = {"name": pod_name, "full_name": filename, "extension": extension}
+    if descriptors:
+        expected["descriptor"] = descriptors[0]
+    if len(descriptors) == 2:
+        expected["sub_descriptor"] = descriptors[1]
+    assert convert_file_names([filename]) == {file_type: [expected]}

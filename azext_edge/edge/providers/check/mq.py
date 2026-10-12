@@ -22,13 +22,9 @@ from .base import (
     validate_runtime_resource_ref,
 )
 
-from rich.console import NewLine
 from rich.padding import Padding
 
-from ...common import (
-    AIO_BROKER_DIAGNOSTICS_SERVICE,
-    CheckTaskStatus,
-)
+from ...common import CheckTaskStatus
 
 from .common import (
     AIO_BROKER_DIAGNOSTICS_PROBE_PREFIX,
@@ -589,13 +585,6 @@ def evaluate_brokers(
                 resource_name=broker_name,
             )
 
-            _evaluate_broker_diagnostics_service(
-                check_manager=check_manager,
-                target_brokers=target_brokers,
-                namespace=namespace,
-                detail_level=detail_level,
-            )
-
         if brokers_count > 0:
             check_manager.add_display(
                 target_name=target_brokers,
@@ -615,7 +604,6 @@ def evaluate_brokers(
                     AIO_BROKER_BACKEND_PREFIX,
                     AIO_BROKER_AUTH_PREFIX,
                     AIO_BROKER_HEALTH_MANAGER,
-                    AIO_BROKER_DIAGNOSTICS_SERVICE,
                     AIO_BROKER_OPERATOR,
                     # AIO_BROKER_FLUENT_BIT,
                     # TODO: Fluent Bit is deployed to all nodes and stays in a pending state until an
@@ -1199,92 +1187,6 @@ def _evaluate_listener_service(
             )
         elif listener_spec_service_type.lower() == "nodeport":
             pass
-
-
-def _evaluate_broker_diagnostics_service(
-    check_manager: CheckManager,
-    target_brokers: str,
-    namespace: str,
-    detail_level: int = ResourceOutputDetailLevel.summary.value,
-) -> None:
-    try:
-        diagnostics_service = get_namespaced_service(
-            name=AIO_BROKER_DIAGNOSTICS_SERVICE, namespace=namespace, as_dict=True
-        )
-    except ClusterAccessDeniedError as access_error:
-        # Denied on the secondary diagnostics service read: keep the broker findings and report inline.
-        check_manager.add_target_eval(
-            target_name=target_brokers,
-            namespace=namespace,
-            status=CheckTaskStatus.error.value,
-            value=f"Access denied (HTTP {access_error.status}) reading service/{AIO_BROKER_DIAGNOSTICS_SERVICE}",
-            resource_name=f"service/{AIO_BROKER_DIAGNOSTICS_SERVICE}",
-        )
-        check_manager.add_display(
-            target_name=target_brokers,
-            namespace=namespace,
-            display=Padding(
-                "\n" + build_access_denied_text(access_error.status, f"service {AIO_BROKER_DIAGNOSTICS_SERVICE}"),
-                (0, 0, 0, 12),
-            ),
-        )
-        return
-    if not diagnostics_service:
-        check_manager.add_target_eval(
-            target_name=target_brokers,
-            namespace=namespace,
-            status=CheckTaskStatus.error.value,
-            value=f"service/{AIO_BROKER_DIAGNOSTICS_SERVICE} not found in namespace {namespace}",
-            resource_name=f"service/{AIO_BROKER_DIAGNOSTICS_SERVICE}",
-        )
-        diag_service_desc_suffix = colorize_string(color="red", value="not detected")
-        diag_service_desc = (
-            f"Diagnostics Service {{{colorize_string(AIO_BROKER_DIAGNOSTICS_SERVICE)}}} {diag_service_desc_suffix}."
-        )
-        check_manager.add_display(
-            target_name=target_brokers,
-            namespace=namespace,
-            display=Padding(
-                diag_service_desc,
-                (0, 0, 0, 12),
-            ),
-        )
-    else:
-        clusterIP = diagnostics_service.get("spec", {}).get("clusterIP")
-        ports: List[dict] = diagnostics_service.get("spec", {}).get("ports", [])
-
-        check_manager.add_target_eval(
-            target_name=target_brokers,
-            namespace=namespace,
-            status=CheckTaskStatus.success.value,
-            value={"spec": {"clusterIP": clusterIP, "ports": ports}},
-            resource_name=f"service/{AIO_BROKER_DIAGNOSTICS_SERVICE}",
-        )
-        diag_service_desc_suffix = colorize_string(color="green", value="detected")
-        diag_service_desc = (
-            f"\nDiagnostics Service {{{colorize_string(AIO_BROKER_DIAGNOSTICS_SERVICE)}}} {diag_service_desc_suffix}."
-        )
-        check_manager.add_display(
-            target_name=target_brokers,
-            namespace=namespace,
-            display=Padding(
-                diag_service_desc,
-                (0, 0, 0, 12),
-            ),
-        )
-        if ports and detail_level != ResourceOutputDetailLevel.summary.value:
-            for port in ports:
-                check_manager.add_display(
-                    target_name=target_brokers,
-                    namespace=namespace,
-                    display=Padding(
-                        f"{colorize_string(port.get('name'))} "
-                        f"port {colorize_string(port.get('port'))} "
-                        f"protocol {colorize_string(port.get('protocol'))}",
-                        (0, 0, 0, 16),
-                    ),
-                )
-            check_manager.add_display(target_name=target_brokers, namespace=namespace, display=NewLine())
 
 
 def _display_sub_check_results(

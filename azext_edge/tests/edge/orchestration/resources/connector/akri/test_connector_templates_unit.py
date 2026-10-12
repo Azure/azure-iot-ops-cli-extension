@@ -27,7 +27,8 @@ from ...conftest import (
 
 
 def get_connector_template_endpoint(
-    instance_name: str, resource_group_name: Optional[str] = None, template_name: Optional[str] = None
+    instance_name: str, resource_group_name: Optional[str] = None, template_name: Optional[str] = None,
+    api_version: str = INSTANCES_API_VERSION,
 ) -> str:
     resource_path = f"/instances/{instance_name}/akriConnectorTemplates"
     if template_name:
@@ -36,7 +37,7 @@ def get_connector_template_endpoint(
         resource_group_name=resource_group_name,
         resource_path=resource_path,
         resource_provider=RESOURCE_PROVIDER,
-        api_version=INSTANCES_API_VERSION,
+        api_version=api_version,
     )
 
 

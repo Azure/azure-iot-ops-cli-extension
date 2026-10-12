@@ -7,6 +7,7 @@
 
 import json
 import re
+from copy import deepcopy
 from typing import Optional
 from unittest.mock import Mock
 
@@ -29,6 +30,7 @@ from azext_edge.edge.providers.orchestration.common import (
 )
 from azext_edge.edge.providers.orchestration.resources import Instances
 from azext_edge.edge.providers.orchestration.resources.connector_templates import ConnectorTemplates
+from azext_edge.edge.providers.orchestration.runtime_profiles import RuntimeChannel
 from azext_edge.edge.providers.orchestration.resources.instances import (
     KEYVAULT_ROLE_ID_READER,
     KEYVAULT_ROLE_ID_SECRETS_USER,
@@ -87,6 +89,13 @@ def mocked_resolve_oidc_issuer(mocker):
         "azext_edge.edge.providers.orchestration.resources.instances.resolve_oidc_issuer",
         autospec=True,
         side_effect=lambda arm_issuer, **_: (arm_issuer, False),
+    )
+
+
+@pytest.fixture
+def mocked_ga_runtime_context(mocker):
+    yield mocker.patch.object(
+        Instances, "get_runtime_context", return_value=Mock(identity=Mock(channel=RuntimeChannel.STABLE)),
     )
 
 
@@ -229,6 +238,24 @@ def get_mock_cl_record(name: str, resource_group_name: str) -> dict:
     return resource
 
 
+@pytest.mark.parametrize("version", ["1.5.30", "1.6.0-preview.40"])
+def test_instance_write_read_does_not_discover_runtime(mocker, mocked_cmd, mocked_responses, version):
+    name, resource_group = "instance", "rg"
+    record = get_mock_instance_record(name, resource_group, version=version)
+    record["properties"]["retainedConfiguration"] = {"values": ["custom"]}
+    record["identity"] = {"type": "None"}
+    endpoint = get_instance_endpoint(resource_group, name, api_version="2026-10-01")
+    mocked_responses.add(responses.GET, endpoint, json=record)
+    discovery = mocker.patch.object(
+        Instances, "get_runtime_context", side_effect=HttpResponseError("AuthorizationFailed: discovery forbidden"),
+    )
+
+    assert Instances(mocked_cmd)._get_instance_for_write(name, resource_group) == record
+    discovery.assert_not_called()
+    assert len(mocked_responses.calls) == 1
+    assert mocked_responses.calls[0].request.url == endpoint
+
+
 def test_instance_show(mocked_cmd, mocked_responses: responses):
     instance_name = generate_random_string()
     resource_group_name = generate_random_string()
@@ -246,6 +273,288 @@ def test_instance_show(mocked_cmd, mocked_responses: responses):
 
     assert result == mock_instance_record
     assert len(mocked_responses.calls) == 1
+
+
+@pytest.mark.parametrize("operation", ["show", "update"])
+@pytest.mark.parametrize("discovery_error", [
+    ValidationError("Expected exactly one AIO extension on the associated connected cluster."),
+    ValidationError("The custom location is not associated with the AIO extension."),
+    ValidationError("Unable to determine installed AIO version: extension currentVersion is missing."),
+    ValidationError("AIO runtime '1.6.0-preview.8' on train 'integration' has no supported runtime profile mapping."),
+    HttpResponseError("AuthorizationFailed: cluster read forbidden"),
+    HttpResponseError("ResourceNotFound: connected cluster not found"),
+])
+def test_instance_discovery_failure_does_not_block_ordinary_operations(
+    mocker, mocked_cmd, mocked_responses, caplog, operation, discovery_error,
+):
+    name, resource_group = "instance", "rg"
+    record = get_mock_instance_record(name, resource_group)
+    mocked_responses.add(responses.GET, get_instance_endpoint(resource_group, name), json=record)
+    discovery = mocker.patch.object(Instances, "get_runtime_context", side_effect=discovery_error)
+
+    if operation == "show":
+        with caplog.at_level("DEBUG"):
+            assert show_instance(mocked_cmd, name, resource_group) == record
+        assert not [record for record in caplog.records if record.levelname in {"WARNING", "ERROR", "CRITICAL"}]
+    else:
+        expected = deepcopy(record)
+        expected["tags"] = {"updated": "yes"}
+        expected["properties"]["description"] = "Updated description"
+        mocked_responses.add_callback(
+            responses.PUT, get_instance_endpoint(resource_group, name), callback=echo_callback,
+        )
+        assert update_instance(
+            mocked_cmd, name, resource_group, tags=expected["tags"],
+            instance_description="Updated description", wait_sec=0,
+        ) == expected
+        assert mocked_responses.calls[-1].request.method == "PUT"
+        assert json.loads(mocked_responses.calls[-1].request.body) == expected
+    discovery.assert_not_called()
+    assert len(mocked_responses.calls) == (1 if operation == "show" else 2)
+    assert mocked_responses.calls[0].request.method == "GET"
+
+
+@pytest.mark.parametrize("status", [403, 404, 500])
+def test_instance_show_does_not_hide_instance_read_errors(mocked_cmd, mocked_responses, caplog, status):
+    name, resource_group = "instance", "rg"
+    endpoint = get_instance_endpoint(resource_group, name)
+    mocked_responses.add(
+        responses.GET, endpoint, status=status, json={"error": {"code": "ReadFailed", "message": "Read failed"}},
+    )
+
+    with pytest.raises(HttpResponseError) as caught:
+        show_instance(mocked_cmd, name, resource_group)
+    assert caught.value.status_code == status
+    assert "Returning the instance" not in caplog.text
+    assert all(call.request.method == "GET" for call in mocked_responses.calls)
+
+
+@pytest.mark.parametrize("operation", ["show", "update"])
+@pytest.mark.parametrize("version", ["1.5.30", "1.6.0-preview.40"])
+def test_ga_instance_api_preserves_response_fields(mocker, mocked_cmd, mocked_responses, operation, version):
+    name, resource_group = "preview-instance", "preview-rg"
+    record = get_mock_instance_record(name, resource_group, version=version)
+    record["properties"]["retainedConfiguration"] = {"retained": ["value"]}
+    record["properties"]["previewOnlyProperty"] = {"enabled": True}
+    discovery = mocker.patch.object(
+        Instances, "get_runtime_context", side_effect=HttpResponseError("AuthorizationFailed: discovery forbidden"),
+    )
+    if operation == "show":
+        record["properties"]["provisioningState"] = "Failed"
+    endpoint = get_instance_endpoint(resource_group, name, api_version="2026-10-01")
+    mocked_responses.add(responses.GET, endpoint, json=record)
+    expected = deepcopy(record)
+    if operation == "update":
+        expected["tags"] = {"updated": "yes"}
+        expected["properties"]["description"] = "Updated description"
+        mocked_responses.add_callback(responses.PUT, endpoint, callback=echo_callback)
+        result = update_instance(
+            mocked_cmd, name, resource_group, tags=expected["tags"],
+            instance_description="Updated description", wait_sec=0,
+        )
+        writes = [call.request for call in mocked_responses.calls if call.request.method != "GET"]
+        assert len(writes) == 1
+        assert json.loads(writes[0].body) == expected
+        assert writes[0].url == endpoint
+    else:
+        result = show_instance(mocked_cmd, name, resource_group)
+        assert all(call.request.method == "GET" for call in mocked_responses.calls)
+    assert result == expected
+    discovery.assert_not_called()
+    assert len(mocked_responses.calls) == (1 if operation == "show" else 2)
+
+
+@pytest.mark.parametrize("operation", [
+    "add_mi_user_assigned", "remove_mi_user_assigned", "enable_secretsync", "disable_secretsync",
+])
+@pytest.mark.parametrize("train,version,api_version", [
+    ("stable", "1.5.30", "2026-10-01"),
+    ("integration", "1.6.0-preview.40", "2026-10-01"),
+])
+def test_instance_workflow_preserves_runtime_fields(
+    mocker, mocked_cmd, mocked_responses, mocked_get_tenant_id, operation, train, version, api_version,
+):
+    name, resource_group = "runtime-instance", "runtime-rg"
+    identity_id = generate_resource_id(
+        resource_group_name=resource_group, resource_provider=UAMI_RP, resource_path="/userAssignedIdentities/identity",
+    )
+    existing_id = identity_id if operation == "remove_mi_user_assigned" else f"{identity_id}-existing"
+    spc = get_mock_spc_record(name="spc", resource_group_name=resource_group)
+    initial = get_mock_instance_record(
+        name, resource_group, identity_map={existing_id: {}}, default_spc_resource_id=f"{spc['id']}-old",
+    )
+    initial["properties"]["version"] = version
+    initial["properties"]["retainedConfiguration"] = {"values": ["custom"]}
+    if train == "integration":
+        initial["properties"]["previewOnlyProperty"] = {"retained": ["value"]}
+    initial_endpoint = get_instance_endpoint(resource_group, name)
+    mocked_responses.add(responses.GET, initial_endpoint, json=initial)
+    selected = deepcopy(initial)
+    selected_endpoint = get_instance_endpoint(resource_group, name, api_version=api_version)
+    mocked_responses.add_callback(responses.PUT, selected_endpoint, callback=echo_callback)
+
+    instances = Instances(mocked_cmd)
+    discovery = mocker.patch.object(
+        instances, "get_runtime_context", side_effect=HttpResponseError("AuthorizationFailed: discovery forbidden"),
+    )
+    mocker.patch.object(instances, "get_associated_cl", return_value=get_mock_cl_record("location", resource_group))
+    resource_map = mocker.patch.object(instances, "get_resource_map").return_value
+    resource_map.connected_cluster.resource = {"name": "cluster", "location": "westus2"}
+    resource_map.connected_cluster.get_cl_resources_by_type.return_value = {}
+    mocker.patch.object(instances, "_ensure_oidc_issuer", return_value="https://issuer.example/cluster")
+    federate = mocker.patch.object(instances, "federate_msi")
+    unfederate = mocker.patch.object(instances, "unfederate_msi")
+    mocker.patch.object(instances, "_attempt_keyvault_role_assignments")
+    if operation in {"add_mi_user_assigned", "enable_secretsync"}:
+        mocked_responses.add(
+            responses.GET, get_uami_endpoint(resource_group, "identity"),
+            json={"properties": {"clientId": generate_uuid(), "principalId": generate_uuid()}},
+        )
+    keyvault_id = generate_resource_id(
+        resource_group_name=resource_group, resource_provider=KEYVAULT_RP, resource_path="/keyvaults/vault",
+    )
+    if operation == "enable_secretsync":
+        mocked_responses.add(responses.GET, get_kv_endpoint(resource_group, "vault"), json={})
+        mocked_responses.add(responses.PUT, get_spc_endpoint(resource_group, "spc"), json=spc)
+    operation_kwargs = {
+        "add_mi_user_assigned": {"mi_user_assigned": identity_id, "usage_type": IdentityUsageType.DATAFLOW.value},
+        "remove_mi_user_assigned": {"mi_user_assigned": identity_id, "federated_credential_name": "credential"},
+        "enable_secretsync": {"mi_user_assigned": identity_id, "keyvault_resource_id": keyvault_id, "spc_name": "spc"},
+        "disable_secretsync": {"confirm_yes": True},
+    }
+    result = getattr(instances, operation)(
+        name=name, resource_group_name=resource_group, wait_sec=0, **operation_kwargs[operation],
+    )
+    expected = deepcopy(selected)
+    if operation == "add_mi_user_assigned":
+        expected["identity"]["userAssignedIdentities"][identity_id] = {}
+    elif operation == "remove_mi_user_assigned":
+        expected["identity"] = {"type": "None", "userAssignedIdentities": {}}
+    elif operation == "enable_secretsync":
+        expected["properties"]["defaultSecretProviderClassRef"] = {"resourceId": spc["id"]}
+    else:
+        del expected["properties"]["defaultSecretProviderClassRef"]
+    writes = [call.request for call in mocked_responses.calls
+              if call.request.method == "PUT" and "/instances/" in call.request.url]
+    assert len(writes) == 1
+    assert writes[0].url == selected_endpoint
+    assert json.loads(writes[0].body) == expected
+    assert instances.iotops_api_version == api_version
+    if operation in {"add_mi_user_assigned", "remove_mi_user_assigned"}:
+        assert result == expected
+    elif operation == "enable_secretsync":
+        assert result == spc
+    else:
+        assert result is None
+    reads = [call.request.url for call in mocked_responses.calls
+             if call.request.method == "GET" and "/instances/" in call.request.url]
+    assert reads == [initial_endpoint]
+    discovery.assert_not_called()
+    assert not any(call.request.method == "PATCH" for call in mocked_responses.calls)
+    if operation in {"add_mi_user_assigned", "enable_secretsync"}:
+        federate.assert_called_once()
+    if operation == "remove_mi_user_assigned":
+        unfederate.assert_called_once()
+
+
+@pytest.mark.parametrize("operation", [
+    "add_mi_user_assigned", "remove_mi_user_assigned", "enable_secretsync", "disable_secretsync",
+])
+@pytest.mark.parametrize("status", [403, 404, 500])
+def test_instance_workflow_api_failure_prevents_writes(mocker, mocked_cmd, mocked_responses, operation, status):
+    name, resource_group = "preview-instance", "preview-rg"
+    mocked_responses.add(
+        responses.GET, get_instance_endpoint(resource_group, name), status=status,
+        json={"error": {"code": "ReadFailed", "message": "Instance read failed"}},
+    )
+    instances = Instances(mocked_cmd)
+    side_effects = [mocker.patch.object(instances, method) for method in (
+        "federate_msi", "unfederate_msi", "_attempt_keyvault_role_assignments", "_ensure_oidc_issuer",
+    )]
+    identity_id = generate_resource_id(
+        resource_group_name=resource_group, resource_provider=UAMI_RP, resource_path="/userAssignedIdentities/identity",
+    )
+    operation_kwargs = {
+        "add_mi_user_assigned": {"mi_user_assigned": identity_id, "usage_type": IdentityUsageType.DATAFLOW.value},
+        "remove_mi_user_assigned": {"mi_user_assigned": identity_id, "federated_credential_name": "credential"},
+        "enable_secretsync": {
+            "mi_user_assigned": identity_id,
+            "keyvault_resource_id": generate_resource_id(
+                resource_group_name=resource_group, resource_provider=KEYVAULT_RP, resource_path="/vaults/vault",
+            ),
+        },
+        "disable_secretsync": {"confirm_yes": True},
+    }
+    with pytest.raises(HttpResponseError) as caught:
+        getattr(instances, operation)(name=name, resource_group_name=resource_group, **operation_kwargs[operation])
+    assert caught.value.status_code == status
+    assert all(call.request.method == "GET" for call in mocked_responses.calls)
+    for side_effect in side_effects:
+        side_effect.assert_not_called()
+
+
+def mock_runtime_discovery(
+    mocked_responses, instance, version="1.1.15", train="stable", connectivity="Connected",
+    extension_state="Succeeded", extension_statuses=None,
+):
+    """Serve associated live ARM records; discovery/eligibility itself remains unmocked."""
+    from ..test_upgrade2_unit import get_cluster_endpoint, get_cluster_extensions_endpoint
+    from azext_edge.edge.providers.orchestration.common import EXTENSION_TYPE_OPS
+
+    resource_group = instance["id"].split("/")[4]
+    custom_location = get_mock_cl_record("location", resource_group)
+    custom_location["id"] = instance["extendedLocation"]["name"]
+    cluster_id = custom_location["properties"]["hostResourceId"]
+    extension_id = f"{cluster_id}/providers/Microsoft.KubernetesConfiguration/extensions/aio"
+    custom_location["properties"]["clusterExtensionIds"] = [extension_id]
+    mocked_responses.add(
+        responses.GET, f"{BASE_URL}{custom_location['id']}", json=custom_location,
+    )
+    mocked_responses.add(
+        responses.GET, get_cluster_endpoint(resource_group),
+        json={"id": cluster_id, "properties": {"connectivityStatus": connectivity}},
+    )
+    mocked_responses.add(
+        responses.GET, get_cluster_extensions_endpoint(resource_group),
+        json={"value": [{"id": extension_id, "properties": {
+            "extensionType": EXTENSION_TYPE_OPS, "version": version, "currentVersion": version,
+            "releaseTrain": train, "provisioningState": extension_state, "statuses": extension_statuses or [],
+        }}]},
+    )
+
+
+@pytest.mark.parametrize("unready", ["offline", "failed_instance", "updating_extension", "extension_error"])
+@pytest.mark.parametrize("enable_opcua", [False, True])
+def test_metadata_update_allows_unready_runtime_but_opcua_enable_does_not(
+    mocked_cmd, mocked_responses, unready, enable_opcua,
+):
+    name, resource_group = "instance", "rg"
+    record = get_mock_instance_record(name, resource_group)
+    if unready == "failed_instance":
+        record["properties"]["provisioningState"] = "Failed"
+    if enable_opcua:
+        mock_runtime_discovery(
+            mocked_responses, record,
+            connectivity="Offline" if unready == "offline" else "Connected",
+            extension_state="Updating" if unready == "updating_extension" else "Succeeded",
+            extension_statuses=[{"level": "Error", "message": "Extension error"}]
+            if unready == "extension_error" else None,
+        )
+    endpoint = get_instance_endpoint(resource_group, name)
+    mocked_responses.add(responses.GET, endpoint, json=record)
+    if enable_opcua:
+        with pytest.raises(ValidationError, match="runtime is not ready"):
+            update_instance(mocked_cmd, name, resource_group, instance_features=["opcua.mode=Stable"])
+        assert all(call.request.method == "GET" for call in mocked_responses.calls)
+    else:
+        mocked_responses.add(responses.PUT, endpoint, json=record)
+        update_instance(
+            mocked_cmd, name, resource_group, tags={"updated": "yes"},
+            instance_description="Updated description", wait_sec=0,
+        )
+        writes = [call.request for call in mocked_responses.calls if call.request.method == "PUT"]
+        assert len(writes) == 1
+        assert json.loads(writes[0].body)["tags"] == {"updated": "yes"}
 
 
 def test_instance_get_resource_map(mocker, mocked_cmd, mocked_responses: responses):
@@ -344,6 +653,13 @@ def test_instance_list(mocked_cmd, mocked_responses: responses, resource_group_n
             },
             "initialState": {"mqttBroker": {"settings": {"preview": "Enabled"}}},
         },
+        {
+            "inputs": ["connectors.settings.preview=Enabled"],
+            "initialState": {"connectors": {"mode": "Stable", "settings": {"other": "Enabled"}}},
+            "expected": {"connectors": {
+                "mode": "Stable", "settings": {"other": "Enabled", "preview": "Enabled"},
+            }},
+        },
     ],
 )
 def test_instance_update(
@@ -358,19 +674,21 @@ def test_instance_update(
     resource_group_name = generate_random_string()
     instance_endpoint = get_instance_endpoint(resource_group_name=resource_group_name, instance_name=instance_name)
 
+    tags_only = tags is not None and description is None and features_scenario.get("inputs") is None
     initial_feat_state = features_scenario.get("initialState")
     initial_record = get_mock_instance_record(
         name=instance_name,
         resource_group_name=resource_group_name,
         features=initial_feat_state,
     )
-    mocked_responses.add(
-        method=responses.GET,
-        url=instance_endpoint,
-        json=initial_record,
-        status=200,
-        content_type="application/json",
-    )
+    if not tags_only:
+        mocked_responses.add(
+            method=responses.GET,
+            url=instance_endpoint,
+            json=initial_record,
+            status=200,
+            content_type="application/json",
+        )
     updated_record = get_mock_instance_record(
         name=instance_name,
         resource_group_name=resource_group_name,
@@ -379,7 +697,7 @@ def test_instance_update(
         features=features_scenario.get("expected"),
     )
     mocked_responses.add(
-        method=responses.PUT,
+        method=responses.PATCH if tags_only else responses.PUT,
         url=instance_endpoint,
         json=updated_record,
         status=200,
@@ -395,9 +713,10 @@ def test_instance_update(
         instance_description=description,
         wait_sec=0,
     )
-    assert len(mocked_responses.calls) == 2
+    assert len(mocked_responses.calls) == (1 if tags_only else 2)
 
-    update_request = json.loads(mocked_responses.calls[1].request.body)
+    method = "PATCH" if tags_only else "PUT"
+    update_request = json.loads(next(c.request.body for c in mocked_responses.calls if c.request.method == method))
     if description:
         assert update_request["properties"]["description"] == description
 
@@ -407,8 +726,90 @@ def test_instance_update(
     if features_scenario:
         assert update_request["properties"]["features"] == features_scenario["expected"]
 
-    assert update_request == updated_record
+    assert update_request == ({"tags": tags} if tags_only else updated_record)
     assert result == updated_record
+
+
+@pytest.mark.parametrize("property_changes", [
+    {"description": "Updated description"},
+    {"description": ""},
+    {"features": ["opcua.mode=Disabled"]},
+    {"features": []},
+    {"adr_namespace_resource_id": "/namespace"},
+    {"spc_resource_id": "/spc"},
+])
+@pytest.mark.parametrize("version", ["1.5.30", "1.6.0-preview.40"])
+def test_tags_with_properties_uses_put_without_discovery(
+    mocker, mocked_cmd, mocked_responses, property_changes, version,
+):
+    instances = Instances(mocked_cmd)
+    record = get_mock_instance_record("instance", "rg", version=version)
+    record["properties"]["retainedConfiguration"] = {"values": ["custom"]}
+    endpoint = get_instance_endpoint("rg", "instance", api_version="2026-10-01")
+    mocked_responses.add(responses.GET, endpoint, json=record)
+    mocked_responses.add_callback(responses.PUT, endpoint, callback=echo_callback)
+    discovery = mocker.patch.object(
+        instances, "get_runtime_context", side_effect=HttpResponseError("AuthorizationFailed: discovery forbidden"),
+    )
+    patch = mocker.patch.object(instances.iotops_mgmt_client.instance, "update")
+
+    result = instances.update("instance", "rg", tags={}, wait_sec=0, **property_changes)
+
+    expected = deepcopy(record)
+    expected["tags"] = {}
+    if property_changes.get("description"):
+        expected["properties"]["description"] = property_changes["description"]
+    if property_changes.get("features"):
+        expected["properties"]["features"] = {"opcua": {"mode": "Disabled"}}
+    if property_changes.get("adr_namespace_resource_id"):
+        expected["properties"]["adrNamespaceRef"] = {"resourceId": property_changes["adr_namespace_resource_id"]}
+    if property_changes.get("spc_resource_id"):
+        expected["properties"]["defaultSecretProviderClassRef"] = {"resourceId": property_changes["spc_resource_id"]}
+    assert result == expected
+    assert len(mocked_responses.calls) == 2
+    assert mocked_responses.calls[-1].request.method == "PUT"
+    assert json.loads(mocked_responses.calls[-1].request.body) == expected
+    discovery.assert_not_called()
+    patch.assert_not_called()
+
+
+@pytest.mark.parametrize("tags", [{"updated": "yes"}, {}])
+@pytest.mark.parametrize("version", ["1.4.112", "1.6.0-preview.22"])
+def test_tags_only_update_patches_without_discovery(mocker, mocked_cmd, mocked_responses, tags, version):
+    name, resource_group = "instance", "rg"
+    record = get_mock_instance_record(name, resource_group, tags=tags)
+    record["properties"]["version"] = version
+    record["properties"]["previewOnlyProperty"] = {"retained": ["value"]}
+    mocked_responses.add(responses.PATCH, get_instance_endpoint(resource_group, name), json=record)
+    show = mocker.patch.object(Instances, "show", side_effect=AssertionError("Unexpected instance read"))
+    discovery = mocker.patch.object(
+        Instances, "get_runtime_context", side_effect=AssertionError("Unexpected discovery"),
+    )
+    put = mocker.patch.object(Instances, "_update", side_effect=AssertionError("Unexpected PUT"))
+
+    result = update_instance(mocked_cmd, name, resource_group, tags=tags, no_status=True)
+
+    assert result == record
+    assert len(mocked_responses.calls) == 1
+    request = mocked_responses.calls[0].request
+    assert request.method == "PATCH"
+    assert json.loads(request.body) == {"tags": tags}
+    assert request.headers["CommandName"] == "iot ops update"
+    show.assert_not_called()
+    discovery.assert_not_called()
+    put.assert_not_called()
+
+
+@pytest.mark.parametrize("status", [400, 403, 404, 409, 500])
+def test_tags_only_update_propagates_patch_errors(mocked_cmd, mocked_responses, status):
+    mocked_responses.add(
+        responses.PATCH, get_instance_endpoint("rg", "instance"), status=status,
+        json={"error": {"code": "PatchFailed", "message": "Tags PATCH failed"}},
+    )
+    with pytest.raises(HttpResponseError) as caught:
+        update_instance(mocked_cmd, "instance", "rg", tags={"updated": "yes"}, no_status=True)
+    assert caught.value.status_code == status
+    assert all(call.request.method == "PATCH" for call in mocked_responses.calls)
 
 
 @pytest.mark.parametrize(
@@ -637,6 +1038,7 @@ def test_instance_update_opcua_mode(
     new_opcua_mode = features_scenario["expected"].get("opcua", {}).get("mode")
     expects_backfill = new_opcua_mode not in (None, "Disabled")
     if expects_backfill:
+        mock_runtime_discovery(mocked_responses, initial_record)
         base_url = instance_endpoint.split("?")[0]
         list_re = re.compile(re.escape(base_url) + r"/akriConnectorTemplates(\?|$)")
         mocked_responses.add(
@@ -666,7 +1068,7 @@ def test_instance_update_opcua_mode(
         wait_sec=0,
     )
 
-    update_request = json.loads(mocked_responses.calls[1].request.body)
+    update_request = json.loads(next(c.request.body for c in mocked_responses.calls if c.request.method == "PUT"))
     assert update_request["properties"]["features"] == features_scenario["expected"]
     assert result == updated_record
 
@@ -729,6 +1131,7 @@ def test_instance_update_opcua_backfill(
     initial_record = get_mock_instance_record(
         name=instance_name, resource_group_name=resource_group_name, features={"opcua": {"mode": "Disabled"}}
     )
+    mock_runtime_discovery(mocked_responses, initial_record)
     mocked_responses.add(method=responses.GET, url=instance_endpoint, json=initial_record, status=200)
     updated_record = get_mock_instance_record(
         name=instance_name, resource_group_name=resource_group_name, features={"opcua": {"mode": "Stable"}}
@@ -777,11 +1180,14 @@ def test_instance_update_opcua_backfill(
             assert created["name"].startswith("azureiotoperationsconnectorforopcua-")
     else:
         assert not template_puts, "connector template must not be created or overwritten"
+    requests = [call.request for call in mocked_responses.calls]
+    list_index = next(i for i, request in enumerate(requests) if list_re.match(request.url))
+    first_put = next(i for i, request in enumerate(requests) if request.method == "PUT")
+    assert list_index < first_put
 
 
 def test_instance_update_opcua_backfill_surfaces_list_error(mocked_cmd, mocked_responses: responses):
-    """A transient template-list failure during re-enable surfaces instead of silently reporting
-    success with no connector template."""
+    """A template-list failure rejects re-enable before the instance or its children are written."""
     instance_name = generate_random_string()
     resource_group_name = generate_random_string()
     instance_endpoint = get_instance_endpoint(resource_group_name=resource_group_name, instance_name=instance_name)
@@ -790,11 +1196,8 @@ def test_instance_update_opcua_backfill_surfaces_list_error(mocked_cmd, mocked_r
     initial_record = get_mock_instance_record(
         name=instance_name, resource_group_name=resource_group_name, features={"opcua": {"mode": "Disabled"}}
     )
+    mock_runtime_discovery(mocked_responses, initial_record)
     mocked_responses.add(method=responses.GET, url=instance_endpoint, json=initial_record, status=200)
-    updated_record = get_mock_instance_record(
-        name=instance_name, resource_group_name=resource_group_name, features={"opcua": {"mode": "Stable"}}
-    )
-    mocked_responses.add(method=responses.PUT, url=instance_endpoint, json=updated_record, status=200)
 
     list_re = re.compile(re.escape(base_url) + r"/akriConnectorTemplates(\?|$)")
     mocked_responses.add(
@@ -809,6 +1212,7 @@ def test_instance_update_opcua_backfill_surfaces_list_error(mocked_cmd, mocked_r
             instance_features=["opcua.mode=Stable"],
             wait_sec=0,
         )
+    assert all(call.request.method == "GET" for call in mocked_responses.calls)
 
 
 @pytest.mark.parametrize(
@@ -837,6 +1241,7 @@ def test_instance_update_opcua_backfill_surfaces_list_error(mocked_cmd, mocked_r
 def test_secretsync_enable(
     mocked_cmd,
     mocked_responses: responses,
+    mocked_ga_runtime_context,
     spc_name: Optional[str],
     skip_role_assignments: Optional[bool],
     use_self_hosted_issuer: Optional[bool],
@@ -1099,7 +1504,7 @@ def test_secretsync_enable_repairs_existing_fic(
     instances.resource_client = mocker.Mock()
     instances.msi_mgmt_client = mocker.Mock()
     instances.ssc_mgmt_client = mocker.Mock()
-    instances.show = mocker.Mock()
+    instances._get_instance_for_write = mocker.Mock()
     instances.get_resource_map = mocker.Mock()
     instances.get_associated_cl = mocker.Mock()
     instances._ensure_oidc_issuer = mocker.Mock()
@@ -1124,7 +1529,7 @@ def test_secretsync_enable_repairs_existing_fic(
         "name": instance_name,
         "extendedLocation": {"name": generate_resource_id(resource_group_name=resource_group_name)},
     }
-    instances.show.return_value = instance
+    instances._get_instance_for_write.return_value = instance
     instances.get_associated_cl.return_value = {"properties": {"namespace": namespace}}
     resource_map = instances.get_resource_map.return_value
     resource_map.connected_cluster.resource = {"name": generate_random_string()}
@@ -1342,6 +1747,7 @@ def test_repair_federated_cred_issuer_surfaces_actionable_error(mocker, operatio
 def test_secretsync_enable_issuer_error(
     mocked_cmd,
     mocked_responses: responses,
+    mocked_ga_runtime_context,
     scenario: dict,
 ):
     resource_group_name = generate_random_string()
@@ -1484,6 +1890,7 @@ def test_secretsync_enable_issuer_error(
 def test_secretsync_disable(
     mocked_cmd,
     mocked_responses: responses,
+    mocked_ga_runtime_context,
     default_spc_resource_id: Optional[str],
     existing_resources: Optional[list[dict]],
 ):
@@ -1595,6 +2002,7 @@ def test_secretsync_disable(
 def test_add_mi_user_assigned(
     mocked_cmd,
     mocked_responses: responses,
+    mocked_ga_runtime_context,
     usage_type: Optional[str],
     use_self_hosted_issuer: Optional[bool],
     fc_name: Optional[str],
