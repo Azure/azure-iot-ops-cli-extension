@@ -105,6 +105,11 @@ class MqMemoryProfile(Enum):
     high = "High"
 
 
+class IoTOperationsSku(Enum):
+    ESSENTIALS = "Essentials"
+    STANDARD = "Standard"
+
+
 class MqServiceType(Enum):
     CLUSTERIP = "ClusterIp"
     LOADBALANCER = "LoadBalancer"
