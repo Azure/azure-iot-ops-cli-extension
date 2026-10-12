@@ -86,6 +86,7 @@ INSTANCE_PARAM_CONVERSION_MAP = {
     "features": "instance_features",
     "schemaRegistryId": "schema_registry_resource_id",
     "adrNamespaceId": "adr_namespace_resource_id",
+    "sku": "sku",
     "defaultDataflowInstanceCount": "dataflow_profile_instances",
     "brokerConfig": "broker_config",
     "trustConfig": "trust_config",
@@ -499,6 +500,36 @@ def test_init_targets_opcua_mode(target_scenario: dict):
     aio_instance = instance_template["resources"]["aioInstance"]
     assert aio_instance["properties"]["features"] == "[parameters('features')]"
     assert _instance_parameters["features"]["value"] == {"opcua": {"mode": "Stable", "settings": {}}}
+
+
+@pytest.mark.parametrize(
+    "sku, expected_sku",
+    [
+        (None, None),
+        ("Standard", "Standard"),
+        ("Essentials", "Essentials"),
+    ],
+)
+def test_init_targets_instance_sku(sku, expected_sku):
+    targets = InitTargets(
+        cluster_name=generate_random_string(),
+        resource_group_name=generate_random_string(),
+        schema_registry_resource_id=get_schema_registry_id(),
+        adr_namespace_resource_id=get_ns_resource_id(),
+        instance_name=generate_random_string(),
+        sku=sku,
+    )
+
+    instance_template, instance_parameters = targets.get_ops_instance_template([generate_random_string()])
+    aio_instance = instance_template["resources"]["aioInstance"]
+
+    assert aio_instance["sku"] == (
+        "[if(not(equals(parameters('sku'), null())), createObject('name', parameters('sku')), null())]"
+    )
+    if expected_sku is not None:
+        assert instance_parameters["sku"] == {"value": expected_sku}
+    else:
+        assert "sku" not in instance_parameters
 
 
 @pytest.mark.parametrize(
