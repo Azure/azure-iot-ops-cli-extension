@@ -66,6 +66,7 @@ runs:
         adr_namespace_id=$(az iot ops ns create \
           -g ${{ inputs.resource-group }} \
           -n $adr_namespace_name \
+          --location eastus \
           --query "id" -o tsv)
         echo "ADR_NAMESPACE_ID=$adr_namespace_id" >> $GITHUB_OUTPUT
         echo "ADR namespace created: $adr_namespace_id"
