@@ -337,6 +337,28 @@ def test_runtime_selector_is_normal_create_only_option_and_requires_no_authentic
     assert PREVIEW_AGREEMENT_URL in helps["iot ops create"]
 
 
+def test_live_data_group_uses_bundled_preview_runtime(mocker):
+    from azure.cli.core import AzCli
+    from azext_edge import OpsExtensionCommandsLoader
+
+    mocker.patch("azure.cli.core.commands.client_factory.get_subscription_id", side_effect=AssertionError("auth"))
+    cli = Mock(spec=AzCli)
+    cli.cloud = Mock(profile="latest")
+    cli.data = {"completer_active": False}
+    cli.enable_color = False
+    cli.config = Mock()
+    cli.invocation = Mock(data={})
+    loader = OpsExtensionCommandsLoader(cli)
+    cli.invocation.commands_loader = loader
+    loader.load_command_table([])
+
+    names = ("iot ops live-data enable", "iot ops live-data show", "iot ops live-data disable")
+    for name in names:
+        requirement = loader.command_table[name].runtime_requirement
+        assert requirement.channels == {RuntimeChannel.PREVIEW}
+    assert "iot ops live-data" in cli.data["runtime_notice_targets"]
+
+
 def test_backfill_missing_version_is_rejected_before_instance_write(mocker, mocked_cmd):
     from azext_edge.edge.providers.orchestration.resources.connector_templates import ConnectorTemplates
 

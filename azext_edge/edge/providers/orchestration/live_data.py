@@ -36,6 +36,9 @@ from .common import (
 )
 from .eg_provider_base import EgNamespaceContext, EventGridProviderBase, graceful_delete
 from .permissions import ROLE_DEF_FORMAT_STR, PermissionManager, PrincipalType
+from .runtime import OperationRequirements
+from .runtime_catalog import get_runtime_catalog
+from .runtime_profiles import RuntimeChannel
 
 if TYPE_CHECKING:
     from ...vendor.clients.deviceregistrymgmt import (
@@ -45,6 +48,10 @@ if TYPE_CHECKING:
 
 logger = get_logger(__name__)
 console = Console()
+
+LIVE_DATA_RUNTIME_REQUIREMENT = OperationRequirements(
+    "Live Data", channels={RuntimeChannel.PREVIEW},
+)
 
 
 def get_live_data_topic_space_name(instance_resource_id: str) -> str:
@@ -100,7 +107,11 @@ class LiveData(EventGridProviderBase):
 
     def __init__(self, cmd, subscription_id: Optional[str] = None):
         super().__init__(cmd=cmd, subscription_id=subscription_id)
-        self.iotops_mgmt_client = get_iotops_mgmt_client(**self._get_client_kwargs())
+        self.runtime_profile = get_runtime_catalog().get(RuntimeChannel.PREVIEW)
+        self.iotops_mgmt_client = get_iotops_mgmt_client(
+            api_version=self.runtime_profile.iotops_api_version,
+            **self._get_client_kwargs(),
+        )
         # Live Data requires ADR observability fields from the preview API version.
         self.registry_mgmt_client: "MicrosoftDeviceRegistryManagementService" = get_registry_mgmt_client(
             api_version=LIVE_DATA_ADR_API_VERSION,

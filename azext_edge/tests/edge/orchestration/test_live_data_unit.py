@@ -30,6 +30,8 @@ from azext_edge.edge.providers.orchestration.live_data import (
     get_live_data_topic_space_name,
 )
 from azext_edge.edge.providers.orchestration.permissions import PrincipalType
+from azext_edge.edge.providers.orchestration.runtime_catalog import get_runtime_catalog
+from azext_edge.edge.providers.orchestration.runtime_profiles import RuntimeChannel
 
 from ...generators import BASE_URL, generate_random_string, generate_resource_id, get_zeroed_subscription
 
@@ -39,7 +41,7 @@ DEVICEREGISTRY_API_VERSION = "2026-11-02-preview"
 EVENTGRID_RP = "Microsoft.EventGrid"
 EVENTGRID_API_VERSION = "2025-02-15"
 IOTOPS_RP = "Microsoft.IoTOperations"
-IOTOPS_API_VERSION = "2026-07-01"
+IOTOPS_API_VERSION = get_runtime_catalog().get(RuntimeChannel.PREVIEW).iotops_api_version
 
 MOCK_EXTENDED_LOCATION: dict = {
     "name": (
