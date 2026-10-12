@@ -140,7 +140,7 @@ def test_bundled_preview_upgrade_plan_uses_preview_target_and_shared_foundation(
         EXTENSION_TYPE_OPS, ext_vers=profile.identity.version, ext_train=profile.identity.train,
     )
     scenario.set_auxiliary_kwargs(opcua_connector_template_exists=connector_exists)
-    scenario.set_instance_mock(mocked_responses, "instance", "rg", iotops_api_version="2026-09-01-preview")
+    scenario.set_instance_mock(mocked_responses, "instance", "rg", iotops_api_version="2026-09-03-preview")
     manager = UpgradeManager(mocked_cmd, "rg", "instance", no_progress=True)
     state = manager.analyze_cluster()
     assert manager.runtime_profile is profile
@@ -160,8 +160,8 @@ def test_bundled_preview_upgrade_repairs_same_runtime_without_qualification_bloc
         EXTENSION_TYPE_OPS, ext_vers=profile.identity.version, ext_train=profile.identity.train,
         provisioning_state="Failed",
     )
-    scenario.set_auxiliary_kwargs(opcua_connector_template_exists=connector_exists, opcua_connector_version="1.5.18")
-    scenario.set_instance_mock(mocked_responses, "instance", "rg", iotops_api_version="2026-09-01-preview")
+    scenario.set_auxiliary_kwargs(opcua_connector_template_exists=connector_exists, opcua_connector_version="1.5.19")
+    scenario.set_instance_mock(mocked_responses, "instance", "rg", iotops_api_version="2026-09-03-preview")
     upgrade_instance(mocked_cmd, "rg", "instance", confirm_yes=True, no_progress=True)
     patches = [c for c in mocked_responses.calls if c.request.method == "PATCH"]
     assert len(patches) == 1
@@ -175,11 +175,11 @@ def test_bundled_preview_upgrade_repairs_same_runtime_without_qualification_bloc
     ]
     assert len(connector_writes) == int(not connector_exists)
     if connector_writes:
-        assert "api-version=2026-09-01-preview" in connector_writes[0].url
+        assert "api-version=2026-09-03-preview" in connector_writes[0].url
         connector = json.loads(connector_writes[0].body)["properties"]
         assert connector["deviceInboundEndpointTypes"] == [
             {"endpointType": "Microsoft.OpcUa"}, {"endpointType": "Microsoft.OpcUa.WoT"},
         ]
         assert connector["connectorMetadataRef"] == (
-            "mcr.microsoft.com/azureiotoperations/aio-connectors/opcua-metadata:1.5.18"
+            "mcr.microsoft.com/azureiotoperations/aio-connectors/opcua-metadata:1.5.19"
         )

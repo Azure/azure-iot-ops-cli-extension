@@ -7,10 +7,13 @@
 """OCI Registry HTTP client using Azure SDK pipeline for consistent logging, retry, and user-agent."""
 
 import hashlib
+import re
 from copy import deepcopy
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
+from urllib.parse import urljoin, urlsplit
 
+from requests.utils import parse_header_links
 from azure.cli.core.azclierror import ValidationError
 from azure.core.exceptions import HttpResponseError
 from azure.core.pipeline import Pipeline
@@ -154,6 +157,51 @@ class OciRegistryClient:
     # -------------------------------------------------------------------------
     # High-level OCI API methods
     # -------------------------------------------------------------------------
+
+    def list_tags(self, repository_ref: str, cmd=None) -> List[str]:
+        """List repository tags, following same-repository registry pagination."""
+        if not re.fullmatch(r"[a-zA-Z0-9.-]+(?::[0-9]+)?/[a-z0-9]+(?:[._/-][a-z0-9]+)*", repository_ref):
+            raise ValidationError("Expected a registry hostname and repository path without a tag.")
+        registry, repository = repository_ref.split("/", 1)
+        collection = f"https://{registry}/v2/{repository}/tags/list"
+        headers = self._get_auth_headers(registry, repository, cmd)
+        url = collection
+        visited = set()
+        tags = set()
+        while url:
+            if url in visited:
+                raise ValidationError("Registry tag pagination returned a repeated link.")
+            visited.add(url)
+            response = self.get(url, headers=headers, permit_redirects=False)
+            if response.status_code != 200:
+                raise ValidationError(f"Failed to list tags for {repository_ref}: HTTP {response.status_code}.")
+            try:
+                page = response.json()
+            except ValueError as error:
+                raise ValidationError("Registry tag listing returned invalid JSON.") from error
+            if not isinstance(page, dict) or "tags" not in page or page.get("name") != repository:
+                raise ValidationError("Registry tag listing returned an invalid repository response.")
+            page_tags = page["tags"]
+            if page_tags is None:
+                page_tags = []
+            if not isinstance(page_tags, list) or any(not isinstance(tag, str) or not tag for tag in page_tags):
+                raise ValidationError("Registry tag listing returned invalid tags.")
+            tags.update(page_tags)
+            links = parse_header_links(response.headers.get("Link", ""))
+            next_links = [link.get("url") for link in links if link.get("rel") == "next"]
+            if len(next_links) > 1:
+                raise ValidationError("Registry tag listing returned multiple next links.")
+            if not next_links:
+                break
+            next_url = urljoin(url, next_links[0])
+            parsed, expected = urlsplit(next_url), urlsplit(collection)
+            if (
+                parsed.scheme != expected.scheme or parsed.netloc != expected.netloc
+                or parsed.path != expected.path or parsed.fragment
+            ):
+                raise ValidationError("Registry tag listing returned a next link outside the repository.")
+            url = next_url
+        return sorted(tags)
 
     def fetch_manifest(
         self,
@@ -342,7 +390,8 @@ class OciRegistryClient:
                     token_resp = self.get(parts["realm"], params=token_params)
 
                     if token_resp.status_code == 200:
-                        token = token_resp.json().get("token")
+                        token_response = token_resp.json()
+                        token = token_response.get("token") or token_response.get("access_token")
                         logger.info(
                             f"Successfully obtained anonymous auth token (length: {len(token) if token else 0})"
                         )

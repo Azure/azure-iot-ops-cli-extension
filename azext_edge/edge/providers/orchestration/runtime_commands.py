@@ -75,6 +75,7 @@ class RuntimeTarget:
     instance_name: str = "instance_name"
     resource_group_name: str = "resource_group_name"
     subscription_id: Optional[str] = None
+    allow_unbundled_integration: bool = False
 
     def __call__(self, cmd, namespace):
         from .resources.instances import Instances
@@ -90,7 +91,10 @@ class RuntimeTarget:
             )
         instances = Instances(cmd, subscription_id=subscription)
         instance = instances.show(name=name, resource_group_name=resource_group)
-        return instances.get_runtime_context(instance, get_runtime_catalog().qualification_identities)
+        return instances.get_runtime_context(
+            instance, get_runtime_catalog().qualification_identities,
+            allow_unbundled_integration=self.allow_unbundled_integration,
+        )
 
 
 class RuntimeCommandGroup(AzCommandGroup):
@@ -169,5 +173,6 @@ def runtime_validation_handler(cli_ctx, **kwargs):
         runtime.require_ready()
         for rule in active:
             rule.validate_identity(runtime.identity)
+        cmd.runtime_context = runtime
 
     namespace._command_validator = validate  # pylint: disable=protected-access

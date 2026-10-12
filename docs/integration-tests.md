@@ -81,13 +81,27 @@ ADR namespace. No existing cluster is converted between channels.
   the matrix owns runtime selection. Existing feature-mode arguments remain independent.
 - Shared scenario tests run unchanged on both deployments. The serial `runtime-channel`
   scenario checks shared update behavior and rejects cross-channel upgrades, including with force.
-  Future preview-only features should add preview success and GA rejection/no-mutation tests;
-  there are no production feature restrictions to classify automatically today.
+  It also verifies that connector list and show succeed on preview and are rejected on stable
+  with the specific preview-runtime error. An unrelated CLI or service error fails the test.
+  Show is tested directly with a known metadata reference without first invoking list.
+  The preview list path also inspects returned first-party metadata references using the same instance target.
 - Create and each subsequent suite verify the **installed** `currentVersion`, release train,
   runtime channel, associations and readiness. Qualification assertions are hard failures,
   even when the legacy `init-continue-on-error` option is set.
 - Results, coverage and cleanup are isolated by scenario and channel. Running both channels
   roughly doubles runtime-dependent jobs; jobs can be scheduled sequentially to reduce peak cost.
+
+Both `az iot ops connector list` and `show` require an instance and resource group and
+independently check the installed runtime's preview eligibility and readiness. Show fetches
+the supplied `--ref` directly; no earlier list invocation, purchase or connector deployment is required.
+Connector listing uses the
+installed CLI's bundled preview profile for its management API version and first-party
+connector metadata compatibility version. Both commands accept valid
+preview `integration` identities without requiring their version to match the bundled
+create/upgrade target. This opt-in does not change other commands' qualification rules.
+The cluster version is not used to select connector metadata. Results reflect compatibility
+with the CLI's preview target, not a guarantee of compatibility with an older installed runtime;
+live API and connector compatibility must be verified separately.
 
 #### Workload identity scheduling
 
