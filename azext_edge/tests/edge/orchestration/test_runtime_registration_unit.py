@@ -366,13 +366,62 @@ def test_missing_mapped_target_fails_closed(invocation):
     call.writer.assert_not_called()
 
 
+@pytest.mark.parametrize("allow_unbundled_integration", [False, True])
+def test_integration_channel_classification_requires_target_opt_in(invocation, allow_unbundled_integration):
+    from dataclasses import replace
+    from azext_edge.edge.providers.orchestration.runtime_profiles import resolve_runtime_identity
+
+    metadata = (
+        {"runtime_target": RuntimeTarget(allow_unbundled_integration=True)} if allow_unbundled_integration else {}
+    )
+    call = invocation(runtime_requirement=PREVIEW_ONLY, **metadata)
+
+    def discover(instance, qualification_identities, *, allow_unbundled_integration=False):
+        identity = resolve_runtime_identity(
+            "1.6.0-preview.43", "integration", qualification_identities,
+            allow_unbundled_integration=allow_unbundled_integration,
+        )
+        return replace(runtime(RuntimeChannel.PREVIEW, identity.version), identity=identity)
+
+    call.instances.return_value.get_runtime_context.side_effect = discover
+    if allow_unbundled_integration:
+        jobs = call.execute()
+        assert jobs[0][0].runtime_context.identity == RuntimeIdentity(
+            RuntimeChannel.PREVIEW, "1.6.0-preview.43", "integration",
+        )
+        call.writer.assert_called_once()
+    else:
+        with pytest.raises(ValidationError, match="no supported runtime profile mapping"):
+            call.execute()
+        call.writer.assert_not_called()
+    assert (
+        call.instances.return_value.get_runtime_context.call_args.kwargs["allow_unbundled_integration"]
+        is allow_unbundled_integration
+    )
+
+
 def test_explicit_target_resolver(invocation):
     resolver = Mock(return_value=runtime(RuntimeChannel.PREVIEW))
     call = invocation(runtime_requirement=PREVIEW_ONLY, runtime_target=resolver)
     jobs = call.execute()
     assert resolver.call_args.args[0] is jobs[0][0]
+    assert jobs[0][0].runtime_context is resolver.return_value
+    assert "runtime_context" not in vars(call.command)
     call.instances.assert_not_called()
     call.writer.assert_called_once()
+
+
+def test_resolved_runtime_is_scoped_to_each_job_and_invocation(invocation):
+    call = invocation(runtime_requirement=PREVIEW_ONLY)
+    first = runtime(RuntimeChannel.PREVIEW, "1.6.0-preview.4")
+    second = runtime(RuntimeChannel.PREVIEW, "1.6.0-preview.5")
+    call.instances.return_value.get_runtime_context.side_effect = [first, second, first, second]
+    for _ in range(2):
+        jobs = call.execute(expanded_targets=[("one", "rg1", "sub1"), ("two", "rg2", "sub2")])
+        assert jobs[0][0].runtime_context is first
+        assert jobs[1][0].runtime_context is second
+        assert "runtime_context" not in vars(call.command)
+    assert call.instances.return_value.get_runtime_context.call_count == 4
 
 
 def test_not_ready_target_cannot_execute(invocation):

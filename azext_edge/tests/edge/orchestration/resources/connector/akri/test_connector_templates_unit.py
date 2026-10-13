@@ -105,6 +105,20 @@ def _provider() -> ConnectorTemplates:
     return object.__new__(ConnectorTemplates)
 
 
+def test_fetch_metadata_without_instance(mocker):
+    module = "azext_edge.edge.providers.orchestration.resources.connector_templates"
+    instances = mocker.patch(f"{module}.Instances")
+    registry = mocker.patch(f"{module}.get_oci_client").return_value
+    metadata = {"name": "rest", "version": "1.0.0", "extra": {"preserved": True}}
+    registry.fetch_first_layer.return_value.content = json.dumps(metadata).encode("utf-8")
+    cmd = mocker.sentinel.cmd
+    reference = "mcr.microsoft.com/azureiotoperations/akri-connectors/rest-metadata:1.0.0"
+
+    assert ConnectorTemplates.fetch_metadata(cmd, reference) == metadata
+    registry.fetch_first_layer.assert_called_once_with(image_ref=reference, cmd=cmd)
+    instances.assert_not_called()
+
+
 def _file_member(name: str, data: bytes) -> tuple:
     info = tarfile.TarInfo(name=name)
     info.size = len(data)

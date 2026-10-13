@@ -26,10 +26,10 @@ PREVIEW_PROFILE: Optional[RuntimeProfile] = RuntimeProfile(
     channel=RuntimeChannel.PREVIEW,
     release="prev2610",
     source_ref="preview/v1.6.x/2610",
-    source_commit="abcf0ed770cb12256c3ffc272cc0636e44dee0ff",
+    source_commit="d1021a9cb265da141e70f05695e930345e23d32e",
     instance_blueprint=TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW,
-    opcua_connector_version="1.5.18",
-    iotops_api_version=IoTOpsMgmtApiVersion.V20260901_preview.value,
+    opcua_connector_version="1.5.19",
+    iotops_api_version=IoTOpsMgmtApiVersion.V20260903_preview.value,
 )
 QUALIFICATION_IDENTITIES: Tuple[RuntimeIdentity, ...] = ()
 # GA and preview share the same init dependency versions and trains.
