@@ -256,6 +256,108 @@ def test_default_matrix_covers_both_channels_without_invented_baselines():
     runtime_rows = [row for row in rows if row["tox_env"] == "python-runtime-int"]
     assert len(runtime_rows) == 2
     assert all(not row["parallel"] for row in runtime_rows)
+    live_data_rows = [row for row in rows if row["tox_env"] == "python-livedata-int"]
+    assert [row["channel"] for row in live_data_rows] == ["stable", "preview"]
+
+
+@pytest.mark.parametrize("channels", ["stable", "preview", "stable,preview"])
+def test_live_data_scenario_runs_on_each_selected_channel(channels):
+    scenarios = yaml.safe_load((ROOT / ".github/test-scenarios.yml").read_text())["scenarios"]
+    selected = matrix.process_scenarios(scenarios, "livedata")
+    rows = matrix.expand_channels(selected, channels)
+    assert [row["name"] for row in rows] == [f"livedata-{channel}" for channel in channels.split(",")]
+    assert all(row["tox_env"] == "python-livedata-int" for row in rows)
+
+
+@pytest.mark.parametrize("operation", ["enable", "show", "disable"])
+@pytest.mark.parametrize("outcome", ["expected-rejection", "unexpected-success", "wrong-error"])
+def test_live_data_stable_it_requires_the_runtime_rejection(mocker, monkeypatch, operation, outcome):
+    from azext_edge.tests.edge.orchestration import test_live_data_int as live_data_tests
+
+    monkeypatch.setenv("azext_edge_runtime_channel", "stable")
+    settings = SimpleNamespace(
+        add_to_config=mocker.Mock(),
+        env=SimpleNamespace(azext_edge_instance="instance", azext_edge_rg="rg"),
+    )
+    record = (
+        None, {"id": "/subscriptions/sub/resourceGroups/rg/providers/Microsoft.IoTOperations/instances/instance",
+               "properties": {"description": "keep"}},
+        [{"id": "extension", "properties": {"version": "1.5.7", "releaseTrain": "stable"}}],
+    )
+    reader = mocker.patch.object(live_data_tests, "read_runtime", side_effect=[record, deepcopy(record)])
+    result = SimpleNamespace(
+        returncode=0 if outcome == "unexpected-success" else 1,
+        stderr=(
+            "Live Data requires a preview runtime; the target uses stable."
+            if outcome != "wrong-error" else "Authorization failed."
+        ),
+        stdout="",
+    )
+    command = mocker.patch.object(live_data_tests.subprocess, "run", return_value=result)
+    if outcome == "expected-rejection":
+        live_data_tests.test_live_data_rejects_stable_without_writes(settings, operation)
+        assert reader.call_count == 2
+    else:
+        with pytest.raises(AssertionError):
+            live_data_tests.test_live_data_rejects_stable_without_writes(settings, operation)
+        assert reader.call_count == 1
+    command.assert_called_once()
+    arguments = command.call_args.args[0]
+    assert arguments[:5] == ["az", "iot", "ops", "live-data", operation]
+    if operation == "enable":
+        assert "--eg-resource-id" in arguments
+        assert "--skip-ra" in arguments
+    elif operation == "disable":
+        assert "--yes" in arguments
+
+
+@pytest.mark.parametrize("channel", ["preview", None])
+def test_live_data_stable_it_skips_other_channels_without_cloud_calls(mocker, monkeypatch, channel):
+    from azext_edge.tests.edge.orchestration import test_live_data_int as live_data_tests
+
+    if channel:
+        monkeypatch.setenv("azext_edge_runtime_channel", channel)
+    else:
+        monkeypatch.delenv("azext_edge_runtime_channel", raising=False)
+    reader = mocker.patch.object(live_data_tests, "read_runtime")
+    command = mocker.patch.object(live_data_tests.subprocess, "run")
+    with pytest.raises(pytest.skip.Exception):
+        live_data_tests.test_live_data_rejects_stable_without_writes(mocker.Mock(), "enable")
+    reader.assert_not_called()
+    command.assert_not_called()
+
+
+@pytest.mark.parametrize("channel", ["stable", "preview"])
+def test_live_data_lifecycle_setup_only_provisions_on_preview(mocker, monkeypatch, channel):
+    from azext_edge.tests.edge.orchestration import test_live_data_int as live_data_tests
+
+    monkeypatch.setenv("azext_edge_runtime_channel", channel)
+    namespace_id = "/subscriptions/sub/resourceGroups/rg/providers/Microsoft.DeviceRegistry/namespaces/ns"
+    settings = SimpleNamespace(
+        add_to_config=mocker.Mock(),
+        env=SimpleNamespace(azext_edge_instance="instance", azext_edge_rg="rg", azext_edge_eg_resource_id=None),
+    )
+    command = mocker.patch.object(live_data_tests, "run", side_effect=[
+        {"properties": {"adrNamespaceRef": {"resourceId": namespace_id}}},
+        {"location": "eastus"},
+        {"enabled": False},
+        None,
+    ])
+    provision = mocker.patch.object(live_data_tests, "_ensure_eg_namespace", return_value="eg-resource-id")
+    setup = live_data_tests.live_data_setup.__wrapped__(mocker.Mock(), settings)
+    if channel == "stable":
+        with pytest.raises(pytest.skip.Exception):
+            next(setup)
+        command.assert_not_called()
+        provision.assert_not_called()
+    else:
+        target = next(setup)
+        assert target["egResourceId"] == "eg-resource-id"
+        assert target["adrNamespaceId"] == namespace_id
+        provision.assert_called_once()
+        with pytest.raises(StopIteration):
+            next(setup)
+        assert command.call_args.args[0] == "az iot ops live-data disable -i instance -g rg -y"
 
 
 @pytest.mark.parametrize("channels", ["stable", "preview", "stable,preview", "preview,stable", "stable,stable"])
