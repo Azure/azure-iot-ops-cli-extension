@@ -6,13 +6,27 @@
 
 import pytest
 
-from azext_edge.edge.providers.orchestration.permissions import verify_write_permission_against_rg
+from azext_edge.edge.providers.orchestration.permissions import PermissionManager, verify_write_permission_against_rg
 from azure.cli.core.azclierror import ValidationError
 
 from ...generators import get_zeroed_subscription, generate_random_string
 
 MOCK_SUBSCRIPTION_ID = get_zeroed_subscription()
 MOCK_RG = f"rg_{generate_random_string()}"
+
+
+def test_permission_manager_passes_client_kwargs(mocker):
+    mocked_get_authz_client = mocker.patch(
+        "azext_edge.edge.providers.orchestration.permissions.get_authz_client"
+    )
+    client_kwargs = {
+        "endpoint": "https://management.usgovcloudapi.net/",
+        "credential_scopes": ["https://management.usgovcloudapi.net/.default"],
+    }
+
+    PermissionManager(subscription_id=MOCK_SUBSCRIPTION_ID, **client_kwargs)
+
+    mocked_get_authz_client.assert_called_once_with(subscription_id=MOCK_SUBSCRIPTION_ID, **client_kwargs)
 
 
 @pytest.fixture

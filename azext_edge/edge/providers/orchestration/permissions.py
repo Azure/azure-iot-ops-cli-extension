@@ -84,9 +84,10 @@ class PrincipalType(Enum):
 
 
 class PermissionManager:
-    def __init__(self, subscription_id: str):
+    def __init__(self, subscription_id: str, **client_kwargs):
         self.authz_client = get_authz_client(
             subscription_id=subscription_id,
+            **client_kwargs,
         )
 
     def apply_role_assignment(
