@@ -301,6 +301,21 @@ class TestQueryableGetClientKwargs:
             "credential_scopes": ["https://management.usgovcloudapi.net/.default"],
         }
 
+    def test_explicit_endpoint_and_scope_override(self, queryable_deps):
+        from azext_edge.edge.util.queryable import Queryable
+
+        q = Queryable(cmd=queryable_deps["cmd"])
+        result = q._get_client_kwargs(
+            endpoint="https://override.example/",
+            credential_scopes=["https://audience.example/.default"],
+        )
+
+        assert result == {
+            "subscription_id": "default-sub-id",
+            "endpoint": "https://override.example/",
+            "credential_scopes": ["https://audience.example/.default"],
+        }
+
 
 class TestQueryableBackwardCompat:
     """Verify existing callers using subscriptions= still work."""
@@ -391,6 +406,10 @@ class TestCloudConfig:
         assert config.name == cloud_name
         assert config.arm_endpoint == expected["arm_endpoint"]
         assert config.arm_endpoint_scope == expected["arm_endpoint_scope"]
+        assert config.arm_client_kwargs == {
+            "endpoint": expected["arm_endpoint"],
+            "credential_scopes": [expected["arm_endpoint_scope"]],
+        }
         assert config.graph_endpoint == expected["graph_endpoint"]
         assert config.graph_token_resource == expected["graph_token_resource"]
         assert config.storage_suffix == expected["storage_suffix"]

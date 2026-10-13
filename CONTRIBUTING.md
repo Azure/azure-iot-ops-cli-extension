@@ -4,6 +4,24 @@ This guide will assist you in setting up a local development environment for thi
 
 We also regularly utilize GitHub Codespaces, and have automated this environment setup in our [devcontainer config](./.devcontainer/devcontainer.json)
 
+## Cloud-aware management clients
+
+Pass both the active cloud's ARM endpoint and credential scope when constructing
+management clients. Setting only `endpoint` leaves generated SDK clients using
+their public-Azure token audience, which fails against Azure US Government ARM.
+
+Providers derived from `Queryable` should use `_get_client_kwargs()`, including
+for `PermissionManager` and `register_providers`. Other callers can pass
+`CloudConfig(cmd).arm_client_kwargs` alongside the target subscription ID.
+Preserve subscription IDs from resource references for cross-subscription operations.
+These settings are for ARM clients only; Key Vault and other data-plane clients
+must retain their service-specific scopes.
+
+The request-level tests in
+[`test_arm_cloud_unit.py`](./azext_edge/tests/edge/orchestration/test_arm_cloud_unit.py)
+verify request hosts and requested credential scopes with mocked transport.
+China endpoint coverage verifies configuration only, not live AIO service availability.
+
 
 > You can run all commands in this setup in `bash` or `cmd` environments, this documentation just shows the `powershell` flavor.
 
