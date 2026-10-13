@@ -209,6 +209,7 @@ class LiveData(EventGridProviderBase):
                     instance_name=name,
                     resource_group_name=resource_group_name,
                 )
+                name = instance["name"]
                 instance_resource_id: str = instance["id"]
                 extended_location: Dict = instance["extendedLocation"]
                 custom_location_id: str = extended_location["name"]
@@ -541,6 +542,7 @@ class LiveData(EventGridProviderBase):
                     instance_name=name,
                     resource_group_name=resource_group_name,
                 )
+                name = instance["name"]
                 instance_resource_id: str = instance["id"]
                 custom_location_id: str = instance.get("extendedLocation", {}).get("name", "")
 

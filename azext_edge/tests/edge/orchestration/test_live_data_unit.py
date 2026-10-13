@@ -1655,6 +1655,43 @@ def test_enable_validates_adr_before_any_write(mocked_cmd, mocked_responses, mis
     assert all(call.request.method == "GET" for call in mocked_responses.calls)
 
 
+@pytest.mark.parametrize("operation", ["enable", "show"])
+def test_live_data_uses_arm_instance_name_for_configuration(mocked_cmd, mocked_responses, operation):
+    canonical_name = "MixedInstance"
+    caller_name = canonical_name.upper()
+    rg, eg_name, adr_name = "rg", "eg", "namespace"
+    instance = _build_instance_response(canonical_name, rg, adr_namespace_name=adr_name)
+    eg_id = _build_eg_resource_id(eg_name, rg)
+    hostname = "eg.eastus-1.ts.eventgrid.azure.net"
+    if operation == "enable":
+        _register_enable_mocks(
+            mocked_responses, canonical_name, rg, eg_name, adr_name, eg_id, hostname, instance["id"],
+        )
+    else:
+        TestShow()._register_show_mocks(
+            mocked_responses, canonical_name, rg, eg_name, adr_name, eg_id, hostname,
+            get_live_data_topic_space_name(instance["id"]),
+        )
+    mocked_responses.remove(responses.GET, _build_iotops_endpoint(canonical_name, rg))
+    mocked_responses.add(responses.GET, _build_iotops_endpoint(caller_name, rg), json=instance)
+    provider = LiveData(mocked_cmd)
+    if operation == "enable":
+        result = provider.enable(caller_name, rg, eg_id, skip_role_assignments=True, wait_sec=0)
+        assert result["deviceRegistryNamespace"]["observabilityEndpoint"]["scopeId"] == canonical_name
+        topic_put = next(
+            call for call in mocked_responses.calls
+            if call.request.method == "PUT" and "/topicSpaces/" in call.request.url
+        )
+        assert json.loads(topic_put.request.body)["properties"]["topicTemplates"] == [
+            LIVE_DATA_TOPIC_TEMPLATE.format(scope_id=canonical_name),
+        ]
+    else:
+        result = provider.show(caller_name, rg)
+        assert result["enabled"] is True
+        assert result["eventGrid"]["topicSpace"]["configured"] is True
+        assert result["instance"]["dataflowEndpoint"]["configured"] is True
+
+
 @pytest.mark.parametrize("resource", ["topic", "profile", "profile-null-diagnostics", "profile-null-logs"])
 def test_enable_reconciles_owned_fields_without_losing_customization(mocked_cmd, mocked_responses, resource):
     provider = LiveData(mocked_cmd)

@@ -76,8 +76,11 @@ train can still be `integration` for an internal candidate. Each job provisions 
 temporary k3s/Arc cluster and separately named instance, storage, schema registry and
 ADR namespace. No existing cluster is converted between channels.
 
-The CI setup creates the ADR namespace in `eastus`, independently of the cluster
-region, because ADR live-data support is unavailable in `westus2`.
+The CI setup creates the ADR namespace in `australiaeast`, independently of the cluster
+region. ADR live-data support is unavailable in `westus2`, and `eastus` is a hybrid
+RPaaS/DirectRP region where namespaces created with the existing API can be delayed
+replicating to DirectRP. `australiaeast` is a fully VNext region recommended by the ADR
+team; the namespace creation command and API remain unchanged for both runtime channels.
 Namespaced devices inherit the namespace region, and namespaced assets
 inherit their device's region. Storage and schema registry locations are unchanged.
 This override applies to CI setup; local init tests retain their existing location defaults.
