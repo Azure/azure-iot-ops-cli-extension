@@ -356,6 +356,7 @@ def test_live_data_group_uses_bundled_preview_runtime(mocker):
     for name in names:
         requirement = loader.command_table[name].runtime_requirement
         assert requirement.channels == {RuntimeChannel.PREVIEW}
+        assert requirement.requires_ready is name.endswith("enable")
     assert "iot ops live-data" in cli.data["runtime_notice_targets"]
 
 

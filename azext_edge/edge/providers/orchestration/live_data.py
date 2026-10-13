@@ -52,6 +52,9 @@ console = Console()
 LIVE_DATA_RUNTIME_REQUIREMENT = OperationRequirements(
     "Live Data", channels={RuntimeChannel.PREVIEW},
 )
+LIVE_DATA_RECOVERY_REQUIREMENT = OperationRequirements(
+    "Live Data", channels={RuntimeChannel.PREVIEW}, requires_ready=False,
+)
 
 
 def get_live_data_topic_space_name(instance_resource_id: str) -> str:
@@ -64,6 +67,10 @@ def get_live_data_topic_space_name(instance_resource_id: str) -> str:
     return f"{LIVE_DATA_TOPICSPACE_PREFIX}-{hash8}"
 
 
+def _resolve_observability_endpoint_key(endpoints: Dict, custom_location_id: str) -> Optional[str]:
+    return next((key for key in endpoints if key.lower() == custom_location_id.lower()), None)
+
+
 def _build_adr_observability_put_payload(adr_namespace: Dict, custom_location_id: str) -> Dict:
     """Build an ADR namespace PUT payload with one observability endpoint entry removed.
 
@@ -74,7 +81,8 @@ def _build_adr_observability_put_payload(adr_namespace: Dict, custom_location_id
     properties = adr_namespace.get("properties", {})
     observability = properties.get("observability", {})
     existing_endpoints = observability.get("endpoints", {})
-    updated_endpoints = {k: v for k, v in existing_endpoints.items() if k != custom_location_id}
+    endpoint_key = _resolve_observability_endpoint_key(existing_endpoints, custom_location_id)
+    updated_endpoints = {k: v for k, v in existing_endpoints.items() if k != endpoint_key}
 
     # Preserve any sibling keys under observability since this is a full PUT.
     updated_observability = dict(observability)
@@ -117,11 +125,44 @@ class LiveData(EventGridProviderBase):
             api_version=LIVE_DATA_ADR_API_VERSION,
             **self._get_client_kwargs(),
         )
+        self._registry_clients = {self.default_subscription_id.lower(): self.registry_mgmt_client}
         # May be replaced with a cross-subscription client by _validate_eg_namespace.
         self.eventgrid_mgmt_client: "EventGridManagementClient" = get_eventgrid_mgmt_client(
             **self._get_client_kwargs()
         )
-        self.permission_manager = PermissionManager(self.default_subscription_id)
+        self.permission_manager = PermissionManager(
+            **self._get_client_kwargs(),
+            credential_scopes=[CloudConfig(self.cmd).arm_endpoint_scope],
+        )
+
+    def _resolve_adr_namespace(self, instance: Dict) -> Tuple[Dict, Dict]:
+        resource_id = instance.get("properties", {}).get("adrNamespaceRef", {}).get("resourceId")
+        if not resource_id:
+            raise ValidationError(
+                "Instance does not have an ADR namespace reference (adrNamespaceRef.resourceId). "
+                "This is required for Live Data. Ensure the instance was deployed with an ADR namespace."
+            )
+        parsed = parse_resource_id_dict(resource_id)
+        if (
+            not all(parsed.get(key) for key in ("subscription", "resource_group", "name"))
+            or parsed.get("namespace", "").lower() != "microsoft.deviceregistry"
+            or parsed.get("type", "").lower() != "namespaces"
+            or parsed.get("last_child_num")
+        ):
+            raise ValidationError(f"Malformed ADR namespace resource Id '{resource_id}'.")
+        subscription_id = parsed["subscription"]
+        key = subscription_id.lower()
+        if key not in self._registry_clients:
+            self._registry_clients[key] = get_registry_mgmt_client(
+                api_version=LIVE_DATA_ADR_API_VERSION,
+                **self._get_client_kwargs(subscription_id=subscription_id),
+            )
+        self.registry_mgmt_client = self._registry_clients[key]
+        namespace = self.registry_mgmt_client.namespaces.get(
+            resource_group_name=parsed["resource_group"],
+            namespace_name=parsed["name"],
+        )
+        return parsed, namespace
 
     def enable(
         self,
@@ -171,6 +212,7 @@ class LiveData(EventGridProviderBase):
                 instance_resource_id: str = instance["id"]
                 extended_location: Dict = instance["extendedLocation"]
                 custom_location_id: str = extended_location["name"]
+                _, adr_namespace = self._resolve_adr_namespace(instance)
                 display.update_step("Analyzing", "Instance resolution", StepState.COMPLETE, "done")
 
             with display.step_scope("Analyzing", "EG namespace validation"):
@@ -179,6 +221,7 @@ class LiveData(EventGridProviderBase):
 
             with display.step_scope("Analyzing", "UAMI resolution"):
                 mi_resource = self._resolve_user_assigned_mi(mi_user_assigned) if mi_user_assigned else None
+                self._validate_shared_adr_identity(adr_namespace, custom_location_id, mi_resource)
                 if mi_resource:
                     display.update_step("Analyzing", "UAMI resolution", StepState.COMPLETE, "done")
                 else:
@@ -213,8 +256,10 @@ class LiveData(EventGridProviderBase):
                     instance_resource_id=instance_resource_id,
                     **kwargs,
                 )
-                detail = "exists" if topic_space_result.get("exists") else "created"
-                state = StepState.SKIPPED if topic_space_result.get("exists") else StepState.COMPLETE
+                detail = "updated" if topic_space_result.get("updated") else (
+                    "exists" if topic_space_result.get("exists") else "created"
+                )
+                state = StepState.SKIPPED if detail == "exists" else StepState.COMPLETE
                 display.update_step(cat_eg, "Topic space", state, detail)
 
             with display.step_scope(cat_aio, "Dataflow profile"):
@@ -224,8 +269,10 @@ class LiveData(EventGridProviderBase):
                     extended_location=extended_location,
                     **kwargs,
                 )
-                detail = "exists" if profile_result.get("exists") else "created"
-                state = StepState.SKIPPED if profile_result.get("exists") else StepState.COMPLETE
+                detail = "updated" if profile_result.get("updated") else (
+                    "exists" if profile_result.get("exists") else "created"
+                )
+                state = StepState.SKIPPED if detail == "exists" else StepState.COMPLETE
                 display.update_step(cat_aio, "Dataflow profile", state, detail)
 
             with display.step_scope(cat_aio, "EG dataflow endpoint"):
@@ -374,7 +421,10 @@ class LiveData(EventGridProviderBase):
             subscription_id=subscription_id,
             role_id=LIVE_DATA_USER_ROLE_ID,
         )
-        manager = PermissionManager(subscription_id)
+        manager = PermissionManager(
+            **self._get_client_kwargs(subscription_id=subscription_id),
+            credential_scopes=[CloudConfig(self.cmd).arm_endpoint_scope],
+        )
         assignments: List[Dict] = []
         for user_object_id in user_object_ids:
             try:
@@ -465,8 +515,8 @@ class LiveData(EventGridProviderBase):
     ) -> Dict:
         """Show Live Data configuration for an IoT Operations instance.
 
-        Live Data state requires namespace observability to be enabled and this instance's
-        observability.endpoints[<customLocationId>] entry to be present on the ADR namespace.
+        Live Data state requires this instance's observability.endpoints[<customLocationId>]
+        entry and configured supporting resources. The namespace-wide flag is informational.
         """
         analyzing_cats = {
             "Analyzing": ["Instance & ADR namespace", "Event Grid resources", "Instance dataflow resources"],
@@ -478,6 +528,7 @@ class LiveData(EventGridProviderBase):
         observability_enabled = False
         obs_endpoint_exists = False
         eg_all_exist = False
+        outbound_identity: Dict = {}
 
         with WorkflowDisplay(
             title="Live Data Status",
@@ -505,17 +556,16 @@ class LiveData(EventGridProviderBase):
 
                     if adr_subscription_id and adr_resource_group and adr_namespace_name:
                         try:
-                            adr_namespace = self.registry_mgmt_client.namespaces.get(
-                                resource_group_name=adr_resource_group,
-                                namespace_name=adr_namespace_name,
-                            )
+                            _, adr_namespace = self._resolve_adr_namespace(instance)
                             observability = (
                                 adr_namespace.get("properties", {}).get("observability", {})
                             )
                             observability_enabled = observability.get("enabled") is True
                             existing_endpoints = observability.get("endpoints", {})
-                            obs_endpoint = existing_endpoints.get(custom_location_id) if custom_location_id else None
+                            endpoint_key = _resolve_observability_endpoint_key(existing_endpoints, custom_location_id)
+                            obs_endpoint = existing_endpoints.get(endpoint_key) if endpoint_key is not None else None
                             obs_endpoint_exists = bool(obs_endpoint)
+                            outbound_identity = adr_namespace.get("properties", {}).get("outboundIdentity") or {}
 
                             adr_section = {
                                 "name": adr_namespace_name,
@@ -531,6 +581,11 @@ class LiveData(EventGridProviderBase):
                             }
                         except ResourceNotFoundError:
                             logger.warning("ADR namespace '%s' not found.", adr_namespace_name)
+
+                if adr_section:
+                    adr_section["userReaderAssignments"] = self._get_user_reader_assignments(
+                        adr_namespace_resource_id, adr_section["subscriptionId"],
+                    )
 
                 display.update_step("Analyzing", "Instance & ADR namespace", StepState.COMPLETE, "done")
 
@@ -549,6 +604,7 @@ class LiveData(EventGridProviderBase):
                         )
                         ts_name = get_live_data_topic_space_name(instance_resource_id)
                         ts_exists = False
+                        ts_configured = False
                         topic_space_section: Dict = {"name": ts_name, "exists": False}
                         try:
                             ts_resource = self.eventgrid_mgmt_client.topic_spaces.get(
@@ -557,15 +613,19 @@ class LiveData(EventGridProviderBase):
                                 topic_space_name=ts_name,
                             )
                             ts_exists = True
+                            ts_configured = ts_resource.get("properties", {}).get("topicTemplates") == [
+                                LIVE_DATA_TOPIC_TEMPLATE.format(scope_id=name)
+                            ]
                             topic_space_section = {
                                 "name": ts_name,
                                 "topicTemplates": ts_resource.get("properties", {}).get("topicTemplates", []),
                                 "exists": True,
+                                "configured": ts_configured,
                             }
                         except ResourceNotFoundError:
                             pass
 
-                        eg_all_exist = ts_exists
+                        eg_all_exist = ts_exists and ts_configured
                         eg_section = {
                             "namespace": {
                                 "name": eg_ctx.namespace_name,
@@ -583,36 +643,52 @@ class LiveData(EventGridProviderBase):
 
             with display.step_scope("Analyzing", "Instance dataflow resources"):
                 profile_exists = False
+                profile_configured = False
                 try:
-                    self.iotops_mgmt_client.dataflow_profile.get(
+                    profile = self.iotops_mgmt_client.dataflow_profile.get(
                         resource_group_name=resource_group_name,
                         instance_name=name,
                         dataflow_profile_name=LIVE_DATA_PROFILE_NAME,
                     )
                     profile_exists = True
+                    profile_configured = self._dataflow_profile_configured(profile)
                 except ResourceNotFoundError:
                     pass
 
                 ep_exists = False
+                ep_configured = False
                 try:
-                    self.iotops_mgmt_client.dataflow_endpoint.get(
+                    endpoint = self.iotops_mgmt_client.dataflow_endpoint.get(
                         resource_group_name=resource_group_name,
                         instance_name=name,
                         dataflow_endpoint_name=LIVE_DATA_ENDPOINT_NAME,
                     )
                     ep_exists = True
+                    if eg_section and eg_ctx:
+                        authentication = self._get_live_data_endpoint_auth(outbound_identity)
+                        if authentication is not None:
+                            current_eg_ctx = eg_ctx._replace(
+                                mqtt_hostname=eg_section["namespace"]["mqttHostname"],
+                            )
+                            ep_configured = self._eg_dataflow_endpoint_configured(
+                                endpoint, current_eg_ctx, name, authentication,
+                            )
                 except ResourceNotFoundError:
                     pass
 
-                aio_all_exist = profile_exists and ep_exists
+                aio_all_exist = profile_exists and profile_configured and ep_exists and ep_configured
                 display.update_step("Analyzing", "Instance dataflow resources", StepState.COMPLETE, "done")
 
         instance_section = {
-            "dataflowProfile": {"name": LIVE_DATA_PROFILE_NAME, "exists": profile_exists},
-            "dataflowEndpoint": {"name": LIVE_DATA_ENDPOINT_NAME, "exists": ep_exists},
+            "dataflowProfile": {
+                "name": LIVE_DATA_PROFILE_NAME, "exists": profile_exists, "configured": profile_configured,
+            },
+            "dataflowEndpoint": {
+                "name": LIVE_DATA_ENDPOINT_NAME, "exists": ep_exists, "configured": ep_configured,
+            },
         }
 
-        enabled = observability_enabled and obs_endpoint_exists and eg_all_exist and aio_all_exist
+        enabled = obs_endpoint_exists and eg_all_exist and aio_all_exist
 
         return {
             "enabled": enabled,
@@ -620,6 +696,48 @@ class LiveData(EventGridProviderBase):
             "eventGrid": eg_section,
             "deviceRegistryNamespace": adr_section,
         }
+
+    def _get_user_reader_assignments(self, namespace_id: str, subscription_id: str) -> List[Dict]:
+        manager = PermissionManager(
+            **self._get_client_kwargs(subscription_id=subscription_id),
+            credential_scopes=[CloudConfig(self.cmd).arm_endpoint_scope],
+        )
+        role_id = ROLE_DEF_FORMAT_STR.format(
+            subscription_id=subscription_id, role_id=LIVE_DATA_USER_ROLE_ID,
+        )
+        assignments = []
+        for assignment in manager.authz_client.role_assignments.list_for_scope(scope=namespace_id, filter="atScope()"):
+            properties = assignment.get("properties") or {}
+            if (
+                (properties.get("scope") or "").lower() == namespace_id.lower()
+                and (properties.get("principalType") or "").lower() == PrincipalType.USER.value.lower()
+                and (properties.get("roleDefinitionId") or "").lower() == role_id.lower()
+            ):
+                assignments.append({
+                    "principalId": properties["principalId"],
+                    "assignmentId": assignment["id"],
+                })
+        return assignments
+
+    def _get_live_data_endpoint_auth(self, outbound_identity: Dict) -> Optional[Dict]:
+        identity_type = (outbound_identity.get("type") or "").lower()
+        if identity_type == "systemassigned":
+            return self._build_eg_endpoint_auth()
+        if identity_type == "userassigned" and outbound_identity.get("userAssignedIdentity"):
+            resource_id = outbound_identity["userAssignedIdentity"]
+            try:
+                mi_resource = self._get_user_assigned_mi(resource_id)
+            except ResourceNotFoundError:
+                logger.warning(
+                    "Live Data outbound identity '%s' not found; endpoint configuration cannot be verified.",
+                    resource_id,
+                )
+                return None
+            return self._build_eg_endpoint_auth(mi_resource)
+        logger.warning(
+            "Live Data outbound identity is missing or unsupported; endpoint configuration cannot be verified."
+        )
+        return None
 
     def disable(
         self,
@@ -653,37 +771,41 @@ class LiveData(EventGridProviderBase):
                 adr_namespace_resource_id = (
                     instance.get("properties", {}).get("adrNamespaceRef", {}).get("resourceId")
                 )
+                adr_namespace = {}
+                adr_resource_group = ""
+                adr_namespace_name = ""
+                existing_endpoints = {}
                 if not adr_namespace_resource_id:
                     logger.warning(
                         "Instance '%s' has no ADR namespace reference. Live Data may not have been enabled.",
                         name,
                     )
-                    display.update_step("Analyzing", "Instance & ADR namespace", StepState.SKIPPED, "no ref")
-                    return
-
-                parsed_adr = parse_resource_id_dict(adr_namespace_resource_id)
-                adr_resource_group = parsed_adr.get("resource_group", "")
-                adr_namespace_name = parsed_adr.get("name", "")
-
-                try:
-                    adr_namespace = self.registry_mgmt_client.namespaces.get(
-                        resource_group_name=adr_resource_group,
-                        namespace_name=adr_namespace_name,
-                    )
-                except ResourceNotFoundError:
-                    logger.warning(
-                        "ADR namespace '%s' not found. Live Data may not have been enabled.",
-                        adr_namespace_name,
-                    )
-                    display.update_step("Analyzing", "Instance & ADR namespace", StepState.SKIPPED, "not found")
-                    return
-
-                existing_endpoints = (
-                    adr_namespace.get("properties", {}).get("observability", {}).get("endpoints", {})
-                )
-                obs_endpoint = existing_endpoints.get(custom_location_id)
+                else:
+                    parsed_adr = parse_resource_id_dict(adr_namespace_resource_id)
+                    adr_resource_group = parsed_adr.get("resource_group", "")
+                    adr_namespace_name = parsed_adr.get("name", "")
+                    try:
+                        _, adr_namespace = self._resolve_adr_namespace(instance)
+                    except ResourceNotFoundError:
+                        logger.warning("ADR namespace '%s' not found. Continuing instance cleanup.", adr_namespace_name)
+                    else:
+                        existing_endpoints = (
+                            adr_namespace.get("properties", {}).get("observability", {}).get("endpoints", {})
+                        )
+                endpoint_key = _resolve_observability_endpoint_key(existing_endpoints, custom_location_id)
+                obs_endpoint = existing_endpoints.get(endpoint_key) if endpoint_key is not None else None
                 eg_ctx = self._discover_eg_context(obs_endpoint)
-                display.update_step("Analyzing", "Instance & ADR namespace", StepState.COMPLETE, "found")
+                if not eg_ctx:
+                    logger.warning(
+                        "Cannot locate Event Grid topic space '%s' without an observability endpoint resourceId. "
+                        "Continuing instance cleanup; remove the topic space manually if it exists.",
+                        ts_name,
+                    )
+                display.update_step(
+                    "Analyzing", "Instance & ADR namespace",
+                    StepState.COMPLETE if adr_namespace else StepState.SKIPPED,
+                    "found" if adr_namespace else "unavailable; continuing cleanup",
+                )
 
             with display.step_scope("Analyzing", "Resource probing"):
                 profile_exists = True
@@ -719,7 +841,7 @@ class LiveData(EventGridProviderBase):
                         pass
                 display.update_step("Analyzing", "Resource probing", StepState.COMPLETE, "done")
 
-        has_endpoint_entry = custom_location_id in existing_endpoints
+        has_endpoint_entry = endpoint_key is not None
         if not confirm_yes:
             self._log_disable_summary(
                 instance_name=name,
@@ -828,7 +950,7 @@ class LiveData(EventGridProviderBase):
 
             # Remove the ADR endpoint entry last: it holds the EG resourceId used to discover
             # the EG namespace, so keeping it until the end keeps an interrupted disable re-run-safe.
-            if custom_location_id in existing_endpoints:
+            if _resolve_observability_endpoint_key(existing_endpoints, custom_location_id) is not None:
                 with display.step_scope(cat_adr, "Observability endpoint"):
                     put_payload = _build_adr_observability_put_payload(adr_namespace, custom_location_id)
                     poller = self.registry_mgmt_client.namespaces.begin_create_or_replace(
@@ -890,20 +1012,19 @@ class LiveData(EventGridProviderBase):
         instance_resource_id: str,
         **kwargs,
     ) -> Dict:
-        """Create or confirm the Live Data topic space on the EG namespace."""
+        """Reconcile the Live Data-owned topic templates, preserving other fields."""
         topic_space_name = get_live_data_topic_space_name(instance_resource_id)
         topic_templates = [LIVE_DATA_TOPIC_TEMPLATE.format(scope_id=instance_name)]
 
+        existing = None
         try:
-            self.eventgrid_mgmt_client.topic_spaces.get(
+            existing = self.eventgrid_mgmt_client.topic_spaces.get(
                 resource_group_name=eg_ctx.resource_group_name,
                 namespace_name=eg_ctx.namespace_name,
                 topic_space_name=topic_space_name,
             )
-            logger.info(
-                "Topic space '%s' already exists on namespace '%s'.", topic_space_name, eg_ctx.namespace_name
-            )
-            return {"name": topic_space_name, "topicTemplates": topic_templates, "exists": True}
+            if existing.get("properties", {}).get("topicTemplates") == topic_templates:
+                return {"name": topic_space_name, "topicTemplates": topic_templates, "exists": True}
         except ResourceNotFoundError:
             pass
 
@@ -913,6 +1034,10 @@ class LiveData(EventGridProviderBase):
                 "topicTemplates": topic_templates,
             }
         }
+        if existing is not None:
+            topic_space_payload["properties"] = dict(existing.get("properties", {}))
+            topic_space_payload["properties"].pop("provisioningState", None)
+            topic_space_payload["properties"]["topicTemplates"] = topic_templates
         poller = self.eventgrid_mgmt_client.topic_spaces.begin_create_or_update(
             resource_group_name=eg_ctx.resource_group_name,
             namespace_name=eg_ctx.namespace_name,
@@ -920,8 +1045,21 @@ class LiveData(EventGridProviderBase):
             topic_space_info=topic_space_payload,
         )
         wait_for_terminal_state(poller, **kwargs)
-        logger.info("Created topic space '%s' on namespace '%s'.", topic_space_name, eg_ctx.namespace_name)
-        return {"name": topic_space_name, "topicTemplates": topic_templates, "exists": False}
+        logger.info("Reconciled topic space '%s' on namespace '%s'.", topic_space_name, eg_ctx.namespace_name)
+        return {
+            "name": topic_space_name, "topicTemplates": topic_templates,
+            "exists": existing is not None, "updated": existing is not None,
+        }
+
+    @staticmethod
+    def _dataflow_profile_configured(profile: Dict) -> bool:
+        properties = profile.get("properties", {})
+        diagnostics = properties.get("diagnostics") or {}
+        logs = diagnostics.get("logs") or {}
+        return (
+            properties.get("instanceCount") == 1
+            and logs.get("level") == "info"
+        )
 
     def _setup_dataflow_profile(
         self,
@@ -930,17 +1068,16 @@ class LiveData(EventGridProviderBase):
         extended_location: Dict,
         **kwargs,
     ) -> Dict:
-        """Create or confirm the dedicated Live Data dataflow profile (instanceCount=1)."""
+        """Reconcile owned profile settings without replacing unrelated configuration."""
+        existing = None
         try:
-            self.iotops_mgmt_client.dataflow_profile.get(
+            existing = self.iotops_mgmt_client.dataflow_profile.get(
                 resource_group_name=resource_group_name,
                 instance_name=instance_name,
                 dataflow_profile_name=LIVE_DATA_PROFILE_NAME,
             )
-            logger.info(
-                "Dataflow profile '%s' already exists on instance '%s'.", LIVE_DATA_PROFILE_NAME, instance_name
-            )
-            return {"name": LIVE_DATA_PROFILE_NAME, "exists": True}
+            if self._dataflow_profile_configured(existing):
+                return {"name": LIVE_DATA_PROFILE_NAME, "exists": True}
         except ResourceNotFoundError:
             pass
 
@@ -951,6 +1088,17 @@ class LiveData(EventGridProviderBase):
                 "instanceCount": 1,
             },
         }
+        if existing is not None:
+            properties = dict(existing.get("properties", {}))
+            properties.pop("provisioningState", None)
+            diagnostics = dict(properties.get("diagnostics") or {})
+            logs = dict(diagnostics.get("logs") or {})
+            logs["level"] = "info"
+            diagnostics["logs"] = logs
+            properties.update(instanceCount=1, diagnostics=diagnostics)
+            resource["properties"] = properties
+            if "tags" in existing:
+                resource["tags"] = existing["tags"]
         poller = self.iotops_mgmt_client.dataflow_profile.begin_create_or_update(
             resource_group_name=resource_group_name,
             instance_name=instance_name,
@@ -958,8 +1106,8 @@ class LiveData(EventGridProviderBase):
             resource=resource,
         )
         wait_for_terminal_state(poller, **kwargs)
-        logger.info("Created dataflow profile '%s' on instance '%s'.", LIVE_DATA_PROFILE_NAME, instance_name)
-        return {"name": LIVE_DATA_PROFILE_NAME, "exists": False}
+        logger.info("Reconciled dataflow profile '%s' on instance '%s'.", LIVE_DATA_PROFILE_NAME, instance_name)
+        return {"name": LIVE_DATA_PROFILE_NAME, "exists": existing is not None, "updated": existing is not None}
 
     def _setup_adr_observability(
         self,
@@ -980,28 +1128,12 @@ class LiveData(EventGridProviderBase):
         granted to its principal, then the endpoint entry is written. When the identity
         already exists (or a UAMI is supplied and pre-authorized), a single write is used.
         """
-        adr_namespace_resource_id = instance.get("properties", {}).get("adrNamespaceRef", {}).get("resourceId")
-        if not adr_namespace_resource_id:
-            raise ValidationError(
-                "Instance does not have an ADR namespace reference (adrNamespaceRef.resourceId). "
-                "This is required for Live Data. Ensure the instance was deployed with an ADR namespace."
-            )
-
-        parsed_adr = parse_resource_id_dict(adr_namespace_resource_id)
+        parsed_adr, adr_namespace = self._resolve_adr_namespace(instance)
         adr_resource_group = parsed_adr.get("resource_group", "")
         adr_namespace_name = parsed_adr.get("name", "")
         adr_subscription_id = parsed_adr.get("subscription", "")
-        if not all([adr_resource_group, adr_namespace_name]):
-            raise ValidationError(
-                f"Malformed ADR namespace resource Id '{adr_namespace_resource_id}'. "
-                f"Could not extract resource group or namespace name."
-            )
-
-        adr_namespace = self.registry_mgmt_client.namespaces.get(
-            resource_group_name=adr_resource_group,
-            namespace_name=adr_namespace_name,
-        )
         properties = adr_namespace.get("properties", {})
+        self._validate_shared_adr_identity(adr_namespace, custom_location_id, mi_resource)
 
         desired_endpoint = {
             "endpointType": LIVE_DATA_ADR_ENDPOINT_TYPE,
@@ -1014,7 +1146,8 @@ class LiveData(EventGridProviderBase):
         observability = properties.get("observability", {})
         observability_already_enabled = observability.get("enabled") is True
         existing_endpoints = observability.get("endpoints", {})
-        current_endpoint = existing_endpoints.get(custom_location_id)
+        endpoint_key = _resolve_observability_endpoint_key(existing_endpoints, custom_location_id)
+        current_endpoint = existing_endpoints.get(endpoint_key) if endpoint_key is not None else None
         endpoint_already_configured = current_endpoint == desired_endpoint
 
         outbound_identity_already_configured = properties.get("outboundIdentity") == outbound_identity
@@ -1074,7 +1207,7 @@ class LiveData(EventGridProviderBase):
                 adr_role_ids=adr_role_ids,
             )
             merged_endpoints = dict(existing_endpoints)
-            merged_endpoints[custom_location_id] = desired_endpoint
+            merged_endpoints[endpoint_key if endpoint_key is not None else custom_location_id] = desired_endpoint
             endpoint_payload = {
                 "properties": {
                     "observability": {
@@ -1086,7 +1219,7 @@ class LiveData(EventGridProviderBase):
             self._patch_namespace(adr_resource_group, adr_namespace_name, endpoint_payload, **kwargs)
         else:
             merged_endpoints = dict(existing_endpoints)
-            merged_endpoints[custom_location_id] = desired_endpoint
+            merged_endpoints[endpoint_key if endpoint_key is not None else custom_location_id] = desired_endpoint
             payload = dict(base_payload)
             payload["properties"]["observability"] = {
                 "enabled": True,
@@ -1123,6 +1256,30 @@ class LiveData(EventGridProviderBase):
         if mi_resource:
             return {"type": "UserAssigned", "userAssignedIdentity": mi_resource["id"]}
         return {"type": "SystemAssigned"}
+
+    def _validate_shared_adr_identity(
+        self, namespace: Dict, custom_location_id: str, mi_resource: Optional[Dict],
+    ) -> None:
+        properties = namespace.get("properties") or {}
+        observability = properties.get("observability") or {}
+        endpoints = observability.get("endpoints") or {}
+        endpoint_key = _resolve_observability_endpoint_key(endpoints, custom_location_id)
+        sibling_endpoints = any(key != endpoint_key for key in endpoints)
+        management_endpoints = (properties.get("management") or {}).get("endpoints")
+        if not sibling_endpoints and not management_endpoints:
+            return
+        current = properties.get("outboundIdentity") or {}
+        desired = self._build_outbound_identity(mi_resource)
+        if (
+            (current.get("type") or "").lower() == desired["type"].lower()
+            and (current.get("userAssignedIdentity") or "").lower()
+            == desired.get("userAssignedIdentity", "").lower()
+        ):
+            return
+        raise ValidationError(
+            "Cannot change the ADR namespace outbound identity while endpoints for other instances or features exist. "
+            "Reuse the existing outbound identity; changing this shared identity requires a coordinated migration."
+        )
 
     def _resolve_outbound_principal(self, mi_resource: Optional[Dict], identity: Dict) -> str:
         """Resolve the principal ID of the ADR namespace outbound identity."""

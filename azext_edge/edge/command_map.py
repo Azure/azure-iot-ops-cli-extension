@@ -83,16 +83,16 @@ def load_iotops_commands(self, _):
         command_type=live_data_resource_ops,
         is_preview=True,
     ) as cmd_group:
-        from .providers.orchestration.live_data import LIVE_DATA_RUNTIME_REQUIREMENT
+        from .providers.orchestration.live_data import LIVE_DATA_RECOVERY_REQUIREMENT, LIVE_DATA_RUNTIME_REQUIREMENT
 
         cmd_group.command(
             "enable", "live_data_enable", runtime_requirement=LIVE_DATA_RUNTIME_REQUIREMENT,
         )
         cmd_group.command(
-            "disable", "live_data_disable", runtime_requirement=LIVE_DATA_RUNTIME_REQUIREMENT,
+            "disable", "live_data_disable", runtime_requirement=LIVE_DATA_RECOVERY_REQUIREMENT,
         )
         cmd_group.show_command(
-            "show", "live_data_show", runtime_requirement=LIVE_DATA_RUNTIME_REQUIREMENT,
+            "show", "live_data_show", runtime_requirement=LIVE_DATA_RECOVERY_REQUIREMENT,
         )
 
     with self.command_group(

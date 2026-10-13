@@ -42,6 +42,7 @@ There are, however, some prerequisites and caveats that users should be made awa
   - **runtime-channel**: Shared update and cross-channel refusal tests (runs serially)
   - **upgrade-path**: Actual older-to-newer upgrade tests; explicitly selected with pinned baselines
   - **mgmtactions**: Azure IoT Operations management actions tests (runs serially)
+  - **livedata**: Live Data rejection tests on stable and lifecycle tests on preview (runs serially)
   - **redeploy**: Tests cluster redeployment functionality
   - **trustbundle**: Workload identity federation tests
 
@@ -87,8 +88,10 @@ This override applies to CI setup; local init tests retain their existing locati
   the matrix owns runtime selection. Existing feature-mode arguments remain independent.
 - Shared scenario tests run unchanged on both deployments. The serial `runtime-channel`
   scenario checks shared update behavior and rejects cross-channel upgrades, including with force.
-  Future preview-only features should add preview success and GA rejection/no-mutation tests;
-  there are no production feature restrictions to classify automatically today.
+  The `livedata` scenario runs on both channels: stable tests verify that all three commands
+  fail with the preview-runtime restriction and leave instance/runtime configuration unchanged;
+  preview tests exercise enable, show, disable, idempotency and role assignments.
+  Stable jobs do not create Live Data Event Grid resources or identities.
 - Create and each subsequent suite verify the **installed** `currentVersion`, release train,
   runtime channel, associations and readiness. Qualification assertions are hard failures,
   even when the legacy `init-continue-on-error` option is set.

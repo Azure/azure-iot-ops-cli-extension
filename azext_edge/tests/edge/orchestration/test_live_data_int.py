@@ -8,7 +8,8 @@
 
 Exercises the full lifecycle against live Azure: enable, show, and disable,
 including idempotency on both mutating commands and role-assignment landing at
-the selected scope.
+the selected scope on preview. Stable jobs verify that all three commands are
+rejected without changing the instance or runtime configuration.
 
 The lifecycle runs once per outbound identity mode, system-assigned and
 user-assigned, because the two differ in which principal the Event Grid role
@@ -18,6 +19,8 @@ per-session data flow is owned by DOE — so the assertions cover the ARM
 resources the CLI provisions and the role assignments it grants.
 """
 
+import os
+import subprocess
 from typing import Dict, List
 from uuid import uuid4
 
@@ -32,8 +35,46 @@ from azext_edge.edge.providers.orchestration.common import (
 from azext_edge.edge.util.az_client import DEFAULT_EVENTGRID_MGMT_API_VERSION
 
 from ...helpers import assert_role_assignment, run
+from ...runtime_checks import read_runtime
 
 logger = get_logger(__name__)
+
+
+@pytest.mark.livedata
+@pytest.mark.serial
+@pytest.mark.parametrize("operation", ["enable", "show", "disable"])
+def test_live_data_rejects_stable_without_writes(settings, operation):
+    if os.environ.get("azext_edge_runtime_channel") != "stable":
+        pytest.skip("Stable rejection checks apply only to GA runtimes; preview runs the lifecycle tests.")
+    from ...settings import EnvironmentVariables
+
+    for variable in (EnvironmentVariables.instance, EnvironmentVariables.rg):
+        settings.add_to_config(variable.value)
+    name = settings.env.azext_edge_instance
+    group = settings.env.azext_edge_rg
+    if not name or not group:
+        raise AssertionError("Stable Live Data rejection tests require an instance and resource group.")
+    _, instance_before, extensions_before = read_runtime(name, group)
+    arguments = ["az", "iot", "ops", "live-data", operation, "-i", name, "-g", group, "--no-progress"]
+    if operation == "enable":
+        subscription = instance_before["id"].split("/")[2]
+        arguments.extend([
+            "--eg-resource-id",
+            f"/subscriptions/{subscription}/resourceGroups/{group}/providers/Microsoft.EventGrid/namespaces/unused",
+            "--skip-ra",
+        ])
+    elif operation == "disable":
+        arguments.append("--yes")
+    result = subprocess.run(arguments, capture_output=True, text=True, check=False)
+    assert result.returncode != 0, f"Live Data {operation} unexpectedly succeeded on stable."
+    assert "requires a preview runtime; the target uses stable" in result.stderr.lower(), result.stderr
+    assert not result.stdout.strip()
+    _, instance_after, extensions_after = read_runtime(name, group)
+    assert instance_after["properties"] == instance_before["properties"]
+    configuration = ("version", "releaseTrain", "configurationSettings", "autoUpgradeMinorVersion")
+    before = {ext["id"]: {key: ext["properties"].get(key) for key in configuration} for ext in extensions_before}
+    after = {ext["id"]: {key: ext["properties"].get(key) for key in configuration} for ext in extensions_after}
+    assert after == before
 
 
 def _describe_existing_state(show_result: Dict) -> List[str]:
@@ -169,6 +210,9 @@ def live_data_setup(request, settings):
     Creates an Event Grid namespace when one is not supplied.
     """
     from ...settings import EnvironmentVariables
+
+    if os.environ.get("azext_edge_runtime_channel") == "stable":
+        pytest.skip("The Live Data lifecycle requires a preview runtime.")
 
     for var in (
         EnvironmentVariables.rg,
@@ -409,6 +453,12 @@ def test_live_data_user_reader_assignment(request, live_data_setup, settings) ->
     assert len(first_users["assignments"]) == 1
     assert first_assignment["principalId"] == user_object_id.lower()
     assert first_assignment["assignmentId"]
+    expected_reader = {
+        "principalId": first_assignment["principalId"],
+        "assignmentId": first_assignment["assignmentId"],
+    }
+    shown = run(f"az iot ops live-data show {common}")
+    assert expected_reader in shown["deviceRegistryNamespace"]["userReaderAssignments"]
     assert_role_assignment(
         scope=adr_namespace_id,
         assignee=user_object_id,
@@ -421,6 +471,9 @@ def test_live_data_user_reader_assignment(request, live_data_setup, settings) ->
     assert second_assignment["created"] is False
 
     run(f"az iot ops live-data disable {common} -y")
+    shown = run(f"az iot ops live-data show {common}")
+    assert shown["enabled"] is False
+    assert expected_reader in shown["deviceRegistryNamespace"]["userReaderAssignments"]
     assert_role_assignment(
         scope=adr_namespace_id,
         assignee=user_object_id,

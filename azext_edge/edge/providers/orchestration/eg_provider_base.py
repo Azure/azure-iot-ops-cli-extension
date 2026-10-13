@@ -218,6 +218,20 @@ class EventGridProviderBase(Queryable):
             },
         }
 
+    @staticmethod
+    def _eg_dataflow_endpoint_configured(
+        endpoint: Dict, eg_ctx: EgNamespaceContext, instance_name: str, authentication: Dict,
+    ) -> bool:
+        properties = endpoint.get("properties") or {}
+        mqtt = properties.get("mqttSettings") or {}
+        return (
+            properties.get("endpointType") == MQTT_ENDPOINT_TYPE
+            and mqtt.get("host") == eg_ctx.mqtt_hostname
+            and mqtt.get("authentication") == authentication
+            and mqtt.get("clientIdPrefix") == instance_name
+            and (mqtt.get("tls") or {}).get("mode") == "Enabled"
+        )
+
     def _setup_eg_dataflow_endpoint(
         self,
         eg_ctx: EgNamespaceContext,
@@ -233,8 +247,8 @@ class EventGridProviderBase(Queryable):
         Uses GET-then-PUT to report accurate status. The endpoint connects to the EG
         namespace's MQTT broker using managed identity authentication. Defaults to
         SystemAssigned MI; when mi_resource is provided, a UserAssigned MI is configured
-        instead. When the endpoint already exists, compares host, authentication, and
-        clientIdPrefix against the desired state and updates via PUT if any differ.
+        instead. Existing endpoints are checked for endpoint type, host, authentication,
+        clientIdPrefix and TLS mode, and updated via PUT if any differ.
         """
         desired_authentication = self._build_eg_endpoint_auth(mi_resource)
 
@@ -244,29 +258,17 @@ class EventGridProviderBase(Queryable):
                 instance_name=instance_name,
                 dataflow_endpoint_name=endpoint_name,
             )
-            existing_mqtt = existing.get("properties", {}).get("mqttSettings", {})
-            existing_host = existing_mqtt.get("host", "")
-            existing_auth = existing_mqtt.get("authentication", {})
-            existing_client_id_prefix = existing_mqtt.get("clientIdPrefix", "")
-
-            host_matches = existing_host == eg_ctx.mqtt_hostname
-            auth_matches = existing_auth == desired_authentication
-            client_id_prefix_matches = existing_client_id_prefix == instance_name
-            if host_matches and auth_matches and client_id_prefix_matches:
+            if self._eg_dataflow_endpoint_configured(existing, eg_ctx, instance_name, desired_authentication):
                 logger.info(
                     "Dataflow endpoint '%s' already exists on instance '%s' with matching configuration.",
                     endpoint_name,
                     instance_name,
                 )
-                return {"name": endpoint_name, "authentication": existing_auth, "exists": True}
+                return {"name": endpoint_name, "authentication": desired_authentication, "exists": True}
 
             logger.info(
-                "Dataflow endpoint '%s' exists but configuration differs "
-                "(host_match=%s, auth_match=%s, client_id_prefix_match=%s). Updating.",
+                "Dataflow endpoint '%s' exists but configuration differs. Updating.",
                 endpoint_name,
-                host_matches,
-                auth_matches,
-                client_id_prefix_matches,
             )
         except ResourceNotFoundError:
             existing = None
@@ -307,6 +309,15 @@ class EventGridProviderBase(Queryable):
         return {"name": endpoint_name, "authentication": desired_authentication, "exists": False}
 
     def _resolve_user_assigned_mi(self, mi_resource_id: str) -> Dict:
+        try:
+            return self._get_user_assigned_mi(mi_resource_id)
+        except ResourceNotFoundError:
+            raise InvalidArgumentValueError(
+                f"User-assigned managed identity '{mi_resource_id}' not found.\n"
+                f"Verify the --mi-user-assigned value and ensure the identity exists."
+            )
+
+    def _get_user_assigned_mi(self, mi_resource_id: str) -> Dict:
         """Fetch a user-assigned managed identity resource to extract clientId and tenantId.
 
         Uses the base Queryable resource_client for same-subscription lookups. When the
@@ -322,16 +333,10 @@ class EventGridProviderBase(Queryable):
         else:
             client = self.resource_client
 
-        try:
-            return client.resources.get_by_id(
-                resource_id=mi_resource_id,
-                api_version=MANAGED_IDENTITY_API_VERSION,
-            )
-        except ResourceNotFoundError:
-            raise InvalidArgumentValueError(
-                f"User-assigned managed identity '{mi_resource_id}' not found.\n"
-                f"Verify the --mi-user-assigned value and ensure the identity exists."
-            )
+        return client.resources.get_by_id(
+            resource_id=mi_resource_id,
+            api_version=MANAGED_IDENTITY_API_VERSION,
+        )
 
     def _resolve_ops_extension_identity(self, instance: Dict, mi_resource: Optional[Dict] = None) -> str:
         """Resolve the principal ID of the identity used for Event Grid role assignments.
@@ -398,5 +403,9 @@ class EventGridProviderBase(Queryable):
     def _permission_manager(self, eg_ctx: EgNamespaceContext) -> PermissionManager:
         """Return a PermissionManager scoped to the EG namespace's subscription."""
         if eg_ctx.subscription_id.lower() != self.default_subscription_id.lower():
-            return PermissionManager(subscription_id=eg_ctx.subscription_id)
+            cloud = CloudConfig(self.cmd)
+            return PermissionManager(
+                **self._get_client_kwargs(subscription_id=eg_ctx.subscription_id),
+                credential_scopes=[cloud.arm_endpoint_scope],
+            )
         return self.permission_manager

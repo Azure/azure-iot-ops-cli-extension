@@ -385,6 +385,31 @@ def test_not_ready_target_cannot_execute(invocation):
     call.writer.assert_not_called()
 
 
+@pytest.mark.parametrize("operation", ["enable", "show", "disable"])
+@pytest.mark.parametrize("channel", list(RuntimeChannel))
+@pytest.mark.parametrize("resource,state", [
+    ("instance", "Failed"), ("instance", "Canceled"), ("instance", "Updating"),
+    ("custom location", "Failed"), ("extension", "Failed"), ("cluster", "Disconnected"),
+])
+def test_live_data_readiness_is_operation_specific(invocation, operation, channel, resource, state):
+    from azext_edge.edge.providers.orchestration.live_data import (
+        LIVE_DATA_RECOVERY_REQUIREMENT, LIVE_DATA_RUNTIME_REQUIREMENT,
+    )
+
+    requirement = LIVE_DATA_RUNTIME_REQUIREMENT if operation == "enable" else LIVE_DATA_RECOVERY_REQUIREMENT
+    call = invocation(command_name=f"iot ops live-data {operation}", runtime_requirement=requirement)
+    call.instances.return_value.get_runtime_context.return_value = runtime(channel, issues=(
+        RuntimeIssue(RuntimeIssueCode.PROVISIONING_STATE, resource, state, state),
+    ))
+    if channel == RuntimeChannel.PREVIEW and operation != "enable":
+        call.execute()
+        call.writer.assert_called_once()
+    else:
+        with pytest.raises(ValidationError):
+            call.execute()
+        call.writer.assert_not_called()
+
+
 def test_restricted_help_is_offline(invocation):
     call = invocation(runtime_requirement=PREVIEW_ONLY)
     with pytest.raises(SystemExit) as error:

@@ -11,6 +11,8 @@ runtime_parameters=(ParameterRequirement(...), ...), and optionally
 runtime_target=RuntimeTarget(instance_name="other_name", resource_group_name="other_rg").
 Parameter rules use handler argument destinations, or dotted --feature keys. A rule
 with values restricts only those explicitly selected values, not the whole option.
+Requirements enforce readiness by default. Read-only or recovery operations may
+set requires_ready=False while retaining channel and version eligibility checks.
 No handler changes or is_preview tag are needed. The central requirement registries
 are also supported. An unusual resource hierarchy can supply a runtime_target callable
 (cmd, namespace) returning a RuntimeContext, instead of an argument mapping.
@@ -166,8 +168,7 @@ def runtime_validation_handler(cli_ctx, **kwargs):
         if not active:
             return
         runtime = command.runtime_target(cmd, namespace)
-        runtime.require_ready()
         for rule in active:
-            rule.validate_identity(runtime.identity)
+            rule.validate(runtime)
 
     namespace._command_validator = validate  # pylint: disable=protected-access

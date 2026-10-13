@@ -1024,10 +1024,12 @@ class TestSetupEgDataflowEndpoint:
                 "id": f"/fake/path/dataflowEndpoints/{ep_name}",
                 "name": ep_name,
                 "properties": {
+                    "endpointType": MQTT_ENDPOINT_TYPE,
                     "mqttSettings": {
                         "host": eg_ctx.mqtt_hostname,
                         "clientIdPrefix": instance_name,
                         "authentication": existing_auth,
+                        "tls": {"mode": "Enabled"},
                     },
                 },
             },

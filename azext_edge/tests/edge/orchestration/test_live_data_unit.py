@@ -5,12 +5,13 @@
 # ----------------------------------------------------------------------------------------------
 
 import json
+import re
 from typing import Optional
 
 import pytest
 import responses
 from azure.cli.core.azclierror import ValidationError
-from azure.core.exceptions import HttpResponseError
+from azure.core.exceptions import HttpResponseError, ResourceNotFoundError
 
 from azext_edge.edge.providers.orchestration.common import (
     EG_TOPICSPACES_PUBLISHER_ROLE_ID,
@@ -21,6 +22,7 @@ from azext_edge.edge.providers.orchestration.common import (
     LIVE_DATA_TOPIC_TEMPLATE,
     LIVE_DATA_TOPICSPACE_PREFIX,
     LIVE_DATA_USER_ROLE_ID,
+    MQTT_ENDPOINT_TYPE,
     LiveDataRoleScope,
 )
 from azext_edge.edge.providers.orchestration.eg_provider_base import EgNamespaceContext
@@ -63,6 +65,16 @@ def suppress_workflow_display(mocker):
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+
+def _register_reader_assignments(mocked_responses, namespace_id, assignments=None, endpoint=BASE_URL, **kwargs):
+    url = f"{endpoint}{namespace_id}/providers/Microsoft.Authorization/roleAssignments"
+    mocked_responses.add(
+        responses.GET, url, json={"value": assignments or []},
+        match=[responses.matchers.query_param_matcher({"$filter": "atScope()"}, strict_match=False)],
+        **kwargs,
+    )
+    return url
 
 
 def _build_eg_resource_id(
@@ -108,6 +120,23 @@ def _build_iotops_endpoint(
         url += sub_resource
     url += f"?api-version={IOTOPS_API_VERSION}"
     return url
+
+
+def _build_dataflow_endpoint_response(instance_name: str, hostname: str, authentication: Optional[dict] = None) -> dict:
+    return {
+        "properties": {
+            "endpointType": MQTT_ENDPOINT_TYPE,
+            "mqttSettings": {
+                "host": hostname,
+                "clientIdPrefix": instance_name,
+                "authentication": authentication or {
+                    "method": "SystemAssignedManagedIdentity",
+                    "systemAssignedManagedIdentitySettings": {"audience": "https://eventgrid.azure.net"},
+                },
+                "tls": {"mode": "Enabled"},
+            },
+        },
+    }
 
 
 def _build_adr_namespace_resource_id(
@@ -261,7 +290,8 @@ class TestTopicSpaceName:
 
 
 class TestBuildObservabilityPutPayload:
-    def test_removes_target_preserves_others(self):
+    @pytest.mark.parametrize("mixed_case", [False, True])
+    def test_removes_target_preserves_others(self, mixed_case):
         cl_key = "cl-1"
         other_key = "cl-2"
         other_entry = {"endpointType": LIVE_DATA_ADR_ENDPOINT_TYPE, "address": "other"}
@@ -279,7 +309,7 @@ class TestBuildObservabilityPutPayload:
                 "messaging": {"endpoints": {}},
             },
         }
-        payload = _build_adr_observability_put_payload(adr_namespace, cl_key)
+        payload = _build_adr_observability_put_payload(adr_namespace, cl_key.upper() if mixed_case else cl_key)
 
         endpoints = payload["properties"]["observability"]["endpoints"]
         assert cl_key not in endpoints
@@ -351,7 +381,10 @@ class TestSetupTopicSpace:
         mocked_responses.add(
             method=responses.GET,
             url=_build_eg_endpoint(ns, rg, sub_resource=f"/topicSpaces/{ts_name}"),
-            json={"id": f"/fake/topicSpaces/{ts_name}", "name": ts_name},
+            json={
+                "id": f"/fake/topicSpaces/{ts_name}", "name": ts_name,
+                "properties": {"topicTemplates": ["aio/live-data/inst/#"]},
+            },
             status=200,
         )
 
@@ -405,7 +438,10 @@ class TestSetupDataflowProfile:
         mocked_responses.add(
             method=responses.GET,
             url=_build_iotops_endpoint(instance_name, rg, sub_resource=f"/dataflowProfiles/{LIVE_DATA_PROFILE_NAME}"),
-            json={"id": "/fake", "name": LIVE_DATA_PROFILE_NAME},
+            json={
+                "id": "/fake", "name": LIVE_DATA_PROFILE_NAME,
+                "properties": {"instanceCount": 1, "diagnostics": {"logs": {"level": "info"}}},
+            },
             status=200,
         )
         provider = LiveData(cmd=mocked_cmd)
@@ -1187,6 +1223,42 @@ class TestEnable:
 
 
 class TestShow:
+    @pytest.mark.parametrize("status", [200, 403, 404])
+    def test_user_reader_assignments_output(self, mocked_cmd, mocked_responses, status):
+        instance = _build_instance_response("instance", "rg")
+        eg_ctx = _make_eg_ctx("eg", "rg")
+        self._register_show_mocks(
+            mocked_responses, "instance", "rg", "eg", "instance-adr-ns", eg_ctx.resource_id,
+            eg_ctx.mqtt_hostname, get_live_data_topic_space_name(instance["id"]),
+        )
+        namespace_id = _build_adr_namespace_resource_id("instance-adr-ns", "rg")
+        url = f"{BASE_URL}{namespace_id}/providers/Microsoft.Authorization/roleAssignments"
+        assignment = {
+            "id": url.removeprefix(BASE_URL) + "/reader",
+            "properties": {
+                "principalId": "user", "principalType": "User", "scope": namespace_id,
+                "roleDefinitionId": (
+                    f"/subscriptions/{ZEROED_SUBSCRIPTION}/providers/Microsoft.Authorization"
+                    f"/roleDefinitions/{LIVE_DATA_USER_ROLE_ID}"
+                ),
+            },
+        }
+        mocked_responses.replace(
+            responses.GET, url, json={"value": [assignment]}, status=status,
+            match=[responses.matchers.query_param_matcher({"$filter": "atScope()"}, strict_match=False)],
+        )
+        if status == 200:
+            result = LiveData(mocked_cmd).show("instance", "rg")
+            assert result["enabled"] is True
+            assert result["deviceRegistryNamespace"]["userReaderAssignments"] == [
+                {"principalId": "user", "assignmentId": assignment["id"]},
+            ]
+        else:
+            mocked_responses.assert_all_requests_are_fired = False
+            with pytest.raises(HttpResponseError):
+                LiveData(mocked_cmd).show("instance", "rg")
+        assert all(call.request.method == "GET" for call in mocked_responses.calls)
+
     def _register_show_mocks(
         self,
         mocked_responses,
@@ -1198,6 +1270,7 @@ class TestShow:
         hostname,
         ts_name,
         observability_enabled: Optional[bool] = True,
+        mixed_case: bool = False,
     ):
         cl_id = MOCK_EXTENDED_LOCATION["name"]
         obs_endpoint = {
@@ -1212,7 +1285,10 @@ class TestShow:
             method=responses.GET, url=_build_adr_endpoint(adr_ns, rg),
             json=_build_adr_namespace_response(
                 adr_ns, rg, identity_type="SystemAssigned", principal_id="adr-pid",
-                observability_endpoints={cl_id: obs_endpoint},
+                observability_endpoints={
+                    cl_id.upper() if mixed_case else cl_id: obs_endpoint,
+                    **({"sibling-custom-location": {"address": "keep"}} if mixed_case else {}),
+                },
                 observability_enabled=observability_enabled,
                 outbound_identity={"type": "SystemAssigned"},
             ),
@@ -1233,15 +1309,20 @@ class TestShow:
         mocked_responses.add(
             method=responses.GET,
             url=_build_iotops_endpoint(instance_name, rg, sub_resource=f"/dataflowProfiles/{LIVE_DATA_PROFILE_NAME}"),
-            json={"id": "/fake", "name": LIVE_DATA_PROFILE_NAME}, status=200,
+            json={
+                "id": "/fake", "name": LIVE_DATA_PROFILE_NAME,
+                "properties": {"instanceCount": 1, "diagnostics": {"logs": {"level": "info"}}},
+            }, status=200,
         )
         mocked_responses.add(
             method=responses.GET,
             url=_build_iotops_endpoint(instance_name, rg, sub_resource=f"/dataflowEndpoints/{LIVE_DATA_ENDPOINT_NAME}"),
-            json={"id": "/fake", "name": LIVE_DATA_ENDPOINT_NAME}, status=200,
+            json=_build_dataflow_endpoint_response(instance_name, hostname), status=200,
         )
+        _register_reader_assignments(mocked_responses, _build_adr_namespace_resource_id(adr_ns, rg))
 
-    def test_enabled_all_present(self, mocked_cmd, mocked_responses: responses):
+    @pytest.mark.parametrize("mixed_case", [False, True])
+    def test_enabled_all_present(self, mocked_cmd, mocked_responses: responses, mixed_case):
         rg = generate_random_string()
         instance_name = generate_random_string()
         ns_name = generate_random_string()
@@ -1253,18 +1334,22 @@ class TestShow:
             f"/providers/{IOTOPS_RP}/instances/{instance_name}"
         )
         ts_name = get_live_data_topic_space_name(instance_rid)
-        self._register_show_mocks(mocked_responses, instance_name, rg, ns_name, adr_ns, eg_rid, hostname, ts_name)
+        self._register_show_mocks(
+            mocked_responses, instance_name, rg, ns_name, adr_ns, eg_rid, hostname, ts_name, mixed_case=mixed_case,
+        )
 
         provider = LiveData(cmd=mocked_cmd)
         result = provider.show(name=instance_name, resource_group_name=rg)
         assert result["enabled"] is True
         assert result["deviceRegistryNamespace"]["name"] == adr_ns
         assert result["deviceRegistryNamespace"]["observabilityEnabled"] is True
+        assert result["deviceRegistryNamespace"]["userReaderAssignments"] == []
         assert result["eventGrid"]["topicSpace"]["exists"] is True
         assert result["instance"]["dataflowProfile"]["exists"] is True
+        assert result["instance"]["dataflowEndpoint"]["configured"] is True
 
-    @pytest.mark.parametrize("observability_enabled", [None, False])
-    def test_disabled_when_namespace_observability_not_enabled(
+    @pytest.mark.parametrize("observability_enabled", [None, False, True])
+    def test_enablement_independent_of_namespace_observability_flag(
         self,
         mocked_cmd,
         mocked_responses: responses,
@@ -1296,8 +1381,8 @@ class TestShow:
         provider = LiveData(cmd=mocked_cmd)
         result = provider.show(name=instance_name, resource_group_name=rg)
 
-        assert result["enabled"] is False
-        assert result["deviceRegistryNamespace"]["observabilityEnabled"] is False
+        assert result["enabled"] is True
+        assert result["deviceRegistryNamespace"]["observabilityEnabled"] is (observability_enabled is True)
         assert result["deviceRegistryNamespace"]["observabilityEndpoint"] is not None
         assert result["eventGrid"]["topicSpace"]["exists"] is True
         assert result["instance"]["dataflowProfile"]["exists"] is True
@@ -1352,7 +1437,8 @@ class TestShow:
         assert result["enabled"] is False
         assert result["deviceRegistryNamespace"] is None
 
-    def test_disabled_endpoint_absent(self, mocked_cmd, mocked_responses: responses):
+    @pytest.mark.parametrize("sibling_endpoint", [False, True])
+    def test_disabled_endpoint_absent(self, mocked_cmd, mocked_responses: responses, sibling_endpoint: bool):
         rg = generate_random_string()
         instance_name = generate_random_string()
         adr_ns = f"{instance_name}-adr-ns"
@@ -1360,11 +1446,13 @@ class TestShow:
             method=responses.GET, url=_build_iotops_endpoint(instance_name, rg),
             json=_build_instance_response(instance_name, rg, adr_namespace_name=adr_ns), status=200,
         )
-        # ADR present but no observability endpoints
+        endpoints = {"sibling-custom-location": {"address": "keep"}} if sibling_endpoint else {}
+        _register_reader_assignments(mocked_responses, _build_adr_namespace_resource_id(adr_ns, rg))
         mocked_responses.add(
             method=responses.GET, url=_build_adr_endpoint(adr_ns, rg),
             json=_build_adr_namespace_response(
-                adr_ns, rg, identity_type="SystemAssigned", principal_id="adr-pid", observability_endpoints={}
+                adr_ns, rg, identity_type="SystemAssigned", principal_id="adr-pid",
+                observability_endpoints=endpoints, observability_enabled=True,
             ),
             status=200,
         )
@@ -1382,6 +1470,8 @@ class TestShow:
         provider = LiveData(cmd=mocked_cmd)
         result = provider.show(name=instance_name, resource_group_name=rg)
         assert result["enabled"] is False
+        assert result["deviceRegistryNamespace"]["observabilityEnabled"] is True
+        assert result["deviceRegistryNamespace"]["observabilityEndpoint"] is None
         assert result["eventGrid"] is None
 
 
@@ -1394,7 +1484,9 @@ PROMPT_TARGET = "azext_edge.edge.providers.orchestration.live_data.should_contin
 
 
 class TestDisable:
-    def _register_discovery(self, mocked_responses, instance_name, rg, ns_name, adr_ns, eg_rid, hostname, ts_name):
+    def _register_discovery(
+        self, mocked_responses, instance_name, rg, ns_name, adr_ns, eg_rid, hostname, ts_name, mixed_case=False,
+    ):
         cl_id = MOCK_EXTENDED_LOCATION["name"]
         obs_endpoint = {
             "endpointType": LIVE_DATA_ADR_ENDPOINT_TYPE, "address": hostname,
@@ -1408,7 +1500,10 @@ class TestDisable:
             method=responses.GET, url=_build_adr_endpoint(adr_ns, rg),
             json=_build_adr_namespace_response(
                 adr_ns, rg, identity_type="SystemAssigned", principal_id="adr-pid",
-                observability_endpoints={cl_id: obs_endpoint},
+                observability_endpoints={
+                    cl_id.upper() if mixed_case else cl_id: obs_endpoint,
+                    **({"sibling-custom-location": {"address": "keep"}} if mixed_case else {}),
+                },
                 observability_enabled=True,
             ),
             status=200,
@@ -1429,7 +1524,8 @@ class TestDisable:
             json={"id": "/fake", "name": ts_name}, status=200,
         )
 
-    def test_full_teardown(self, mocked_cmd, mocked_responses: responses, mocker):
+    @pytest.mark.parametrize("mixed_case", [False, True])
+    def test_full_teardown(self, mocked_cmd, mocked_responses: responses, mocker, mixed_case):
         rg = generate_random_string()
         instance_name = generate_random_string()
         ns_name = generate_random_string()
@@ -1442,7 +1538,9 @@ class TestDisable:
         )
         ts_name = get_live_data_topic_space_name(instance_rid)
         mocker.patch(PROMPT_TARGET, return_value=True)
-        self._register_discovery(mocked_responses, instance_name, rg, ns_name, adr_ns, eg_rid, hostname, ts_name)
+        self._register_discovery(
+            mocked_responses, instance_name, rg, ns_name, adr_ns, eg_rid, hostname, ts_name, mixed_case=mixed_case,
+        )
         # teardown: ADR PUT (remove endpoint), profile DELETE, endpoint DELETE, topic space DELETE
         mocked_responses.add(
             method=responses.PUT, url=_build_adr_endpoint(adr_ns, rg),
@@ -1474,20 +1572,23 @@ class TestDisable:
         put_call = next(call for call in mocked_responses.calls if call.request.method == "PUT")
         put_body = json.loads(put_call.request.body)
         assert put_body["properties"]["observability"]["enabled"] is True
-        assert put_body["properties"]["observability"]["endpoints"] == {}
+        expected_endpoints = {"sibling-custom-location": {"address": "keep"}} if mixed_case else {}
+        assert put_body["properties"]["observability"]["endpoints"] == expected_endpoints
 
-    def test_no_adr_ref_early_return(self, mocked_cmd, mocked_responses: responses):
+    def test_no_adr_ref_cleans_instance_resources(self, mocked_cmd, mocked_responses: responses, caplog):
         rg = generate_random_string()
         instance_name = generate_random_string()
         mocked_responses.add(
             method=responses.GET, url=_build_iotops_endpoint(instance_name, rg),
             json=_build_instance_response(instance_name, rg, include_adr_ref=False), status=200,
         )
+        self._register_instance_cleanup(mocked_responses, instance_name, rg)
         provider = LiveData(cmd=mocked_cmd)
         provider.disable(name=instance_name, resource_group_name=rg, confirm_yes=True, wait_sec=0)
-        assert len(mocked_responses.calls) == 1
+        assert sum(call.request.method == "DELETE" for call in mocked_responses.calls) == 2
+        assert "remove the topic space manually" in caplog.text
 
-    def test_adr_not_found_early_return(self, mocked_cmd, mocked_responses: responses):
+    def test_adr_not_found_cleans_instance_resources(self, mocked_cmd, mocked_responses: responses, caplog):
         rg = generate_random_string()
         instance_name = generate_random_string()
         adr_ns = f"{instance_name}-adr-ns"
@@ -1499,9 +1600,20 @@ class TestDisable:
             method=responses.GET, url=_build_adr_endpoint(adr_ns, rg),
             json={"error": {"code": "ResourceNotFound"}}, status=404,
         )
+        self._register_instance_cleanup(mocked_responses, instance_name, rg)
         provider = LiveData(cmd=mocked_cmd)
         provider.disable(name=instance_name, resource_group_name=rg, confirm_yes=True, wait_sec=0)
-        assert len(mocked_responses.calls) == 2
+        assert sum(call.request.method == "DELETE" for call in mocked_responses.calls) == 2
+        assert "remove the topic space manually" in caplog.text
+
+    @staticmethod
+    def _register_instance_cleanup(mocked_responses, instance_name, rg):
+        for resource in (
+            f"/dataflowProfiles/{LIVE_DATA_PROFILE_NAME}", f"/dataflowEndpoints/{LIVE_DATA_ENDPOINT_NAME}",
+        ):
+            endpoint = _build_iotops_endpoint(instance_name, rg, sub_resource=resource)
+            mocked_responses.add(responses.GET, endpoint, json={"properties": {}}, status=200)
+            mocked_responses.add(responses.DELETE, endpoint, status=204)
 
     def test_prompt_declined(self, mocked_cmd, mocked_responses: responses, mocker):
         rg = generate_random_string()
@@ -1528,6 +1640,496 @@ class TestDisable:
 # ---------------------------------------------------------------------------
 # Command adapters
 # ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("missing", ["reference", "namespace"])
+def test_enable_validates_adr_before_any_write(mocked_cmd, mocked_responses, missing):
+    instance = _build_instance_response("instance", "rg", include_adr_ref=missing != "reference")
+    mocked_responses.add(responses.GET, _build_iotops_endpoint("instance", "rg"), json=instance)
+    if missing == "namespace":
+        mocked_responses.add(responses.GET, _build_adr_endpoint("instance-adr-ns", "rg"), status=404)
+    with pytest.raises((ValidationError, ResourceNotFoundError)):
+        LiveData(mocked_cmd).enable(
+            "instance", "rg", _build_eg_resource_id("eg", "rg"), skip_role_assignments=True,
+        )
+    assert all(call.request.method == "GET" for call in mocked_responses.calls)
+
+
+@pytest.mark.parametrize("resource", ["topic", "profile", "profile-null-diagnostics", "profile-null-logs"])
+def test_enable_reconciles_owned_fields_without_losing_customization(mocked_cmd, mocked_responses, resource):
+    provider = LiveData(mocked_cmd)
+    if resource == "topic":
+        instance_id = _build_instance_response("instance", "rg")["id"]
+        name = get_live_data_topic_space_name(instance_id)
+        endpoint = _build_eg_endpoint("eg", "rg", sub_resource=f"/topicSpaces/{name}")
+        existing = {"properties": {"description": "keep", "topicTemplates": ["stale/#"]}}
+    else:
+        endpoint = _build_iotops_endpoint("instance", "rg", sub_resource=f"/dataflowProfiles/{LIVE_DATA_PROFILE_NAME}")
+        existing = {
+            "tags": {"owner": "keep"},
+            "properties": {
+                "instanceCount": 2, "diagnostics": {"logs": {"level": "debug"}, "metrics": {"enabled": True}},
+            },
+        }
+        if resource == "profile-null-diagnostics":
+            existing["properties"]["diagnostics"] = None
+        elif resource == "profile-null-logs":
+            existing["properties"]["diagnostics"]["logs"] = None
+    mocked_responses.add(responses.GET, endpoint, json=existing)
+    mocked_responses.add(responses.PUT, endpoint, json=existing)
+    if resource == "topic":
+        result = provider._setup_topic_space(_make_eg_ctx("eg", "rg"), "instance", instance_id, wait_sec=0)
+    else:
+        result = provider._setup_dataflow_profile("instance", "rg", MOCK_EXTENDED_LOCATION, wait_sec=0)
+    assert result["exists"] is True
+    assert result["updated"] is True
+    payload = json.loads(mocked_responses.calls[1].request.body)
+    if resource == "topic":
+        assert payload["properties"] == {"description": "keep", "topicTemplates": ["aio/live-data/instance/#"]}
+    else:
+        assert payload["tags"] == existing["tags"]
+        assert payload["properties"]["instanceCount"] == 1
+        expected_diagnostics = {"logs": {"level": "info"}}
+        if resource != "profile-null-diagnostics":
+            expected_diagnostics["metrics"] = {"enabled": True}
+        assert payload["properties"]["diagnostics"] == expected_diagnostics
+
+
+@pytest.mark.parametrize("failed_step", ["topic", "profile", "endpoint", "adr"])
+def test_disable_after_partial_enable_cleans_created_instance_resources(
+    mocked_cmd, mocked_responses, caplog, failed_step,
+):
+    mocked_responses.assert_all_requests_are_fired = False
+    instance = _build_instance_response("instance", "rg")
+    eg_id = _build_eg_resource_id("eg", "rg")
+    _register_enable_mocks(
+        mocked_responses, "instance", "rg", "eg", "instance-adr-ns", eg_id,
+        "eg.eastus-1.ts.eventgrid.azure.net", instance["id"],
+    )
+    topic = _build_eg_endpoint(
+        "eg", "rg", sub_resource=f"/topicSpaces/{get_live_data_topic_space_name(instance['id'])}",
+    )
+    profile = _build_iotops_endpoint("instance", "rg", sub_resource=f"/dataflowProfiles/{LIVE_DATA_PROFILE_NAME}")
+    endpoint = _build_iotops_endpoint("instance", "rg", sub_resource=f"/dataflowEndpoints/{LIVE_DATA_ENDPOINT_NAME}")
+    adr = _build_adr_endpoint("instance-adr-ns", "rg")
+    failure_url = {"topic": topic, "profile": profile, "endpoint": endpoint, "adr": adr}[failed_step]
+    mocked_responses.replace(
+        responses.PATCH if failed_step == "adr" else responses.PUT, failure_url,
+        json={"error": {"code": "InvalidRequest", "message": "injected failure"}}, status=400,
+    )
+    provider = LiveData(mocked_cmd)
+    with pytest.raises(HttpResponseError):
+        provider.enable("instance", "rg", eg_id, skip_role_assignments=True, wait_sec=0)
+    created = [url for url in (profile, endpoint) if any(
+        call.request.method == "PUT" and call.request.url == url and call.response.status_code == 200
+        for call in mocked_responses.calls
+    )]
+    for url in created:
+        mocked_responses.replace(responses.GET, url, json={"properties": {}}, status=200)
+        mocked_responses.add(responses.DELETE, url, status=204)
+    provider.disable("instance", "rg", confirm_yes=True, wait_sec=0)
+    deletes = [call.request.url for call in mocked_responses.calls if call.request.method == "DELETE"]
+    assert deletes == created
+    assert "remove the topic space manually" in caplog.text
+    for url in created:
+        mocked_responses.replace(responses.GET, url, status=404)
+    provider.disable("instance", "rg", confirm_yes=True, wait_sec=0)
+    assert [call.request.url for call in mocked_responses.calls if call.request.method == "DELETE"] == created
+
+
+@pytest.mark.parametrize("resource", [
+    "topic", "profile", "endpoint-type", "endpoint-tls", "endpoint-auth", "endpoint-host", "endpoint-prefix",
+])
+def test_show_reports_stale_configuration_as_disabled(mocked_cmd, mocked_responses, resource):
+    instance = _build_instance_response("instance", "rg")
+    topic_name = get_live_data_topic_space_name(instance["id"])
+    TestShow()._register_show_mocks(
+        mocked_responses, "instance", "rg", "eg", "instance-adr-ns",
+        _build_eg_resource_id("eg", "rg"), "eg.eastus-1.ts.eventgrid.azure.net", topic_name,
+    )
+    if resource == "topic":
+        endpoint = _build_eg_endpoint("eg", "rg", sub_resource=f"/topicSpaces/{topic_name}")
+        stale = {"properties": {"topicTemplates": ["stale/#"]}}
+    elif resource == "profile":
+        endpoint = _build_iotops_endpoint("instance", "rg", sub_resource=f"/dataflowProfiles/{LIVE_DATA_PROFILE_NAME}")
+        stale = {"properties": {"instanceCount": 2, "diagnostics": {"logs": {"level": "info"}}}}
+    else:
+        endpoint = _build_iotops_endpoint(
+            "instance", "rg", sub_resource=f"/dataflowEndpoints/{LIVE_DATA_ENDPOINT_NAME}",
+        )
+        stale = _build_dataflow_endpoint_response("instance", "eg.eastus-1.ts.eventgrid.azure.net")
+        _set_endpoint_drift(stale, resource.split("-", 1)[1])
+    mocked_responses.replace(responses.GET, endpoint, json=stale)
+    result = LiveData(mocked_cmd).show("instance", "rg")
+    assert result["enabled"] is False
+    if resource == "topic":
+        section = result["eventGrid"]["topicSpace"]
+    else:
+        section = result["instance"]["dataflowProfile" if resource == "profile" else "dataflowEndpoint"]
+    assert section["exists"] is True
+    assert section["configured"] is False
+
+
+def _set_endpoint_drift(endpoint: dict, field: str) -> None:
+    properties = endpoint["properties"]
+    mqtt = properties["mqttSettings"]
+    if field == "type":
+        properties["endpointType"] = "Kafka"
+    elif field == "tls":
+        mqtt["tls"]["mode"] = "Disabled"
+    elif field == "auth":
+        mqtt["authentication"] = {"method": "Anonymous"}
+    elif field == "host":
+        mqtt["host"] = "stale.example.com"
+    elif field == "prefix":
+        mqtt["clientIdPrefix"] = "stale-prefix"
+    else:
+        raise AssertionError(f"Unknown drift field {field}")
+
+
+@pytest.mark.parametrize("field", ["type", "tls", "auth", "host", "prefix"])
+@pytest.mark.parametrize("identity", ["systemAssigned", "userAssigned"])
+def test_enable_repairs_all_endpoint_drift(mocked_cmd, mocked_responses, field, identity):
+    provider = LiveData(mocked_cmd)
+    eg_ctx = _make_eg_ctx("eg", "rg")
+    mi_resource = None
+    authentication = None
+    if identity == "userAssigned":
+        mi_resource = {"properties": {"clientId": "client", "tenantId": "tenant"}}
+        authentication = {
+            "method": "UserAssignedManagedIdentity",
+            "userAssignedManagedIdentitySettings": {
+                "clientId": "client", "tenantId": "tenant", "scope": "https://eventgrid.azure.net/.default",
+            },
+        }
+    desired = _build_dataflow_endpoint_response("instance", eg_ctx.mqtt_hostname, authentication)
+    existing = _build_dataflow_endpoint_response("instance", eg_ctx.mqtt_hostname, authentication)
+    _set_endpoint_drift(existing, field)
+    endpoint = _build_iotops_endpoint("instance", "rg", sub_resource=f"/dataflowEndpoints/{LIVE_DATA_ENDPOINT_NAME}")
+    mocked_responses.add(responses.GET, endpoint, json=existing)
+    mocked_responses.add(responses.PUT, endpoint, json=desired)
+    result = provider._setup_eg_dataflow_endpoint(
+        eg_ctx, "instance", "rg", MOCK_EXTENDED_LOCATION, LIVE_DATA_ENDPOINT_NAME, mi_resource, wait_sec=0,
+    )
+    assert result["updated"] is True
+    assert len(mocked_responses.calls) == 2
+    payload = json.loads(mocked_responses.calls[1].request.body)
+    assert payload["properties"] == desired["properties"]
+
+
+@pytest.mark.parametrize("entrypoint", ["enable", "adr"])
+@pytest.mark.parametrize("identity_change", ["system-to-user", "user-to-system", "different-user", "unknown"])
+@pytest.mark.parametrize("endpoint_kind", ["observability", "management"])
+def test_shared_adr_identity_conflict_is_rejected_before_writes(
+    mocked_cmd, mocked_responses, entrypoint, identity_change, endpoint_kind,
+):
+    instance = _build_instance_response("instance", "rg")
+    old_id = generate_resource_id(resource_group_name="rg", resource_provider="Microsoft.ManagedIdentity",
+                                  resource_path="/userAssignedIdentities/old")
+    new_id = old_id.replace("/old", "/new")
+    current = {"type": "SystemAssigned"} if identity_change == "system-to-user" else {
+        "type": "UserAssigned", "userAssignedIdentity": old_id,
+    }
+    if identity_change == "unknown":
+        current = None
+    mi_resource = None if identity_change in ("user-to-system", "unknown") else {
+        "id": new_id, "properties": {"clientId": "client", "tenantId": "tenant"},
+    }
+    namespace = _build_adr_namespace_response("instance-adr-ns", "rg", outbound_identity=current)
+    namespace["properties"][endpoint_kind] = {"endpoints": {"sibling-custom-location": {"address": "keep"}}}
+    mocked_responses.add(responses.GET, _build_adr_endpoint("instance-adr-ns", "rg"), json=namespace)
+    provider = LiveData(mocked_cmd)
+    if entrypoint == "enable":
+        mocked_responses.add(responses.GET, _build_iotops_endpoint("instance", "rg"), json=instance)
+        mocked_responses.add(
+            responses.GET, _build_eg_endpoint("eg", "rg"), json=_build_eg_namespace_response("eg", "rg"),
+        )
+        if mi_resource:
+            mocked_responses.add(responses.GET, _build_uami_endpoint(new_id), json=mi_resource)
+        with pytest.raises(ValidationError, match="coordinated migration"):
+            provider.enable("instance", "rg", _build_eg_resource_id("eg", "rg"),
+                            mi_user_assigned=new_id if mi_resource else None, skip_role_assignments=True)
+    else:
+        with pytest.raises(ValidationError, match="coordinated migration"):
+            provider._setup_adr_observability(
+                instance, _make_eg_ctx("eg", "rg"), MOCK_EXTENDED_LOCATION["name"], mi_resource,
+                LiveDataRoleScope.NAMESPACE, "topic", None, True,
+            )
+    assert all(call.request.method == "GET" for call in mocked_responses.calls)
+
+
+@pytest.mark.parametrize("sharing", ["none", "own", "sibling"])
+def test_adr_identity_changes_only_when_not_shared(mocked_cmd, mocked_responses, sharing):
+    instance = _build_instance_response("instance", "rg")
+    cl_id = MOCK_EXTENDED_LOCATION["name"]
+    mi_id = generate_resource_id(
+        resource_group_name="rg", resource_provider="Microsoft.ManagedIdentity",
+        resource_path="/userAssignedIdentities/mi",
+    )
+    mi_resource = {"id": mi_id, "properties": {"clientId": "client", "tenantId": "tenant", "principalId": "principal"}}
+    existing_endpoints = {}
+    if sharing == "own":
+        existing_endpoints[cl_id] = {"address": "old"}
+    elif sharing == "sibling":
+        existing_endpoints["sibling-cl"] = {"address": "keep"}
+    current_identity = (
+        {"type": "userassigned", "userAssignedIdentity": mi_id.upper()}
+        if sharing == "sibling" else {"type": "SystemAssigned"}
+    )
+    namespace = _build_adr_namespace_response(
+        "instance-adr-ns", "rg", observability_endpoints=existing_endpoints, outbound_identity=current_identity,
+    )
+    url = _build_adr_endpoint("instance-adr-ns", "rg")
+    mocked_responses.add(responses.GET, url, json=namespace)
+    mocked_responses.add(responses.PATCH, url, json=namespace)
+    result = LiveData(mocked_cmd)._setup_adr_observability(
+        instance, _make_eg_ctx("eg", "rg"), cl_id, mi_resource, LiveDataRoleScope.NAMESPACE, "topic", None, True,
+        wait_sec=0,
+    )
+    assert result["outboundIdentity"] == {"type": "UserAssigned", "userAssignedIdentity": mi_id}
+    payload = json.loads(mocked_responses.calls[1].request.body)
+    for key, endpoint in existing_endpoints.items():
+        if key != cl_id:
+            assert payload["properties"]["observability"]["endpoints"][key] == endpoint
+    assert payload["properties"]["observability"]["endpoints"][cl_id]["scopeId"] == "instance"
+
+
+@pytest.mark.parametrize("state", ["matching", "drift", "staged"])
+def test_adr_reconciliation_preserves_mixed_case_owned_key(mocked_cmd, mocked_responses, mocker, state):
+    instance = _build_instance_response("instance", "rg")
+    cl_id = MOCK_EXTENDED_LOCATION["name"]
+    stored_key = cl_id.upper()
+    sibling_key = cl_id.rsplit("/", 1)[0] + "/other-instance"
+    sibling = {"address": "keep", "scopeId": "other-instance"}
+    eg_ctx = _make_eg_ctx("eg", "rg")
+    desired = {
+        "endpointType": LIVE_DATA_ADR_ENDPOINT_TYPE, "address": eg_ctx.mqtt_hostname,
+        "scopeId": "instance", "resourceId": eg_ctx.resource_id,
+    }
+    namespace = _build_adr_namespace_response(
+        "instance-adr-ns", "rg", identity_type="None" if state == "staged" else "SystemAssigned",
+        principal_id="principal", outbound_identity={"type": "SystemAssigned"}, observability_enabled=True,
+        observability_endpoints={stored_key: desired if state == "matching" else {"address": "stale"},
+                                 sibling_key: sibling},
+    )
+    url = _build_adr_endpoint("instance-adr-ns", "rg")
+    mocked_responses.add(responses.GET, url, json=namespace)
+    if state != "matching":
+        updated = dict(namespace, identity={"type": "SystemAssigned", "principalId": "principal"})
+        mocked_responses.add(responses.PATCH, url, json=updated)
+    provider = LiveData(mocked_cmd)
+    mocker.patch.object(provider, "_assign_subscriber_role")
+    provider._setup_adr_observability(
+        instance, eg_ctx, cl_id, None, LiveDataRoleScope.NAMESPACE, "topic", None,
+        state != "staged", wait_sec=0,
+    )
+    patches = [call for call in mocked_responses.calls if call.request.method == "PATCH"]
+    assert len(patches) == {"matching": 0, "drift": 1, "staged": 2}[state]
+    if patches:
+        payload = json.loads(patches[-1].request.body)
+        assert payload["properties"]["observability"]["endpoints"] == {stored_key: desired, sibling_key: sibling}
+
+
+@pytest.mark.parametrize("outcome", ["matching", "stale-auth", "missing-identity", "permission-denied"])
+def test_show_verifies_user_assigned_endpoint_authentication(mocked_cmd, mocked_responses, caplog, outcome):
+    instance = _build_instance_response("instance", "rg")
+    eg_ctx = _make_eg_ctx("eg", "rg")
+    TestShow()._register_show_mocks(
+        mocked_responses, "instance", "rg", "eg", "instance-adr-ns", eg_ctx.resource_id,
+        eg_ctx.mqtt_hostname, get_live_data_topic_space_name(instance["id"]),
+    )
+    mi_id = generate_resource_id(
+        resource_group_name="identities", resource_provider="Microsoft.ManagedIdentity",
+        resource_path="/userAssignedIdentities/mi", resource_subscription="11111111-1111-1111-1111-111111111111",
+    )
+    namespace = _build_adr_namespace_response(
+        "instance-adr-ns", "rg", observability_enabled=True,
+        observability_endpoints={MOCK_EXTENDED_LOCATION["name"]: {
+            "endpointType": LIVE_DATA_ADR_ENDPOINT_TYPE, "address": eg_ctx.mqtt_hostname,
+            "scopeId": "instance", "resourceId": eg_ctx.resource_id,
+        }},
+        outbound_identity={"type": "UserAssigned", "userAssignedIdentity": mi_id},
+    )
+    mocked_responses.replace(responses.GET, _build_adr_endpoint("instance-adr-ns", "rg"), json=namespace)
+    authentication = {
+        "method": "UserAssignedManagedIdentity",
+        "userAssignedManagedIdentitySettings": {
+            "clientId": "wrong-client" if outcome == "stale-auth" else "client",
+            "tenantId": "tenant", "scope": "https://eventgrid.azure.net/.default",
+        },
+    }
+    endpoint = _build_iotops_endpoint("instance", "rg", sub_resource=f"/dataflowEndpoints/{LIVE_DATA_ENDPOINT_NAME}")
+    mocked_responses.replace(
+        responses.GET, endpoint,
+        json=_build_dataflow_endpoint_response("instance", eg_ctx.mqtt_hostname, authentication),
+    )
+    status = {"missing-identity": 404, "permission-denied": 403}.get(outcome, 200)
+    mocked_responses.add(
+        responses.GET, _build_uami_endpoint(mi_id),
+        json={"id": mi_id, "properties": {"clientId": "client", "tenantId": "tenant"}}, status=status,
+    )
+    if outcome == "permission-denied":
+        with pytest.raises(HttpResponseError):
+            LiveData(mocked_cmd).show("instance", "rg")
+    else:
+        result = LiveData(mocked_cmd).show("instance", "rg")
+        assert result["enabled"] is (outcome == "matching")
+        assert result["instance"]["dataflowEndpoint"]["configured"] is (outcome == "matching")
+        if outcome == "missing-identity":
+            assert "endpoint configuration cannot be verified" in caplog.text
+    assert all(call.request.method == "GET" for call in mocked_responses.calls)
+
+
+@pytest.mark.parametrize("government", [False, True])
+def test_user_reader_assignments_filter_and_pagination(mocked_cmd, mocked_responses, mocker, government):
+    subscription = "11111111-1111-1111-1111-111111111111"
+    namespace_id = _build_adr_namespace_resource_id("namespace", "rg", subscription)
+    endpoint = "https://management.usgovcloudapi.net" if government else BASE_URL
+    if government:
+        mocked_cmd.cli_ctx.cloud.name = "AzureUSGovernment"
+        mocked_cmd.cli_ctx.cloud.endpoints.resource_manager = endpoint + "/"
+    token = mocker.patch("azext_edge.edge.util.az_client.AZURE_CLI_CREDENTIAL.get_token")
+    token.return_value.token = "test-token"
+    token.return_value.expires_on = 9999999999
+    token.return_value.refresh_on = None
+    role_id = (
+        f"/subscriptions/{subscription}/providers/Microsoft.Authorization/roleDefinitions/{LIVE_DATA_USER_ROLE_ID}"
+    )
+
+    def assignment(name, **properties):
+        return {
+            "id": f"{namespace_id}/providers/Microsoft.Authorization/roleAssignments/{name}",
+            "properties": {
+                "principalId": name, "principalType": "User", "roleDefinitionId": role_id,
+                "scope": namespace_id, **properties,
+            },
+        }
+
+    first = assignment("first", scope=namespace_id.upper(), roleDefinitionId=role_id.upper(), principalType="user")
+    second = assignment("second")
+    url = f"{endpoint}{namespace_id}/providers/Microsoft.Authorization/roleAssignments"
+    next_url = url + "?api-version=2022-04-01&$skiptoken=next"
+    mocked_responses.add(
+        responses.GET, url,
+        json={
+            "value": [
+                first, assignment("group", principalType="Group"),
+                assignment("service", principalType="ServicePrincipal"),
+                assignment("inherited", scope=f"/subscriptions/{subscription}"),
+                assignment("child", scope=namespace_id + "/assets/child"),
+                assignment("wrong-role", roleDefinitionId=role_id + "-other"),
+                assignment("unknown", principalType=None),
+            ],
+            "nextLink": next_url,
+        },
+        match=[responses.matchers.query_param_matcher({"$filter": "atScope()"}, strict_match=False)],
+    )
+    mocked_responses.add(
+        responses.GET, next_url, json={"value": [second]},
+        match=[responses.matchers.query_param_matcher({"$skiptoken": "next"}, strict_match=False)],
+    )
+    assert LiveData(mocked_cmd)._get_user_reader_assignments(namespace_id, subscription) == [
+        {"principalId": "first", "assignmentId": first["id"]},
+        {"principalId": "second", "assignmentId": second["id"]},
+    ]
+    assert len(mocked_responses.calls) == 2
+    assert all(call.request.url.startswith(endpoint + namespace_id) for call in mocked_responses.calls)
+    assert token.call_args.args == (endpoint + "/.default",)
+
+
+def test_adr_lifecycle_uses_referenced_subscription(mocked_cmd, mocked_responses):
+    other_subscription = "11111111-1111-1111-1111-111111111111"
+    instance = _build_instance_response("instance", "rg", adr_namespace_name="namespace")
+    namespace_id = _build_adr_namespace_resource_id("namespace", "rg", other_subscription)
+    instance["properties"]["adrNamespaceRef"]["resourceId"] = namespace_id
+    adr_url = _build_adr_endpoint("namespace", "rg", other_subscription)
+    cl_id = MOCK_EXTENDED_LOCATION["name"]
+    eg_ctx = _make_eg_ctx("eg", "rg")
+    desired_endpoint = {
+        "endpointType": LIVE_DATA_ADR_ENDPOINT_TYPE, "address": eg_ctx.mqtt_hostname,
+        "scopeId": "instance", "resourceId": eg_ctx.resource_id,
+    }
+    namespace = _build_adr_namespace_response(
+        "namespace", "rg", subscription_id=other_subscription,
+        identity_type="SystemAssigned", principal_id="adr-pid", observability_endpoints={},
+    )
+    mocked_responses.add(responses.GET, adr_url, json=namespace)
+    mocked_responses.add(responses.PATCH, adr_url, json=namespace)
+    provider = LiveData(mocked_cmd)
+    provider._setup_adr_observability(
+        instance, eg_ctx, cl_id, None, LiveDataRoleScope.NAMESPACE, "topic", None, True, wait_sec=0,
+    )
+    namespace["properties"]["observability"] = {"enabled": True, "endpoints": {cl_id: desired_endpoint}}
+    mocked_responses.replace(responses.GET, adr_url, json=namespace)
+    mocked_responses.add(responses.GET, _build_iotops_endpoint("instance", "rg"), json=instance)
+    mocked_responses.add(
+        responses.GET, _build_eg_endpoint("eg", "rg"), json=_build_eg_namespace_response("eg", "rg"),
+    )
+    topic_name = get_live_data_topic_space_name(instance["id"])
+    mocked_responses.add(
+        responses.GET, _build_eg_endpoint("eg", "rg", sub_resource=f"/topicSpaces/{topic_name}"),
+        json={"properties": {"topicTemplates": ["aio/live-data/instance/#"]}},
+    )
+    for path in (f"/dataflowProfiles/{LIVE_DATA_PROFILE_NAME}", f"/dataflowEndpoints/{LIVE_DATA_ENDPOINT_NAME}"):
+        endpoint = _build_iotops_endpoint("instance", "rg", sub_resource=path)
+        mocked_responses.add(
+            responses.GET, endpoint,
+            json={"properties": {"instanceCount": 1, "diagnostics": {"logs": {"level": "info"}}}},
+        )
+        mocked_responses.add(responses.DELETE, endpoint, status=204)
+    _register_reader_assignments(mocked_responses, namespace_id)
+    assert provider.show("instance", "rg")["deviceRegistryNamespace"]["subscriptionId"] == other_subscription
+    mocked_responses.add(
+        responses.DELETE, _build_eg_endpoint("eg", "rg", sub_resource=f"/topicSpaces/{topic_name}"), status=204,
+    )
+    mocked_responses.add(responses.PUT, adr_url, json=namespace)
+    provider.disable("instance", "rg", confirm_yes=True, wait_sec=0)
+    adr_calls = [
+        call.request for call in mocked_responses.calls if DEVICEREGISTRY_RP.lower() in call.request.url.lower()
+    ]
+    assert {call.method for call in adr_calls} == {"GET", "PATCH", "PUT"}
+    assert all(f"/subscriptions/{other_subscription}/" in call.url for call in adr_calls)
+    assert len(provider._registry_clients) == 2
+
+
+def test_government_live_data_role_requests_use_active_cloud(mocked_cmd, mocked_responses, mocker):
+    from azext_edge.edge.providers.orchestration.permissions import PermissionManager
+
+    endpoint = "https://management.usgovcloudapi.net"
+    mocked_cmd.cli_ctx.cloud.name = "AzureUSGovernment"
+    mocked_cmd.cli_ctx.cloud.endpoints.resource_manager = endpoint + "/"
+    token = mocker.patch("azext_edge.edge.util.az_client.AZURE_CLI_CREDENTIAL.get_token")
+    token.return_value.token = "test-token"
+    token.return_value.expires_on = 9999999999
+    token.return_value.refresh_on = None
+    provider = LiveData(mocked_cmd)
+    eg_ctx = _make_eg_ctx("eg", "rg")
+    other_subscription = "11111111-1111-1111-1111-111111111111"
+    other_ctx = eg_ctx._replace(
+        subscription_id=other_subscription,
+        resource_id=eg_ctx.resource_id.replace(ZEROED_SUBSCRIPTION, other_subscription),
+    )
+    for manager, context in (
+        (provider.permission_manager, eg_ctx), (provider._permission_manager(other_ctx), other_ctx),
+    ):
+        scope = context.resource_id
+        url = f"{endpoint}{scope}/providers/Microsoft.Authorization/roleAssignments"
+        mocked_responses.add(responses.GET, url, json={"value": []})
+        mocked_responses.add(
+            responses.PUT, re.compile(re.escape(url) + "/[^/?]+"), json={"id": scope + "/roleAssignments/test"},
+        )
+        manager.ensure_role_assignment(scope, "principal", "/roleDefinitions/test")
+    namespace_id = _build_adr_namespace_resource_id("ns", "rg", other_subscription)
+    url = f"{endpoint}{namespace_id}/providers/Microsoft.Authorization/roleAssignments"
+    mocked_responses.add(responses.GET, url, json={"value": []})
+    mocked_responses.add(
+        responses.PUT, re.compile(re.escape(url) + "/[^/?]+"), json={"id": namespace_id + "/roleAssignments/test"},
+    )
+    provider._setup_user_role_assignments(namespace_id, ["11111111-1111-1111-1111-111111111111"])
+    assert len(mocked_responses.calls) == 6
+    assert all(call.request.url.startswith(endpoint) for call in mocked_responses.calls)
+    assert token.call_args.args == (endpoint + "/.default",)
+    assert isinstance(provider.permission_manager, PermissionManager)
 
 
 class TestCommandAdapters:
