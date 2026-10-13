@@ -14,6 +14,20 @@ from .providers.orchestration.resources.connector.opcua.certs import (
 from .providers.orchestration.resources.connector_templates import ConnectorTemplates
 
 
+def list_connectors(cmd, instance: str, resource_group: str) -> List[dict]:
+    from .providers.orchestration.resources.connectors import Connectors
+
+    return Connectors(cmd).list(instance_name=instance, resource_group_name=resource_group)
+
+
+def show_connector(cmd, connector_metadata_ref: str, instance: str, resource_group: str) -> dict:
+    from .providers.orchestration.resources.connectors import Connectors
+
+    return Connectors(cmd).show(
+        instance_name=instance, resource_group_name=resource_group, metadata_ref=connector_metadata_ref,
+    )
+
+
 def add_connector_opcua_trust(
     cmd,
     instance_name: str,

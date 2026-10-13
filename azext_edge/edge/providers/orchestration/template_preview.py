@@ -14,18 +14,20 @@ The source GDS parameter and configuration reader are removed before compiling.
 Runtime catalog registration preserves these inputs and the actual deployment train.
 """
 
-# selected source preview/v1.6.x/2610 @ abcf0ed770cb12256c3ffc272cc0636e44dee0ff
+# selected source preview/v1.6.x/2610 @ d1021a9cb265da141e70f05695e930345e23d32e
 # source release prev2610
 # no loaded-source redactions required
 from .template import TemplateBlueprint
 
 TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW = TemplateBlueprint(
-    commit_id="f91dee8af923eceea4b8c68ab9a863aee53630c8",
+    commit_id="a0c7a346fe406ede6a6dee5f05ed9a01368c7517",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "languageVersion": "2.0",
         "contentVersion": "1.0.0.0",
-        "metadata": {"_generator": {"name": "bicep", "version": "0.48.1.52935", "templateHash": "1528966886690281907"}},
+        "metadata": {
+            "_generator": {"name": "bicep", "version": "0.48.1.52935", "templateHash": "14434659731448034786"}
+        },
         "definitions": {
             "_1.AdvancedConfig": {
                 "type": "object",
@@ -734,7 +736,7 @@ TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW = TemplateBlueprint(
                             "items": {"type": "object"},
                             "value": [
                                 {
-                                    "action": "tool-call",
+                                    "action": "ToolCall",
                                     "principal": {"principalType": "Role", "role": "Reader"},
                                     "resources": [
                                         "documentation_overview",
@@ -768,12 +770,12 @@ TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW = TemplateBlueprint(
                                     ],
                                 },
                                 {
-                                    "action": "tool-call",
+                                    "action": "ToolCall",
                                     "principal": {"principalType": "Role", "role": "DataReader"},
                                     "resources": ["mq_messages", "dss_get"],
                                 },
                                 {
-                                    "action": "tool-call",
+                                    "action": "ToolCall",
                                     "principal": {"principalType": "Role", "role": "Admin"},
                                     "resources": ["*"],
                                 },
@@ -806,7 +808,7 @@ TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW = TemplateBlueprint(
             "advancedConfig": {"$ref": "#/definitions/_1.AdvancedConfig", "defaultValue": {}},
         },
         "variables": {
-            "VERSIONS": {"iotOperations": "1.6.0-preview.43", "connectors": "1.5.18"},
+            "VERSIONS": {"iotOperations": "1.6.0-preview.49", "connectors": "1.5.19"},
             "TRAINS": {"iotOperations": "integration"},
             "HASH": "[coalesce(tryGet(parameters('advancedConfig'), 'resourceSuffix'), take(uniqueString(resourceGroup().id, parameters('clusterName'), parameters('clusterNamespace')), 5))]",
             "AIO_EXTENSION_SUFFIX": "[take(uniqueString(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName'))), 5)]",
@@ -905,7 +907,7 @@ TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW = TemplateBlueprint(
             },
             "aioInstance": {
                 "type": "Microsoft.IoTOperations/instances",
-                "apiVersion": "2026-09-01-preview",
+                "apiVersion": "2026-09-03-preview",
                 "name": "[coalesce(parameters('aioInstanceName'), format('aio-{0}', variables('HASH')))]",
                 "location": "[parameters('clusterLocation')]",
                 "extendedLocation": "[variables('extendedLocation')]",
@@ -921,7 +923,7 @@ TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW = TemplateBlueprint(
             },
             "broker": {
                 "type": "Microsoft.IoTOperations/instances/brokers",
-                "apiVersion": "2026-09-01-preview",
+                "apiVersion": "2026-09-03-preview",
                 "name": "[format('{0}/{1}', coalesce(parameters('aioInstanceName'), format('aio-{0}', variables('HASH'))), 'default')]",
                 "extendedLocation": "[variables('extendedLocation')]",
                 "properties": {
@@ -945,7 +947,7 @@ TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW = TemplateBlueprint(
             },
             "brokerAuthn": {
                 "type": "Microsoft.IoTOperations/instances/brokers/authentications",
-                "apiVersion": "2026-09-01-preview",
+                "apiVersion": "2026-09-03-preview",
                 "name": "[format('{0}/{1}/{2}', coalesce(parameters('aioInstanceName'), format('aio-{0}', variables('HASH'))), 'default', 'default')]",
                 "extendedLocation": "[variables('extendedLocation')]",
                 "properties": {
@@ -962,7 +964,7 @@ TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW = TemplateBlueprint(
             },
             "brokerListener": {
                 "type": "Microsoft.IoTOperations/instances/brokers/listeners",
-                "apiVersion": "2026-09-01-preview",
+                "apiVersion": "2026-09-03-preview",
                 "name": "[format('{0}/{1}/{2}', coalesce(parameters('aioInstanceName'), format('aio-{0}', variables('HASH'))), 'default', 'default')]",
                 "extendedLocation": "[variables('extendedLocation')]",
                 "properties": {
@@ -989,7 +991,7 @@ TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW = TemplateBlueprint(
             },
             "dataflowProfile": {
                 "type": "Microsoft.IoTOperations/instances/dataflowProfiles",
-                "apiVersion": "2026-09-01-preview",
+                "apiVersion": "2026-09-03-preview",
                 "name": "[format('{0}/{1}', coalesce(parameters('aioInstanceName'), format('aio-{0}', variables('HASH'))), 'default')]",
                 "extendedLocation": "[variables('extendedLocation')]",
                 "properties": {"instanceCount": "[parameters('defaultDataflowInstanceCount')]"},
@@ -997,7 +999,7 @@ TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW = TemplateBlueprint(
             },
             "dataflowEndpoint": {
                 "type": "Microsoft.IoTOperations/instances/dataflowEndpoints",
-                "apiVersion": "2026-09-01-preview",
+                "apiVersion": "2026-09-03-preview",
                 "name": "[format('{0}/{1}', coalesce(parameters('aioInstanceName'), format('aio-{0}', variables('HASH'))), 'default')]",
                 "extendedLocation": "[variables('extendedLocation')]",
                 "properties": {
@@ -1020,7 +1022,7 @@ TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW = TemplateBlueprint(
             },
             "artifactRegistryEndpoint": {
                 "type": "Microsoft.IoTOperations/instances/registryEndpoints",
-                "apiVersion": "2026-09-01-preview",
+                "apiVersion": "2026-09-03-preview",
                 "name": "[format('{0}/{1}', coalesce(parameters('aioInstanceName'), format('aio-{0}', variables('HASH'))), 'default')]",
                 "extendedLocation": "[variables('extendedLocation')]",
                 "properties": {
@@ -1031,7 +1033,7 @@ TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW = TemplateBlueprint(
             },
             "opcUaConnectorTemplate": {
                 "type": "Microsoft.IoTOperations/instances/akriConnectorTemplates",
-                "apiVersion": "2026-09-01-preview",
+                "apiVersion": "2026-09-03-preview",
                 "name": "[format('{0}/{1}', coalesce(parameters('aioInstanceName'), format('aio-{0}', variables('HASH'))), variables('opcUaConnectorTemplateName'))]",
                 "extendedLocation": "[variables('extendedLocation')]",
                 "properties": {
@@ -1063,7 +1065,7 @@ TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW = TemplateBlueprint(
             },
             "mcpDefaultPolicy": {
                 "type": "Microsoft.IoTOperations/instances/mcpAuthorizationPolicies",
-                "apiVersion": "2026-09-02-preview",
+                "apiVersion": "2026-09-03-preview",
                 "name": "[format('{0}/{1}', coalesce(parameters('aioInstanceName'), format('aio-{0}', variables('HASH'))), 'aio-mcp-policy-v1')]",
                 "extendedLocation": "[variables('extendedLocation')]",
                 "properties": {"policies": "[_2.mcpDefaultPolicies()]"},
@@ -1071,7 +1073,7 @@ TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW = TemplateBlueprint(
             },
             "mcpAioConnection": {
                 "type": "Microsoft.IoTOperations/instances/mcpServerConnections",
-                "apiVersion": "2026-09-02-preview",
+                "apiVersion": "2026-09-03-preview",
                 "name": "[format('{0}/{1}', coalesce(parameters('aioInstanceName'), format('aio-{0}', variables('HASH'))), 'aio')]",
                 "extendedLocation": "[variables('extendedLocation')]",
                 "properties": {

@@ -55,6 +55,10 @@ def default_connector_metadata(request, mocker):
         "azext_edge.edge.providers.adr.namespace_assets.NamespaceAssets._get_connector_metadata",
         side_effect=_fake,
     )
+    metadata_client = mocker.patch(
+        "azext_edge.edge.providers.adr.validator.get_iotops_mgmt_client",
+    ).return_value
+    metadata_client.akri_connector_template.list_by_instance_resource.return_value = []
     yield
 
 

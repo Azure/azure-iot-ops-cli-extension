@@ -17,6 +17,7 @@ AZ_CLIENT_PATH = "azext_edge.edge.util.az_client"
     ("2026-07-01", "2026-07-01"),
     ("2026-10-01", "2026-10-01"),
     ("2026-09-01-preview", "2026-09-01-preview"),
+    ("2026-09-03-preview", "2026-09-03-preview"),
 ])
 def test_iotops_management_api_default_and_overrides(api_version, expected):
     from azext_edge.edge.util.az_client import DEFAULT_IOTOPS_MGMT_API_VERSION, get_iotops_mgmt_client

@@ -961,7 +961,8 @@ class ConnectorTemplates(Queryable):
             return value == ""
         return False
 
-    def _validate_metadata(self, metadata: dict, metadata_ref: str) -> None:
+    @staticmethod
+    def _validate_metadata(metadata: dict, metadata_ref: str) -> None:
         """Validate required fields in connector metadata.
 
         Ensures the metadata contains all required fields for creating a valid
@@ -997,6 +998,10 @@ class ConnectorTemplates(Queryable):
             )
 
     def _fetch_connector_metadata(self, metadata_ref: str) -> dict:
+        return self.fetch_metadata(self.cmd, metadata_ref)
+
+    @classmethod
+    def fetch_metadata(cls, cmd, metadata_ref: str) -> dict:
         """
         Fetch connector metadata from the registry using OciRegistryClient.
 
@@ -1037,11 +1042,11 @@ class ConnectorTemplates(Queryable):
             oci_client = get_oci_client()
             artifact_info = oci_client.fetch_first_layer(
                 image_ref=metadata_ref,
-                cmd=self.cmd,
+                cmd=cmd,
             )
 
             # Extract metadata from the blob content
-            return self._parse_metadata_blob(artifact_info.content, metadata_ref)
+            return cls._parse_metadata_blob(artifact_info.content, metadata_ref)
 
         except ValidationError:
             # Re-raise validation errors from OciRegistryClient
@@ -1113,7 +1118,8 @@ class ConnectorTemplates(Queryable):
             # such a target cannot be within the directory, so treat it as unsafe.
             return False
 
-    def _parse_metadata_blob(self, blob_content: bytes, metadata_ref: str) -> dict:
+    @classmethod
+    def _parse_metadata_blob(cls, blob_content: bytes, metadata_ref: str) -> dict:
         """
         Parse connector metadata from blob content.
 
@@ -1148,13 +1154,13 @@ class ConnectorTemplates(Queryable):
             try:
                 logger.debug("Attempting to extract as tar.gz")
                 with tarfile.open(fileobj=io.BytesIO(blob_content), mode="r:gz") as tar:
-                    self._safe_extractall(tar, temp_dir)
+                    cls._safe_extractall(tar, temp_dir)
             except (tarfile.ReadError, OSError):
                 # Try as plain tar
                 try:
                     logger.debug("tar.gz failed, attempting to extract as plain tar")
                     with tarfile.open(fileobj=io.BytesIO(blob_content), mode="r") as tar:
-                        self._safe_extractall(tar, temp_dir)
+                        cls._safe_extractall(tar, temp_dir)
                 except (tarfile.ReadError, OSError) as e:
                     raise CLIInternalError(
                         f"Failed to extract artifact from {metadata_ref}. "

@@ -2906,14 +2906,14 @@ def test_preview_upgrade_routes_instance_and_backfills_to_profile_api(mocked_cmd
     from azext_edge.edge.providers.orchestration.upgrade2 import UpgradeManager
     from azext_edge.edge.providers.orchestration.resources.connector_templates import ConnectorTemplates
 
-    name, resource_group = "preview-instance", "preview-rg"
+    name, resource_group = "preview-instance", "previewrg"
     scenario = UpgradeScenario().set_extension(
         EXTENSION_TYPE_OPS, ext_vers="1.6.0-preview.43", ext_train="integration",
     )
     scenario.set_instance_mock(mocked_responses, name, resource_group)
     preview_record = deepcopy(scenario.instance_record)
     preview_record["properties"]["previewOnlyProperty"] = {"retained": ["value"]}
-    api_version = "2026-09-01-preview"
+    api_version = "2026-09-03-preview"
     endpoint = get_instance_endpoint(resource_group, name, api_version=api_version)
     base_url = endpoint.split("?")[0]
     mocked_responses.add(responses.GET, endpoint, json=preview_record)

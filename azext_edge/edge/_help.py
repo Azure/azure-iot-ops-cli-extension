@@ -1978,6 +1978,11 @@ def load_iotops_help():
           `az iot ops enable-rsync` command post instance creation.
 
         examples:
+        - name: Create an Essentials SKU instance. Essentials is intended for
+            single-node deployments and disables OPC UA.
+          text: >
+            az iot ops create --cluster mycluster -g myresourcegroup --name myinstance --sr-resource-id $SCHEMA_REGISTRY_RESOURCE_ID
+            --ns-resource-id $NAMESPACE_RESOURCE_ID --sku Essentials
         - name: Create the target instance with minimum input.
           text: >
             az iot ops create --cluster mycluster -g myresourcegroup --name myinstance --sr-resource-id $SCHEMA_REGISTRY_RESOURCE_ID
@@ -2636,6 +2641,62 @@ def load_iotops_help():
     ] = """
         type: group
         short-summary: Connector management.
+    """
+
+    helps[
+        "iot ops connector list"
+    ] = """
+        type: command
+        short-summary: List first-party and purchased Marketplace connectors for a preview instance.
+        long-summary: |
+          Requires a supported preview runtime and read access to application definitions.
+          Returns names, discovery sources and fully qualified metadata references.
+          First-party versions are discovered from the registry. Metadata is checked
+          newest-first to select the latest version compatible with the installed CLI's
+          bundled preview runtime. Connectors with no compatible version are omitted.
+          The instance is checked for preview eligibility and readiness, not for a
+          matching runtime version. Verify compatibility with an older installed runtime
+          before deploying a listed connector.
+          Versioned prerelease tags participate in semantic version ordering.
+          Compatibility requires aioMinVersion. Missing required metadata fields or
+          invalid compatibility information is an error. Registry errors are not hidden.
+          Purchased Marketplace connector references are returned unchanged without
+          downloading their metadata. Other application definitions are not included.
+          No purchased connectors is a successful result containing compatible
+          first-party entries.
+          Purchase additional connectors in Azure Marketplace:
+          https://marketplace.microsoft.com/en-us/search/products?search=iot%20operations
+          Purchase and terms acceptance remain in Marketplace. After purchase or
+          installation, rerun this command; immediate visibility is not guaranteed.
+          The link does not carry the selected instance or cluster context.
+        examples:
+        - name: List available connectors for a preview instance.
+          text: az iot ops connector list -i myinstance -g myresourcegroup -o table
+        - name: Return purchased connector metadata references.
+          text: >
+            az iot ops connector list -i myinstance -g myresourcegroup
+            --query "[?source=='Marketplace'].metadataRef" -o tsv
+    """
+
+    helps[
+        "iot ops connector show"
+    ] = """
+        type: command
+        short-summary: Inspect a connector metadata artifact from its fully qualified reference.
+        long-summary: |
+          Requires a preview instance and its resource group. Validates the instance's
+          preview eligibility and readiness before returning the supplied reference and
+          complete parsed metadata. Running connector list first is not required.
+          This does not check whether the connector is purchased, compatible with the
+          instance or deployed and healthy. Use JSON or YAML output for nested metadata;
+          table output shows name, version and metadata reference.
+        examples:
+        - name: Inspect a first-party connector metadata artifact.
+          text: >
+            az iot ops connector show -i myinstance -g myresourcegroup
+            --ref mcr.microsoft.com/azureiotoperations/akri-connectors/rest-metadata:1.3.2
+        - name: Show endpoint details from a purchased connector metadata reference.
+          text: az iot ops connector show -i myinstance -g myresourcegroup --ref $METADATA_REF --query metadata.inboundEndpoints
     """
 
     helps[
