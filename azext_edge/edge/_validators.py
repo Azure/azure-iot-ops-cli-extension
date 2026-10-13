@@ -9,6 +9,12 @@ from argparse import Namespace
 from azure.cli.core.azclierror import InvalidArgumentValueError
 
 
+def validate_connector_metadata_ref(namespace: Namespace):
+    from .providers.orchestration.resources.connectors import validate_metadata_reference
+
+    validate_metadata_reference(namespace.connector_metadata_ref)
+
+
 def validate_namespace(namespace: Namespace):
     if hasattr(namespace, "namespace") and namespace.namespace:
         import re

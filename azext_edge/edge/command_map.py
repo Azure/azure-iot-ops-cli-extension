@@ -28,6 +28,11 @@ def load_iotops_commands(self, _):
     """
     Load CLI commands
     """
+    from .providers.orchestration.resources.connectors import (
+        CONNECTOR_DISCOVERY_REQUIREMENT, connector_list_table, connector_show_table,
+    )
+    from .providers.orchestration.runtime_commands import RuntimeTarget
+
     with self.command_group(
         "iot ops",
         command_type=edge_resource_ops,
@@ -559,7 +564,20 @@ def load_iotops_commands(self, _):
         "iot ops connector",
         command_type=connector_resource_ops,
     ) as cmd_group:
-        pass
+        cmd_group.command(
+            "list", "list_connectors", is_preview=True, table_transformer=connector_list_table,
+            runtime_requirement=CONNECTOR_DISCOVERY_REQUIREMENT,
+            runtime_target=RuntimeTarget(
+                instance_name="instance", resource_group_name="resource_group", allow_unbundled_integration=True,
+            ),
+        )
+        cmd_group.show_command(
+            "show", "show_connector", is_preview=True, table_transformer=connector_show_table,
+            runtime_requirement=CONNECTOR_DISCOVERY_REQUIREMENT,
+            runtime_target=RuntimeTarget(
+                instance_name="instance", resource_group_name="resource_group", allow_unbundled_integration=True,
+            ),
+        )
 
     with self.command_group(
         "iot ops connector template",

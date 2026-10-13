@@ -59,8 +59,8 @@ def test_bundled_profiles_select_management_api_without_changing_preview_bluepri
     stable = catalog.get(RuntimeChannel.STABLE)
     assert stable.iotops_api_version == "2026-10-01"
     preview = catalog.get(RuntimeChannel.PREVIEW)
-    assert preview.iotops_api_version == "2026-09-01-preview"
-    assert preview.copy_instance_blueprint().content["resources"]["aioInstance"]["apiVersion"] == "2026-09-01-preview"
+    assert preview.iotops_api_version == "2026-09-03-preview"
+    assert preview.copy_instance_blueprint().content["resources"]["aioInstance"]["apiVersion"] == "2026-09-03-preview"
 
 
 def test_catalog_missing_and_duplicate_profiles_fail(profiles):
