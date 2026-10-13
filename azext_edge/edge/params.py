@@ -18,7 +18,7 @@ from knack.arguments import CaseInsensitiveList
 from azext_edge.constants import PREVIEW_AGREEMENT_URL, PREVIEW_NOTICE
 from azext_edge.edge.providers.edge_api.dataflow import DataflowResourceKinds
 
-from ._validators import validate_namespace, validate_resource_name
+from ._validators import validate_connector_metadata_ref, validate_namespace, validate_resource_name
 from .common import OpsServiceType
 from .providers.check.common import ResourceOutputDetailLevel
 from .providers.edge_api import DeviceRegistryResourceKinds, MqResourceKinds
@@ -1920,6 +1920,21 @@ def load_iotops_arguments(self, _):
             options_list=["--content"],
             help="File path containing or inline content for the version.",
             arg_group=None,
+        )
+
+    for command in ("iot ops connector list", "iot ops connector show"):
+        with self.argument_context(command) as context:
+            context.argument("instance", options_list=["--instance", "-i"], help="IoT Operations instance name.")
+            context.argument(
+                "resource_group", options_list=["--resource-group", "-g"], help="Instance resource group."
+            )
+
+    with self.argument_context("iot ops connector show") as context:
+        context.argument(
+            "connector_metadata_ref",
+            options_list=["--connector-metadata-ref", "--ref"],
+            help="Fully qualified connector metadata artifact reference from a container registry.",
+            validator=validate_connector_metadata_ref,
         )
 
     with self.argument_context("iot ops connector template") as context:
