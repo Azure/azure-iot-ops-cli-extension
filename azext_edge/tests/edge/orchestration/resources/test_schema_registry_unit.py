@@ -361,7 +361,6 @@ def test_schema_registry_create(
         subscription_id=ZEROED_SUBSCRIPTION,
         resource_provider=ADR_PROVIDER,
         endpoint="https://management.azure.com/",
-        credential_scopes=["https://management.azure.com/.default"],
     )
 
     if get_role_response:

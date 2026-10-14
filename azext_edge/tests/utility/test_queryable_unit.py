@@ -12,7 +12,6 @@ import pytest
 MODULE_PATH = "azext_edge.edge.util.queryable"
 
 MOCK_ARM_ENDPOINT = "https://custom-arm-endpoint.example.com"
-MOCK_ARM_SCOPE = f"{MOCK_ARM_ENDPOINT}/.default"
 
 
 @pytest.fixture
@@ -129,7 +128,6 @@ class TestQueryableResourceClientLazy:
         queryable_deps["get_resource_client"].assert_called_once_with(
             subscription_id="default-sub-id",
             endpoint=MOCK_ARM_ENDPOINT,
-            credential_scopes=[MOCK_ARM_SCOPE],
         )
 
     def test_resource_client_cached(self, queryable_deps):
@@ -233,7 +231,7 @@ class TestQueryableGetClientKwargs:
     """Tests for _get_client_kwargs helper."""
 
     def test_default_kwargs(self, queryable_deps):
-        """Returns default_subscription_id, ARM endpoint, and matching token scope."""
+        """Returns default_subscription_id and ARM endpoint for factory scope resolution."""
         from azext_edge.edge.util.queryable import Queryable
 
         q = Queryable(cmd=queryable_deps["cmd"])
@@ -242,7 +240,6 @@ class TestQueryableGetClientKwargs:
         assert result == {
             "subscription_id": "default-sub-id",
             "endpoint": MOCK_ARM_ENDPOINT,
-            "credential_scopes": [MOCK_ARM_SCOPE],
         }
 
     def test_subscription_override(self, queryable_deps):
@@ -255,7 +252,6 @@ class TestQueryableGetClientKwargs:
         assert result == {
             "subscription_id": "override-sub",
             "endpoint": MOCK_ARM_ENDPOINT,
-            "credential_scopes": [MOCK_ARM_SCOPE],
         }
 
     def test_extra_overrides_passed_through(self, queryable_deps):
@@ -268,7 +264,6 @@ class TestQueryableGetClientKwargs:
         assert result == {
             "subscription_id": "default-sub-id",
             "endpoint": MOCK_ARM_ENDPOINT,
-            "credential_scopes": [MOCK_ARM_SCOPE],
             "api_version": "2025-01-01",
         }
 
@@ -282,12 +277,11 @@ class TestQueryableGetClientKwargs:
         assert result == {
             "subscription_id": "other-sub",
             "endpoint": MOCK_ARM_ENDPOINT,
-            "credential_scopes": [MOCK_ARM_SCOPE],
             "api_version": "2025-01-01",
         }
 
-    def test_us_government_arm_scope(self, queryable_deps):
-        """Fairfax clients request tokens for the US Government ARM audience."""
+    def test_us_government_arm_endpoint(self, queryable_deps):
+        """Fairfax clients receive the active ARM endpoint for factory scope resolution."""
         from azext_edge.edge.util.queryable import Queryable
 
         arm_endpoint = "https://management.usgovcloudapi.net/"
@@ -298,7 +292,6 @@ class TestQueryableGetClientKwargs:
         assert q._get_client_kwargs() == {
             "subscription_id": "default-sub-id",
             "endpoint": arm_endpoint,
-            "credential_scopes": ["https://management.usgovcloudapi.net/.default"],
         }
 
     def test_explicit_endpoint_and_scope_override(self, queryable_deps):

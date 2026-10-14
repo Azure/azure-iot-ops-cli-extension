@@ -6,9 +6,13 @@ We also regularly utilize GitHub Codespaces, and have automated this environment
 
 ## Cloud-aware management clients
 
-Pass both the active cloud's ARM endpoint and credential scope when constructing
-management clients. Setting only `endpoint` leaves generated SDK clients using
-their public-Azure token audience, which fails against Azure US Government ARM.
+Pass the active cloud's ARM endpoint when constructing management clients through
+the factories in `edge/util/az_client.py`. These factories derive the credential
+scope from an explicit `endpoint` when `credential_scopes` is omitted.
+Explicit scopes are preserved when the required token audience differs from the
+endpoint. Without an endpoint override, generated clients retain their public-Azure defaults.
+Constructing generated SDK clients directly with only an endpoint does not derive
+the scope and can still produce an audience mismatch.
 
 Providers derived from `Queryable` should use `_get_client_kwargs()`, including
 for `PermissionManager` and `register_providers`. Other callers can pass
@@ -21,6 +25,8 @@ The request-level tests in
 [`test_arm_cloud_unit.py`](./azext_edge/tests/edge/orchestration/test_arm_cloud_unit.py)
 verify request hosts and requested credential scopes with mocked transport.
 China endpoint coverage verifies configuration only, not live AIO service availability.
+The permission-preflight helper coverage exercises the helper directly; it is not
+currently called by the deployment workflow.
 
 
 > You can run all commands in this setup in `bash` or `cmd` environments, this documentation just shows the `powershell` flavor.

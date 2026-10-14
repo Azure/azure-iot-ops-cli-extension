@@ -488,10 +488,11 @@ class InstanceRestore:
         )
         oidc_issuer, _ = resolve_oidc_issuer(arm_issuer=oidc_issuer)
 
+        cloud_config = CloudConfig(self.cmd)
         for mid in self.user_assigned_mis:
             parsed_uami_id = parse_resource_id(mid)
             msi_client = get_msi_mgmt_client(
-                subscription_id=parsed_uami_id["subscription"], **CloudConfig(self.cmd).arm_client_kwargs
+                subscription_id=parsed_uami_id["subscription"], **cloud_config.arm_client_kwargs
             )
             credentials = list(
                 msi_client.federated_identity_credentials.list(

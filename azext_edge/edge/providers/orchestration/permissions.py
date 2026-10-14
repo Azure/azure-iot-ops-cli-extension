@@ -5,7 +5,7 @@
 # ----------------------------------------------------------------------------------------------
 
 from enum import Enum
-from typing import Iterable, Optional
+from typing import Iterable, List, Optional
 from uuid import uuid4
 
 from azure.cli.core.azclierror import ValidationError
@@ -86,7 +86,15 @@ class PrincipalType(Enum):
 
 
 class PermissionManager:
-    def __init__(self, subscription_id: str, **client_kwargs):
+    def __init__(
+        self, subscription_id: str, *, endpoint: Optional[str] = None,
+        credential_scopes: Optional[List[str]] = None,
+    ):
+        client_kwargs = {}
+        if endpoint is not None:
+            client_kwargs["endpoint"] = endpoint
+        if credential_scopes is not None:
+            client_kwargs["credential_scopes"] = credential_scopes
         self.authz_client = get_authz_client(
             subscription_id=subscription_id,
             **client_kwargs,

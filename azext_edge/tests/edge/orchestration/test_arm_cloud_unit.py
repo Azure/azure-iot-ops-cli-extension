@@ -4,6 +4,7 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
+import json
 import re
 
 import pytest
@@ -17,6 +18,9 @@ from azext_edge.edge.providers.orchestration.mgmt_actions import EgNamespaceCont
 from azext_edge.edge.providers.orchestration.migration import AssetMigrationManager
 from azext_edge.edge.providers.orchestration.permissions import verify_write_permission_against_rg
 from azext_edge.edge.providers.orchestration.resources.instances import Instances
+from azext_edge.edge.providers.orchestration.resources.schema_registries import (
+    SchemaRegistries, STORAGE_BLOB_DATA_CONTRIBUTOR_ROLE_ID,
+)
 from azext_edge.edge.providers.orchestration.resources.sync_rules import SyncRules
 from azext_edge.edge.providers.orchestration.rp_namespace import RP_NAMESPACE_OPTIONAL_SET, RP_NAMESPACE_SET
 from azext_edge.edge.providers.orchestration.work import WorkManager
@@ -25,6 +29,7 @@ from azext_edge.edge.util.cloud_config import CloudConfig
 from ...generators import get_zeroed_subscription
 from ...helpers import build_mock_cmd_for_cloud
 from .resources.test_instances_unit import get_mock_instance_record
+from .resources.test_schema_registry_unit import get_mock_schema_registery_record
 
 SUBSCRIPTION = get_zeroed_subscription()
 OTHER_SUBSCRIPTION = "11111111-1111-1111-1111-111111111111"
@@ -166,6 +171,71 @@ def test_permission_preflight_cloud(arm_cloud, mocked_responses):
         json={"value": [{"actions": ["*"], "notActions": []}]},
     )
     verify_write_permission_against_rg(OTHER_SUBSCRIPTION, "rg", **CloudConfig(cmd).arm_client_kwargs)
+
+
+def test_schema_registry_create_cross_subscription_storage(arm_cloud, mocked_responses):
+    cmd, endpoint = arm_cloud
+    storage_id = (
+        f"/subscriptions/{OTHER_SUBSCRIPTION}/resourceGroups/storage-rg"
+        "/providers/Microsoft.Storage/storageAccounts/storage"
+    )
+    container_id = f"{storage_id}/blobServices/default/containers/schemas"
+    storage_suffix = cmd.cli_ctx.cloud.suffixes.storage_endpoint
+    blob_endpoint = f"https://storage.blob.{storage_suffix}/"
+    registry = get_mock_schema_registery_record("registry", "registry-rg")
+    registry["properties"]["storageAccountContainerUrl"] = f"{blob_endpoint}schemas"
+    providers_url = f"{endpoint}/subscriptions/{SUBSCRIPTION}/providers"
+    mocked_responses.add(responses.GET, providers_url, json={"value": []})
+    mocked_responses.add(
+        responses.POST, f"{providers_url}/Microsoft.DeviceRegistry/register",
+        json={"namespace": "Microsoft.DeviceRegistry"},
+    )
+    mocked_responses.add(
+        responses.GET,
+        f"{endpoint}/subscriptions/{SUBSCRIPTION}/resourcegroups/registry-rg?api-version=2024-03-01",
+        json={"location": "test-location"},
+    )
+    mocked_responses.add(
+        responses.GET, f"{endpoint}{storage_id}?api-version=2023-05-01",
+        json={"properties": {"isHnsEnabled": True, "primaryEndpoints": {"blob": blob_endpoint}}},
+    )
+    mocked_responses.add(
+        responses.GET, f"{endpoint}{container_id}?api-version=2023-05-01", status=404,
+    )
+    mocked_responses.add(
+        responses.PUT, f"{endpoint}{container_id}?api-version=2023-05-01",
+        json={"id": container_id, "name": "schemas"},
+    )
+    registry_response = mocked_responses.add(
+        responses.PUT,
+        f"{endpoint}/subscriptions/{SUBSCRIPTION}/resourceGroups/registry-rg"
+        "/providers/Microsoft.DeviceRegistry/schemaRegistries/registry"
+        f"?api-version={DEFAULT_DEVICEREGISTRY_MGMT_API_VERSION.value}",
+        json=registry,
+    )
+    role_url = f"{endpoint}{container_id}/providers/Microsoft.Authorization/roleAssignments"
+    mocked_responses.add(responses.GET, role_url, json={"value": []})
+    role_response = mocked_responses.add(
+        responses.PUT, re.compile(re.escape(role_url) + r"/[0-9a-f-]+\?"), json={},
+    )
+    result = SchemaRegistries(cmd).create(
+        name="registry", resource_group_name="registry-rg", registry_namespace="namespace",
+        storage_account_resource_id=storage_id, storage_container_name="schemas", wait_sec=0,
+    )
+    assert result == registry
+    assert len(mocked_responses.calls) == 9
+    payload = json.loads(registry_response.calls[0].request.body)
+    assert payload["properties"]["storageAccountContainerUrl"] == f"{blob_endpoint}schemas"
+    assert payload["location"] == "test-location"
+    properties = json.loads(role_response.calls[0].request.body)["properties"]
+    assert properties == {
+        "roleDefinitionId": (
+            f"/subscriptions/{OTHER_SUBSCRIPTION}/providers/Microsoft.Authorization/roleDefinitions/"
+            f"{STORAGE_BLOB_DATA_CONTRIBUTOR_ROLE_ID}"
+        ),
+        "principalId": registry["identity"]["principalId"],
+        "principalType": "ServicePrincipal",
+    }
 
 
 def test_resource_health_cloud(arm_cloud, mocked_responses):
