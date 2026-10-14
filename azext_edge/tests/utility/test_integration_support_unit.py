@@ -360,6 +360,101 @@ def test_live_data_lifecycle_setup_only_provisions_on_preview(mocker, monkeypatc
         assert command.call_args.args[0] == "az iot ops live-data disable -i instance -g rg -y"
 
 
+@pytest.mark.parametrize("module_name", ["test_live_data_int", "test_mgmt_actions_int"])
+def test_integration_topic_space_rest_uses_relative_arm_path_and_preserves_next_link(mocker, module_name):
+    tests = importlib.import_module(f"azext_edge.tests.edge.orchestration.{module_name}")
+    namespace_id = "/subscriptions/other/resourceGroups/rg/providers/Microsoft.EventGrid/namespaces/ns"
+    path = f"{namespace_id}/topicSpaces?api-version={tests.DEFAULT_EVENTGRID_MGMT_API_VERSION.value}"
+    next_link = f"https://management.usgovcloudapi.net{path}&$skiptoken=next%2Bpage%3D"
+    command = mocker.patch.object(tests, "run", side_effect=[
+        {"value": [{"name": "first"}], "nextLink": next_link},
+        {"value": [{"name": "second"}]},
+    ])
+
+    assert tests._list_topic_space_names(namespace_id) == ["first", "second"]
+    assert command.call_args_list == [
+        mocker.call(f'az rest --method get --url "{path}"'),
+        mocker.call(f'az rest --method get --url "{next_link}"'),
+    ]
+    assert all("management.azure.com" not in call.args[0] for call in command.call_args_list)
+
+
+def test_integration_action_schema_rest_uses_relative_arm_path(mocker):
+    from azext_edge.tests.edge.orchestration import test_mgmt_actions_int as tests
+
+    namespace_id = "/subscriptions/other/resourceGroups/rg/providers/Microsoft.DeviceRegistry/namespaces/ns"
+    schema_ref = {"resourceId": "/schemas/request"}
+    command = mocker.patch.object(tests, "run", return_value={
+        "properties": {"status": {"managementGroups": [{
+            "name": tests.MGMT_GROUP_NAME,
+            "actions": [{"name": tests.ACTION_NAME, "requestMessageSchemaReference": schema_ref}],
+        }]}},
+    })
+
+    assert tests._wait_for_action_schema(namespace_id, "asset", "device") == schema_ref
+    command.assert_called_once_with(
+        f'az rest --method get --url "{namespace_id}/assets/asset?api-version={tests.ADR_API_VERSION}"'
+    )
+    assert "management.azure.com" not in command.call_args.args[0]
+
+
+def test_integration_connector_status_rest_uses_relative_arm_paths(mocker):
+    from azext_edge.tests.edge.orchestration import test_mgmt_actions_int as tests
+
+    namespace_id = "/subscriptions/other/resourceGroups/rg/providers/Microsoft.DeviceRegistry/namespaces/ns"
+    command = mocker.patch.object(tests, "run", return_value={"properties": {"status": {}}})
+
+    tests._log_connector_status(namespace_id, "asset", "device")
+    assert command.call_args_list == [
+        mocker.call(f'az rest --method get --url "{namespace_id}/assets/asset?api-version={tests.ADR_API_VERSION}"'),
+        mocker.call(f'az rest --method get --url "{namespace_id}/devices/device?api-version={tests.ADR_API_VERSION}"'),
+    ]
+    assert all("management.azure.com" not in call.args[0] for call in command.call_args_list)
+
+
+def test_integration_mgmt_actions_asset_rest_uses_relative_arm_paths(mocker, monkeypatch, tmp_path):
+    from azext_edge.tests.edge.orchestration import test_mgmt_actions_int as tests
+
+    namespace_id = "/subscriptions/other/resourceGroups/rg/providers/Microsoft.DeviceRegistry/namespaces/ns"
+    settings = SimpleNamespace(
+        add_to_config=mocker.Mock(),
+        env=SimpleNamespace(
+            azext_edge_instance="instance", azext_edge_rg="rg", azext_edge_eg_resource_id="/eventgrid",
+            azext_edge_mgmt_actions_skip_opc_plc=True,
+        ),
+    )
+    # Keep the fixture's real temporary asset body off the integration source tree.
+    monkeypatch.setattr(tests, "__file__", str(tmp_path / "test_mgmt_actions_int.py"))
+    monkeypatch.setattr(tests, "SCHEMA_READY_TIMEOUT", 0)
+    command = mocker.patch.object(tests, "run", side_effect=[
+        {"properties": {"adrNamespaceRef": {"resourceId": namespace_id}},
+         "extendedLocation": {"name": "/custom-location"}},
+        {"location": "usgovvirginia"},
+        {}, None, None, {}, {}, {}, {}, None, None, None,
+    ])
+    finalizers = []
+    tracked_files = []
+    setup = tests.mgmt_actions_setup.__wrapped__(
+        SimpleNamespace(addfinalizer=finalizers.append), settings, tracked_files,
+    )
+
+    target = next(setup)
+    with pytest.raises(StopIteration):
+        next(setup)
+    for finalize in reversed(finalizers):
+        finalize()
+
+    path = f"{namespace_id}/assets/{target['assetName']}?api-version={tests.ADR_API_VERSION}"
+    body_file = tmp_path / f"mgmt_actions_asset_{target['assetName']}.json"
+    commands = [call.args[0] for call in command.call_args_list]
+    assert f'az rest --method put --url "{path}" --body "@{body_file}"' in commands
+    assert f'az rest --method delete --url "{path}"' in commands
+    assert all("management.azure.com" not in value for value in commands)
+    assert tracked_files == [body_file]
+    assert not body_file.exists()
+    assert command.call_count == 12
+
+
 @pytest.mark.parametrize("channels", ["stable", "preview", "stable,preview", "preview,stable", "stable,stable"])
 def test_matrix_channel_selection_preserves_scenario_inputs(channels):
     scenarios = matrix.process_scenarios([{

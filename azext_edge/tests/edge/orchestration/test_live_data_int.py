@@ -125,7 +125,7 @@ def _assert_sub_resources_exist(show_result: Dict) -> None:
 def _list_topic_space_names(eg_resource_id: str) -> List[str]:
     """Every topic space on the namespace, following pagination."""
     url = (
-        f"https://management.azure.com{eg_resource_id}/topicSpaces"
+        f"{eg_resource_id}/topicSpaces"
         f"?api-version={DEFAULT_EVENTGRID_MGMT_API_VERSION.value}"
     )
     names: List[str] = []
