@@ -86,6 +86,7 @@ def _build_adr_observability_put_payload(adr_namespace: Dict, custom_location_id
 
     # Preserve any sibling keys under observability since this is a full PUT.
     updated_observability = dict(observability)
+    updated_observability["enabled"] = bool(updated_endpoints)
     updated_observability["endpoints"] = updated_endpoints
 
     payload: Dict = {
@@ -1155,21 +1156,45 @@ class LiveData(EventGridProviderBase):
         outbound_identity_already_configured = properties.get("outboundIdentity") == outbound_identity
 
         current_identity = adr_namespace.get("identity", {})
-        current_identity_type = (current_identity.get("type") or "").lower()
-        sami_already_enabled = current_identity_type == "systemassigned"
+        current_identity_types = {
+            identity_type.strip().lower()
+            for identity_type in (current_identity.get("type") or "").split(",")
+        }
+        sami_already_enabled = "systemassigned" in current_identity_types
 
         use_sami = mi_resource is None
-        needs_identity_enable = use_sami and not sami_already_enabled
+        if use_sami:
+            identity_already_configured = sami_already_enabled
+        else:
+            current_uamis = current_identity.get("userAssignedIdentities") or {}
+            identity_already_configured = (
+                "userassigned" in current_identity_types
+                and any(resource_id.lower() == mi_resource["id"].lower() for resource_id in current_uamis)
+            )
+        needs_identity_enable = not identity_already_configured
 
         base_payload: Dict = {"properties": {"outboundIdentity": outbound_identity}}
         if needs_identity_enable:
-            base_payload["identity"] = {"type": "SystemAssigned"}
+            if use_sami:
+                base_payload["identity"] = {"type": "SystemAssigned"}
+            else:
+                updated_uamis = dict(current_identity.get("userAssignedIdentities") or {})
+                updated_uamis[mi_resource["id"]] = {}
+                identity_type = (
+                    "SystemAssigned, UserAssigned"
+                    if sami_already_enabled
+                    else "UserAssigned"
+                )
+                base_payload["identity"] = {
+                    "type": identity_type,
+                    "userAssignedIdentities": updated_uamis,
+                }
 
         if (
             observability_already_enabled
             and endpoint_already_configured
             and outbound_identity_already_configured
-            and not needs_identity_enable
+            and identity_already_configured
         ):
             principal_id = self._resolve_outbound_principal(mi_resource, current_identity)
             logger.info(
@@ -1189,7 +1214,7 @@ class LiveData(EventGridProviderBase):
 
         # Staged write for a new system-assigned identity: enable identity + outboundIdentity
         # first (no endpoint), grant Subscriber, then add the endpoint entry.
-        staged = needs_identity_enable and not skip_role_assignments
+        staged = use_sami and needs_identity_enable and not skip_role_assignments
         if staged:
             identity_payload = dict(base_payload)
             updated_namespace = self._patch_namespace(
@@ -1241,7 +1266,7 @@ class LiveData(EventGridProviderBase):
             "outboundIdentity": outbound_identity,
             "identity": {"principalId": principal_id},
             "observabilityEndpoint": desired_endpoint,
-            "identity_exists": sami_already_enabled if use_sami else True,
+            "identity_exists": identity_already_configured,
             "endpoint_exists": endpoint_already_configured,
         }
 

@@ -118,7 +118,11 @@ class PermissionManager:
             scope=scope, filter=f"principalId eq '{principal_id}'"
         )
         for role_assignment in role_assignments_iter:
-            if role_assignment["properties"]["roleDefinitionId"] == role_def_id:
+            assignment_scope = role_assignment.get("properties", {}).get("scope", "")
+            if (
+                assignment_scope.lower().rstrip("/") == scope.lower().rstrip("/")
+                and role_assignment["properties"]["roleDefinitionId"].lower() == role_def_id.lower()
+            ):
                 return role_assignment, False
         props = {
             "properties": {

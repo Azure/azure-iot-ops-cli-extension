@@ -108,7 +108,7 @@ class TestEnsureRoleAssignment:
     def test_returns_existing_assignment(self, mocker):
         existing = {
             "id": "/existing",
-            "properties": {"roleDefinitionId": "/roles/reader"},
+            "properties": {"scope": "/scope", "roleDefinitionId": "/roles/reader"},
         }
         manager = PermissionManager.__new__(PermissionManager)
         manager.authz_client = mocker.MagicMock()
@@ -124,6 +124,31 @@ class TestEnsureRoleAssignment:
         assert result == existing
         assert created is False
         manager.authz_client.role_assignments.create.assert_not_called()
+
+    def test_ignores_inherited_assignment(self, mocker):
+        inherited = {
+            "id": "/parent/providers/Microsoft.Authorization/roleAssignments/existing",
+            "properties": {"scope": "/parent", "roleDefinitionId": "/roles/reader"},
+        }
+        created_assignment = {
+            "id": "/parent/child/providers/Microsoft.Authorization/roleAssignments/created",
+            "properties": {"scope": "/parent/child", "roleDefinitionId": "/roles/reader"},
+        }
+        manager = PermissionManager.__new__(PermissionManager)
+        manager.authz_client = mocker.MagicMock()
+        manager.authz_client.role_assignments.list_for_scope.return_value = [inherited]
+        manager.authz_client.role_assignments.create.return_value = created_assignment
+
+        result, created = manager.ensure_role_assignment(
+            scope="/parent/child",
+            principal_id="principal",
+            role_def_id="/roles/reader",
+            principal_type="ServicePrincipal",
+        )
+
+        assert result == created_assignment
+        assert created is True
+        manager.authz_client.role_assignments.create.assert_called_once()
 
     def test_returns_created_assignment(self, mocker):
         created_assignment = {

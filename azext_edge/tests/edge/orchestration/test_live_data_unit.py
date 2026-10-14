@@ -322,12 +322,18 @@ class TestBuildObservabilityPutPayload:
         assert payload["properties"]["messaging"] == {"endpoints": {}}
         assert payload["location"] == "eastus"
 
-    def test_optional_fields_absent(self):
+    def test_removing_last_endpoint_disables_observability_and_preserves_absent_optional_fields(self):
         adr_namespace = {
             "location": "eastus",
-            "properties": {"observability": {"endpoints": {"cl-1": {"address": "mine"}}}},
+            "properties": {
+                "observability": {
+                    "enabled": True,
+                    "endpoints": {"cl-1": {"address": "mine"}},
+                },
+            },
         }
         payload = _build_adr_observability_put_payload(adr_namespace, "cl-1")
+        assert payload["properties"]["observability"]["enabled"] is False
         assert payload["properties"]["observability"]["endpoints"] == {}
         assert "identity" not in payload
         assert "tags" not in payload
@@ -1545,7 +1551,12 @@ class TestDisable:
         mocked_responses.add(
             method=responses.PUT, url=_build_adr_endpoint(adr_ns, rg),
             json=_build_adr_namespace_response(
-                adr_ns, rg, observability_endpoints={}, observability_enabled=True,
+                adr_ns,
+                rg,
+                observability_endpoints=(
+                    {"sibling-custom-location": {"address": "keep"}} if mixed_case else {}
+                ),
+                observability_enabled=mixed_case,
             ),
             status=200,
         )
@@ -1571,8 +1582,8 @@ class TestDisable:
         assert "PUT" in methods  # endpoint entry removed via begin_create_or_replace
         put_call = next(call for call in mocked_responses.calls if call.request.method == "PUT")
         put_body = json.loads(put_call.request.body)
-        assert put_body["properties"]["observability"]["enabled"] is True
         expected_endpoints = {"sibling-custom-location": {"address": "keep"}} if mixed_case else {}
+        assert put_body["properties"]["observability"]["enabled"] is bool(expected_endpoints)
         assert put_body["properties"]["observability"]["endpoints"] == expected_endpoints
 
     def test_no_adr_ref_cleans_instance_resources(self, mocked_cmd, mocked_responses: responses, caplog):
@@ -1899,6 +1910,11 @@ def test_shared_adr_identity_conflict_is_rejected_before_writes(
 def test_adr_identity_changes_only_when_not_shared(mocked_cmd, mocked_responses, sharing):
     instance = _build_instance_response("instance", "rg")
     cl_id = MOCK_EXTENDED_LOCATION["name"]
+    existing_mi_id = generate_resource_id(
+        resource_group_name="rg",
+        resource_provider="Microsoft.ManagedIdentity",
+        resource_path="/userAssignedIdentities/existing-mi",
+    )
     mi_id = generate_resource_id(
         resource_group_name="rg", resource_provider="Microsoft.ManagedIdentity",
         resource_path="/userAssignedIdentities/mi",
@@ -1914,8 +1930,18 @@ def test_adr_identity_changes_only_when_not_shared(mocked_cmd, mocked_responses,
         if sharing == "sibling" else {"type": "SystemAssigned"}
     )
     namespace = _build_adr_namespace_response(
-        "instance-adr-ns", "rg", observability_endpoints=existing_endpoints, outbound_identity=current_identity,
+        "instance-adr-ns",
+        "rg",
+        identity_type="SystemAssigned",
+        principal_id="system-principal",
+        observability_endpoints=existing_endpoints,
+        outbound_identity=current_identity,
     )
+    namespace["identity"] = {
+        "type": "SystemAssigned, UserAssigned",
+        "principalId": "system-principal",
+        "userAssignedIdentities": {existing_mi_id: {}},
+    }
     url = _build_adr_endpoint("instance-adr-ns", "rg")
     mocked_responses.add(responses.GET, url, json=namespace)
     mocked_responses.add(responses.PATCH, url, json=namespace)
@@ -1925,6 +1951,13 @@ def test_adr_identity_changes_only_when_not_shared(mocked_cmd, mocked_responses,
     )
     assert result["outboundIdentity"] == {"type": "UserAssigned", "userAssignedIdentity": mi_id}
     payload = json.loads(mocked_responses.calls[1].request.body)
+    assert payload["identity"] == {
+        "type": "SystemAssigned, UserAssigned",
+        "userAssignedIdentities": {
+            existing_mi_id: {},
+            mi_id: {},
+        },
+    }
     for key, endpoint in existing_endpoints.items():
         if key != cl_id:
             assert payload["properties"]["observability"]["endpoints"][key] == endpoint
