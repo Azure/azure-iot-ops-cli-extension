@@ -78,7 +78,7 @@ class SchemaRegistries(Queryable):
 
         with console.status("Working...") as c:
             # Register the schema (ADR) provider
-            register_providers(self.default_subscription_id, ADR_PROVIDER)
+            register_providers(resource_provider=ADR_PROVIDER, **self._get_client_kwargs())
 
             if not location:
                 location = self.get_resource_group(name=resource_group_name)["location"]
@@ -138,7 +138,9 @@ class SchemaRegistries(Queryable):
                 target_role_def = custom_role_id or ROLE_DEF_FORMAT_STR.format(
                     subscription_id=storage_id_container.subscription_id, role_id=STORAGE_BLOB_DATA_CONTRIBUTOR_ROLE_ID
                 )
-                permission_manager = PermissionManager(storage_id_container.subscription_id)
+                permission_manager = PermissionManager(
+                    **self._get_client_kwargs(subscription_id=storage_id_container.subscription_id)
+                )
                 try:
                     permission_manager.apply_role_assignment(
                         scope=blob_container["id"],

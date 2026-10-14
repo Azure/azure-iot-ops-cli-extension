@@ -59,18 +59,19 @@ def _try_register(resource_client: "ResourceManagementClient", namespace: str, o
         raise
 
 
-def register_providers(subscription_id: str, resource_provider: Optional[str] = None) -> Set[str]:
+def register_providers(subscription_id: str, resource_provider: Optional[str] = None, **client_kwargs) -> Set[str]:
     """
     Register resource providers for IoT Operations.
 
     Args:
         subscription_id: Azure subscription ID.
         resource_provider: Specific RP to register. If None, registers all default RPs.
+        client_kwargs: Additional resource management client configuration.
 
     Returns:
         Set of optional RPs that failed to register.
     """
-    resource_client = get_resource_client(subscription_id=subscription_id)
+    resource_client = get_resource_client(subscription_id=subscription_id, **client_kwargs)
     providers = {p["namespace"]: p.get("registrationState", "") for p in resource_client.providers.list()}
 
     if resource_provider:

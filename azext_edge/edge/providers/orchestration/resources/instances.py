@@ -215,7 +215,7 @@ class Instances(Queryable):
         self.ssc_mgmt_client = get_ssc_mgmt_client(
             **self._get_client_kwargs()
         )
-        self.permission_manager = PermissionManager(self.default_subscription_id)
+        self.permission_manager = PermissionManager(**self._get_client_kwargs())
 
     def show(
         self, name: str, resource_group_name: str, show_tree: Optional[bool] = None, resolve_api: bool = False,

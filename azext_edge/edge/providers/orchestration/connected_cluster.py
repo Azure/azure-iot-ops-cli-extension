@@ -11,6 +11,7 @@ from azure.core.exceptions import HttpResponseError
 from knack.log import get_logger
 
 from ...util.az_client import get_health_mgmt_client
+from ...util.cloud_config import CloudConfig
 from ...util.resource_graph import ResourceGraph
 
 if TYPE_CHECKING:
@@ -77,6 +78,7 @@ QUERIES = {
 
 class ConnectedCluster:
     def __init__(self, cmd, subscription_id: str, cluster_name: str, resource_group_name: str):
+        self.cloud_config = CloudConfig(cmd)
         self.subscription_id = subscription_id
         self.cluster_name = cluster_name
         self.resource_group_name = resource_group_name
@@ -113,7 +115,9 @@ class ConnectedCluster:
 
     @cached_property
     def _health_client(self) -> "MicrosoftResourceHealth":
-        return get_health_mgmt_client(subscription_id=self.subscription_id)
+        return get_health_mgmt_client(
+            subscription_id=self.subscription_id, **self.cloud_config.arm_client_kwargs
+        )
 
     @property
     def location(self) -> str:

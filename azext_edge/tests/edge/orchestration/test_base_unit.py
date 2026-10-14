@@ -337,6 +337,20 @@ class TestRegisterProviders:
 
         mocked_resource_client.assert_any_call(subscription_id=test_sub)
 
+    def test_client_kwargs_passed_to_client(self, mocked_resource_client, rp_constants):
+        from azext_edge.edge.providers.orchestration.rp_namespace import register_providers
+
+        self._setup_client(mocked_resource_client, self._build_providers(rp_constants["all"], "Registered"))
+        client_kwargs = {
+            "endpoint": "https://management.usgovcloudapi.net/",
+            "credential_scopes": ["https://management.usgovcloudapi.net/.default"],
+        }
+        mocked_resource_client.reset_mock()
+
+        register_providers(ZEROED_SUB, **client_kwargs)
+
+        mocked_resource_client.assert_called_once_with(subscription_id=ZEROED_SUB, **client_kwargs)
+
     def test_mixed_registration_states(self, mocked_resource_client):
         """Only RPs not in Registered/Registering state trigger registration."""
         from azext_edge.edge.providers.orchestration.rp_namespace import register_providers

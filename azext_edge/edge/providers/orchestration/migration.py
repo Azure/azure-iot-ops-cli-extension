@@ -58,7 +58,7 @@ class AssetMigrationManager(Queryable):
         self.deviceregistry_mgmt_client = get_registry_mgmt_client(**self._get_client_kwargs())
         self.ops: "NamespacesOperations" = self.deviceregistry_mgmt_client.namespaces
         self.instances = Instances(self.cmd)
-        self.permission_manager = PermissionManager(self.default_subscription_id)
+        self.permission_manager = PermissionManager(**self._get_client_kwargs())
         self.instance_name = instance_name
         self.resource_group_name = resource_group_name
         self.instance_record = self.instances.show(name=instance_name, resource_group_name=resource_group_name)

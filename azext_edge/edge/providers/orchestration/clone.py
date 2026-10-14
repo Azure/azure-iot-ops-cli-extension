@@ -47,6 +47,7 @@ from ...util.az_client import (
     get_resource_client,
     wait_for_terminal_state,
 )
+from ...util.cloud_config import CloudConfig
 from ...util.id_tools import is_valid_resource_id, parse_resource_id
 from .common import (
     AZURE_DEVICE_REGISTRY_ADMINISTRATOR_ROLE_ID,
@@ -454,7 +455,9 @@ class InstanceRestore:
             cluster_name=self.cluster_name,
             resource_group_name=self.resource_group_name,
         )
-        self.resource_client = get_resource_client(subscription_id=self.subscription_id)
+        self.resource_client = get_resource_client(
+            subscription_id=self.subscription_id, **CloudConfig(self.cmd).arm_client_kwargs
+        )
         self.template_mode = template_mode
         self.user_assigned_mis = user_assigned_mis
         self.no_progress = no_progress
@@ -485,9 +488,12 @@ class InstanceRestore:
         )
         oidc_issuer, _ = resolve_oidc_issuer(arm_issuer=oidc_issuer)
 
+        cloud_config = CloudConfig(self.cmd)
         for mid in self.user_assigned_mis:
             parsed_uami_id = parse_resource_id(mid)
-            msi_client = get_msi_mgmt_client(subscription_id=parsed_uami_id["subscription"])
+            msi_client = get_msi_mgmt_client(
+                subscription_id=parsed_uami_id["subscription"], **cloud_config.arm_client_kwargs
+            )
             credentials = list(
                 msi_client.federated_identity_credentials.list(
                     resource_group_name=parsed_uami_id["resource_group"], resource_name=parsed_uami_id["name"]
@@ -772,7 +778,9 @@ class CloneManager:
         self.custom_location = self.instances.get_associated_cl(self.instance_record)
         # This is initializing the instance client with the API version used to construct the target instance.
         self.iotops_mgmt_client = get_iotops_mgmt_client(
-            subscription_id=self.instances.default_subscription_id, api_version=self.api_config.iotops_mgmt_api
+            subscription_id=self.instances.default_subscription_id,
+            api_version=self.api_config.iotops_mgmt_api,
+            **CloudConfig(self.cmd).arm_client_kwargs,
         )
 
         self.resource_map = self.instances.get_resource_map(self.instance_record)

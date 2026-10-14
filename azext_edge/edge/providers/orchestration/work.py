@@ -33,6 +33,7 @@ from ...util.az_client import (
     parse_resource_id,
     wait_for_terminal_state,
 )
+from ...util.cloud_config import CloudConfig
 from ...util.common import insert_newlines
 from .common import (
     AZURE_DEVICE_REGISTRY_ADMINISTRATOR_ROLE_ID,
@@ -113,9 +114,14 @@ class WorkManager:
         from azure.cli.core.commands.client_factory import get_subscription_id
 
         self.cmd = cmd
+        self.cloud_config = CloudConfig(cmd)
         self.subscription_id: str = get_subscription_id(cli_ctx=cmd.cli_ctx)
-        self.resource_client = get_resource_client(subscription_id=self.subscription_id)
-        self.permission_manager = PermissionManager(subscription_id=self.subscription_id)
+        self.resource_client = get_resource_client(
+            subscription_id=self.subscription_id, **self.cloud_config.arm_client_kwargs
+        )
+        self.permission_manager = PermissionManager(
+            subscription_id=self.subscription_id, **self.cloud_config.arm_client_kwargs
+        )
         self.custom_locations = CustomLocations(self.cmd)
 
     def _bootstrap_ux(self, show_progress: bool = False):
@@ -398,7 +404,9 @@ class WorkManager:
             if self._pre_flight:
                 # WorkStepKey.REG_RP
                 self._render_display(category=WorkCategoryKey.PRE_FLIGHT, active_step=WorkStepKey.REG_RP)
-                failed_optional_rps = register_providers(self.subscription_id)
+                failed_optional_rps = register_providers(
+                    self.subscription_id, **self.cloud_config.arm_client_kwargs
+                )
                 self._complete_step(
                     category=WorkCategoryKey.PRE_FLIGHT,
                     completed_step=WorkStepKey.REG_RP,
