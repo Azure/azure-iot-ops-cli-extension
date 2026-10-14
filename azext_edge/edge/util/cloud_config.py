@@ -80,6 +80,14 @@ class CloudConfig:
         return f"{self._cloud.endpoints.resource_manager.rstrip('/')}/.default"
 
     @property
+    def arm_client_kwargs(self) -> dict:
+        """Matching ARM endpoint and token scopes for management client factories."""
+        return {
+            "endpoint": self.arm_endpoint,
+            "credential_scopes": [self.arm_endpoint_scope],
+        }
+
+    @property
     def graph_endpoint(self) -> str:
         """Microsoft Graph endpoint with trailing slash (e.g. https://graph.microsoft.com/)."""
         endpoint = self._cloud.endpoints.microsoft_graph_resource_id

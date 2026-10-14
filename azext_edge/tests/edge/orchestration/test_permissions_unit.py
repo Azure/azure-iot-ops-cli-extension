@@ -18,6 +18,24 @@ MOCK_SUBSCRIPTION_ID = get_zeroed_subscription()
 MOCK_RG = f"rg_{generate_random_string()}"
 
 
+@pytest.mark.parametrize("client_kwargs", [
+    {},
+    {"endpoint": "https://management.usgovcloudapi.net/"},
+    {"credential_scopes": ["https://management.core.usgovcloudapi.net/.default"]},
+    {
+        "endpoint": "https://management.usgovcloudapi.net/",
+        "credential_scopes": ["https://management.usgovcloudapi.net/.default"],
+    },
+])
+def test_permission_manager_passes_client_kwargs(mocker, client_kwargs):
+    mocked_get_authz_client = mocker.patch(
+        "azext_edge.edge.providers.orchestration.permissions.get_authz_client"
+    )
+    PermissionManager(subscription_id=MOCK_SUBSCRIPTION_ID, **client_kwargs)
+
+    mocked_get_authz_client.assert_called_once_with(subscription_id=MOCK_SUBSCRIPTION_ID, **client_kwargs)
+
+
 @pytest.fixture
 def mocked_get_principal_permissions_for_group(mocker, request):
     patched = mocker.patch(

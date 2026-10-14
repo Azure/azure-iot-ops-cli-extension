@@ -11,6 +11,56 @@ from ..generators import generate_random_string
 
 AZ_CLIENT_PATH = "azext_edge.edge.util.az_client"
 
+ARM_FACTORIES = [
+    "get_extloc_mgmt_client", "get_ssc_mgmt_client", "get_msi_mgmt_client",
+    "get_clusterconfig_mgmt_client", "get_connectedk8s_mgmt_client", "get_storage_mgmt_client",
+    "get_eventgrid_mgmt_client", "get_registry_mgmt_client", "get_iotops_mgmt_client",
+    "get_health_mgmt_client", "get_resource_client", "get_authz_client",
+]
+
+
+@pytest.mark.parametrize("factory_name", ARM_FACTORIES)
+@pytest.mark.parametrize("endpoint", [
+    None, "https://management.azure.com/", "https://management.usgovcloudapi.net/",
+    "https://management.usgovcloudapi.net", "https://management.chinacloudapi.cn",
+])
+def test_arm_factory_defaults_scope_from_endpoint(factory_name, endpoint):
+    from azext_edge.edge.util import az_client
+
+    kwargs = {"endpoint": endpoint} if endpoint is not None else {}
+    client = getattr(az_client, factory_name)(subscription_id="subscription", **kwargs)
+    resource = endpoint or "https://management.azure.com"
+
+    assert client._config.credential_scopes == [f"{resource.rstrip('/')}/.default"]
+    assert client._config.authentication_policy._scopes == (f"{resource.rstrip('/')}/.default",)
+
+
+@pytest.mark.parametrize("factory_name", ARM_FACTORIES)
+def test_arm_factory_preserves_explicit_scopes(factory_name):
+    from azext_edge.edge.util import az_client
+
+    scopes = ["https://management.core.usgovcloudapi.net/.default"]
+    client = getattr(az_client, factory_name)(
+        subscription_id="subscription",
+        endpoint="https://management.usgovcloudapi.net/",
+        credential_scopes=scopes,
+    )
+
+    assert client._config.credential_scopes == scopes
+    assert client._config.authentication_policy._scopes == tuple(scopes)
+
+
+@pytest.mark.parametrize("scope", [None, "https://vault.usgovcloudapi.net/.default"])
+def test_keyvault_factory_keeps_data_plane_scope(scope):
+    from azext_edge.edge.util.az_client import get_keyvault_client
+
+    client = get_keyvault_client(
+        subscription_id="subscription",
+        endpoint="https://management.usgovcloudapi.net/",
+        keyvault_scope=scope,
+    )
+    assert client._config.credential_scopes == [scope or "https://vault.azure.net/.default"]
+
 
 @pytest.mark.parametrize("api_version,expected", [
     (None, "2026-10-01"),

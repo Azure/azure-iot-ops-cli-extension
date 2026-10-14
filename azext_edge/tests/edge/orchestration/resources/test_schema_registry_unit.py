@@ -357,7 +357,11 @@ def test_schema_registry_create(
             return
 
     create_result = create_registry(**create_registry_kwargs)
-    mocked_register_providers.assert_called_with(ZEROED_SUBSCRIPTION, ADR_PROVIDER)
+    mocked_register_providers.assert_called_with(
+        subscription_id=ZEROED_SUBSCRIPTION,
+        resource_provider=ADR_PROVIDER,
+        endpoint="https://management.azure.com/",
+    )
 
     if get_role_response:
         assert get_role_response.calls[0].request.url.endswith(

@@ -61,7 +61,7 @@ class SyncRules(Queryable):
                 )
                 return
 
-            permission_manager = PermissionManager(self.default_subscription_id)
+            permission_manager = PermissionManager(**self._get_client_kwargs())
             try:
                 result = permission_manager.apply_role_assignment(
                     scope=self.custom_location["id"],

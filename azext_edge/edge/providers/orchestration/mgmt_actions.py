@@ -207,7 +207,7 @@ class MgmtActions(EventGridProviderBase):
         self.eventgrid_mgmt_client: "EventGridManagementClient" = get_eventgrid_mgmt_client(
             **self._get_client_kwargs()
         )
-        self.permission_manager = PermissionManager(self.default_subscription_id)
+        self.permission_manager = PermissionManager(**self._get_client_kwargs())
 
     def enable(
         self,
@@ -1780,7 +1780,7 @@ class MgmtActions(EventGridProviderBase):
         # Use a cross-subscription PermissionManager when the EG namespace lives
         # in a different subscription than the instance.
         if eg_ctx.subscription_id.lower() != self.default_subscription_id.lower():
-            eg_permission_manager = PermissionManager(subscription_id=eg_ctx.subscription_id)
+            eg_permission_manager = PermissionManager(**self._get_client_kwargs(subscription_id=eg_ctx.subscription_id))
         else:
             eg_permission_manager = self.permission_manager
 

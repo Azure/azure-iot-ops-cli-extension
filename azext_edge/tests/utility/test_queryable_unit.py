@@ -231,7 +231,7 @@ class TestQueryableGetClientKwargs:
     """Tests for _get_client_kwargs helper."""
 
     def test_default_kwargs(self, queryable_deps):
-        """Returns default_subscription_id and arm endpoint."""
+        """Returns default_subscription_id and ARM endpoint for factory scope resolution."""
         from azext_edge.edge.util.queryable import Queryable
 
         q = Queryable(cmd=queryable_deps["cmd"])
@@ -278,6 +278,35 @@ class TestQueryableGetClientKwargs:
             "subscription_id": "other-sub",
             "endpoint": MOCK_ARM_ENDPOINT,
             "api_version": "2025-01-01",
+        }
+
+    def test_us_government_arm_endpoint(self, queryable_deps):
+        """Fairfax clients receive the active ARM endpoint for factory scope resolution."""
+        from azext_edge.edge.util.queryable import Queryable
+
+        arm_endpoint = "https://management.usgovcloudapi.net/"
+        queryable_deps["cmd"].cli_ctx.cloud.endpoints.resource_manager = arm_endpoint
+
+        q = Queryable(cmd=queryable_deps["cmd"])
+
+        assert q._get_client_kwargs() == {
+            "subscription_id": "default-sub-id",
+            "endpoint": arm_endpoint,
+        }
+
+    def test_explicit_endpoint_and_scope_override(self, queryable_deps):
+        from azext_edge.edge.util.queryable import Queryable
+
+        q = Queryable(cmd=queryable_deps["cmd"])
+        result = q._get_client_kwargs(
+            endpoint="https://override.example/",
+            credential_scopes=["https://audience.example/.default"],
+        )
+
+        assert result == {
+            "subscription_id": "default-sub-id",
+            "endpoint": "https://override.example/",
+            "credential_scopes": ["https://audience.example/.default"],
         }
 
 
@@ -370,6 +399,10 @@ class TestCloudConfig:
         assert config.name == cloud_name
         assert config.arm_endpoint == expected["arm_endpoint"]
         assert config.arm_endpoint_scope == expected["arm_endpoint_scope"]
+        assert config.arm_client_kwargs == {
+            "endpoint": expected["arm_endpoint"],
+            "credential_scopes": [expected["arm_endpoint_scope"]],
+        }
         assert config.graph_endpoint == expected["graph_endpoint"]
         assert config.graph_token_resource == expected["graph_token_resource"]
         assert config.storage_suffix == expected["storage_suffix"]

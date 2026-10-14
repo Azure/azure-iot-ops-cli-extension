@@ -38,9 +38,9 @@ def get_ra_user_error_msg(
 
 
 # TODO: one-off for time, make generic
-def verify_write_permission_against_rg(subscription_id: str, resource_group_name: str):
+def verify_write_permission_against_rg(subscription_id: str, resource_group_name: str, **client_kwargs):
     for permission in get_principal_permissions_for_group(
-        subscription_id=subscription_id, resource_group_name=resource_group_name
+        subscription_id=subscription_id, resource_group_name=resource_group_name, **client_kwargs
     ):
         action_result = False
         negate_action_result = False
@@ -66,8 +66,10 @@ def verify_write_permission_against_rg(subscription_id: str, resource_group_name
     )
 
 
-def get_principal_permissions_for_group(subscription_id: str, resource_group_name: str) -> Iterable[dict]:
-    authz_client = get_authz_client(subscription_id=subscription_id)
+def get_principal_permissions_for_group(
+    subscription_id: str, resource_group_name: str, **client_kwargs
+) -> Iterable[dict]:
+    authz_client = get_authz_client(subscription_id=subscription_id, **client_kwargs)
     return authz_client.permissions.list_for_resource_group(resource_group_name)
 
 
