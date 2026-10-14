@@ -85,6 +85,7 @@ class TestConnectorMetadataValidatorIntegration:
         mock_get_client.assert_called_once_with(
             subscription_id=cmd.cli_ctx.data.get("subscription_id"),
             endpoint=cmd.cli_ctx.cloud.endpoints.resource_manager,
+            credential_scopes=["https://management.azure.com/.default"],
         )
 
     @patch("azext_edge.edge.providers.adr.validator.get_iotops_mgmt_client")
