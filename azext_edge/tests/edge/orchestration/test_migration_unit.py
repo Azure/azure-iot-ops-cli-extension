@@ -208,6 +208,7 @@ def setup_role_assignment_mocks(
                             subscription_id=ZEROED_SUBSCRIPTION, role_id=KUBERNETES_ARC_CONTRIBUTOR_ROLE_ID
                         ),
                         "principalId": target_sp_oid,
+                        "scope": custom_location_id,
                     }
                 }
             ]

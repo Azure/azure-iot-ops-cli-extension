@@ -2495,6 +2495,134 @@ def load_iotops_help():
     """
 
     helps[
+        "iot ops live-data"
+    ] = """
+        type: group
+        short-summary: Live Data infrastructure configuration for an IoT Operations instance.
+        long-summary: |
+            Requires a preview runtime. Enable requires a ready runtime; show and disable
+            remain available for diagnosis and cleanup of unhealthy preview runtimes.
+    """
+
+    helps[
+        "iot ops live-data enable"
+    ] = """
+        type: command
+        short-summary: Enable Live Data for an IoT Operations instance.
+        long-summary: |
+            Provisions and configures the shared, instance-level infrastructure required for
+            Live Data across three domains:
+            - Event Grid Namespace: an observability topic space.
+            - IoT Operations Instance: a dedicated dataflow profile and an EG MQTT dataflow endpoint.
+            - Device Registry Namespace: the outbound identity and the per-instance observability
+              endpoint entry (keyed by the instance's custom location).
+
+            The command is idempotent. Re-running converges to the desired state without
+            overwriting unrelated entries. Sets namespace observability enabled to true and adds
+            the instance's observability endpoint entry. Per-instance enablement is determined
+            by that entry and supporting resource configuration, not the namespace-wide flag.
+            ADR prerequisites are validated before resources are created. Existing Live Data
+            topic templates and dataflow profile settings are reconciled on re-enable.
+            The ADR outbound identity is namespace-wide. If other observability or management
+            endpoints share the namespace, reuse its existing identity; changing it is rejected
+            to avoid disrupting those endpoints.
+
+            By default, role assignments (Event Grid TopicSpaces Publisher for the instance identity
+            and Subscriber for the ADR namespace identity) are created at the Event Grid namespace
+            scope. Use --ra-scope topic-space for least-privilege assignments scoped to the topic
+            space, or --skip-ra to skip role assignment creation.
+
+            Use --user-object-ids to grant Reader directly to one or more Microsoft Entra users from
+            the resource tenant at the Device Registry namespace scope. These assignments are
+            additive, idempotent, unaffected by --ra-scope, and preserved on disable. The command
+            returns their assignment IDs for explicit cleanup. --skip-ra takes precedence and skips
+            these assignments. Individual user assignments are required during Public Preview when
+            group-based authorization is unavailable.
+
+        examples:
+        - name: Enable Live Data using a system-assigned managed identity and default roles.
+          text: >
+            az iot ops live-data enable --instance myinstance -g myresourcegroup
+            --eg-resource-id $EG_NAMESPACE_RESOURCE_ID
+        - name: Enable Live Data using a user-assigned managed identity for outbound auth.
+          text: >
+            az iot ops live-data enable --instance myinstance -g myresourcegroup
+            --eg-resource-id $EG_NAMESPACE_RESOURCE_ID --mi-user-assigned $UA_MI_RESOURCE_ID
+        - name: Enable Live Data with least-privilege, topic-space-scoped role assignments.
+          text: >
+            az iot ops live-data enable --instance myinstance -g myresourcegroup
+            --eg-resource-id $EG_NAMESPACE_RESOURCE_ID --ra-scope topic-space
+        - name: Enable Live Data and grant Reader directly to Microsoft Entra users.
+          text: >
+            az iot ops live-data enable --instance myinstance -g myresourcegroup
+            --eg-resource-id $EG_NAMESPACE_RESOURCE_ID
+            --user-object-ids $USER_OBJECT_ID_1 $USER_OBJECT_ID_2
+        - name: Enable Live Data and skip role assignments.
+          text: >
+            az iot ops live-data enable --instance myinstance -g myresourcegroup
+            --eg-resource-id $EG_NAMESPACE_RESOURCE_ID --skip-ra
+    """
+
+    helps[
+        "iot ops live-data disable"
+    ] = """
+        type: command
+        short-summary: Disable Live Data for an IoT Operations instance.
+        long-summary: |
+            Tears down the dedicated dataflow profile, the EG dataflow endpoint, and the
+            observability topic space, then removes this instance's observability endpoint
+            entry from the Device Registry namespace last so an interrupted disable can be
+            safely re-run. Preserves the namespace-wide observability enabled flag and endpoint
+            entries belonging to other instances, even when this instance's entry is the last one removed.
+            Custom-location resource IDs are matched case-insensitively.
+
+            Cleanup continues for instance-owned resources if the ADR reference or namespace
+            is missing. If the Event Grid namespace cannot be located, a warning identifies
+            the topic space that may require manual cleanup.
+
+            Event Grid namespace-scoped managed-identity role assignments are preserved;
+            topic-space-scoped managed-identity assignments are removed together with the topic
+            space. Reader assignments created for --user-object-ids are always scoped to the Device
+            Registry namespace, are unaffected by --ra-scope, and are preserved. Use the assignment
+            IDs returned by enable if explicit cleanup is required.
+
+        examples:
+        - name: Disable Live Data for an instance.
+          text: >
+            az iot ops live-data disable --instance myinstance -g myresourcegroup
+        - name: Disable Live Data without a confirmation prompt.
+          text: >
+            az iot ops live-data disable --instance myinstance -g myresourcegroup --yes
+    """
+
+    helps[
+        "iot ops live-data show"
+    ] = """
+        type: command
+        short-summary: Show Live Data configuration for an IoT Operations instance.
+        long-summary: |
+            Reports the Live Data configuration and resource status across the Device Registry
+            namespace, Event Grid, and IoT Operations dataflow resources. The top-level enabled
+            flag is true only when this instance's observability endpoint entry is present
+            and all supporting resources are present. The namespace-wide observability enabled
+            flag is reported for information and does not determine per-instance enablement. The topic
+            templates, dedicated profile settings, and endpoint type, host, authentication,
+            client-ID prefix and TLS mode must also match the Live Data configuration.
+            Endpoint status includes a configured flag. For user-assigned authentication,
+            verification also reads the referenced managed identity's client and tenant IDs.
+            Device Registry namespace status includes userReaderAssignments with principal and
+            assignment IDs for direct user Reader assignments at the namespace scope, including
+            assignments created outside Live Data enable. Inherited and group assignments are
+            excluded. Reading this list requires Microsoft.Authorization/roleAssignments/read;
+            authorization or service errors are surfaced rather than reported as an empty list.
+
+        examples:
+        - name: Show Live Data configuration for an instance.
+          text: >
+            az iot ops live-data show --instance myinstance -g myresourcegroup
+    """
+
+    helps[
         "iot ops schema"
     ] = """
         type: group

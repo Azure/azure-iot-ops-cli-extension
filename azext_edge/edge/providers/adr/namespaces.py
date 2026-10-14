@@ -53,8 +53,9 @@ class Namespaces(Queryable):
             "location": location,
             "identity": {"type": "SystemAssigned"},
             "properties": {},
-            "tags": tags,
         }
+        if tags:
+            namespace_body["tags"] = tags
         with console.status(f"Creating {namespace_name}..."):
             poller = self.ops.begin_create_or_replace(
                 resource_group_name,

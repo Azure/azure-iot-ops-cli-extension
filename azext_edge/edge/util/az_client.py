@@ -56,6 +56,11 @@ if TYPE_CHECKING:
 
 # TODO @digimaun - simplify client init pattern. Consider multi-profile vs static API client.
 
+def _configure_arm_client_kwargs(kwargs: dict) -> None:
+    """Pair an explicit ARM endpoint with its scope unless the caller supplies one."""
+    if "endpoint" in kwargs and "credential_scopes" not in kwargs:
+        kwargs["credential_scopes"] = [f"{kwargs['endpoint'].rstrip('/')}/.default"]
+
 
 def get_extloc_mgmt_client(subscription_id: str, **kwargs) -> "CustomLocations":
     from ..vendor.clients.extendedlocmgmt import CustomLocations
@@ -63,6 +68,7 @@ def get_extloc_mgmt_client(subscription_id: str, **kwargs) -> "CustomLocations":
     if "http_logging_policy" not in kwargs:
         kwargs["http_logging_policy"] = get_default_logging_policy()
 
+    _configure_arm_client_kwargs(kwargs)
     return CustomLocations(
         credential=AZURE_CLI_CREDENTIAL,
         subscription_id=subscription_id,
@@ -77,6 +83,7 @@ def get_ssc_mgmt_client(subscription_id: str, **kwargs) -> "MicrosoftSecretSyncC
     if "http_logging_policy" not in kwargs:
         kwargs["http_logging_policy"] = get_default_logging_policy()
 
+    _configure_arm_client_kwargs(kwargs)
     return MicrosoftSecretSyncController(
         credential=AZURE_CLI_CREDENTIAL,
         subscription_id=subscription_id,
@@ -91,6 +98,7 @@ def get_msi_mgmt_client(subscription_id: str, **kwargs) -> "ManagedServiceIdenti
     if "http_logging_policy" not in kwargs:
         kwargs["http_logging_policy"] = get_default_logging_policy()
 
+    _configure_arm_client_kwargs(kwargs)
     return ManagedServiceIdentityClient(
         credential=AZURE_CLI_CREDENTIAL,
         subscription_id=subscription_id,
@@ -105,6 +113,7 @@ def get_clusterconfig_mgmt_client(subscription_id: str, **kwargs) -> "Kubernetes
     if "http_logging_policy" not in kwargs:
         kwargs["http_logging_policy"] = get_default_logging_policy()
 
+    _configure_arm_client_kwargs(kwargs)
     return KubernetesConfigurationClient(
         credential=AZURE_CLI_CREDENTIAL,
         subscription_id=subscription_id,
@@ -119,6 +128,7 @@ def get_connectedk8s_mgmt_client(subscription_id: str, **kwargs) -> "ConnectedKu
     if "http_logging_policy" not in kwargs:
         kwargs["http_logging_policy"] = get_default_logging_policy()
 
+    _configure_arm_client_kwargs(kwargs)
     return ConnectedKubernetesClient(
         credential=AZURE_CLI_CREDENTIAL,
         subscription_id=subscription_id,
@@ -133,6 +143,7 @@ def get_storage_mgmt_client(subscription_id: str, **kwargs) -> "StorageManagemen
     if "http_logging_policy" not in kwargs:
         kwargs["http_logging_policy"] = get_default_logging_policy()
 
+    _configure_arm_client_kwargs(kwargs)
     return StorageManagementClient(
         credential=AZURE_CLI_CREDENTIAL,
         subscription_id=subscription_id,
@@ -162,6 +173,7 @@ def get_eventgrid_mgmt_client(
         kwargs["http_logging_policy"] = get_default_logging_policy()
     kwargs["api_version"] = api_version
 
+    _configure_arm_client_kwargs(kwargs)
     return EventGridManagementClient(
         credential=AZURE_CLI_CREDENTIAL,
         subscription_id=subscription_id,
@@ -171,6 +183,7 @@ def get_eventgrid_mgmt_client(
 
 
 class DeviceRegistryMgmtApiVersion(Enum):
+    V20261102_preview = "2026-11-02-preview"
     V20260401 = "2026-04-01"
     V20260201_preview = "2026-02-01-preview"
     V20251001 = "2025-10-01"
@@ -198,6 +211,7 @@ def get_registry_mgmt_client(
         kwargs["http_logging_policy"] = get_default_logging_policy()
     kwargs["api_version"] = api_version
 
+    _configure_arm_client_kwargs(kwargs)
     return MicrosoftDeviceRegistryManagementService(
         credential=AZURE_CLI_CREDENTIAL,
         subscription_id=subscription_id,
@@ -234,6 +248,7 @@ def get_iotops_mgmt_client(
         kwargs["http_logging_policy"] = get_default_logging_policy()
     kwargs["api_version"] = api_version
 
+    _configure_arm_client_kwargs(kwargs)
     return MicrosoftIoTOperationsManagementService(
         credential=AZURE_CLI_CREDENTIAL,
         subscription_id=subscription_id,
@@ -251,6 +266,7 @@ def get_health_mgmt_client(
     if "http_logging_policy" not in kwargs:
         kwargs["http_logging_policy"] = get_default_logging_policy()
 
+    _configure_arm_client_kwargs(kwargs)
     return MicrosoftResourceHealth(
         credential=AZURE_CLI_CREDENTIAL,
         subscription_id=subscription_id,
@@ -265,6 +281,7 @@ def get_resource_client(subscription_id: str, **kwargs) -> "ResourceManagementCl
     if "http_logging_policy" not in kwargs:
         kwargs["http_logging_policy"] = get_default_logging_policy()
 
+    _configure_arm_client_kwargs(kwargs)
     return ResourceManagementClient(
         credential=AZURE_CLI_CREDENTIAL,
         subscription_id=subscription_id,
@@ -279,6 +296,7 @@ def get_authz_client(subscription_id: str, **kwargs) -> "AuthorizationManagement
     if "http_logging_policy" not in kwargs:
         kwargs["http_logging_policy"] = get_default_logging_policy()
 
+    _configure_arm_client_kwargs(kwargs)
     return AuthorizationManagementClient(
         credential=AZURE_CLI_CREDENTIAL,
         subscription_id=subscription_id,

@@ -27,6 +27,7 @@ from ...util.az_client import (
     wait_for_terminal_state,
     wait_for_terminal_states,
 )
+from ...util.cloud_config import CloudConfig
 from ...util.common import should_continue_prompt
 from ...util.id_tools import parse_resource_id
 from ...util.machinery import scoped_semver_import
@@ -131,7 +132,9 @@ class DeletionManager:
         self.resource_group_name = resource_group_name
         self.include_dependencies = include_dependencies
         self.subscription_id = get_subscription_id(cli_ctx=cmd.cli_ctx)
-        self.resource_client = get_resource_client(self.subscription_id)
+        self.resource_client = get_resource_client(
+            self.subscription_id, **CloudConfig(cmd).arm_client_kwargs
+        )
 
         self._render_progress = not no_progress
 

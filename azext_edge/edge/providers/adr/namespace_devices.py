@@ -97,7 +97,7 @@ class NamespaceDevices(Queryable):
         **kwargs
     ):
         # get the extended location from the instance
-        from .helpers import get_extended_location
+        from .helpers import get_extended_location, strip_nulls
         extended_location = get_extended_location(
             cmd=self.cmd,
             instance_name=instance_name,
@@ -121,14 +121,14 @@ class NamespaceDevices(Queryable):
         device_body = {
             "extendedLocation": extended_location,
             "location": location,
-            "properties": {
+            "properties": strip_nulls({
                 "attributes": parse_kvp_nargs(custom_attributes),
                 "enabled": not disabled,
                 "manufacturer": manufacturer,
                 "model": model,
                 "operatingSystem": operating_system,
                 "operatingSystemVersion": operating_system_version
-            },
+            }),
             "tags": tags
         }
 

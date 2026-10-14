@@ -194,6 +194,7 @@ def test_sync_rules_enable_existing_assignment(
                         "properties": {
                             "principalId": k8_bridge_sp_oid,
                             "roleDefinitionId": expected_role_def_id,
+                            "scope": cl_payload["id"],
                         },
                     }
                 ]

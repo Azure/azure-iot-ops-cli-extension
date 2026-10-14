@@ -43,6 +43,7 @@ There are, however, some prerequisites and caveats that users should be made awa
   - **runtime-channel**: Shared update and cross-channel refusal tests (runs serially)
   - **upgrade-path**: Actual older-to-newer upgrade tests; explicitly selected with pinned baselines
   - **mgmtactions**: Azure IoT Operations management actions tests (runs serially)
+  - **livedata**: Live Data rejection tests on stable and lifecycle tests on preview (runs serially)
   - **redeploy**: Tests cluster redeployment functionality
   - **trustbundle**: Workload identity federation tests
 
@@ -78,6 +79,15 @@ train can still be `integration` for an internal candidate. Each job provisions 
 temporary k3s/Arc cluster and separately named instance, storage, schema registry and
 ADR namespace. No existing cluster is converted between channels.
 
+The CI setup creates the ADR namespace in `australiaeast`, independently of the cluster
+region. ADR live-data support is unavailable in `westus2`, and `eastus` is a hybrid
+RPaaS/DirectRP region where namespaces created with the existing API can be delayed
+replicating to DirectRP. `australiaeast` is a fully VNext region recommended by the ADR
+team; the namespace creation command and API remain unchanged for both runtime channels.
+Namespaced devices inherit the namespace region, and namespaced assets
+inherit their device's region. Storage and schema registry locations are unchanged.
+This override applies to CI setup; local init tests retain their existing location defaults.
+
 - `runtime-channels: "stable,preview"` runs both channels; select one explicitly for troubleshooting.
 - `init` is identical on both channels. Only preview **create** receives `--use-preview --yes`.
 - Extra init/create arguments must not contain `--use-preview`, `--ops-version`, or `--ops-train`;
@@ -88,6 +98,10 @@ ADR namespace. No existing cluster is converted between channels.
   with the specific preview-runtime error. An unrelated CLI or service error fails the test.
   Show is tested directly with a known metadata reference without first invoking list.
   The preview list path also inspects returned first-party metadata references using the same instance target.
+- The `livedata` scenario runs on both channels: stable tests verify that all three commands
+  fail with the preview-runtime restriction and leave instance/runtime configuration unchanged;
+  preview tests exercise enable, show, disable, idempotency and role assignments.
+  Stable jobs do not create Live Data Event Grid resources or identities.
 - Create and each subsequent suite verify the **installed** `currentVersion`, release train,
   runtime channel, associations and readiness. Qualification assertions are hard failures,
   even when the legacy `init-continue-on-error` option is set.

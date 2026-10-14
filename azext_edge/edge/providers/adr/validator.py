@@ -11,6 +11,7 @@ from knack.log import get_logger
 from azure.cli.core.azclierror import ValidationError
 from azure.cli.core.commands.client_factory import get_subscription_id
 from ...util.az_client import get_iotops_mgmt_client
+from ...util.cloud_config import CloudConfig
 from ...util.oci_client import get_oci_client
 
 logger = get_logger(__name__)
@@ -137,6 +138,7 @@ class ConnectorMetadataValidator:
 
         registry_client = get_registry_mgmt_client(
             subscription_id=asset_id.get("subscription"),
+            **CloudConfig(cmd).arm_client_kwargs,
         )
 
         device = registry_client.namespace_devices.get(
@@ -200,7 +202,7 @@ class ConnectorMetadataValidator:
 
             iotops_client: MicrosoftIoTOperationsManagementService = get_iotops_mgmt_client(
                 subscription_id=get_subscription_id(cli_ctx=self.cmd.cli_ctx),
-                endpoint=self.cmd.cli_ctx.cloud.endpoints.resource_manager,
+                **CloudConfig(self.cmd).arm_client_kwargs,
             )
 
             connector_templates = list(

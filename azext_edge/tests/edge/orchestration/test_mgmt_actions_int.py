@@ -99,7 +99,7 @@ def _wait_for_action_schema(ns_id: str, asset_name: str, device_name: str) -> Op
     def _get_schema_ref():
         asset = run(
             "az rest --method get --url "
-            f'"https://management.azure.com{ns_id}/assets/{asset_name}?api-version={ADR_API_VERSION}"'
+            f'"{ns_id}/assets/{asset_name}?api-version={ADR_API_VERSION}"'
         )
         for group in asset.get("properties", {}).get("status", {}).get("managementGroups", []):
             if group.get("name") != MGMT_GROUP_NAME:
@@ -140,7 +140,7 @@ def _log_connector_status(ns_id: str, asset_name: str, device_name: str) -> None
         try:
             resource = run(
                 "az rest --method get --url "
-                f'"https://management.azure.com{resource_id}?api-version={ADR_API_VERSION}"'
+                f'"{resource_id}?api-version={ADR_API_VERSION}"'
             )
             status = resource.get("properties", {}).get("status")
             logger.warning("%s status at timeout: %s", label, json.dumps(status, indent=2))
@@ -478,7 +478,7 @@ def mgmt_actions_setup(request, settings, tracked_files):
         try:
             run(
                 f"az rest --method delete "
-                f'--url "https://management.azure.com{ns_id}/assets/{asset_name}?api-version={ADR_API_VERSION}"'
+                f'--url "{ns_id}/assets/{asset_name}?api-version={ADR_API_VERSION}"'
             )
         except Exception:
             logger.error(f"Failed to delete asset {asset_name}.")
@@ -513,7 +513,7 @@ def mgmt_actions_setup(request, settings, tracked_files):
     try:
         run(
             f"az rest --method put "
-            f'--url "https://management.azure.com{ns_id}/assets/{asset_name}?api-version={ADR_API_VERSION}" '
+            f'--url "{ns_id}/assets/{asset_name}?api-version={ADR_API_VERSION}" '
             f'--body "@{body_file}"'
         )
     finally:
@@ -549,7 +549,7 @@ def _list_topic_space_names(eg_resource_id: str) -> List[str]:
     surviving topic space pass a teardown assertion unnoticed.
     """
     url = (
-        f"https://management.azure.com{eg_resource_id}/topicSpaces"
+        f"{eg_resource_id}/topicSpaces"
         f"?api-version={DEFAULT_EVENTGRID_MGMT_API_VERSION.value}"
     )
     names: List[str] = []

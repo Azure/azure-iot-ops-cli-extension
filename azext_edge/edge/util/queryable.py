@@ -26,7 +26,8 @@ class Queryable:
         from azure.cli.core.commands.client_factory import get_subscription_id
 
         self.cmd = cmd
-        self._arm_endpoint: str = cmd.cli_ctx.cloud.endpoints.resource_manager
+        cloud_config = CloudConfig(cmd)
+        self._arm_endpoint: str = cloud_config.arm_endpoint
         self.default_subscription_id: str = subscription_id or get_subscription_id(cli_ctx=cmd.cli_ctx)
 
         if not subscriptions:
@@ -38,7 +39,7 @@ class Queryable:
     def _get_client_kwargs(self, *, subscription_id: Optional[str] = None, **overrides) -> dict:
         """Build common kwargs for az_client factory functions.
 
-        Bundles subscription_id and ARM endpoint so providers don't repeat them at every call site.
+        Bundles subscription_id and ARM endpoint. ARM factories derive the token scope from the endpoint.
         Accepts overrides for cross-subscription or non-default api_version scenarios.
         """
         return {
