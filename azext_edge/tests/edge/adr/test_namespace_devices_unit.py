@@ -143,6 +143,18 @@ def generate_device_inbound_endpoint(
     {
         "disabled": False,
         "operating_system": "Windows",
+    },
+    {
+        "manufacturer": None,
+        "model": None,
+        "operating_system": None,
+        "operating_system_version": None,
+    },
+    {
+        "manufacturer": "",
+        "model": "",
+        "operating_system": "",
+        "operating_system_version": "",
     }
 ])
 def test_create_namespace_device(
@@ -233,14 +245,16 @@ def test_create_namespace_device(
     assert call_body["properties"]["enabled"] == (not req.get("disabled"))
 
     # Check optional fields if provided
-    if "manufacturer" in req:
-        assert call_body["properties"]["manufacturer"] == req["manufacturer"]
-    if "model" in req:
-        assert call_body["properties"]["model"] == req["model"]
-    if "operating_system" in req:
-        assert call_body["properties"]["operatingSystem"] == req["operating_system"]
-    if "operating_system_version" in req:
-        assert call_body["properties"]["operatingSystemVersion"] == req["operating_system_version"]
+    for argument, property_name in (
+        ("manufacturer", "manufacturer"),
+        ("model", "model"),
+        ("operating_system", "operatingSystem"),
+        ("operating_system_version", "operatingSystemVersion"),
+    ):
+        if req.get(argument) is None:
+            assert property_name not in call_body["properties"]
+        else:
+            assert call_body["properties"][property_name] == req[argument]
     if "tags" in req:
         assert call_body["tags"] == req["tags"]
     if "custom_attributes" in req:

@@ -205,6 +205,7 @@ class OperationRequirements:
     channels: FrozenSet[RuntimeChannel] = frozenset(RuntimeChannel)
     minimum_version: Optional[str] = None
     maximum_version_exclusive: Optional[str] = None
+    requires_ready: bool = True
 
     def __post_init__(self):
         object.__setattr__(self, "channels", frozenset(RuntimeChannel(channel) for channel in self.channels))
@@ -214,7 +215,8 @@ class OperationRequirements:
             raise ValidationError(f"Invalid runtime version range for {self.name}.")
 
     def validate(self, runtime: RuntimeContext) -> None:
-        runtime.require_ready()
+        if self.requires_ready:
+            runtime.require_ready()
         self.validate_identity(runtime.identity)
 
     def validate_identity(self, identity: RuntimeIdentity) -> None:

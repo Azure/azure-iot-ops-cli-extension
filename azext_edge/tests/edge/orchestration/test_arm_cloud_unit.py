@@ -125,7 +125,7 @@ def test_permission_client_cloud(arm_cloud, mocked_responses, mocker, provider_t
     mocked_responses.add(
         responses.GET,
         f"{endpoint}{RESOURCE_ID}/providers/Microsoft.Authorization/roleAssignments",
-        json={"value": [{"properties": {"roleDefinitionId": "role-id"}}]},
+        json={"value": [{"properties": {"roleDefinitionId": "role-id", "scope": RESOURCE_ID}}]},
     )
     assert provider.permission_manager.apply_role_assignment(RESOURCE_ID, "principal-id", "role-id") is None
     expected_subscription = OTHER_SUBSCRIPTION if provider_type == "management-actions" else SUBSCRIPTION
@@ -139,7 +139,7 @@ def test_sync_rule_permission_cloud(arm_cloud, mocked_responses, mocker):
     mocked_responses.add(
         responses.GET,
         f"{endpoint}{RESOURCE_ID}/providers/Microsoft.Authorization/roleAssignments",
-        json={"value": [{"properties": {"roleDefinitionId": "role-id"}}]},
+        json={"value": [{"properties": {"roleDefinitionId": "role-id", "scope": RESOURCE_ID}}]},
     )
     provider = SyncRules(cmd, resource_group_name="rg", instance_name="instance")
     assert provider.enable(custom_role_id="role-id", k8_bridge_sp_oid="principal-id") is None
