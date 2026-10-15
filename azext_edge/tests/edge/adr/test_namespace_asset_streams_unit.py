@@ -350,7 +350,10 @@ def test_add_namespace_asset_stream(
     assert added_stream is not None, "Added stream not found in the list of streams"
 
     # Verify stream configuration
-    assert added_stream["typeRef"] == expected_stream.get("typeRef")
+    if expected_stream.get("typeRef") is None:
+        assert "typeRef" not in added_stream
+    else:
+        assert added_stream["typeRef"] == expected_stream["typeRef"]
     check_stream_configuration(added_stream, expected_stream)
     check_destinations(added_stream, expected_stream)
 

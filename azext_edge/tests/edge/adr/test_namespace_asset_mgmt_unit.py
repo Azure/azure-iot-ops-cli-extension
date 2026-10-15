@@ -284,10 +284,17 @@ def test_add_namespace_asset_management_group(
         assert added_group["dataSource"] == data_source
     else:
         assert "dataSource" not in added_group
-    assert added_group["typeRef"] == mgmt_params.get("type_ref")
-    assert added_group["defaultTopic"] == default_topic
-    assert added_group["defaultTimeoutInSeconds"] == default_timeout
-    assert added_group["managementGroupConfiguration"] == mgmt_params.get("mgmt_custom_configuration")
+    optional_properties = {
+        "typeRef": mgmt_params.get("type_ref"),
+        "defaultTopic": default_topic,
+        "defaultTimeoutInSeconds": default_timeout,
+        "managementGroupConfiguration": mgmt_params.get("mgmt_custom_configuration"),
+    }
+    for property_name, expected_value in optional_properties.items():
+        if expected_value is None:
+            assert property_name not in added_group
+        else:
+            assert added_group[property_name] == expected_value
 
     # Verify that mocked_get_namespace_for_instance was called with correct parameters
     mocked_get_namespace_for_instance.assert_called_once_with(
@@ -1065,9 +1072,16 @@ def test_add_namespace_asset_management_group_action(
     )
     assert patched_action is not None, f"Action '{action_name}' not found in PATCH request"
     assert patched_action["targetUri"] == target_uri
-    assert patched_action["topic"] == topic
-    assert patched_action["actionType"] == action_type
-    assert patched_action["timeoutInSeconds"] == timeout
+    optional_properties = {
+        "topic": topic,
+        "actionType": action_type,
+        "timeoutInSeconds": timeout,
+    }
+    for property_name, expected_value in optional_properties.items():
+        if expected_value is None:
+            assert property_name not in patched_action
+        else:
+            assert patched_action[property_name] == expected_value
     assert patched_action.get("typeRef") == expected_action.get("typeRef")
 
     if "actionConfiguration" in expected_action:

@@ -1148,7 +1148,10 @@ def test_add_inbound_custom_device_endpoint(
     assert endpoint_name in patch_endpoints
     patch_endpoint = patch_endpoints[endpoint_name]
     assert patch_endpoint["endpointType"] == endpoint_type
-    assert patch_endpoint["version"] == endpoint_version
+    if endpoint_version is None:
+        assert "version" not in patch_endpoint
+    else:
+        assert patch_endpoint["version"] == endpoint_version
     assert patch_endpoint["address"] == endpoint_address
     assert patch_endpoint["additionalConfiguration"] == expected_additional_configuration
     assert patch_endpoint["authentication"]["method"] == expected_endpoint["authentication"]["method"]
@@ -1317,7 +1320,10 @@ def test_add_inbound_media_device_endpoint(
     patch_body = json.loads(mocked_responses.calls[1].request.body)
     endpoint_patch = patch_body["properties"]["endpoints"]["inbound"][endpoint_name]
     assert endpoint_patch["endpointType"] == DeviceEndpointType.MEDIA.value
-    assert endpoint_patch["version"] == endpoint_version
+    if endpoint_version is None:
+        assert "version" not in endpoint_patch
+    else:
+        assert endpoint_patch["version"] == endpoint_version
     assert endpoint_patch["address"] == endpoint_address
     assert endpoint_patch["authentication"]["method"] == expected_endpoint["authentication"]["method"]
     assert endpoint_patch["authentication"] == expected_endpoint["authentication"]
@@ -1494,7 +1500,10 @@ def test_add_inbound_onvif_device_endpoint(
     patch_body = json.loads(mocked_responses.calls[1].request.body)
     endpoint_patch = patch_body["properties"]["endpoints"]["inbound"][endpoint_name]
     assert endpoint_patch["endpointType"] == DeviceEndpointType.ONVIF.value
-    assert endpoint_patch["version"] == endpoint_version
+    if endpoint_version is None:
+        assert "version" not in endpoint_patch
+    else:
+        assert endpoint_patch["version"] == endpoint_version
     assert endpoint_patch["address"] == endpoint_address
 
     assert endpoint_patch["additionalConfiguration"]
@@ -1775,7 +1784,10 @@ def test_add_inbound_opcua_device_endpoint(
     endpoint_patch = patch_body["properties"]["endpoints"]["inbound"][endpoint_name]
     assert endpoint_patch["endpointType"] == DeviceEndpointType.OPCUA.value
     assert endpoint_patch["address"] == endpoint_address
-    assert endpoint_patch["version"] == endpoint_version
+    if endpoint_version is None:
+        assert "version" not in endpoint_patch
+    else:
+        assert endpoint_patch["version"] == endpoint_version
 
     # Parse additionalConfiguration for validation
     assert endpoint_patch["additionalConfiguration"]
@@ -2798,7 +2810,7 @@ def test_apply_inbound_device_endpoint_success(
     patch_body = json.loads(mocked_responses.calls[1].request.body)
     endpoint_patch = patch_body["properties"]["endpoints"]["inbound"][endpoint_name]
     assert endpoint_patch["endpointType"] == connector_type
-    assert endpoint_patch["version"] == expected_version
+    assert "version" not in endpoint_patch
     assert endpoint_patch["address"] == endpoint_address
 
     if with_config_file:

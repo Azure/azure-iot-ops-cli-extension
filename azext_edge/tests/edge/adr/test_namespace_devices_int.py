@@ -109,8 +109,8 @@ def test_namespace_device_lifecycle_operations(require_namespace_init, tracked_r
     # Add endpoints of all types to device_name_2
     # Add ONVIF endpoint
     endpoint_address = "https://192.168.1.100:8000/onvif/device_service"
-    username_reference = "secretRef:username"
-    password_reference = "secretRef:password"
+    username_reference = "endpoint-creds/username"
+    password_reference = "endpoint-creds/password"
     result = run(
         f"az iot ops ns device endpoint inbound add onvif --device {device_name_2} "
         f"--instance {instance_name} -g {resource_group} --name {endpoint_name_onvif} "
@@ -167,9 +167,9 @@ def test_namespace_device_lifecycle_operations(require_namespace_init, tracked_r
     sub_max_items = 10
     security_policy = "Basic256Sha256"
     security_mode = "signAndEncrypt"
-    certificate_reference = "secretRef:certificate"
-    key_reference = "secretRef:privateKey"
-    intermediate_cert_reference = "secretRef:intermediateCerts"
+    certificate_reference = "endpoint-certs/certificate"
+    key_reference = "endpoint-certs/private-key"
+    intermediate_cert_reference = "endpoint-certs/intermediate-certs"
 
     result = run(
         f"az iot ops ns device endpoint inbound add opcua --device {device_name_2} "
@@ -220,9 +220,9 @@ def test_namespace_device_lifecycle_operations(require_namespace_init, tracked_r
     endpoint_type = "Custom.Type"
     endpoint_address = "http://192.168.1.100:8080"
     custom_configuration = {"customSetting": "value"}
-    certificate_reference = "secretRef:certificate"
-    key_reference = "secretRef:privateKey"
-    intermediate_cert_reference = "secretRef:intermediateCerts"
+    certificate_reference = "endpoint-certs/certificate"
+    key_reference = "endpoint-certs/private-key"
+    intermediate_cert_reference = "endpoint-certs/intermediate-certs"
     trust_list = "cert1"
     result = run(
         f"az iot ops ns device endpoint inbound add custom --device {device_name_2} "
@@ -249,8 +249,8 @@ def test_namespace_device_lifecycle_operations(require_namespace_init, tracked_r
 
     # Add replace ONVIF with REST endpoint
     endpoint_address = "https://192.168.1.100:8000/rest/device_service"
-    username_reference = "secretRef:username"
-    password_reference = "secretRef:password"
+    username_reference = "endpoint-creds/username"
+    password_reference = "endpoint-creds/password"
     result = run(
         f"az iot ops ns device endpoint inbound add rest --device {device_name_2} "
         f"--instance {instance_name} -g {resource_group} --name {endpoint_name_onvif} "
@@ -273,9 +273,9 @@ def test_namespace_device_lifecycle_operations(require_namespace_init, tracked_r
 
     # Add REST endpoint with certificate authentication
     endpoint_address = "https://192.168.1.100:8443/rest/secure_service"
-    certificate_reference = "secretRef:certificate"
-    key_reference = "secretRef:privateKey"
-    intermediate_cert_reference = "secretRef:intermediateCerts"
+    certificate_reference = "endpoint-certs/certificate"
+    key_reference = "endpoint-certs/private-key"
+    intermediate_cert_reference = "endpoint-certs/intermediate-certs"
     result = run(
         f"az iot ops ns device endpoint inbound add rest --device {device_name_2} "
         f"--instance {instance_name} -g {resource_group} --name {endpoint_name_rest} "
@@ -300,8 +300,8 @@ def test_namespace_device_lifecycle_operations(require_namespace_init, tracked_r
 
     # Add SSE endpoint with username/password authentication
     sse_endpoint_address = "https://192.168.1.100:8080/events"
-    username_reference = "secretRef:username"
-    password_reference = "secretRef:password"
+    username_reference = "endpoint-creds/username"
+    password_reference = "endpoint-creds/password"
     result = run(
         f"az iot ops ns device endpoint inbound add sse --device {device_name_2} "
         f"--instance {instance_name} -g {resource_group} --name {endpoint_name_sse} "
