@@ -57,8 +57,16 @@ if TYPE_CHECKING:
 # TODO @digimaun - simplify client init pattern. Consider multi-profile vs static API client.
 
 def _configure_arm_client_kwargs(kwargs: dict) -> None:
-    """Pair an explicit ARM endpoint with its scope unless the caller supplies one."""
-    if "endpoint" in kwargs and "credential_scopes" not in kwargs:
+    """Pair the ARM endpoint with its scope unless the caller supplies one.
+
+    When no endpoint is passed, use the active cloud's so sovereign clouds never fall back to
+    the generated clients' public-Azure endpoint and token audience.
+    """
+    if not kwargs.get("endpoint"):
+        from azure.cli.core.cloud import get_active_cloud
+
+        kwargs["endpoint"] = get_active_cloud().endpoints.resource_manager
+    if "credential_scopes" not in kwargs:
         kwargs["credential_scopes"] = [f"{kwargs['endpoint'].rstrip('/')}/.default"]
 
 
