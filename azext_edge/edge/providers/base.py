@@ -111,6 +111,7 @@ def get_namespaced_pods_by_prefix(
     namespace: str,
     label_selector: Optional[str] = None,
     as_dict: bool = False,
+    raise_on_error: bool = False,
 ) -> Union[List[V1Pod], List[dict], None]:
     def filter_pods_by_prefix(pods: List[V1Pod], prefix: str) -> List[V1Pod]:
         return [pod for pod in pods if pod.metadata.name.startswith(prefix)]
@@ -134,6 +135,8 @@ def get_namespaced_pods_by_prefix(
         _namespaced_pods_cache[target_pods_key] = pods_list.items
     except ApiException as ae:
         logger.debug(str(ae))
+        if raise_on_error:
+            raise
         reraise_if_access_denied(ae, resource="pods")
         return []
     else:
@@ -149,6 +152,7 @@ def get_custom_objects(
     plural: str,
     namespace: Optional[str] = None,
     use_cache: bool = True,
+    raise_on_error: bool = False,
 ) -> Union[dict, None]:
     target_resource_key = (group, version, plural, namespace)
     if use_cache:
@@ -166,6 +170,8 @@ def get_custom_objects(
         _custom_object_cache[target_resource_key] = f(**kwargs)
     except ApiException as ae:
         logger.debug(str(ae))
+        if raise_on_error:
+            raise
         reraise_if_access_denied(ae, resource=plural)
     else:
         return _custom_object_cache[target_resource_key]

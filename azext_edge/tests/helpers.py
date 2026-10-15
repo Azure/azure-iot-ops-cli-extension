@@ -263,7 +263,7 @@ def assert_role_assignment(
 
 
 def run(
-    command: str,
+    command: Union[str, List[str]],
     shell_mode: bool = True,
     expect_failure: bool = False,
     timeout: Optional[int] = None,
@@ -293,6 +293,25 @@ def run(
         except json.JSONDecodeError:
             return result.stdout
     return None
+
+
+def assert_broker_diagnostics_service_absent(namespaces: Iterable[str]) -> List[dict]:
+    resources = run(
+        ["kubectl", "get", "services,pods,statefulsets", "-A", "-o", "json", "--request-timeout=20s"],
+        shell_mode=False,
+        timeout=30,
+    )
+    resources = [item for item in resources["items"] if item["metadata"]["namespace"] in namespaces]
+    remaining = [
+        f"{resource['kind']}/{resource['metadata']['namespace']}/{resource['metadata']['name']}"
+        for resource in resources
+        if resource["metadata"]["name"].startswith("aio-broker-diagnostics-service")
+    ]
+    assert not remaining, (
+        "This scenario requires a backend release without the diagnostics Service, pods, and StatefulSet. "
+        f"Retired resources still present: {remaining}. Select the removal release using runtime-create-args."
+    )
+    return resources
 
 
 def sort_kubectl_items_by_namespace(

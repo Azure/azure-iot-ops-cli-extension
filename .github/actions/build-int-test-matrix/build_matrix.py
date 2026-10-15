@@ -25,6 +25,7 @@ KNOWN_FIELDS = {
     "test_redeploy",  # Whether to test redeployment in the scenario
     "env",  # Custom environment variable dict for the scenario
     "parallel",  # Controls parallel execution in pytest-xdist
+    "manual_only",  # Requires explicit selection instead of scheduled/default runs
     "requires_baseline",  # Opt-in real upgrade, rather than same-version reconciliation
 }
 
@@ -61,6 +62,9 @@ def process_scenarios(scenarios: list[dict], user_selected: str) -> list[dict]:
         if selected_scenarios and name not in selected_scenarios:
             continue
         if not selected_scenarios and scenario.get("requires_baseline"):
+            continue
+
+        if not selected_scenarios and scenario.get("manual_only", False):
             continue
 
         # Warn if unknown fields present
@@ -152,7 +156,7 @@ def main() -> None:
     Helper utility to build test scenario matrix for GitHub Actions.
     Uses the following environment variables:
     - TEST_SCENARIO_FILE: Path to YAML file with test scenarios (default: .github/test-scenarios.yml)
-    - TEST_SCENARIOS: Comma-separated override string of scenario names to run (default: empty/all)
+    - TEST_SCENARIOS: Comma-separated scenario names to run (default: empty/all non-manual scenarios)
     Outputs the resulting matrix as JSON to GITHUB_OUTPUT for pipeline use or stdout for local testing.
     """
     config_path = os.getenv("TEST_SCENARIO_FILE", ".github/test-scenarios.yml")
