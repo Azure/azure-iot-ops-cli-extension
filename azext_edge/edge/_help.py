@@ -80,6 +80,10 @@ def load_iotops_help():
             Note: logs from evicted pod will not be captured, as they are inaccessible. For details
             on why a pod was evicted, please refer to the related pod and node files.
 
+            Internal broker traces require the diagnostics service, which is removed in AIO 2610
+            and later. If --broker-traces is requested and no diagnostics pod is found, the command
+            warns and continues collecting the other resources and pod logs.
+
         examples:
         - name: Basic usage with default options. This form of the command will auto detect IoT Operations APIs and build a suitable bundle
                 capturing the last 24 hours of container logs. The bundle will be produced in the current working directory.
@@ -98,7 +102,7 @@ def load_iotops_help():
           text: >
             az iot ops support create-bundle --ops-service broker --log-age 172800
 
-        - name: Include mqtt broker traces in the support bundle.
+        - name: Include internal MQTT broker traces on older deployments with a diagnostics service.
           text: >
             az iot ops support create-bundle --ops-service broker --broker-traces
 

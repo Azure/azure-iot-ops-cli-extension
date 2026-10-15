@@ -11,7 +11,7 @@ from zipfile import ZipInfo
 from knack.log import get_logger
 
 from ..edge_api import MQ_ACTIVE_API, EdgeResourceApi
-from ..stats import get_traces
+from ..stats import DiagnosticsServiceNotFoundError, get_traces
 from .base import (
     DAY_IN_SECONDS,
     assemble_crd_work,
@@ -37,7 +37,11 @@ MQ_GENERATION_ID_FIELD_SELECTOR = RESOURCE_NAME_FIELD_FORMAT.format(name="aio-br
 
 
 def fetch_diagnostic_traces():
-    namespaces = get_mq_namespaces()
+    try:
+        namespaces = get_mq_namespaces(raise_on_error=True)
+    except Exception as exc:
+        logger.warning("Unable to collect broker traces: broker namespace discovery failed: %s", exc)
+        return []
     result = []
     for namespace in namespaces:
         try:
@@ -58,8 +62,15 @@ def fetch_diagnostic_traces():
                         }
                     )
 
-        except Exception:
-            logger.debug(f"Unable to process diagnostics pod traces against namespace {namespace}.")
+        except DiagnosticsServiceNotFoundError:
+            logger.warning(
+                "Broker traces unavailable in namespace '%s': no diagnostics service pod was found. "
+                "The diagnostics service is removed in AIO 2610 and later. "
+                "Continuing the support bundle without these traces.",
+                namespace,
+            )
+        except Exception as exc:
+            logger.warning("Unable to collect broker traces in namespace '%s': %s", namespace, exc)
 
     return result
 
@@ -158,10 +169,9 @@ def prepare_bundle(
     if apis:
         mq_to_run.update(assemble_crd_work(apis))
 
-    support_runtime_elements["pods"] = partial(fetch_pods, since_seconds=log_age_seconds)
-    if include_mq_traces:
-        support_runtime_elements["traces"] = fetch_diagnostic_traces
-
     mq_to_run.update(support_runtime_elements)
+    mq_to_run["pods"] = partial(fetch_pods, since_seconds=log_age_seconds)
+    if include_mq_traces:
+        mq_to_run["traces"] = fetch_diagnostic_traces
 
     return mq_to_run

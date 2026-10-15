@@ -246,7 +246,9 @@ def test_workload_identity_jobs_serialize_through_cleanup():
 def test_default_matrix_covers_both_channels_without_invented_baselines():
     scenarios = yaml.safe_load((ROOT / ".github/test-scenarios.yml").read_text())["scenarios"]
     rows = matrix.expand_channels(matrix.process_scenarios(scenarios, ""))
-    assert len(rows) == 2 * sum(not scenario.get("requires_baseline") for scenario in scenarios)
+    assert len(rows) == 2 * sum(
+        not scenario.get("requires_baseline") and not scenario.get("manual_only") for scenario in scenarios
+    )
     assert len({row["name"] for row in rows}) == len(rows)
     for row in rows:
         assert "--use-preview" not in row["init_args"]

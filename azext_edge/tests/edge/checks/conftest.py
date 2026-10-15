@@ -46,6 +46,48 @@ def mock_evaluate_mq_pod_health(mocker):
 
 
 @pytest.fixture
+def mock_broker_without_diagnostics_service(mocker):
+    broker = generate_resource_stub(
+        spec={
+            "mode": "distributed",
+            "cardinality": {
+                "backendChain": {"partitions": 1, "redundancyFactor": 2, "workers": 1},
+                "frontend": {"replicas": 1},
+            },
+            "diagnostics": {"logs": {"level": "info"}},
+        },
+        status={"healthState": {"status": "Available", "description": "All replicas are running."}},
+    )
+    pods = {
+        prefix: [
+            generate_pod_stub(
+                name=f"{prefix}-0",
+                phase="Running",
+                conditions=[{"type": "Ready", "status": "True"}],
+            )
+        ]
+        for prefix in [
+            "aio-broker-diagnostics-probe",
+            "aio-broker-frontend",
+            "aio-broker-backend",
+            "aio-broker-authentication",
+            "aio-broker-health-manager",
+            "aio-broker-operator",
+        ]
+    }
+    mocker.patch(
+        "azext_edge.edge.providers.edge_api.base.EdgeResourceApi.get_resources",
+        return_value={"items": [broker]},
+    )
+    get_service = mocker.patch("azext_edge.edge.providers.check.mq.get_namespaced_service", return_value=None)
+    get_pods = mocker.patch(
+        "azext_edge.edge.providers.check.mq.get_namespaced_pods_by_prefix",
+        side_effect=lambda prefix, **kwargs: pods.get(prefix, []),
+    )
+    return {"broker": broker, "pods": pods, "get_service": get_service, "get_pods": get_pods}
+
+
+@pytest.fixture
 def mock_evaluate_cloud_connector_pod_health(mocker):
     patched = mocker.patch("azext_edge.edge.providers.check.cloud_connectors.evaluate_pod_health", return_value={})
     yield patched

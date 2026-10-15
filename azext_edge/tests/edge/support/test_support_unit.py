@@ -13,6 +13,7 @@ from unittest.mock import Mock
 from zipfile import ZipInfo
 
 import pytest
+from kubernetes.client.exceptions import ApiException
 
 from azext_edge.edge.commands_edge import support_bundle
 from azext_edge.edge.common import OpsServiceType
@@ -57,6 +58,7 @@ from azext_edge.edge.providers.support.common import COMPONENT_LABEL_FORMAT
 from azext_edge.edge.providers.support.dataflow import DATAFLOW_NAME_LABEL
 from azext_edge.edge.providers.support.meta import META_DIRECTORY_PATH, META_NAME_LABEL, META_PREFIX_NAMES
 from azext_edge.edge.providers.support.mq import MQ_DIRECTORY_PATH, MQ_NAME_LABEL
+from azext_edge.edge.providers.stats import DiagnosticsServiceNotFoundError
 from azext_edge.edge.providers.support.schemaregistry import SCHEMAS_NAME_LABEL
 from azext_edge.edge.providers.support_bundle import (
     COMPAT_META_APIS,
@@ -978,6 +980,12 @@ def test_get_bundle_path(mocked_os_makedirs, path: Optional[str], bundle_name: O
     ],
     indirect=True,
 )
+@pytest.mark.parametrize("trace_error", [
+    None,
+    DiagnosticsServiceNotFoundError("No diagnostics pod"),
+    ApiException(status=403, reason="Forbidden"),
+    TimeoutError("Connection timed out"),
+])
 def test_create_bundle_mq_traces(
     mocked_client,
     mocked_cluster_resources,
@@ -997,7 +1005,10 @@ def test_create_bundle_mq_traces(
     mocked_mq_active_api,
     mocked_mq_get_traces,
     mocked_get_config_map,
+    trace_error,
+    caplog,
 ):
+    mocked_mq_get_traces.side_effect = trace_error
     result = support_bundle(
         None, ops_services=[OpsServiceType.mq.value], bundle_dir=a_bundle_dir, include_mq_traces=True
     )
@@ -1008,6 +1019,20 @@ def test_create_bundle_mq_traces(
 
     assert get_trace_kwargs["namespace"] == "mock_namespace"  # TODO: Not my favorite
     assert get_trace_kwargs["trace_ids"] == ["!support_bundle!"]  # TODO: Magic string
+    if trace_error:
+        expected_warning = (
+            "Broker traces unavailable" if isinstance(trace_error, DiagnosticsServiceNotFoundError)
+            else "Unable to collect broker traces"
+        )
+        assert expected_warning in caplog.text
+        filenames = [
+            str(call.kwargs["zinfo_or_arcname"])
+            for call in mocked_zipfile.return_value.__enter__.return_value.writestr.call_args_list
+        ]
+        assert any("/broker/pod." in name for name in filenames), filenames
+        assert any("/broker/service." in name for name in filenames), filenames
+        assert not any("/traces/" in name for name in filenames), filenames
+        return
     test_zipinfo = ZipInfo("mock_namespace/broker/traces/trace_key")
     test_zipinfo.file_size = 0
     test_zipinfo.compress_size = 0
