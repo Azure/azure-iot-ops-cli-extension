@@ -311,7 +311,10 @@ def test_add_namespace_asset_event_group(
         assert added_group["dataSource"] == data_source
     else:
         assert "dataSource" not in added_group
-    assert added_group["typeRef"] == expected_group["typeRef"]
+    if expected_group["typeRef"] is None:
+        assert "typeRef" not in added_group
+    else:
+        assert added_group["typeRef"] == expected_group["typeRef"]
 
     # Check configuration and destinations using helper functions
     check_event_configuration(added_group, expected_group)

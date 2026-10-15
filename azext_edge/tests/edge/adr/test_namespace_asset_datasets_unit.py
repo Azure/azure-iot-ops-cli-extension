@@ -318,7 +318,8 @@ def test_add_namespace_asset_dataset(
         assert added_dataset["dataSource"] == data_source
     else:
         assert "dataSource" not in added_dataset
-    assert added_dataset["typeRef"] == config_params.get("type_ref")
+    assert added_dataset.get("typeRef") == config_params.get("type_ref")
+    assert None not in added_dataset.values()
 
     # Check configuration and destinations using helper functions
     check_dataset_configuration(added_dataset, expected_dataset)

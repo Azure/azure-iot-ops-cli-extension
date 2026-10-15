@@ -322,7 +322,7 @@ class NamespaceDevices(Queryable):
         is_custom_command: bool = False,
         **kwargs
     ):
-        from .helpers import process_additional_configuration, process_authentication
+        from .helpers import process_additional_configuration, process_authentication, strip_nulls
 
         # Set version from connector template if not provided by user
         if endpoint_version is None:
@@ -348,7 +348,7 @@ class NamespaceDevices(Queryable):
             )
 
         # create the new endpoint
-        endpoint_body = {
+        endpoint_body = strip_nulls({
             "address": endpoint_address,
             "endpointType": endpoint_type,
             "version": endpoint_version,
@@ -359,7 +359,7 @@ class NamespaceDevices(Queryable):
                 password_reference=password_reference,
                 username_reference=username_reference
             )
-        }
+        })
 
         # process the configuration for the endpoint
         config_func = ENDPOINT_TYPE_TO_FUNCTION_MAP.get(endpoint_type, process_additional_configuration)
@@ -615,7 +615,7 @@ class NamespaceDevices(Queryable):
         OPC UA (Microsoft.OpcUa) is handled separately: it does not use Akri connector
         templates. Its metadata (including version and schema) is bundled locally.
         """
-        from .helpers import process_authentication
+        from .helpers import process_authentication, strip_nulls
 
         is_opcua = connector_type.lower() == DeviceEndpointType.OPCUA.value.lower()
 
@@ -674,7 +674,7 @@ class NamespaceDevices(Queryable):
                 instance_resource_group=instance_resource_group,
             )
 
-        endpoint_body = {
+        endpoint_body = strip_nulls({
             "address": endpoint_address,
             "endpointType": connector_type,
             "version": endpoint_version,
@@ -685,7 +685,7 @@ class NamespaceDevices(Queryable):
                 password_reference=password_reference,
                 username_reference=username_reference,
             ),
-        }
+        })
 
         if additional_configuration is not None:
             endpoint_body["additionalConfiguration"] = additional_configuration

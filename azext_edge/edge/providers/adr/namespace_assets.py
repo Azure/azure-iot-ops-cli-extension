@@ -35,6 +35,7 @@ from .helpers import (
     get_namespace_for_instance,
     get_query,
     process_additional_configuration,
+    strip_nulls,
 )
 from .namespace_devices import DeviceEndpointType
 from .validator import ConnectorMetadataValidator
@@ -1202,7 +1203,7 @@ class NamespaceAssets(Queryable):
             if "destinations" in config_result:
                 new_dataset["destinations"] = config_result["destinations"]
 
-        unmatched_datasets.append(new_dataset)
+        unmatched_datasets.append(strip_nulls(new_dataset))
         update_payload = {"properties": {"datasets": unmatched_datasets}}
 
         with console.status(f"Adding dataset {dataset_name} to asset {asset_name}..."):
@@ -1444,7 +1445,7 @@ class NamespaceAssets(Queryable):
             if "datapointConfiguration" in config_result:
                 datapoint["dataPointConfiguration"] = config_result["datapointConfiguration"]
 
-        non_matched_points.append(datapoint)
+        non_matched_points.append(strip_nulls(datapoint))
         dataset["dataPoints"] = non_matched_points
 
         update_payload = {"properties": {"datasets": asset["properties"]["datasets"]}}
@@ -1846,6 +1847,7 @@ class NamespaceAssets(Queryable):
         if data_source:
             new_dataset["dataSource"] = data_source
 
+        new_dataset = strip_nulls(new_dataset)
         self._validate_imported_items(
             items=[new_dataset],
             validate_fn=lambda v, d: v.validate_dataset(d),
@@ -2153,7 +2155,7 @@ class NamespaceAssets(Queryable):
             instance_resource_group=instance_resource_group,
         )
 
-        non_matched_points.append(datapoint)
+        non_matched_points.append(strip_nulls(datapoint))
         dataset["dataPoints"] = non_matched_points
 
         update_payload = {
@@ -2963,7 +2965,7 @@ class NamespaceAssets(Queryable):
             if "destinations" in config_result:
                 new_eg["defaultDestinations"] = config_result["destinations"]
 
-        new_egs.append(new_eg)
+        new_egs.append(strip_nulls(new_eg))
         update_payload = {"properties": {"eventGroups": new_egs}}
 
         with console.status(f"Adding event group {group_name} to asset {asset_name}..."):
@@ -3192,7 +3194,7 @@ class NamespaceAssets(Queryable):
             if "destinations" in config_result:
                 event["destinations"] = config_result["destinations"]
 
-        remaining_events.append(event)
+        remaining_events.append(strip_nulls(event))
         event_group["events"] = remaining_events
 
         update_payload = {"properties": {"eventGroups": asset["properties"]["eventGroups"]}}
@@ -3255,7 +3257,7 @@ class NamespaceAssets(Queryable):
         }
         if data_source:
             new_eg["dataSource"] = data_source
-        new_egs.append(new_eg)
+        new_egs.append(strip_nulls(new_eg))
 
         update_payload = {
             "properties": {
@@ -3446,7 +3448,7 @@ class NamespaceAssets(Queryable):
             sampling_interval=sampling_interval,
             condition_refresh=condition_refresh,
         )
-        remaining_events.append(event)
+        remaining_events.append(strip_nulls(event))
         event_group["events"] = remaining_events
 
         # get the events from the asset
@@ -3769,7 +3771,7 @@ class NamespaceAssets(Queryable):
             if "destinations" in config_result:
                 new_stream["destinations"] = config_result["destinations"]
 
-        new_streams.append(new_stream)
+        new_streams.append(strip_nulls(new_stream))
         update_payload = {"properties": {"streams": new_streams}}
 
         with console.status(f"Adding stream {stream_name} to asset {asset_name}..."):
@@ -3950,12 +3952,12 @@ class NamespaceAssets(Queryable):
             **kwargs
         )
         unmatched_streams.append(
-            {
+            strip_nulls({
                 "name": stream_name,
                 "streamConfiguration": processed_configs.get("streamsConfiguration"),
                 "destinations": processed_configs.get("streamsDestinations", []),
                 "typeRef": type_ref
-            }
+            })
         )
 
         update_payload = {
@@ -4440,7 +4442,7 @@ class NamespaceAssets(Queryable):
             if "managementGroupConfiguration" in config_result:
                 new_mgmt_group["managementGroupConfiguration"] = config_result["managementGroupConfiguration"]
 
-        remaining_mgmt_groups.append(new_mgmt_group)
+        remaining_mgmt_groups.append(strip_nulls(new_mgmt_group))
         update_payload = {"properties": {"managementGroups": remaining_mgmt_groups}}
 
         with console.status(f"Adding management group {group_name} to asset {asset_name}..."):
@@ -4678,7 +4680,7 @@ class NamespaceAssets(Queryable):
             if "actionConfiguration" in config_result:
                 action["actionConfiguration"] = config_result["actionConfiguration"]
 
-        unmatched_actions.append(action)
+        unmatched_actions.append(strip_nulls(action))
         mgmt_group["actions"] = unmatched_actions
 
         update_payload = {"properties": {"managementGroups": asset["properties"]["managementGroups"]}}
@@ -4745,7 +4747,7 @@ class NamespaceAssets(Queryable):
         }
         if data_source:
             new_mgmt_group["dataSource"] = data_source
-        remaining_mgmt_groups.append(new_mgmt_group)
+        remaining_mgmt_groups.append(strip_nulls(new_mgmt_group))
         update_payload = {
             "properties": {
                 "managementGroups": remaining_mgmt_groups
@@ -4957,7 +4959,7 @@ class NamespaceAssets(Queryable):
                 custom_configuration, config_type="action"
 
             )
-        unmatched_actions.append(action)
+        unmatched_actions.append(strip_nulls(action))
         mgmt_group["actions"] = unmatched_actions
 
         update_payload = {
