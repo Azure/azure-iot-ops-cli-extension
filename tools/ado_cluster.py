@@ -93,18 +93,6 @@ def admission(now=None):
             scheduled += timedelta(days=1)
         if scheduled - now < window:
             raise ValueError("Insufficient safe time before scheduled ops cleanup/integration; no resources created.")
-    for status in ("in_progress", "queued", "waiting", "requested", "pending"):
-        runs = get_json(
-            "https://api.github.com/repos/Azure/azure-iot-ops-cli-extension/actions/runs",
-            params={"status": status, "per_page": 100},
-        )
-        if runs.get("total_count", 0) > 100:
-            raise ValueError("Too many GitHub runs to establish safe admission.")
-        for run in runs["workflow_runs"]:
-            if Path(run["path"]).name.split("@")[0] in {
-                "int_test.yml", "container_int_test.yml", "cluster_cleanup.yml",
-            }:
-                raise ValueError("A GitHub ops integration/cleanup run is active or waiting.")
     runs = get_json(
         "https://dev.azure.com/azureiotdevxp/aziotcli/_apis/build/builds",
         token=required("SYSTEM_ACCESSTOKEN"),

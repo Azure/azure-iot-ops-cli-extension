@@ -246,42 +246,32 @@ def test_admission_refuses_cleanup_or_github_schedule_window(hour, monkeypatch):
     lookup.assert_not_called()
 
 
-@pytest.mark.parametrize("workflow", ["int_test.yml", "container_int_test.yml", "cluster_cleanup.yml"])
-def test_admission_refuses_active_github_work(workflow, monkeypatch):
-    monkeypatch.setattr(cluster, "get_json", Mock(return_value={
-        "total_count": 1, "workflow_runs": [{"path": f".github/workflows/{workflow}"}],
-    }))
-    with pytest.raises(ValueError, match="GitHub"):
-        cluster.admission(datetime(2026, 10, 17, 15, tzinfo=timezone.utc))
-
-
 def test_admission_refuses_other_ado_run(monkeypatch):
-    monkeypatch.setattr(cluster, "get_json", Mock(side_effect=[
-        *[{"total_count": 0, "workflow_runs": []} for _ in range(5)],
-        {"value": [{"id": 123}, {"id": 124}]},
-    ]))
+    monkeypatch.setattr(cluster, "get_json", Mock(return_value={"value": [{"id": 123}, {"id": 124}]}))
     with pytest.raises(ValueError, match="Another ADO"):
         cluster.admission(datetime(2026, 10, 17, 15, tzinfo=timezone.utc))
 
 
-def test_admission_accepts_idle_window(monkeypatch):
-    monkeypatch.setattr(cluster, "get_json", Mock(side_effect=[
-        *[{"total_count": 0, "workflow_runs": []} for _ in range(5)], {"value": [{"id": 123}]},
-    ]))
+def test_admission_accepts_idle_window_without_querying_github(monkeypatch):
+    lookup = Mock(return_value={"value": [{"id": 123}]})
+    monkeypatch.setattr(cluster, "get_json", lookup)
     cluster.admission(datetime(2026, 10, 17, 15, tzinfo=timezone.utc))
+    lookup.assert_called_once_with(
+        "https://dev.azure.com/azureiotdevxp/aziotcli/_apis/build/builds",
+        token="offline-token",
+        params={"definitions": "164", "statusFilter": "inProgress,notStarted", "api-version": "7.1", "$top": 100},
+    )
 
 
 @pytest.mark.parametrize("hour,allowed", [(1, True), (5, True), (6, False), (8, False)])
 def test_quick_run_reserves_timeout_and_cleanup_buffer(hour, allowed, monkeypatch):
     monkeypatch.setenv("OPS_SCENARIO_TIMEOUT_MINUTES", "90")
-    lookup = Mock(side_effect=[
-        *[{"total_count": 0, "workflow_runs": []} for _ in range(5)], {"value": [{"id": 123}]},
-    ])
+    lookup = Mock(return_value={"value": [{"id": 123}]})
     monkeypatch.setattr(cluster, "get_json", lookup)
     now = datetime(2026, 10, 17, hour, tzinfo=timezone.utc)
     if allowed:
         cluster.admission(now)
-        assert lookup.call_count == 6
+        lookup.assert_called_once()
     else:
         with pytest.raises(ValueError, match="safe time"):
             cluster.admission(now)

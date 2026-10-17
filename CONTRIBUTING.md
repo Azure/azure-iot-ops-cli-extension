@@ -32,12 +32,13 @@ app's existing GitHub federated credentials. Only pipeline 164 is authorized dur
 Long-running jobs renew ADO federation in CLI credential caches without rewriting the Azure account profile.
 Pipeline/service-connection authorization must be granted separately; the orchestration does not broaden it.
 
-Admission fails before provisioning while another ops integration/cleanup run is active or queued, or when
+Admission fails before provisioning while another run of this ADO pipeline is active or queued, or when
 the selected scenario job timeout plus a one-hour cleanup buffer overlaps the existing GitHub 08:00 UTC
 resource-group cleanup or 09:00 UTC integration schedule. The default 360-minute timeout requires seven
 hours of headroom. A quick, single-row run can select a hard 90-minute timeout and requires 150 minutes
 of headroom; unfinished tests still fail qualification. The safety check runs again when each row starts.
-Do not start competing manual GitHub runs after admission. Cleanup targets only resources recorded for the
+GitHub run statuses are not checked; coordinate GitHub integration and cleanup manually when using the
+shared resource group. Cleanup targets only resources recorded for the
 current attempt, never sweeps the shared resource group, and is retried in an always-run task after cancellation.
 Resource IDs are published before provisioning. If an agent is lost, use that retained manifest to investigate
 and clean up precisely those resources; test-specific fixtures retain their existing cleanup responsibilities.
