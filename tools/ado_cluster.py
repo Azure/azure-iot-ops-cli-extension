@@ -23,7 +23,7 @@ from xml.etree import ElementTree
 import requests
 import yaml
 
-from ado_integration import ROOT, expected_phases, junit_results, producer, read, required, write
+from ado_integration import ROOT, expected_phases, junit_results, producer, read, required, scenario_timeout, write
 
 
 K3S_VERSION = "v1.31.1+k3s1"
@@ -85,12 +85,13 @@ def get_json(url, *, token=None, params=None):
 def admission(now=None):
     now = now or datetime.now(timezone.utc)
     # Existing GitHub cleanup starts at 08:00 UTC and the daily integration at 09:00.
-    # Leave room for the six-hour job plus cancellation/cleanup; do not race either schedule.
+    # Reserve the full configured job timeout plus an hour for cancellation/cleanup.
+    window = timedelta(minutes=scenario_timeout() + 60)
     for hour in (8, 9):
         scheduled = now.replace(hour=hour, minute=0, second=0, microsecond=0)
         if scheduled <= now:
             scheduled += timedelta(days=1)
-        if scheduled - now < timedelta(hours=7):
+        if scheduled - now < window:
             raise ValueError("Insufficient safe time before scheduled ops cleanup/integration; no resources created.")
     for status in ("in_progress", "queued", "waiting", "requested", "pending"):
         runs = get_json(

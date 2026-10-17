@@ -40,6 +40,7 @@ def pipeline_environment(monkeypatch, tmp_path):
         "SYSTEM_JOBATTEMPT": "1", "OPS_SCENARIOS": "edge", "OPS_CHANNELS": "stable", "OPS_PYTHONS": "3.13",
         "OPS_BASELINES": "{}", "OPS_SUBSCRIPTION": SUBSCRIPTION, "OPS_RESOURCE_GROUP": "ops-cli-int-test-rg",
         "OPS_CUSTOM_LOCATIONS_OID": UUID_VALUE, "OPS_CANDIDATE_DIGEST": "b" * 64,
+        "OPS_SCENARIO_TIMEOUT_MINUTES": "360",
         "AZURE_CLIENT_ID": UUID_VALUE, "AZURE_TENANT_ID": UUID_VALUE, "SYSTEM_ACCESSTOKEN": "offline-token",
         "AZURESUBSCRIPTION_SERVICE_CONNECTION_ID": UUID_VALUE, "SYSTEM_TEAMPROJECTID": UUID_VALUE,
         "SYSTEM_PLANID": UUID_VALUE, "SYSTEM_JOBID": UUID_VALUE, "AGENT_TEMPDIRECTORY": str(tmp_path),
@@ -81,6 +82,7 @@ def test_plan_reuses_channel_matrix(monkeypatch, tmp_path, capsys):
     assert len(result["rows"]) == 8
     assert len({row["key"] for row in result["rows"]}) == 8
     assert result["producer"] == pipeline.producer()
+    assert result["scenarioTimeoutMinutes"] == 360
     for row in result["rows"]:
         assert ("--use-preview" in row["scenario"]["create_args"]) == (row["scenario"]["channel"] == "preview")
     assert "isOutput=true" in capsys.readouterr().out
@@ -92,6 +94,7 @@ def test_plan_reuses_channel_matrix(monkeypatch, tmp_path, capsys):
     ("OPS_RESOURCE_GROUP", "rg;echo hello"), ("OPS_SUBSCRIPTION", "not-a-guid"),
     ("OPS_CHANNELS", "unknown"), ("OPS_BASELINES", "[]"), ("BUILD_SOURCEVERSION", "main"),
     ("SYSTEM_DEFINITIONID", "0"),
+    ("OPS_SCENARIO_TIMEOUT_MINUTES", "0"), ("OPS_SCENARIO_TIMEOUT_MINUTES", "91"),
 ])
 def test_plan_rejects_invalid_inputs(monkeypatch, tmp_path, name, value):
     monkeypatch.setenv(name, value)
@@ -266,6 +269,23 @@ def test_admission_accepts_idle_window(monkeypatch):
         *[{"total_count": 0, "workflow_runs": []} for _ in range(5)], {"value": [{"id": 123}]},
     ]))
     cluster.admission(datetime(2026, 10, 17, 15, tzinfo=timezone.utc))
+
+
+@pytest.mark.parametrize("hour,allowed", [(1, True), (5, True), (6, False), (8, False)])
+def test_quick_run_reserves_timeout_and_cleanup_buffer(hour, allowed, monkeypatch):
+    monkeypatch.setenv("OPS_SCENARIO_TIMEOUT_MINUTES", "90")
+    lookup = Mock(side_effect=[
+        *[{"total_count": 0, "workflow_runs": []} for _ in range(5)], {"value": [{"id": 123}]},
+    ])
+    monkeypatch.setattr(cluster, "get_json", lookup)
+    now = datetime(2026, 10, 17, hour, tzinfo=timezone.utc)
+    if allowed:
+        cluster.admission(now)
+        assert lookup.call_count == 6
+    else:
+        with pytest.raises(ValueError, match="safe time"):
+            cluster.admission(now)
+        lookup.assert_not_called()
 
 
 @pytest.mark.parametrize("field", ["producer", "resources", "subscription", "suffix", "cluster", "instance"])
@@ -464,8 +484,10 @@ def test_yaml_keeps_dry_run_separate_and_reuses_existing_tests():
     integration = next(stage for stage in live if stage["stage"] == "Integration")
     job = integration["jobs"][0]
     assert job["strategy"]["maxParallel"] == 1
+    assert job["timeoutInMinutes"] == "${{ parameters.scenarioTimeoutMinutes }}"
     azure = [step for step in job["steps"] if step.get("task") == "AzureCLI@2"]
     assert len(azure) == 2 and azure[1]["condition"] == "always()"
     assert azure[0]["inputs"]["addSpnToEnvironment"] is True
     assert "continueOnError" not in json.dumps(live)
     assert "SYSTEM_ACCESSTOKEN" in azure[0]["env"]
+    assert azure[0]["env"]["OPS_SCENARIO_TIMEOUT_MINUTES"] == "${{ parameters.scenarioTimeoutMinutes }}"

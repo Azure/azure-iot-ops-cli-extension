@@ -67,6 +67,13 @@ def output_variable(name, value):
     print(f"##vso[task.setvariable variable={name};isOutput=true]{escaped}", flush=True)
 
 
+def scenario_timeout():
+    value = required("OPS_SCENARIO_TIMEOUT_MINUTES")
+    if value not in {"90", "180", "360"}:
+        raise ValueError("Scenario timeout must be 90, 180 or 360 minutes.")
+    return int(value)
+
+
 def plan(output):
     matrix_tools = runpy.run_path(str(ROOT / ".github/actions/build-int-test-matrix/build_matrix.py"))
     config = yaml.safe_load((ROOT / ".github/test-scenarios.yml").read_text(encoding="utf-8"))["scenarios"]
@@ -105,6 +112,7 @@ def plan(output):
         "schema": 1, "producer": producer(), "rows": rows,
         "subscription": str(UUID(required("OPS_SUBSCRIPTION"))), "resourceGroup": group,
         "customLocationsObjectId": str(UUID(required("OPS_CUSTOM_LOCATIONS_OID"))),
+        "scenarioTimeoutMinutes": scenario_timeout(),
         "qualification": "selected scenarios only; not release qualification",
     }
     write(output / "plan.json", value)

@@ -43,6 +43,11 @@ parameters:
     displayName: Pinned upgrade-path baselines by runtime channel (JSON)
     type: string
     default: '{}'
+  - name: scenarioTimeoutMinutes
+    displayName: Scenario job timeout (plus reserved cleanup buffer)
+    type: number
+    default: 360
+    values: [90, 180, 360]
   - name: azureServiceConnection
     displayName: Authorized Azure service connection
     type: string
@@ -82,6 +87,7 @@ stages:
               OPS_SUBSCRIPTION: ${{ parameters.subscriptionId }}
               OPS_RESOURCE_GROUP: ${{ parameters.resourceGroup }}
               OPS_CUSTOM_LOCATIONS_OID: ${{ parameters.customLocationsObjectId }}
+              OPS_SCENARIO_TIMEOUT_MINUTES: ${{ parameters.scenarioTimeoutMinutes }}
           - publish: plan
             artifact: ops-plan-$(System.JobAttempt)
 
@@ -161,7 +167,7 @@ stages:
           candidateDigest: $[ stageDependencies.Build.Build.outputs['candidate.digest'] ]
         jobs:
           - job: Scenario
-            timeoutInMinutes: 360
+            timeoutInMinutes: ${{ parameters.scenarioTimeoutMinutes }}
             cancelTimeoutInMinutes: 20
             strategy:
               maxParallel: 1
@@ -210,6 +216,7 @@ stages:
                   SYSTEM_ACCESSTOKEN: $(System.AccessToken)
                   OPS_SUBSCRIPTION: ${{ parameters.subscriptionId }}
                   OPS_RESOURCE_GROUP: ${{ parameters.resourceGroup }}
+                  OPS_SCENARIO_TIMEOUT_MINUTES: ${{ parameters.scenarioTimeoutMinutes }}
                   AZURE_EXTENSION_DIR: $(Agent.TempDirectory)/azure-cli-extensions
                   PYTHONUNBUFFERED: '1'
               - task: AzureCLI@2
