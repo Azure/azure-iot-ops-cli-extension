@@ -1,0 +1,289 @@
+# Copyright (c) Microsoft Corporation. All rights reserved.
+
+lockBehavior: sequential
+
+parameters:
+  - name: health
+    type: boolean
+    default: false
+  - name: mode
+    displayName: Run mode
+    type: string
+    default: Dry run
+    values: [Dry run, Integration tests]
+  - name: testScenarios
+    displayName: Ops scenarios (Default scenarios excludes explicit-only cases)
+    type: object
+    default: [edge]
+  - name: runtimeChannels
+    displayName: Runtime channels (independent clusters)
+    type: object
+    default: [stable]
+  - name: pythonVersions
+    displayName: Python versions
+    type: object
+    default: ['3.13']
+  - name: upgradeBaselines
+    displayName: Pinned upgrade-path baselines by runtime channel (JSON)
+    type: string
+    default: '{}'
+  - name: scenarioTimeoutMinutes
+    displayName: Scenario job timeout (plus reserved cleanup buffer)
+    type: number
+    default: 360
+    values: [90, 180, 360]
+  - name: azureServiceConnection
+    displayName: Authorized Azure service connection
+    type: string
+    default: az-iot-ops-int-sp-ado
+  - name: subscriptionId
+    type: string
+    default: a386d5ea-ea90-441a-8263-d816368c84a1
+  - name: resourceGroup
+    type: string
+    default: ops-cli-int-test-rg
+  - name: customLocationsObjectId
+    type: string
+    default: 51dfe1e8-70c6-4de5-a08e-e18aff23d815
+
+pool:
+  vmImage: ubuntu-24.04
+
+variables:
+  - ${{ if parameters.health }}:
+      - group: iot-ops-cli-integration-health
+
+stages:
+  - stage: Plan
+    displayName: Validate exact ops scenario matrix
+    jobs:
+      - job: Plan
+        steps:
+          - task: UsePythonVersion@0
+            inputs:
+              versionSpec: '3.13'
+          - bash: python -m pip install PyYAML
+            displayName: Install scenario configuration parser
+          - ${{ if parameters.health }}:
+              - task: DownloadPipelineArtifact@2
+                condition: gt(variables['System.JobAttempt'], 1)
+                inputs:
+                  buildType: current
+                  itemPattern: ops-plan-*/**
+                  targetPath: $(Pipeline.Workspace)/health-history
+          - bash: python tools/ado_integration.py plan --output plan
+            name: plan
+            displayName: Validate selection before Azure access
+            env:
+              OPS_SCENARIOS: ${{ join(',', parameters.testScenarios) }}
+              OPS_CHANNELS: ${{ join(',', parameters.runtimeChannels) }}
+              OPS_PYTHONS: ${{ join(',', parameters.pythonVersions) }}
+              OPS_BASELINES: ${{ parameters.upgradeBaselines }}
+              OPS_SUBSCRIPTION: ${{ parameters.subscriptionId }}
+              OPS_RESOURCE_GROUP: ${{ parameters.resourceGroup }}
+              OPS_CUSTOM_LOCATIONS_OID: ${{ parameters.customLocationsObjectId }}
+              OPS_SCENARIO_TIMEOUT_MINUTES: ${{ parameters.scenarioTimeoutMinutes }}
+              ${{ if parameters.health }}:
+                VALIDATION_PROFILES: $(ValidationProfiles)
+                SYSTEM_ACCESSTOKEN: $(System.AccessToken)
+                OPS_HEALTH_HISTORY: $(Pipeline.Workspace)/health-history
+          - publish: plan
+            artifact: ops-plan-$(System.JobAttempt)
+
+  - ${{ if eq(parameters.mode, 'Integration tests') }}:
+      - stage: Build
+        displayName: Build one immutable candidate
+        dependsOn: Plan
+        jobs:
+          - job: Build
+            timeoutInMinutes: 30
+            steps:
+              - task: UsePythonVersion@0
+                inputs:
+                  versionSpec: '3.13'
+              - bash: |
+                  set -euo pipefail
+                  python -m pip install build PyYAML
+                  python -m build --wheel
+                  python tools/ado_integration.py candidate --output dist
+                name: candidate
+                displayName: Bind candidate wheel to source and producer
+              - publish: dist
+                artifact: ops-wheel-$(System.JobAttempt)
+
+      - stage: Lint
+        dependsOn: Plan
+        jobs:
+          - job: Lint
+            timeoutInMinutes: 30
+            steps:
+              - task: UsePythonVersion@0
+                inputs:
+                  versionSpec: '3.13'
+              - bash: |
+                  set -euo pipefail
+                  python -m pip install tox
+                  python -m tox run -e lint
+                  .tox/lint/bin/python -m flake8 tools/ado_integration.py tools/ado_cluster.py tools/ado_auth.py --config setup.cfg
+                  .tox/lint/bin/python -m pylint tools/ado_integration.py tools/ado_cluster.py tools/ado_auth.py --rcfile .pylintrc
+                  .tox/lint/bin/python -m flake8 tools/integration_health.py --config setup.cfg
+                  .tox/lint/bin/python -m pylint tools/integration_health.py --rcfile .pylintrc
+                displayName: Existing extension style checks and ADO orchestration checks
+
+      - stage: Unit
+        displayName: Existing ops unit suite
+        dependsOn: Plan
+        jobs:
+          - job: Unit
+            timeoutInMinutes: 60
+            steps:
+              - task: UsePythonVersion@0
+                inputs:
+                  versionSpec: '3.13'
+              - bash: |
+                  set -euo pipefail
+                  python -m pip install tox
+                  python -m tox run -e clean,python,report
+                  echo "##vso[task.setvariable variable=coverageArtifact;isOutput=true]ops-unit-coverage-$SYSTEM_JOBATTEMPT"
+                name: unit
+                displayName: Run serial unit tests and coverage
+              - task: PublishTestResults@2
+                condition: always()
+                inputs:
+                  testResultsFormat: JUnit
+                  testResultsFiles: junit/test-aziotops-ext-unit.xml
+                  testRunTitle: Ops unit tests attempt $(System.JobAttempt)
+                  failTaskOnFailedTests: true
+                  failTaskOnMissingResultsFile: true
+              - publish: .coverage
+                condition: succeeded()
+                artifact: ops-unit-coverage-$(System.JobAttempt)
+
+      - stage: Integration
+        displayName: Ops scenarios (manual reruns use fresh resources)
+        dependsOn: [Plan, Build, Lint, Unit]
+        variables:
+          planArtifact: $[ stageDependencies.Plan.Plan.outputs['plan.artifact'] ]
+          candidateArtifact: $[ stageDependencies.Build.Build.outputs['candidate.artifact'] ]
+          candidateDigest: $[ stageDependencies.Build.Build.outputs['candidate.digest'] ]
+        jobs:
+          - job: Scenario
+            ${{ if parameters.health }}:
+              timeoutInMinutes: 360
+            ${{ else }}:
+              timeoutInMinutes: ${{ parameters.scenarioTimeoutMinutes }}
+            cancelTimeoutInMinutes: 20
+            strategy:
+              maxParallel: 1
+              matrix: $[ stageDependencies.Plan.Plan.outputs['plan.matrix'] ]
+            steps:
+              - task: UsePythonVersion@0
+                inputs:
+                  versionSpec: $(python)
+              - task: DownloadPipelineArtifact@2
+                inputs:
+                  buildType: current
+                  artifactName: $(planArtifact)
+                  targetPath: $(Pipeline.Workspace)/plan
+              - task: DownloadPipelineArtifact@2
+                inputs:
+                  buildType: current
+                  artifactName: $(candidateArtifact)
+                  targetPath: $(Pipeline.Workspace)/candidate
+              - bash: |
+                  set -euo pipefail
+                  python -m pip install -r dev_requirements.txt azure-cli azure-cli-testsdk pytest-randomly PyYAML
+                  python tools/ado_integration.py prepare --output attempt
+                displayName: Verify candidate and prepare isolated scenario
+                env:
+                  OPS_PLAN: $(Pipeline.Workspace)/plan/plan.json
+                  OPS_CANDIDATE: $(Pipeline.Workspace)/candidate
+                  OPS_CANDIDATE_DIGEST: $(candidateDigest)
+                  OPS_ROW: $(row)
+                  AZURE_EXTENSION_DIR: $(Agent.TempDirectory)/azure-cli-extensions
+              - publish: attempt/state.json
+                artifact: ops-manifest-$(row)-$(System.JobAttempt)
+                displayName: Retain planned resource IDs before provisioning
+              - task: AzureCLI@2
+                displayName: Provision, test and clean only this attempt's resources
+                inputs:
+                  azureSubscription: ${{ parameters.azureServiceConnection }}
+                  addSpnToEnvironment: true
+                  visibleAzLogin: false
+                  scriptType: bash
+                  scriptLocation: inlineScript
+                  inlineScript: |
+                    set -euo pipefail
+                    export AZURE_CLIENT_ID="$servicePrincipalId" AZURE_TENANT_ID="$tenantId"
+                    python tools/ado_cluster.py run --output attempt
+                env:
+                  SYSTEM_ACCESSTOKEN: $(System.AccessToken)
+                  OPS_SUBSCRIPTION: ${{ parameters.subscriptionId }}
+                  OPS_RESOURCE_GROUP: ${{ parameters.resourceGroup }}
+                  ${{ if parameters.health }}:
+                    OPS_SCENARIO_TIMEOUT_MINUTES: $(scenarioTimeoutMinutes)
+                  ${{ else }}:
+                    OPS_SCENARIO_TIMEOUT_MINUTES: ${{ parameters.scenarioTimeoutMinutes }}
+                  AZURE_EXTENSION_DIR: $(Agent.TempDirectory)/azure-cli-extensions
+                  PYTHONUNBUFFERED: '1'
+              - task: AzureCLI@2
+                condition: always()
+                displayName: Recover cleanup after failure or cancellation
+                inputs:
+                  azureSubscription: ${{ parameters.azureServiceConnection }}
+                  visibleAzLogin: false
+                  scriptType: bash
+                  scriptLocation: inlineScript
+                  inlineScript: python tools/ado_cluster.py cleanup --output attempt
+                env:
+                  OPS_SUBSCRIPTION: ${{ parameters.subscriptionId }}
+                  OPS_RESOURCE_GROUP: ${{ parameters.resourceGroup }}
+                  AZURE_EXTENSION_DIR: $(Agent.TempDirectory)/azure-cli-extensions
+              - bash: python tools/ado_integration.py report --output attempt
+                condition: always()
+                displayName: Record failures and incomplete execution explicitly
+              - task: PublishTestResults@2
+                condition: always()
+                inputs:
+                  testResultsFormat: JUnit
+                  testResultsFiles: attempt/junit/*.xml
+                  testRunTitle: Ops $(row) attempt $(System.JobAttempt)
+                  failTaskOnFailedTests: true
+                  failTaskOnMissingResultsFile: true
+              - publish: attempt
+                condition: always()
+                artifact: ops-attempt-$(row)-$(System.JobAttempt)
+
+      - stage: Qualify
+        displayName: Require every selected scenario and complete cleanup
+        dependsOn: [Plan, Build, Lint, Unit, Integration]
+        variables:
+          planArtifact: $[ stageDependencies.Plan.Plan.outputs['plan.artifact'] ]
+          candidateDigest: $[ stageDependencies.Build.Build.outputs['candidate.digest'] ]
+          unitCoverageArtifact: $[ stageDependencies.Unit.Unit.outputs['unit.coverageArtifact'] ]
+        jobs:
+          - job: Gate
+            steps:
+              - task: UsePythonVersion@0
+                inputs:
+                  versionSpec: '3.13'
+              - task: DownloadPipelineArtifact@2
+                inputs:
+                  buildType: current
+                  targetPath: $(Pipeline.Workspace)/history
+              - bash: |
+                  set -euo pipefail
+                  python -m pip install PyYAML coverage
+                  python tools/ado_integration.py gate --output qualification
+                displayName: Reject missing, stale or failed scenario evidence
+                env:
+                  OPS_PLAN: $(Pipeline.Workspace)/history/$(planArtifact)/plan.json
+                  OPS_HISTORY: $(Pipeline.Workspace)/history
+                  OPS_CANDIDATE_DIGEST: $(candidateDigest)
+                  OPS_UNIT_COVERAGE: $(Pipeline.Workspace)/history/$(unitCoverageArtifact)/.coverage
+              - publish: qualification
+                artifact: ops-qualification-$(System.JobAttempt)
+              - task: PublishCodeCoverageResults@2
+                inputs:
+                  summaryFileLocation: qualification/coverage.xml
+                  failIfCoverageEmpty: true

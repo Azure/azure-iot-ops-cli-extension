@@ -1,5 +1,43 @@
 # Contributing
 
+## Integration Health in Azure Pipelines
+
+**Azure IoT Operations CLI - Integration Health** uses
+`.azure-devops/integration-health.yml`, sharing its test engine with manual
+pipeline 164. Health always performs live integration, not a dry run.
+
+Configure days, UTC times, and branch filters through **Triggers > Scheduled**,
+not YAML cron. The proposed steady-state cadence is daily at 09:17 UTC on `dev`,
+after the existing 08:00 cleanup. Run even without source changes. Do not enable
+the schedule until the implementation is merged onto its target branch, the
+selected profile has passed, and competing GitHub schedules are retired.
+
+Regional/test selections are non-secret `ValidationProfiles` JSON in ADO Library
+group `iot-ops-cli-integration-health`. Its shape is
+`{"schema":1,"branches":{"refs/heads/dev":{"mon":PROFILE}}}`. Provide entries for each
+scheduled weekday (`mon` through `sun`). Each profile requires `clusterRegion`,
+`resourceRegion`, `namespaceRegion`, `pythonVersions`, `scenarios`, `runtimeChannels`,
+`scenarioTimeoutMinutes` (90, 180, or 360), and `upgradeBaselines` (an object).
+Python/scenario/channel selections are nonempty lists using the same choices as
+164. `clusterRegion` must be a supported Arc/AIO region. Cloud dependency regions
+are separate; selecting a cluster region does not claim all dependencies run there.
+Restrict Library edit access to maintainers.
+
+Plan resolves the run's actual branch and queued UTC day, preserving the selected
+profile, configuration digest, source commit, and locations in `ops-plan-*`.
+Job retries reuse that profile even if Library configuration changes. Each Health
+scenario has its configured execution budget inside a 360-minute job envelope
+with bounded cleanup; serial scenarios still require sufficient time before the
+next cleanup window. Measure complete profiles before enabling large daily matrices.
+Fresh Arc/AIO, storage, registry and namespace locations are verified and retained
+in receipts. Qualification rejects missing regional evidence.
+
+Admission coordinates 164 and Health runs without querying GitHub run statuses.
+It is a preflight, not an atomic lock. Keep manual GitHub jobs and whole-RG cleanup
+operationally coordinated. Dashboard widgets should use the Health definition and
+integration results, excluding unit results. A small rollout profile is selected
+coverage, not full GitHub scenario parity or release qualification.
+
 This guide will assist you in setting up a local development environment for this extension.
 
 We also regularly utilize GitHub Codespaces, and have automated this environment setup in our [devcontainer config](./.devcontainer/devcontainer.json)

@@ -247,26 +247,29 @@ def test_admission_refuses_cleanup_or_github_schedule_window(hour, monkeypatch):
 
 
 def test_admission_refuses_other_ado_run(monkeypatch):
-    monkeypatch.setattr(cluster, "get_json", Mock(return_value={"value": [{"id": 123}, {"id": 124}]}))
+    monkeypatch.setattr(cluster, "get_json", Mock(return_value={"value": [
+        {"id": 123, "definition": {"id": 164, "name": "manual"}},
+        {"id": 124, "definition": {"id": 170, "name": "Azure IoT Operations CLI - Integration Health"}},
+    ]}))
     with pytest.raises(ValueError, match="Another ADO"):
         cluster.admission(datetime(2026, 10, 17, 15, tzinfo=timezone.utc))
 
 
 def test_admission_accepts_idle_window_without_querying_github(monkeypatch):
-    lookup = Mock(return_value={"value": [{"id": 123}]})
+    lookup = Mock(return_value={"value": [{"id": 123, "definition": {"id": 164, "name": "manual"}}]})
     monkeypatch.setattr(cluster, "get_json", lookup)
     cluster.admission(datetime(2026, 10, 17, 15, tzinfo=timezone.utc))
     lookup.assert_called_once_with(
         "https://dev.azure.com/azureiotdevxp/aziotcli/_apis/build/builds",
         token="offline-token",
-        params={"definitions": "164", "statusFilter": "inProgress,notStarted", "api-version": "7.1", "$top": 100},
+        params={"statusFilter": "inProgress,notStarted", "api-version": "7.1", "$top": 100},
     )
 
 
 @pytest.mark.parametrize("hour,allowed", [(1, True), (5, True), (6, False), (8, False)])
 def test_quick_run_reserves_timeout_and_cleanup_buffer(hour, allowed, monkeypatch):
     monkeypatch.setenv("OPS_SCENARIO_TIMEOUT_MINUTES", "90")
-    lookup = Mock(return_value={"value": [{"id": 123}]})
+    lookup = Mock(return_value={"value": [{"id": 123, "definition": {"id": 164, "name": "manual"}}]})
     monkeypatch.setattr(cluster, "get_json", lookup)
     now = datetime(2026, 10, 17, hour, tzinfo=timezone.utc)
     if allowed:
@@ -470,16 +473,18 @@ def test_yaml_keeps_dry_run_separate_and_reuses_existing_tests():
     assert next(param for param in value["parameters"] if param["name"] == "mode")["default"] == "Dry run"
     connection = next(param for param in value["parameters"] if param["name"] == "azureServiceConnection")
     assert connection["default"] == "az-iot-ops-int-sp-ado"
+    assert value["extends"]["template"] == "templates/integration-pipeline.yml"
+    value = yaml.safe_load((ROOT / ".azure-devops/templates/integration-pipeline.yml").read_text())
     assert value["stages"][0]["stage"] == "Plan"
     live = value["stages"][1]["${{ if eq(parameters.mode, 'Integration tests') }}"]
     assert [stage["stage"] for stage in live] == ["Build", "Lint", "Unit", "Integration", "Qualify"]
     integration = next(stage for stage in live if stage["stage"] == "Integration")
     job = integration["jobs"][0]
     assert job["strategy"]["maxParallel"] == 1
-    assert job["timeoutInMinutes"] == "${{ parameters.scenarioTimeoutMinutes }}"
+    assert job["${{ else }}"]["timeoutInMinutes"] == "${{ parameters.scenarioTimeoutMinutes }}"
     azure = [step for step in job["steps"] if step.get("task") == "AzureCLI@2"]
     assert len(azure) == 2 and azure[1]["condition"] == "always()"
     assert azure[0]["inputs"]["addSpnToEnvironment"] is True
     assert "continueOnError" not in json.dumps(live)
     assert "SYSTEM_ACCESSTOKEN" in azure[0]["env"]
-    assert azure[0]["env"]["OPS_SCENARIO_TIMEOUT_MINUTES"] == "${{ parameters.scenarioTimeoutMinutes }}"
+    assert azure[0]["env"]["${{ else }}"]["OPS_SCENARIO_TIMEOUT_MINUTES"] == "${{ parameters.scenarioTimeoutMinutes }}"

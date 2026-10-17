@@ -75,6 +75,10 @@ def scenario_timeout():
 
 
 def plan(output):
+    health = None
+    if os.environ.get("OPS_HEALTH_HISTORY"):
+        from integration_health import resolve
+        health = resolve(required("OPS_HEALTH_HISTORY"))
     matrix_tools = runpy.run_path(str(ROOT / ".github/actions/build-int-test-matrix/build_matrix.py"))
     config = yaml.safe_load((ROOT / ".github/test-scenarios.yml").read_text(encoding="utf-8"))["scenarios"]
     selection = required("OPS_SCENARIOS").split(",")
@@ -108,6 +112,8 @@ def plan(output):
             })
     if not rows:
         raise ValueError("The integration matrix is empty.")
+    if health and len(rows) > 40:
+        raise ValueError("Select at most 40 combinations per run.")
     value = {
         "schema": 1, "producer": producer(), "rows": rows,
         "subscription": str(UUID(required("OPS_SUBSCRIPTION"))), "resourceGroup": group,
@@ -115,9 +121,16 @@ def plan(output):
         "scenarioTimeoutMinutes": scenario_timeout(),
         "qualification": "selected scenarios only; not release qualification",
     }
+    if health:
+        value["health"] = health
+        value["locations"] = {key: health["profile"][key] for key in
+                              ("clusterRegion", "resourceRegion", "namespaceRegion")}
     write(output / "plan.json", value)
     print(json.dumps(value, indent=2))
-    output_variable("matrix", json.dumps({row["key"]: {"row": row["key"], "python": row["python"]} for row in rows}))
+    output_variable("matrix", json.dumps({
+        row["key"]: {"row": row["key"], "python": row["python"], "scenarioTimeoutMinutes": scenario_timeout()}
+        for row in rows
+    }))
     output_variable("artifact", f"ops-plan-{required('SYSTEM_JOBATTEMPT')}")
 
 
@@ -183,6 +196,9 @@ def prepare(output):
         },
         "ownershipChecked": False, "phases": {}, "cleanup": "not-started", "status": "incomplete",
     }
+    if value.get("health"):
+        state["health"] = value["health"]
+        state["locations"] = value["locations"]
     write(output / "state.json", state)
     extension_root = Path(required("AZURE_EXTENSION_DIR")).resolve()
     subprocess.run(["az", "extension", "add", "--source", str(wheel), "--yes"], check=True)
@@ -231,9 +247,22 @@ def report(output):
         "cleanup": state["cleanup"], "status": "passed" if success else "incomplete",
         "createdAt": datetime.now(timezone.utc).isoformat(), "releaseQualified": False,
     }
+    if state.get("health"):
+        value["health"] = state["health"]
+        value["locations"] = state.get("observedLocations", {})
+        success = success and value["locations"] == expected_locations(state["locations"])
+        value["status"] = "passed" if success else "incomplete"
     write(output / "receipt.json", value)
     if not success:
         raise ValueError("Scenario failed, was interrupted, or did not finish cleanup.")
+
+
+def expected_locations(locations):
+    return {
+        "cluster": locations["clusterRegion"], "instance": locations["clusterRegion"],
+        "storage": locations["resourceRegion"], "registry": locations["resourceRegion"],
+        "namespace": locations["namespaceRegion"],
+    }
 
 
 def gate(output):
@@ -265,6 +294,9 @@ def gate(output):
                 or receipt.get("status") != "passed" or receipt.get("cleanup") != "passed"
                 or any(receipt.get("phases", {}).get(phase) != "passed" for phase in expected_phases(row))):
             raise ValueError(f"Unqualified latest scenario attempt: {row['key']}")
+        if value.get("health") and (receipt.get("health") != value["health"]
+                                    or receipt.get("locations") != expected_locations(value["locations"])):
+            raise ValueError("Health profile or observed regional coverage differs from the plan.")
         for phase in expected_phases(row):
             junit_results(path.parent / "junit" / f"{phase}.xml")
         source = path.parent / "coverage.dat"

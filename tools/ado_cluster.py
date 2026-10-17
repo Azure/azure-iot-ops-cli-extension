@@ -23,7 +23,9 @@ from xml.etree import ElementTree
 import requests
 import yaml
 
-from ado_integration import ROOT, expected_phases, junit_results, producer, read, required, scenario_timeout, write
+from ado_integration import (
+    ROOT, expected_locations, expected_phases, junit_results, producer, read, required, scenario_timeout, write,
+)
 
 
 K3S_VERSION = "v1.31.1+k3s1"
@@ -36,10 +38,15 @@ MARKERS = {
 
 
 class Commands:
-    def __init__(self, auth=None):
+    def __init__(self, auth=None, budget=None):
         self.auth = auth
+        self.deadline = time.monotonic() + budget if budget is not None else None
 
     def run(self, arguments, *, capture=False, env=None, cwd=None, timeout=1800):
+        if self.deadline is not None:
+            timeout = min(timeout, self.deadline - time.monotonic())
+            if timeout <= 0:
+                raise TimeoutError("The configured health scenario execution budget expired.")
         # The finally block owns bounded termination of the entire subprocess group.
         process = subprocess.Popen(  # pylint: disable=consider-using-with
             arguments, stdout=subprocess.PIPE if capture else None, text=True,
@@ -96,13 +103,16 @@ def admission(now=None):
     runs = get_json(
         "https://dev.azure.com/azureiotdevxp/aziotcli/_apis/build/builds",
         token=required("SYSTEM_ACCESSTOKEN"),
-        params={"definitions": required("SYSTEM_DEFINITIONID"), "statusFilter": "inProgress,notStarted",
+        params={"statusFilter": "inProgress,notStarted",
                 "api-version": "7.1", "$top": 100},
     )
     if len(runs["value"]) >= 100:
         raise ValueError("Too many ADO runs to establish safe admission.")
-    if any(str(run["id"]) != required("BUILD_BUILDID") for run in runs["value"]):
-        raise ValueError("Another ADO ops integration run is active or queued.")
+    for build in runs["value"]:
+        definition = build["definition"]
+        family = definition["id"] == 164 or definition["name"] == "Azure IoT Operations CLI - Integration Health"
+        if family and str(build["id"]) != required("BUILD_BUILDID"):
+            raise ValueError("Another ADO ops integration or health run is active or queued.")
 
 
 def validate_state(state):
@@ -126,6 +136,13 @@ def validate_state(state):
     if (state["resources"] != expected or state["cluster"] != f"opado{suffix}"
             or state["instance"] != f"inst{suffix}"):
         raise ValueError("Refusing resources outside this attempt's exact ownership manifest.")
+    if state.get("health"):
+        from integration_health import validate
+        validate(state["health"]["profile"])
+        planned = {key: state["health"]["profile"][key] for key in
+                   ("clusterRegion", "resourceRegion", "namespaceRegion")}
+        if state["locations"] != planned:
+            raise ValueError("Resource locations differ from the health profile.")
 
 
 def check_account(commands, state):
@@ -232,7 +249,8 @@ def connect_cluster(commands, state, output):
     commands.run(["az", "extension", "add", "--name", "connectedk8s", "--yes"])
     common = ["--name", state["cluster"], "--resource-group", state["resourceGroup"]]
     custom = ["--custom-locations-oid", state["customLocationsObjectId"]]
-    commands.run(["az", "connectedk8s", "connect", *common, *custom], timeout=1800)
+    location = ["--location", state["locations"]["clusterRegion"]] if state.get("health") else []
+    commands.run(["az", "connectedk8s", "connect", *common, *custom, *location], timeout=1800)
     commands.run(["az", "connectedk8s", "enable-features", "--features", "custom-locations", "cluster-connect",
                   *common, *custom])
     trust = state["row"]["scenario"]["needs_trust"]
@@ -250,24 +268,29 @@ def connect_cluster(commands, state, output):
         if not issuer.startswith("https://"):
             raise ValueError("Invalid Arc workload identity issuer.")
         start_cluster(commands, state, output, issuer)
+    if state.get("health") and cluster["location"].replace(" ", "").lower() != state["locations"]["clusterRegion"]:
+        raise ValueError("Arc cluster location differs from the health profile.")
 
 
 def create_resources(commands, state):
     names = {key: value.rsplit("/", 1)[-1] for key, value in state["resources"].items()}
     common = ["--resource-group", state["resourceGroup"]]
+    location = ["--location", state["locations"]["resourceRegion"]] if state.get("health") else []
     commands.run([
         "az", "storage", "account", "create", *common, "--name", names["storage"],
         "--enable-hierarchical-namespace", "--public-network-access", "Disabled",
         "--allow-shared-key-access", "false", "--allow-blob-public-access", "false", "--default-action", "Deny",
-        "--output", "none",
+        "--output", "none", *location,
     ])
     commands.run([
         "az", "iot", "ops", "schema", "registry", "create", *common, "--name", names["registry"],
-        "--rn", f"init-ns-{state['suffix']}", "--sa-resource-id", state["resources"]["storage"], "--output", "none",
+        "--rn", f"init-ns-{state['suffix']}", "--sa-resource-id", state["resources"]["storage"],
+        "--output", "none", *location,
     ])
     commands.run([
         "az", "iot", "ops", "ns", "create", *common, "--name", names["namespace"],
-        "--location", "australiaeast", "--output", "none",
+        "--location", state["locations"]["namespaceRegion"] if state.get("health") else "australiaeast",
+        "--output", "none",
     ])
 
 
@@ -298,6 +321,22 @@ def test_environment(state, output):
     return environment
 
 
+def verify_locations(commands, state, output):
+    if not state.get("health"):
+        return
+    observed = {}
+    for key, expected in expected_locations(state["locations"]).items():
+        args = ["resource", "show", "--ids", state["resources"][key]]
+        if key in {"registry", "namespace"}:
+            args += ["--api-version", "2026-04-01"]
+        location = commands.az_json(*args)["location"].replace(" ", "").lower()
+        if location != expected:
+            raise ValueError(f"{key} was deployed outside the configured health region.")
+        observed[key] = location
+    state["observedLocations"] = observed
+    write(output / "state.json", state)
+
+
 def test_phase(commands, state, output, phase, marker):
     environment = test_environment(state, output)
     target = Path(required("AZURE_EXTENSION_DIR")) / "azure-iot-ops"
@@ -324,7 +363,8 @@ def smoke(commands, state, output):
         ["support", "create-bundle", "--ops-service", "acs", "secretstore"], ["check"], ["check", "--pre"],
         ["check", "--post"], ["check", "--as-object"],
         ["check", "--svc", "broker", "--resources", "broker", "brokerlistener"],
-        ["asset", "query", "-g", state["resourceGroup"], "--location", "westus"],
+        ["asset", "query", "-g", state["resourceGroup"], "--location",
+         state["locations"]["namespaceRegion"] if state.get("health") else "westus"],
         ["get-versions", "--inline"],
     ]
     try:
@@ -406,7 +446,7 @@ def run(output):
     try:
         admission()
         auth = start_auth(output)
-        commands = Commands(auth)
+        commands = Commands(auth, budget=scenario_timeout() * 60 if state.get("health") else None)
         check_account(commands, state)
         commands.az_json("group", "show", "--name", state["resourceGroup"])
         if resource_ids(commands, state) & {value.lower() for value in state["resources"].values()}:
@@ -419,6 +459,7 @@ def run(output):
         connect_cluster(commands, state, output)
         create_resources(commands, state)
         test_phase(commands, state, output, "init", "init_scenario_test")
+        verify_locations(commands, state, output)
         scenario = state["row"]["scenario"]
         if scenario["tox_env"]:
             test_phase(commands, state, output, "scenario", MARKERS[scenario["tox_env"]])
