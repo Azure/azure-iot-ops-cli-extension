@@ -1,7 +1,5 @@
 # Copyright (c) Microsoft Corporation. All rights reserved.
 
-lockBehavior: sequential
-
 parameters:
   - name: health
     type: boolean
@@ -45,9 +43,6 @@ parameters:
   - name: customLocationsObjectId
     type: string
     default: 51dfe1e8-70c6-4de5-a08e-e18aff23d815
-
-pool:
-  vmImage: ubuntu-24.04
 
 variables:
   - ${{ if parameters.health }}:
