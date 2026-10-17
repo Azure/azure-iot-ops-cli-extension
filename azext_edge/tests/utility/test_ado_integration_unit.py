@@ -355,6 +355,44 @@ def test_commands_abort_when_auth_process_dies(monkeypatch):
     process.wait.assert_called_once()
 
 
+@pytest.mark.parametrize("failed_waits", [0, 2, 60])
+def test_cluster_waits_for_its_registered_ready_node(monkeypatch, tmp_path, failed_waits):
+    state = make_state()
+    directory, _ = cluster.cluster_paths(state)
+    directory.mkdir()
+    binary = directory / "k3s"
+    binary.write_bytes(b"offline-k3s")
+    commands = Mock()
+    error = subprocess.CalledProcessError(1, ["kubectl", "wait"])
+    commands.run.side_effect = [None] + [error] * failed_waits + [None]
+    sleep = Mock()
+    copy_config = Mock()
+    monkeypatch.setattr(cluster.time, "sleep", sleep)
+    monkeypatch.setattr(cluster.subprocess, "run", copy_config)
+    monkeypatch.setenv("KUBECONFIG", "before-start")
+
+    if failed_waits == 60:
+        with pytest.raises(subprocess.CalledProcessError):
+            cluster.start_cluster(commands, state, tmp_path)
+        copy_config.assert_not_called()
+        assert cluster.os.environ["KUBECONFIG"] == "before-start"
+    else:
+        cluster.start_cluster(commands, state, tmp_path)
+        copy_config.assert_called_once()
+        assert cluster.os.environ["KUBECONFIG"] == str(directory / "user-config")
+
+    waits = commands.run.call_args_list[1:]
+    assert len(waits) == min(failed_waits + 1, 60)
+    assert sleep.call_count == min(failed_waits, 59)
+    for call in waits:
+        assert call.args[0] == [
+            "sudo", "-n", str(binary), "kubectl", "--kubeconfig", str(directory / "config"),
+            "wait", "--for=condition=Ready", f"node/{state['cluster']}", "--timeout=5s",
+        ]
+        assert call.kwargs == {"timeout": 20}
+    assert pipeline.read(tmp_path / "state.json")["clusterStarted"] is True
+
+
 def test_run_always_cleans_after_provision_failure(monkeypatch, tmp_path):
     pipeline.write(tmp_path / "state.json", make_state())
     monkeypatch.setattr(cluster, "admission", Mock())

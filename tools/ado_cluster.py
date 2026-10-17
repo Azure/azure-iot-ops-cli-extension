@@ -221,14 +221,12 @@ def start_cluster(commands, state, output, issuer=None):
     for attempt in range(60):
         try:
             commands.run(["sudo", "-n", str(binary), "kubectl", "--kubeconfig", str(directory / "config"),
-                          "get", "nodes"], timeout=20)
+                          "wait", "--for=condition=Ready", f"node/{state['cluster']}", "--timeout=5s"], timeout=20)
             break
         except subprocess.CalledProcessError:
             if attempt == 59:
                 raise
             time.sleep(5)
-    commands.run(["sudo", "-n", str(binary), "kubectl", "--kubeconfig", str(directory / "config"),
-                  "wait", "--for=condition=Ready", "node", "--all", "--timeout=300s"], timeout=330)
     config = directory / "user-config"
     with config.open("w", encoding="utf-8") as stream:
         subprocess.run(["sudo", "-n", "cat", str(directory / "config")], stdout=stream, check=True)
