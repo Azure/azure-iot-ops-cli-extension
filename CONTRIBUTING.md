@@ -4,6 +4,43 @@ This guide will assist you in setting up a local development environment for thi
 
 We also regularly utilize GitHub Codespaces, and have automated this environment setup in our [devcontainer config](./.devcontainer/devcontainer.json)
 
+## Azure Pipelines integration migration
+
+[Azure IoT Operations CLI - Integration Tests (164)](https://dev.azure.com/azureiotdevxp/aziotcli/_build?definitionId=164)
+uses `.azure-devops/integration.yml` on `users/hangyiwang/migrate-fic-to-ado-pipeline`.
+Automatic CI, PR and scheduled triggers are disabled during migration. Existing GitHub workflows remain enabled.
+
+Select **Run pipeline**, the migration branch, and **Dry run** to validate the scenario/channel/Python matrix
+without Azure access or provisioning. **Default scenarios** uses `.github/test-scenarios.yml` and excludes
+manual-only and baseline-required cases. Explicit selections can include those cases; `upgrade-path` needs
+the existing hash-pinned baseline JSON for each selected runtime channel.
+
+**Integration tests** runs Plan, Build, Lint, Unit, Integration and Qualify. It builds one source-bound wheel,
+then uses `tools/integration_runner.py` to verify and execute that wheel without loading product code from
+the checkout. Each scenario/channel/Python row gets a fresh k3s/Arc cluster and uniquely named supporting resources;
+rows run serially. Retry the failed **Integration** stage/job in ADO to create a new independent attempt rather than
+reuse a partially modified cluster. Qualification requires every selected row's latest attempt, successful nonempty
+JUnit results for every required phase, matching candidate provenance, and completed cleanup. The coverage report
+combines unit coverage with selected integration scenarios. It is not a measure of unselected scenario coverage.
+
+Live execution requires pipeline 164 authorization for the `aziotcli-sp-prime` Azure service connection and
+the connection's Azure permissions in subscription `a386d5ea-ea90-441a-8263-d816368c84a1`,
+resource group `ops-cli-int-test-rg`. Repository access through `github.com_Azure` does not grant Azure access.
+Long-running jobs renew ADO federation in CLI credential caches without rewriting the Azure account profile.
+Pipeline/service-connection authorization must be granted separately; the orchestration does not broaden it.
+
+Admission fails before provisioning while another ops integration/cleanup run is active or queued, or within
+seven hours of the existing GitHub 08:00 UTC resource-group cleanup or 09:00 UTC integration schedule.
+Do not start competing manual GitHub runs after admission. Cleanup targets only resources recorded for the
+current attempt, never sweeps the shared resource group, and is retried in an always-run task after cancellation.
+Resource IDs are published before provisioning. If an agent is lost, use that retained manifest to investigate
+and clean up precisely those resources; test-specific fixtures retain their existing cleanup responsibilities.
+
+The resulting report qualifies **selected integration scenarios only**, not a release. It does not implement
+the container integration workflow, exact collected-case inventory parity, release security checks, publication,
+or release-candidate handoff. Pipeline 165 remains a disabled-by-default release starter.
+Do not remove GitHub federation or disable the old workflows until replacement coverage is proven.
+
 ## Cloud-aware management clients
 
 Pass the active cloud's ARM endpoint when constructing management clients through
