@@ -51,7 +51,7 @@ parameters:
   - name: azureServiceConnection
     displayName: Authorized Azure service connection
     type: string
-    default: aziotcli-sp-prime
+    default: az-iot-ops-int-sp-ado
   - name: subscriptionId
     type: string
     default: a386d5ea-ea90-441a-8263-d816368c84a1

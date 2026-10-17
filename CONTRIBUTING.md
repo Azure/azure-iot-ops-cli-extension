@@ -23,9 +23,12 @@ reuse a partially modified cluster. Qualification requires every selected row's 
 JUnit results for every required phase, matching candidate provenance, and completed cleanup. The coverage report
 combines unit coverage with selected integration scenarios. It is not a measure of unselected scenario coverage.
 
-Live execution requires pipeline 164 authorization for the `aziotcli-sp-prime` Azure service connection and
+Live execution requires pipeline 164 authorization for the `az-iot-ops-int-sp-ado` Azure service connection and
 the connection's Azure permissions in subscription `a386d5ea-ea90-441a-8263-d816368c84a1`,
 resource group `ops-cli-int-test-rg`. Repository access through `github.com_Azure` does not grant Azure access.
+The Ops connection uses the existing `az-iot-ops-int-sp` app (`2d082741-34e5-4859-aa4f-40883cac8a60`),
+not the separate IoT CLI `aziotcli-sp-prime` identity. Its ADO federated credential is independent of the
+app's existing GitHub federated credentials. Only pipeline 164 is authorized during this integration migration.
 Long-running jobs renew ADO federation in CLI credential caches without rewriting the Azure account profile.
 Pipeline/service-connection authorization must be granted separately; the orchestration does not broaden it.
 

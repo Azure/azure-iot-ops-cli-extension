@@ -478,6 +478,8 @@ def test_yaml_keeps_dry_run_separate_and_reuses_existing_tests():
     value = yaml.safe_load((ROOT / ".azure-devops/integration.yml").read_text())
     assert value["trigger"] == "none" and value["pr"] == "none" and "schedules" not in value
     assert next(param for param in value["parameters"] if param["name"] == "mode")["default"] == "Dry run"
+    connection = next(param for param in value["parameters"] if param["name"] == "azureServiceConnection")
+    assert connection["default"] == "az-iot-ops-int-sp-ado"
     assert value["stages"][0]["stage"] == "Plan"
     live = value["stages"][1]["${{ if eq(parameters.mode, 'Integration tests') }}"]
     assert [stage["stage"] for stage in live] == ["Build", "Lint", "Unit", "Integration", "Qualify"]
