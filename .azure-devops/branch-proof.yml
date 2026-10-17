@@ -1,0 +1,16 @@
+# Copyright (c) Microsoft Corporation. All rights reserved.
+
+trigger: none
+pr: none
+
+name: branch-selection-proof-$(Date:yyyyMMdd).$(Rev:r)
+
+pool:
+  vmImage: ubuntu-24.04
+
+steps:
+  - checkout: none
+  - bash: |
+      echo "##vso[task.logissue type=error]Registration proof only; not an integration or release pipeline."
+      exit 1
+    displayName: Reject execution of the registration-only placeholder
