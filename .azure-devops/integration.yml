@@ -1,0 +1,20 @@
+# Copyright (c) Microsoft Corporation. All rights reserved.
+
+trigger: none
+pr: none
+name: ops-integration-$(Date:yyyyMMdd).$(Rev:r)
+
+pool:
+  vmImage: ubuntu-24.04
+
+stages:
+  - stage: MigrationNotImplemented
+    displayName: Integration migration starter - not implemented
+    jobs:
+      - job: RejectUnimplementedPipeline
+        steps:
+          - checkout: none
+          - bash: |
+              echo "##vso[task.logissue type=error]Ops integration migration is not implemented. No integration tests have run."
+              exit 1
+            displayName: Reject incomplete integration qualification
