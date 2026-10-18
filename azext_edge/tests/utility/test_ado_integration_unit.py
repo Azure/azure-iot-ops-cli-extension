@@ -374,7 +374,9 @@ def test_commands_abort_when_auth_process_dies(monkeypatch):
     process.poll.return_value = None
     monkeypatch.setattr(cluster.subprocess, "Popen", Mock(return_value=process))
     kill = Mock()
-    monkeypatch.setattr(cluster.os, "killpg", kill)
+    # Windows does not expose this Unix API.
+    monkeypatch.delattr(cluster.os, "killpg", raising=False)
+    monkeypatch.setattr(cluster.os, "killpg", kill, raising=False)
     with pytest.raises(RuntimeError, match="renewal stopped"):
         cluster.Commands(auth=Mock(poll=Mock(return_value=1))).run(["offline-command"])
     kill.assert_called_once_with(12345, cluster.signal.SIGTERM)
@@ -425,7 +427,9 @@ def test_cluster_waits_for_its_registered_ready_node(monkeypatch, tmp_path, fail
 def test_agent_capacity_requires_cpu_memory_and_free_disk(monkeypatch, cpus, memory_gb, disk_gb):
     monkeypatch.setattr(cluster.os, "cpu_count", Mock(return_value=cpus))
     sizes = {"SC_PAGE_SIZE": 4096, "SC_PHYS_PAGES": memory_gb * 10**9 // 4096}
-    monkeypatch.setattr(cluster.os, "sysconf", lambda name: sizes[name])
+    # Exercise the missing-API case on every unit-test platform.
+    monkeypatch.delattr(cluster.os, "sysconf", raising=False)
+    monkeypatch.setattr(cluster.os, "sysconf", lambda name: sizes[name], raising=False)
     monkeypatch.setattr(cluster.shutil, "disk_usage", Mock(return_value=SimpleNamespace(free=disk_gb * 10**9)))
     if cpus == 4:
         cluster.check_agent_capacity()
