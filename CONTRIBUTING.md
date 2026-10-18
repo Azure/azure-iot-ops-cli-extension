@@ -21,6 +21,8 @@ scheduled weekday (`mon` through `sun`). Each profile requires `clusterRegion`,
 Python/scenario/channel selections are nonempty lists using the same choices as
 164. `clusterRegion` must be a supported Arc/AIO region. Cloud dependency regions
 are separate; selecting a cluster region does not claim all dependencies run there.
+These are Azure resource/control-plane locations; they do not relocate the edge
+host or its agent pool.
 Restrict Library edit access to maintainers.
 
 Plan resolves the run's actual branch and queued UTC day, preserving the selected
