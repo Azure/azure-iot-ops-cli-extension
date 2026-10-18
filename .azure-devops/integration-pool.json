@@ -1,0 +1,33 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "resources": [
+    {
+      "type": "Microsoft.CloudTest/hostedpools",
+      "apiVersion": "2020-05-07",
+      "name": "iotupx-ops-integration",
+      "location": "westus2",
+      "properties": {
+        "organization": "https://dev.azure.com/azureiotdevxp",
+        "projects": ["aziotcli"],
+        "sku": {
+          "name": "Standard_D8ds_v5",
+          "tier": "StandardSSD",
+          "type": "AzureSku"
+        },
+        "images": [
+          {
+            "imageName": "iotupx-1espt-ubuntu2404",
+            "poolBufferPercentage": "*"
+          }
+        ],
+        "maxPoolSize": 1,
+        "agentProfile": {
+          "type": "Stateless",
+          "resourcePredictions": [{"00:00:00": 0}]
+        },
+        "vmProvider": "Azure"
+      }
+    }
+  ]
+}

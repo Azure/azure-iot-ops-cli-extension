@@ -13,6 +13,7 @@ import json
 import os
 from pathlib import Path
 import re
+import shutil
 import signal
 import subprocess
 import sys
@@ -189,6 +190,15 @@ def stop_auth(process):
 def cluster_paths(state):
     directory = Path(required("AGENT_TEMPDIRECTORY")) / f"ops-k3s-{state['suffix']}"
     return directory, f"ops-k3s-{state['suffix']}"
+
+
+def check_agent_capacity():
+    cpus = os.cpu_count() or 0
+    memory = os.sysconf("SC_PAGE_SIZE") * os.sysconf("SC_PHYS_PAGES")
+    free = shutil.disk_usage(required("AGENT_TEMPDIRECTORY")).free
+    print(f"Agent capacity: {cpus} CPUs, {memory / 10**9:.1f} GB RAM, {free / 10**9:.1f} GB free disk.", flush=True)
+    if cpus < 4 or memory < 16 * 10**9 or free < 30 * 10**9:
+        raise ValueError("Ops integration requires at least 4 CPUs, 16 GB RAM and 30 GB free agent disk.")
 
 
 def start_cluster(commands, state, output, issuer=None):
@@ -418,9 +428,14 @@ def cleanup(output):
                     except (subprocess.CalledProcessError, TimeoutError) as error:
                         print(f"##vso[task.logissue type=error]{key} cleanup failed ({type(error).__name__}).")
                         errors.append(key)
-            remaining = resource_ids(commands, state) & {value.lower() for value in state["resources"].values()}
-            if remaining:
-                raise RuntimeError("Attempt resources remain after cleanup.")
+            for attempt in range(20):
+                remaining = resource_ids(commands, state) & {value.lower() for value in state["resources"].values()}
+                if not remaining:
+                    break
+                if attempt == 19:
+                    raise RuntimeError("Attempt resources remain after cleanup.")
+                print(f"Waiting for {len(remaining)} deleted attempt resources to disappear.", flush=True)
+                time.sleep(15)
     finally:
         if state.get("clusterStarted"):
             _, unit = cluster_paths(state)
@@ -442,6 +457,7 @@ def run(output):
     validate_state(state)
     auth = None
     try:
+        check_agent_capacity()
         admission()
         auth = start_auth(output)
         commands = Commands(auth, budget=scenario_timeout() * 60 if state.get("health") else None)

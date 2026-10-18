@@ -332,6 +332,32 @@ def test_cleanup_does_not_stop_after_one_delete_failure(tmp_path, monkeypatch):
     assert pipeline.read(tmp_path / "state.json")["cleanup"] == "incomplete"
 
 
+@pytest.mark.parametrize("stale_reads", [0, 2, 20])
+def test_cleanup_waits_boundedly_for_deleted_resources(tmp_path, monkeypatch, stale_reads):
+    state = make_state()
+    pipeline.write(tmp_path / "state.json", state)
+    resources = [{"id": state["resources"]["storage"]}]
+    commands = Mock()
+    commands.az_json.side_effect = [
+        {"id": SUBSCRIPTION, "environmentName": "AzureCloud"}, resources, resources,
+        *([resources] * stale_reads), [],
+    ]
+    sleep = Mock()
+    monkeypatch.setattr(cluster, "Commands", Mock(return_value=commands))
+    monkeypatch.setattr(cluster.time, "sleep", sleep)
+    if stale_reads == 20:
+        with pytest.raises(RuntimeError, match="resources remain"):
+            cluster.cleanup(tmp_path)
+        assert pipeline.read(tmp_path / "state.json")["cleanup"] == "incomplete"
+    else:
+        cluster.cleanup(tmp_path)
+        assert pipeline.read(tmp_path / "state.json")["cleanup"] == "passed"
+    assert sleep.call_count == min(stale_reads, 19)
+    commands.run.assert_called_once_with(
+        ["az", "resource", "delete", "--ids", state["resources"]["storage"]], timeout=180,
+    )
+
+
 def test_environment_drops_control_tokens_and_truthy_false_cleanup(monkeypatch, tmp_path):
     monkeypatch.setenv("idToken", "offline-assertion")
     monkeypatch.setenv("servicePrincipalKey", "offline-secret")
@@ -393,8 +419,24 @@ def test_cluster_waits_for_its_registered_ready_node(monkeypatch, tmp_path, fail
     assert pipeline.read(tmp_path / "state.json")["clusterStarted"] is True
 
 
+@pytest.mark.parametrize("cpus,memory_gb,disk_gb", [
+    (4, 16, 30), (2, 32, 100), (8, 8, 100), (8, 32, 29), (None, 32, 100),
+])
+def test_agent_capacity_requires_cpu_memory_and_free_disk(monkeypatch, cpus, memory_gb, disk_gb):
+    monkeypatch.setattr(cluster.os, "cpu_count", Mock(return_value=cpus))
+    sizes = {"SC_PAGE_SIZE": 4096, "SC_PHYS_PAGES": memory_gb * 10**9 // 4096}
+    monkeypatch.setattr(cluster.os, "sysconf", lambda name: sizes[name])
+    monkeypatch.setattr(cluster.shutil, "disk_usage", Mock(return_value=SimpleNamespace(free=disk_gb * 10**9)))
+    if cpus == 4:
+        cluster.check_agent_capacity()
+    else:
+        with pytest.raises(ValueError, match="Ops integration requires"):
+            cluster.check_agent_capacity()
+
+
 def test_run_always_cleans_after_provision_failure(monkeypatch, tmp_path):
     pipeline.write(tmp_path / "state.json", make_state())
+    monkeypatch.setattr(cluster, "check_agent_capacity", Mock())
     monkeypatch.setattr(cluster, "admission", Mock())
     identity = Mock(poll=Mock(return_value=None))
     monkeypatch.setattr(cluster, "start_auth", Mock(return_value=identity))
@@ -518,6 +560,19 @@ def test_yaml_keeps_dry_run_separate_and_reuses_existing_tests():
     assert [stage["stage"] for stage in live] == ["Build", "Lint", "Unit", "Integration", "Qualify"]
     integration = next(stage for stage in live if stage["stage"] == "Integration")
     job = integration["jobs"][0]
+    assert job["pool"] == {
+        "name": "iotupx-ops-integration",
+        "demands": ["ImageOverride -equals iotupx-1espt-ubuntu2404"],
+    }
+    pool = json.loads((ROOT / ".azure-devops/integration-pool.json").read_text())["resources"][0]
+    assert pool["name"] == job["pool"]["name"]
+    assert pool["properties"]["sku"]["name"] == "Standard_D8ds_v5"
+    assert pool["properties"]["maxPoolSize"] == 1
+    assert pool["properties"]["agentProfile"] == {
+        "type": "Stateless", "resourcePredictions": [{"00:00:00": 0}],
+    }
+    assert all("pool" not in stage for stage in live)
+    assert all("pool" not in job for stage in live if stage["stage"] != "Integration" for job in stage["jobs"])
     assert job["strategy"]["maxParallel"] == 1
     assert job["${{ else }}"]["timeoutInMinutes"] == "${{ parameters.scenarioTimeoutMinutes }}"
     azure = [step for step in job["steps"] if step.get("task") == "AzureCLI@2"]

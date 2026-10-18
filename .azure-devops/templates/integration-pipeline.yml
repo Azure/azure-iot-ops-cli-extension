@@ -163,6 +163,10 @@ stages:
           candidateDigest: $[ stageDependencies.Build.Build.outputs['candidate.digest'] ]
         jobs:
           - job: Scenario
+            pool:
+              name: iotupx-ops-integration
+              demands:
+                - ImageOverride -equals iotupx-1espt-ubuntu2404
             ${{ if parameters.health }}:
               timeoutInMinutes: 360
             ${{ else }}:

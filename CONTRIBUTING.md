@@ -38,6 +38,15 @@ operationally coordinated. Dashboard widgets should use the Health definition an
 integration results, excluding unit results. A small rollout profile is selected
 coverage, not full GitHub scenario parity or release qualification.
 
+Both pipelines use the isolated `iotupx-ops-integration` pool for live scenario jobs,
+with the `iotupx-1espt-ubuntu2404` image. It is stateless, has no warm agents, and is
+capped at one 8-vCPU/32-GB agent. Build, lint and unit jobs remain Microsoft-hosted.
+Its reviewed ARM definition is `.azure-devops/integration-pool.json`; deployment
+and per-pipeline pool authorization are separate administrator operations.
+The standard Microsoft-hosted Linux agent is too small for an AIO cluster. Before
+provisioning, the runner requires at least 4 CPUs, 16 GB RAM and 30 GB free agent
+disk; increasing test timeouts does not compensate for missing capacity.
+
 This guide will assist you in setting up a local development environment for this extension.
 
 We also regularly utilize GitHub Codespaces, and have automated this environment setup in our [devcontainer config](./.devcontainer/devcontainer.json)
@@ -66,7 +75,7 @@ the connection's Azure permissions in subscription `a386d5ea-ea90-441a-8263-d816
 resource group `ops-cli-int-test-rg`. Repository access through `github.com_Azure` does not grant Azure access.
 The Ops connection uses the existing `az-iot-ops-int-sp` app (`2d082741-34e5-4859-aa4f-40883cac8a60`),
 not the separate IoT CLI `aziotcli-sp-prime` identity. Its ADO federated credential is independent of the
-app's existing GitHub federated credentials. Only pipeline 164 is authorized during this integration migration.
+app's existing GitHub federated credentials. Pipelines 164 and 167 are authorized during this integration migration.
 Long-running jobs renew ADO federation in CLI credential caches without rewriting the Azure account profile.
 Pipeline/service-connection authorization must be granted separately; the orchestration does not broaden it.
 
