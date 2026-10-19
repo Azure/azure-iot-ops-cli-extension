@@ -259,6 +259,31 @@ def mocked_upgrade_manager():
         yield mock
 
 
+@pytest.fixture
+def unbundled_upgrade_catalog(mocker):
+    from azext_edge.edge.providers.orchestration.runtime_profiles import RuntimeChannel, RuntimeProfileCatalog
+    from azext_edge.edge.util.az_client import IoTOpsMgmtApiVersion
+    from .test_runtime_profiles_unit import make_profile
+
+    # Fixed installed-version boundaries must not move with bundled release targets.
+    catalog = RuntimeProfileCatalog([
+        make_profile(
+            RuntimeChannel.STABLE, "1.5.33", train="integration",
+            opcua_connector_version=OPCUA_CONNECTOR_VERSION,
+        ),
+        make_profile(
+            RuntimeChannel.PREVIEW, "1.6.0-preview.49", train="integration",
+            opcua_connector_version=OPCUA_CONNECTOR_VERSION,
+            iotops_api_version=IoTOpsMgmtApiVersion.V20260903_preview.value,
+        ),
+    ])
+    for module in ("runtime_catalog", "upgrade2"):
+        mocker.patch(
+            f"azext_edge.edge.providers.orchestration.{module}.get_runtime_catalog", return_value=catalog,
+        )
+    return catalog
+
+
 class UpgradeScenario:
     def __init__(self, description: Optional[str] = None, confirm_yes: bool = True):
         self.extensions: Dict[str, dict] = {}
@@ -3349,7 +3374,7 @@ def test_explicit_unbundled_ga_integration_force_upgrade(current_version, curren
     ],
 )
 def test_unbundled_integration_force_command_preserves_boundaries(
-    mocked_cmd, mocked_responses, mocked_sleep,
+    mocked_cmd, mocked_responses, mocked_sleep, unbundled_upgrade_catalog,
     current_version, current_train, force, ops_version, ops_train, error,
 ):
     from azext_edge.edge.commands_edge import upgrade_instance
@@ -3403,7 +3428,7 @@ def test_unbundled_integration_force_command_preserves_boundaries(
 @pytest.mark.parametrize("ops_train", [None, "integration"])
 @pytest.mark.parametrize("auto_upgrade", [False, True, None])
 def test_unbundled_installed_runtime_force_and_repair_contract(
-    mocked_cmd, mocked_responses, mocked_sleep,
+    mocked_cmd, mocked_responses, mocked_sleep, unbundled_upgrade_catalog,
     current_version, force, provisioning_state, ops_train, auto_upgrade,
 ):
     from azext_edge.edge.commands_edge import upgrade_instance
@@ -3459,7 +3484,8 @@ def test_unbundled_installed_runtime_force_and_repair_contract(
     ],
 )
 def test_unbundled_integration_force_preserves_readiness_and_ownership(
-    mocked_cmd, mocked_responses, auto_upgrade, connectivity, instance_state, error, current_version, ops_train,
+    mocked_cmd, mocked_responses, unbundled_upgrade_catalog,
+    auto_upgrade, connectivity, instance_state, error, current_version, ops_train,
 ):
     from azext_edge.edge.commands_edge import upgrade_instance
     from azext_edge.edge.providers.orchestration.runtime_catalog import get_runtime_catalog

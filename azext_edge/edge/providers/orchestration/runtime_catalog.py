@@ -26,7 +26,7 @@ PREVIEW_PROFILE: Optional[RuntimeProfile] = RuntimeProfile(
     channel=RuntimeChannel.PREVIEW,
     release="prev2610",
     source_ref="preview/v1.6.x/2610",
-    source_commit="d1021a9cb265da141e70f05695e930345e23d32e",
+    source_commit="3b78d835f0b778e555508bb16b87ca4bab48f136",
     instance_blueprint=TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW,
     opcua_connector_version="1.5.19",
     iotops_api_version=IoTOpsMgmtApiVersion.V20260903_preview.value,
@@ -43,7 +43,7 @@ def get_runtime_catalog() -> RuntimeProfileCatalog:
         channel=RuntimeChannel.STABLE,
         release=str(AIO_RELEASE),
         source_ref="releases/v1.5.x/2610",
-        source_commit="67613dc8b60abdfa08bfb138f1d8fa3cbef329f7",
+        source_commit="6e698e1f36141a7dc670607ba2f282fc7e5d4f36",
         instance_blueprint=TEMPLATE_BLUEPRINT_INSTANCE,
         opcua_connector_version=OPCUA_CONNECTOR_VERSION,
     )

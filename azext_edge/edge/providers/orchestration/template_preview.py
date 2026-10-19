@@ -12,21 +12,22 @@ Public release is blocked until the development registry, repository, and tag
 coordinates are replaced with release-owner-approved public artifact locations.
 The source GDS parameter and configuration reader are removed before compiling.
 Runtime catalog registration preserves these inputs and the actual deployment train.
+MCP defaults to Preview; explicit feature modes override that generated default.
 """
 
-# selected source preview/v1.6.x/2610 @ d1021a9cb265da141e70f05695e930345e23d32e
+# selected source preview/v1.6.x/2610 @ 3b78d835f0b778e555508bb16b87ca4bab48f136
 # source release prev2610
 # no loaded-source redactions required
 from .template import TemplateBlueprint
 
 TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW = TemplateBlueprint(
-    commit_id="a0c7a346fe406ede6a6dee5f05ed9a01368c7517",
+    commit_id="8859d09a7b4f9668f8fa03e5427bc75a83843d34",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "languageVersion": "2.0",
         "contentVersion": "1.0.0.0",
         "metadata": {
-            "_generator": {"name": "bicep", "version": "0.48.1.52935", "templateHash": "14434659731448034786"}
+            "_generator": {"name": "bicep", "version": "0.48.1.52935", "templateHash": "10161564488847393735"}
         },
         "definitions": {
             "_1.AdvancedConfig": {
@@ -808,7 +809,7 @@ TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW = TemplateBlueprint(
             "advancedConfig": {"$ref": "#/definitions/_1.AdvancedConfig", "defaultValue": {}},
         },
         "variables": {
-            "VERSIONS": {"iotOperations": "1.6.0-preview.49", "connectors": "1.5.19"},
+            "VERSIONS": {"iotOperations": "1.6.0-preview.56", "connectors": "1.5.19"},
             "TRAINS": {"iotOperations": "integration"},
             "HASH": "[coalesce(tryGet(parameters('advancedConfig'), 'resourceSuffix'), take(uniqueString(resourceGroup().id, parameters('clusterName'), parameters('clusterNamespace')), 5))]",
             "AIO_EXTENSION_SUFFIX": "[take(uniqueString(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName'))), 5)]",
@@ -916,7 +917,7 @@ TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW = TemplateBlueprint(
                 "properties": {
                     "description": "An AIO instance.",
                     "schemaRegistryRef": {"resourceId": "[parameters('schemaRegistryId')]"},
-                    "features": "[parameters('features')]",
+                    "features": "[union(createObject('mcp', createObject('mode', 'Preview')), coalesce(parameters('features'), createObject()))]",
                     "adrNamespaceRef": "[if(not(empty(parameters('adrNamespaceId'))), createObject('resourceId', parameters('adrNamespaceId')), null())]",
                 },
                 "dependsOn": ["customLocation"],
