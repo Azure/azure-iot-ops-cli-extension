@@ -221,11 +221,12 @@ def test_preview_extension_versions_exclude_connector_metadata(qualification_pro
 
 
 @pytest.mark.parametrize("mode", ["Preview", "Disabled"])
-def test_preview_mcp_feature_is_not_exposed_by_cli(qualification_profile, mode):
-    from azure.cli.core.azclierror import InvalidArgumentValueError
-
-    with pytest.raises(InvalidArgumentValueError, match="Supported feature keys: opcua.mode"):
-        InitTargets("cluster", "rg", runtime_profile=qualification_profile, instance_features=[f"mcp.mode={mode}"])
+def test_preview_mcp_feature_uses_source_contract(qualification_profile, mode):
+    template, parameters = InitTargets(
+        "cluster", "rg", runtime_profile=qualification_profile, instance_features=[f"mcp.mode={mode}"]
+    ).get_ops_instance_template()
+    assert parameters["features"] == {"value": {"mcp": {"mode": mode, "settings": {}}}}
+    assert template["resources"]["aioInstance"]["properties"]["features"] == "[parameters('features')]"
 
 
 @pytest.mark.parametrize("mode", ["Stable", "Preview", "Disabled"])

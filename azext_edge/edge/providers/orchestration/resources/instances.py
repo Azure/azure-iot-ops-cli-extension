@@ -79,7 +79,7 @@ SERVICE_ACCOUNT_WASM = "aio-wasm-graph-controller"
 KEYVAULT_ROLE_ID_SECRETS_USER = "4633458b-17de-408a-b874-0445c86b69e6"
 KEYVAULT_ROLE_ID_READER = "21090545-7ca7-4776-b22c-e363652d74d2"
 
-COMPAT_FEAT_KEY_SET = {"opcua.mode"}
+COMPAT_FEAT_KEY_SET = {"mcp.mode", "opcua.mode"}
 OIDC_DISCOVERY_PATH = "/.well-known/openid-configuration"
 OIDC_DISCOVERY_TIMEOUT_SECONDS = 5
 OIDC_DISCOVERY_MAX_RESPONSE_BYTES = 64 * 1024  # cap the response size to 64KB
@@ -1354,6 +1354,9 @@ def parse_feature_kvp_nargs(features: Optional[List[str]] = None, strict: bool =
                 continue
             features_payload[split_key[0]][nested_key][split_key[2]] = features[key]
         if nested_key == "mode":
+            if key == "mcp.mode" and features[key] not in ["Preview", "Disabled"]:
+                errors.append(f"{key} has an invalid value. Known mode values are: 'Preview' or 'Disabled'.")
+                continue
             if features[key] not in ["Stable", "Preview", "Disabled"]:
                 errors.append(f"{key} has an invalid value. Known mode values are: 'Stable', 'Preview' or 'Disabled'.")
                 continue
