@@ -880,7 +880,7 @@ def test_discovery_uses_installed_channel_and_cli_profile(
             cli_ctx=mocker.ANY, method="GET",
             url=f"https://management.azure.com{INSTANCE_ID}/aioApplicationDefinitions?api-version=2026-09-03-preview",
         )
-        registry.assert_called_once_with(mocker.ANY, "1.6.0-preview.49")
+        registry.assert_called_once_with(mocker.ANY, "1.6.0-preview.56")
         fetch.assert_not_called()
     else:
         assert execute() == {"metadataRef": REFERENCE, "metadata": metadata}
@@ -890,7 +890,7 @@ def test_discovery_uses_installed_channel_and_cli_profile(
     instances.return_value.get_runtime_context.assert_called_once_with(
         record, get_runtime_catalog().qualification_identities, allow_unbundled_integration=True,
     )
-    assert get_runtime_catalog().get(RuntimeChannel.PREVIEW).identity.version == "1.6.0-preview.49"
+    assert get_runtime_catalog().get(RuntimeChannel.PREVIEW).identity.version == "1.6.0-preview.56"
 
 
 @pytest.mark.parametrize("name", [

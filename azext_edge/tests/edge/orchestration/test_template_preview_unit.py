@@ -32,6 +32,10 @@ EXPECTED_PREVIEW_RESOURCE_KEYS = frozenset({
 })
 EXTENSION_KEYS = {"cluster", "aioExtension"}
 INSTANCE_KEYS = EXTENSION_KEYS | {"customLocation", "aioInstance"}
+EXPECTED_PREVIEW_FEATURES = (
+    "[union(createObject('mcp', createObject('mode', 'Preview')), "
+    "coalesce(parameters('features'), createObject()))]"
+)
 
 
 @pytest.fixture
@@ -49,9 +53,9 @@ def qualification_profile():
 def test_preview_source_identity_and_contract(qualification_profile):
     blueprint = TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW
     content = blueprint.content
-    assert blueprint.commit_id == "a0c7a346fe406ede6a6dee5f05ed9a01368c7517"
+    assert blueprint.commit_id == "8859d09a7b4f9668f8fa03e5427bc75a83843d34"
     assert content
-    assert content["variables"]["VERSIONS"] == {"iotOperations": "1.6.0-preview.49", "connectors": "1.5.19"}
+    assert content["variables"]["VERSIONS"] == {"iotOperations": "1.6.0-preview.56", "connectors": "1.5.19"}
     assert content["variables"]["TRAINS"] == {"iotOperations": "integration"}
     assert qualification_profile.identity.train == "integration"
     assert qualification_profile.identity.channel == RuntimeChannel.PREVIEW
@@ -62,6 +66,7 @@ def test_preview_source_identity_and_contract(qualification_profile):
     assert content["resources"]["aioExtension"]["properties"]["autoUpgradeMinorVersion"] is False
     assert "disableOpcUaFeature" not in content["parameters"]
     assert content["definitions"]["_1.InstanceFeature"]["properties"]["settings"]["nullable"] is True
+    assert content["resources"]["aioInstance"]["properties"]["features"] == EXPECTED_PREVIEW_FEATURES
 
 
 def test_preview_keeps_approved_scalars_without_loaded_source_blob():
@@ -145,6 +150,8 @@ def test_preview_phase_resources_and_defaults(qualification_profile, phase):
     assert "enablePersistence" not in parameters
     assert "sku" not in parameters
     assert "features" not in parameters
+    if phase in (None, InstancePhase.INSTANCE):
+        assert resources["aioInstance"]["properties"]["features"] == EXPECTED_PREVIEW_FEATURES
     assert "enableGdsManager" not in template["parameters"]
     assert template["parameters"]["enablePersistence"]["defaultValue"] is True
     assert template["variables"]["defaultAioConfigurationSettings"] == source["variables"][
@@ -216,7 +223,7 @@ def test_preview_mcp_connection_preserves_source_contract(qualification_profile,
 def test_preview_extension_versions_exclude_connector_metadata(qualification_profile):
     targets = InitTargets("cluster", "rg", runtime_profile=qualification_profile)
     assert targets.get_extension_versions(False) == {
-        "iotOperations": {"version": "1.6.0-preview.49", "train": "integration"},
+        "iotOperations": {"version": "1.6.0-preview.56", "train": "integration"},
     }
 
 
@@ -226,7 +233,7 @@ def test_preview_mcp_feature_uses_source_contract(qualification_profile, mode):
         "cluster", "rg", runtime_profile=qualification_profile, instance_features=[f"mcp.mode={mode}"]
     ).get_ops_instance_template()
     assert parameters["features"] == {"value": {"mcp": {"mode": mode, "settings": {}}}}
-    assert template["resources"]["aioInstance"]["properties"]["features"] == "[parameters('features')]"
+    assert template["resources"]["aioInstance"]["properties"]["features"] == EXPECTED_PREVIEW_FEATURES
 
 
 @pytest.mark.parametrize("mode", ["Stable", "Preview", "Disabled"])
@@ -235,7 +242,7 @@ def test_preview_features_use_source_contract(qualification_profile, mode):
         "cluster", "rg", runtime_profile=qualification_profile, instance_features=[f"opcua.mode={mode}"]
     ).get_ops_instance_template()
     assert parameters["features"] == {"value": {"opcua": {"mode": mode, "settings": {}}}}
-    assert template["resources"]["aioInstance"]["properties"]["features"] == "[parameters('features')]"
+    assert template["resources"]["aioInstance"]["properties"]["features"] == EXPECTED_PREVIEW_FEATURES
     assert ("opcUaConnectorTemplate" in template["resources"]) == (mode != "Disabled")
     assert "effectiveFeatures" not in template["variables"]
     assert template["variables"]["TRAINS"]["iotOperations"] == "integration"
@@ -291,7 +298,7 @@ def test_bundled_preview_registered_without_changing_default_or_train():
     assert catalog.for_create().channel == RuntimeChannel.STABLE
     profile = catalog.for_create(use_preview=True)
     assert profile is PREVIEW_PROFILE
-    assert profile.source_commit == "d1021a9cb265da141e70f05695e930345e23d32e"
+    assert profile.source_commit == "3b78d835f0b778e555508bb16b87ca4bab48f136"
     assert profile.iotops_api_version == "2026-09-03-preview"
     assert profile.copy_instance_blueprint() == TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW
     assert resolve_runtime_identity(

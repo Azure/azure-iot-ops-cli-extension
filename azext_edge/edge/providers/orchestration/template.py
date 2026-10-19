@@ -775,13 +775,15 @@ TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
     },
 )
 
+# Source releases/v1.5.x/2610 @ 6e698e1f36141a7dc670607ba2f282fc7e5d4f36, release 2610.
+# GDS Manager input and reader are excluded in exported source before compilation.
 TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
-    commit_id="ed3a14b063cdd62eed67f17c3aae452290f6986f",
+    commit_id="93bbf10ae19c99eb05b000c288599e6ddff2901e",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "languageVersion": "2.0",
         "contentVersion": "1.0.0.0",
-        "metadata": {"_generator": {"name": "bicep", "version": "0.48.1.52935", "templateHash": "4071194434988009354"}},
+        "metadata": {"_generator": {"name": "bicep", "version": "0.48.1.52935", "templateHash": "6463470445611344542"}},
         "definitions": {
             "_1.AdvancedConfig": {
                 "type": "object",
@@ -1486,7 +1488,7 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
             "advancedConfig": {"$ref": "#/definitions/_1.AdvancedConfig", "defaultValue": {}},
         },
         "variables": {
-            "VERSIONS": {"iotOperations": "1.5.33", "connectors": "1.5.18"},
+            "VERSIONS": {"iotOperations": "1.5.41", "connectors": "1.5.19"},
             "TRAINS": {"iotOperations": "integration"},
             "HASH": "[coalesce(tryGet(parameters('advancedConfig'), 'resourceSuffix'), take(uniqueString(resourceGroup().id, parameters('clusterName'), parameters('clusterNamespace')), 5))]",
             "AIO_EXTENSION_SUFFIX": "[take(uniqueString(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName'))), 5)]",
@@ -1589,7 +1591,7 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
             },
             "aioInstance": {
                 "type": "Microsoft.IoTOperations/instances",
-                "apiVersion": "2026-09-01-preview",
+                "apiVersion": "2026-10-01",
                 "name": "[coalesce(parameters('aioInstanceName'), format('aio-{0}', variables('HASH')))]",
                 "location": "[parameters('clusterLocation')]",
                 "extendedLocation": "[variables('extendedLocation')]",
@@ -1605,7 +1607,7 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
             },
             "broker": {
                 "type": "Microsoft.IoTOperations/instances/brokers",
-                "apiVersion": "2026-09-01-preview",
+                "apiVersion": "2026-10-01",
                 "name": "[format('{0}/{1}', coalesce(parameters('aioInstanceName'), format('aio-{0}', variables('HASH'))), 'default')]",
                 "extendedLocation": "[variables('extendedLocation')]",
                 "properties": {
@@ -1629,7 +1631,7 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
             },
             "brokerAuthn": {
                 "type": "Microsoft.IoTOperations/instances/brokers/authentications",
-                "apiVersion": "2026-09-01-preview",
+                "apiVersion": "2026-10-01",
                 "name": "[format('{0}/{1}/{2}', coalesce(parameters('aioInstanceName'), format('aio-{0}', variables('HASH'))), 'default', 'default')]",
                 "extendedLocation": "[variables('extendedLocation')]",
                 "properties": {
@@ -1646,7 +1648,7 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
             },
             "brokerListener": {
                 "type": "Microsoft.IoTOperations/instances/brokers/listeners",
-                "apiVersion": "2026-09-01-preview",
+                "apiVersion": "2026-10-01",
                 "name": "[format('{0}/{1}/{2}', coalesce(parameters('aioInstanceName'), format('aio-{0}', variables('HASH'))), 'default', 'default')]",
                 "extendedLocation": "[variables('extendedLocation')]",
                 "properties": {
@@ -1673,7 +1675,7 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
             },
             "dataflowProfile": {
                 "type": "Microsoft.IoTOperations/instances/dataflowProfiles",
-                "apiVersion": "2026-09-01-preview",
+                "apiVersion": "2026-10-01",
                 "name": "[format('{0}/{1}', coalesce(parameters('aioInstanceName'), format('aio-{0}', variables('HASH'))), 'default')]",
                 "extendedLocation": "[variables('extendedLocation')]",
                 "properties": {"instanceCount": "[parameters('defaultDataflowInstanceCount')]"},
@@ -1681,7 +1683,7 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
             },
             "dataflowEndpoint": {
                 "type": "Microsoft.IoTOperations/instances/dataflowEndpoints",
-                "apiVersion": "2026-09-01-preview",
+                "apiVersion": "2026-10-01",
                 "name": "[format('{0}/{1}', coalesce(parameters('aioInstanceName'), format('aio-{0}', variables('HASH'))), 'default')]",
                 "extendedLocation": "[variables('extendedLocation')]",
                 "properties": {
@@ -1704,7 +1706,7 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
             },
             "artifactRegistryEndpoint": {
                 "type": "Microsoft.IoTOperations/instances/registryEndpoints",
-                "apiVersion": "2026-09-01-preview",
+                "apiVersion": "2026-10-01",
                 "name": "[format('{0}/{1}', coalesce(parameters('aioInstanceName'), format('aio-{0}', variables('HASH'))), 'default')]",
                 "extendedLocation": "[variables('extendedLocation')]",
                 "properties": {
@@ -1715,7 +1717,7 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
             },
             "opcUaConnectorTemplate": {
                 "type": "Microsoft.IoTOperations/instances/akriConnectorTemplates",
-                "apiVersion": "2026-09-01-preview",
+                "apiVersion": "2026-10-01",
                 "name": "[format('{0}/{1}', coalesce(parameters('aioInstanceName'), format('aio-{0}', variables('HASH'))), variables('opcUaConnectorTemplateName'))]",
                 "extendedLocation": "[variables('extendedLocation')]",
                 "properties": {
