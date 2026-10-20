@@ -221,6 +221,7 @@ def get_registry_mgmt_client(
 
 
 class IoTOpsMgmtApiVersion(Enum):
+    V20261101_preview = "2026-11-01-preview"
     V20261001 = "2026-10-01"
     V20260903_preview = "2026-09-03-preview"
     V20260901_preview = "2026-09-01-preview"

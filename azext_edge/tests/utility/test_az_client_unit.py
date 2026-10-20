@@ -66,6 +66,7 @@ def test_keyvault_factory_keeps_data_plane_scope(scope):
     (None, "2026-10-01"),
     ("2026-07-01", "2026-07-01"),
     ("2026-10-01", "2026-10-01"),
+    ("2026-11-01-preview", "2026-11-01-preview"),
     ("2026-09-01-preview", "2026-09-01-preview"),
     ("2026-09-03-preview", "2026-09-03-preview"),
 ])
