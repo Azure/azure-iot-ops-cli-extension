@@ -262,7 +262,6 @@ def mocked_upgrade_manager():
 @pytest.fixture
 def unbundled_upgrade_catalog(mocker):
     from azext_edge.edge.providers.orchestration.runtime_profiles import RuntimeChannel, RuntimeProfileCatalog
-    from azext_edge.edge.util.az_client import IoTOpsMgmtApiVersion
     from .test_runtime_profiles_unit import make_profile
 
     # Fixed installed-version boundaries must not move with bundled release targets.
@@ -274,7 +273,7 @@ def unbundled_upgrade_catalog(mocker):
         make_profile(
             RuntimeChannel.PREVIEW, "1.6.0-preview.49", train="integration",
             opcua_connector_version=OPCUA_CONNECTOR_VERSION,
-            iotops_api_version=IoTOpsMgmtApiVersion.V20260903_preview.value,
+            iotops_api_version="2026-09-03-preview",
         ),
     ])
     for module in ("runtime_catalog", "upgrade2"):

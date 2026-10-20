@@ -133,8 +133,11 @@ Maintain the management API selection on every new release and same-release refr
 
 1. Compare the selected profile's `iotops_api_version` in `runtime_catalog.py` with the approved release API input.
    Reuse or add the corresponding `IoTOpsMgmtApiVersion` constant in `azext_edge/edge/util/az_client.py`, and select
-   it in that profile. Preserve existing constants, the nonselected profile, and the GA default during preview-only
-   work. Providers must consume profile metadata, not duplicate release-specific API strings.
+   it in that profile. After changing the selection, search non-test code for the previous profile constant and
+   remove it when no production consumer remains; do not retain a dead enum member solely for tests. Fixed historical
+   compatibility fixtures must use the explicit API string instead. Preserve constants still used by production
+   compatibility paths, the nonselected profile, and the GA default during preview-only work. Providers must consume
+   profile metadata, not duplicate release-specific API strings.
 2. Report the management API separately from the `apiVersion` values in the compiled deployment resources.
    A user may intentionally keep an older, pinned qualification blueprint while selecting a newer management API.
    Record the approved difference and its validation status; do not silently change the source ref, refresh the
