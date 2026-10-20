@@ -53,16 +53,16 @@ def qualification_profile():
 def test_preview_source_identity_and_contract(qualification_profile):
     blueprint = TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW
     content = blueprint.content
-    assert blueprint.commit_id == "8859d09a7b4f9668f8fa03e5427bc75a83843d34"
+    assert blueprint.commit_id == "f306f5abaf891dddf7a1f9db00b13a8a742d5ad8"
     assert content
-    assert content["variables"]["VERSIONS"] == {"iotOperations": "1.6.0-preview.56", "connectors": "1.5.19"}
+    assert content["variables"]["VERSIONS"] == {"iotOperations": "1.6.0-preview.57", "connectors": "1.5.19"}
     assert content["variables"]["TRAINS"] == {"iotOperations": "integration"}
     assert qualification_profile.identity.train == "integration"
     assert qualification_profile.identity.channel == RuntimeChannel.PREVIEW
     assert set(content["resources"]) == EXPECTED_PREVIEW_RESOURCE_KEYS
     aio_resources = [r for r in content["resources"].values() if r["type"].startswith("Microsoft.IoTOperations/")]
     assert len(aio_resources) == 10
-    assert {r["apiVersion"] for r in aio_resources} == {"2026-09-03-preview"}
+    assert {r["apiVersion"] for r in aio_resources} == {"2026-11-01-preview"}
     assert content["resources"]["aioExtension"]["properties"]["autoUpgradeMinorVersion"] is False
     assert "disableOpcUaFeature" not in content["parameters"]
     assert content["definitions"]["_1.InstanceFeature"]["properties"]["settings"]["nullable"] is True
@@ -185,7 +185,7 @@ def test_preview_mcp_policy_preserves_source_contract(qualification_profile, ins
     policy = template["resources"]["mcpDefaultPolicy"]
     assert "features" not in parameters
     assert policy["type"] == "Microsoft.IoTOperations/instances/mcpAuthorizationPolicies"
-    assert policy["apiVersion"] == "2026-09-03-preview"
+    assert policy["apiVersion"] == "2026-11-01-preview"
     assert "condition" not in policy
     assert policy["properties"]["policies"] == "[_2.mcpDefaultPolicies()]"
     rules = template["functions"][0]["members"]["mcpDefaultPolicies"]["output"]["value"]
@@ -205,7 +205,7 @@ def test_preview_mcp_connection_preserves_source_contract(qualification_profile,
     connection = template["resources"]["mcpAioConnection"]
     assert "features" not in parameters
     assert "condition" not in connection
-    assert connection["apiVersion"] == "2026-09-03-preview"
+    assert connection["apiVersion"] == "2026-11-01-preview"
     assert connection["type"] == "Microsoft.IoTOperations/instances/mcpServerConnections"
     assert connection["dependsOn"] == ["aioInstance", "customLocation", "mcpDefaultPolicy"]
     assert connection["properties"]["authorization"] == {
@@ -223,7 +223,7 @@ def test_preview_mcp_connection_preserves_source_contract(qualification_profile,
 def test_preview_extension_versions_exclude_connector_metadata(qualification_profile):
     targets = InitTargets("cluster", "rg", runtime_profile=qualification_profile)
     assert targets.get_extension_versions(False) == {
-        "iotOperations": {"version": "1.6.0-preview.56", "train": "integration"},
+        "iotOperations": {"version": "1.6.0-preview.57", "train": "integration"},
     }
 
 
@@ -298,8 +298,8 @@ def test_bundled_preview_registered_without_changing_default_or_train():
     assert catalog.for_create().channel == RuntimeChannel.STABLE
     profile = catalog.for_create(use_preview=True)
     assert profile is PREVIEW_PROFILE
-    assert profile.source_commit == "3b78d835f0b778e555508bb16b87ca4bab48f136"
-    assert profile.iotops_api_version == "2026-09-03-preview"
+    assert profile.source_commit == "f306f5abaf891dddf7a1f9db00b13a8a742d5ad8"
+    assert profile.iotops_api_version == "2026-11-01-preview"
     assert profile.copy_instance_blueprint() == TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW
     assert resolve_runtime_identity(
         profile.identity.version, profile.identity.train, catalog.qualification_identities

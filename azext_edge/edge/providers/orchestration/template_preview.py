@@ -15,19 +15,19 @@ Runtime catalog registration preserves these inputs and the actual deployment tr
 MCP defaults to Preview; explicit feature modes override that generated default.
 """
 
-# selected source preview/v1.6.x/2610 @ 3b78d835f0b778e555508bb16b87ca4bab48f136
+# selected source preview/v1.6.x/2610 @ f306f5abaf891dddf7a1f9db00b13a8a742d5ad8
 # source release prev2610
 # no loaded-source redactions required
 from .template import TemplateBlueprint
 
 TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW = TemplateBlueprint(
-    commit_id="8859d09a7b4f9668f8fa03e5427bc75a83843d34",
+    commit_id="f306f5abaf891dddf7a1f9db00b13a8a742d5ad8",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "languageVersion": "2.0",
         "contentVersion": "1.0.0.0",
         "metadata": {
-            "_generator": {"name": "bicep", "version": "0.48.1.52935", "templateHash": "10161564488847393735"}
+            "_generator": {"name": "bicep", "version": "0.48.1.52935", "templateHash": "12082610186429603788"}
         },
         "definitions": {
             "_1.AdvancedConfig": {
@@ -809,7 +809,7 @@ TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW = TemplateBlueprint(
             "advancedConfig": {"$ref": "#/definitions/_1.AdvancedConfig", "defaultValue": {}},
         },
         "variables": {
-            "VERSIONS": {"iotOperations": "1.6.0-preview.56", "connectors": "1.5.19"},
+            "VERSIONS": {"iotOperations": "1.6.0-preview.57", "connectors": "1.5.19"},
             "TRAINS": {"iotOperations": "integration"},
             "HASH": "[coalesce(tryGet(parameters('advancedConfig'), 'resourceSuffix'), take(uniqueString(resourceGroup().id, parameters('clusterName'), parameters('clusterNamespace')), 5))]",
             "AIO_EXTENSION_SUFFIX": "[take(uniqueString(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName'))), 5)]",
@@ -908,7 +908,7 @@ TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW = TemplateBlueprint(
             },
             "aioInstance": {
                 "type": "Microsoft.IoTOperations/instances",
-                "apiVersion": "2026-09-03-preview",
+                "apiVersion": "2026-11-01-preview",
                 "name": "[coalesce(parameters('aioInstanceName'), format('aio-{0}', variables('HASH')))]",
                 "location": "[parameters('clusterLocation')]",
                 "extendedLocation": "[variables('extendedLocation')]",
@@ -924,7 +924,7 @@ TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW = TemplateBlueprint(
             },
             "broker": {
                 "type": "Microsoft.IoTOperations/instances/brokers",
-                "apiVersion": "2026-09-03-preview",
+                "apiVersion": "2026-11-01-preview",
                 "name": "[format('{0}/{1}', coalesce(parameters('aioInstanceName'), format('aio-{0}', variables('HASH'))), 'default')]",
                 "extendedLocation": "[variables('extendedLocation')]",
                 "properties": {
@@ -948,7 +948,7 @@ TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW = TemplateBlueprint(
             },
             "brokerAuthn": {
                 "type": "Microsoft.IoTOperations/instances/brokers/authentications",
-                "apiVersion": "2026-09-03-preview",
+                "apiVersion": "2026-11-01-preview",
                 "name": "[format('{0}/{1}/{2}', coalesce(parameters('aioInstanceName'), format('aio-{0}', variables('HASH'))), 'default', 'default')]",
                 "extendedLocation": "[variables('extendedLocation')]",
                 "properties": {
@@ -965,7 +965,7 @@ TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW = TemplateBlueprint(
             },
             "brokerListener": {
                 "type": "Microsoft.IoTOperations/instances/brokers/listeners",
-                "apiVersion": "2026-09-03-preview",
+                "apiVersion": "2026-11-01-preview",
                 "name": "[format('{0}/{1}/{2}', coalesce(parameters('aioInstanceName'), format('aio-{0}', variables('HASH'))), 'default', 'default')]",
                 "extendedLocation": "[variables('extendedLocation')]",
                 "properties": {
@@ -992,7 +992,7 @@ TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW = TemplateBlueprint(
             },
             "dataflowProfile": {
                 "type": "Microsoft.IoTOperations/instances/dataflowProfiles",
-                "apiVersion": "2026-09-03-preview",
+                "apiVersion": "2026-11-01-preview",
                 "name": "[format('{0}/{1}', coalesce(parameters('aioInstanceName'), format('aio-{0}', variables('HASH'))), 'default')]",
                 "extendedLocation": "[variables('extendedLocation')]",
                 "properties": {"instanceCount": "[parameters('defaultDataflowInstanceCount')]"},
@@ -1000,7 +1000,7 @@ TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW = TemplateBlueprint(
             },
             "dataflowEndpoint": {
                 "type": "Microsoft.IoTOperations/instances/dataflowEndpoints",
-                "apiVersion": "2026-09-03-preview",
+                "apiVersion": "2026-11-01-preview",
                 "name": "[format('{0}/{1}', coalesce(parameters('aioInstanceName'), format('aio-{0}', variables('HASH'))), 'default')]",
                 "extendedLocation": "[variables('extendedLocation')]",
                 "properties": {
@@ -1023,7 +1023,7 @@ TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW = TemplateBlueprint(
             },
             "artifactRegistryEndpoint": {
                 "type": "Microsoft.IoTOperations/instances/registryEndpoints",
-                "apiVersion": "2026-09-03-preview",
+                "apiVersion": "2026-11-01-preview",
                 "name": "[format('{0}/{1}', coalesce(parameters('aioInstanceName'), format('aio-{0}', variables('HASH'))), 'default')]",
                 "extendedLocation": "[variables('extendedLocation')]",
                 "properties": {
@@ -1034,7 +1034,7 @@ TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW = TemplateBlueprint(
             },
             "opcUaConnectorTemplate": {
                 "type": "Microsoft.IoTOperations/instances/akriConnectorTemplates",
-                "apiVersion": "2026-09-03-preview",
+                "apiVersion": "2026-11-01-preview",
                 "name": "[format('{0}/{1}', coalesce(parameters('aioInstanceName'), format('aio-{0}', variables('HASH'))), variables('opcUaConnectorTemplateName'))]",
                 "extendedLocation": "[variables('extendedLocation')]",
                 "properties": {
@@ -1066,7 +1066,7 @@ TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW = TemplateBlueprint(
             },
             "mcpDefaultPolicy": {
                 "type": "Microsoft.IoTOperations/instances/mcpAuthorizationPolicies",
-                "apiVersion": "2026-09-03-preview",
+                "apiVersion": "2026-11-01-preview",
                 "name": "[format('{0}/{1}', coalesce(parameters('aioInstanceName'), format('aio-{0}', variables('HASH'))), 'aio-mcp-policy-v1')]",
                 "extendedLocation": "[variables('extendedLocation')]",
                 "properties": {"policies": "[_2.mcpDefaultPolicies()]"},
@@ -1074,7 +1074,7 @@ TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW = TemplateBlueprint(
             },
             "mcpAioConnection": {
                 "type": "Microsoft.IoTOperations/instances/mcpServerConnections",
-                "apiVersion": "2026-09-03-preview",
+                "apiVersion": "2026-11-01-preview",
                 "name": "[format('{0}/{1}', coalesce(parameters('aioInstanceName'), format('aio-{0}', variables('HASH'))), 'aio')]",
                 "extendedLocation": "[variables('extendedLocation')]",
                 "properties": {
