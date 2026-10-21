@@ -141,6 +141,9 @@ def expand_channels(scenarios, channels="stable,preview", baselines=None, init_a
             row["init_args"] = f"{scenario['init_args']} {init_args}".strip()
             selector = "--use-preview" if channel == "preview" else ""
             row["create_args"] = f"{scenario['create_args']} {create_args} {selector}".strip()
+            # Temporary until meta-operator passes customer-managed trust settings to MCP.
+            if scenario["name"] == "trustbundle" and channel == "preview":
+                row["create_args"] = f"{row['create_args']} --feature mcp.mode=Disabled"
             row["baseline"] = None
             if row["requires_baseline"]:
                 if channel not in baselines:
