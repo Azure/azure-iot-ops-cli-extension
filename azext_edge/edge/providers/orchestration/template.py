@@ -49,14 +49,12 @@ class TemplateBlueprint(NamedTuple):
 
 
 TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
-    commit_id="8ce2157e7105f2e515f88c2fa10f5000d0f69cf4",
+    commit_id="7561bbc484cdb2d817f9260a5cff52c057482fd8",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "languageVersion": "2.0",
         "contentVersion": "1.0.0.0",
-        "metadata": {
-            "_generator": {"name": "bicep", "version": "0.48.1.52935", "templateHash": "11887568661411714443"}
-        },
+        "metadata": {"_generator": {"name": "bicep", "version": "0.48.1.52935", "templateHash": "2714551498982351971"}},
         "definitions": {
             "_1.AdvancedConfig": {
                 "type": "object",
@@ -696,7 +694,7 @@ TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
             "advancedConfig": {"$ref": "#/definitions/_1.AdvancedConfig", "defaultValue": {}},
         },
         "variables": {
-            "VERSIONS": {"certManager": "1.2.0", "secretStore": "1.5.5"},
+            "VERSIONS": {"certManager": "1.2.1", "secretStore": "1.6.0"},
             "TRAINS": {"certManager": "stable", "secretStore": "stable"},
         },
         "resources": {
@@ -775,7 +773,8 @@ TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
     },
 )
 
-# Source releases/v1.5.x/2610 @ 6e698e1f36141a7dc670607ba2f282fc7e5d4f36, release 2610.
+# Source releases/v1.5.x/2610 @ 7b3394800282382ca61654842fc466e6a0be33dd, release 2610.
+# The exported source is recompiled with the stable train release override.
 # GDS Manager input and reader are excluded in exported source before compilation.
 TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
     commit_id="93bbf10ae19c99eb05b000c288599e6ddff2901e",
@@ -783,7 +782,9 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "languageVersion": "2.0",
         "contentVersion": "1.0.0.0",
-        "metadata": {"_generator": {"name": "bicep", "version": "0.48.1.52935", "templateHash": "6463470445611344542"}},
+        "metadata": {
+            "_generator": {"name": "bicep", "version": "0.48.1.52935", "templateHash": "14744835390186523893"}
+        },
         "definitions": {
             "_1.AdvancedConfig": {
                 "type": "object",
@@ -1489,7 +1490,7 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
         },
         "variables": {
             "VERSIONS": {"iotOperations": "1.5.41", "connectors": "1.5.19"},
-            "TRAINS": {"iotOperations": "integration"},
+            "TRAINS": {"iotOperations": "stable"},
             "HASH": "[coalesce(tryGet(parameters('advancedConfig'), 'resourceSuffix'), take(uniqueString(resourceGroup().id, parameters('clusterName'), parameters('clusterNamespace')), 5))]",
             "AIO_EXTENSION_SUFFIX": "[take(uniqueString(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName'))), 5)]",
             "CUSTOM_LOCATION_NAMESPACE": "[parameters('clusterNamespace')]",
