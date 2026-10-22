@@ -51,6 +51,8 @@ from .permissions import ROLE_DEF_FORMAT_STR, PermissionManager, PrincipalType, 
 from .resource_map import IoTOperationsResourceMap
 from .resources.custom_locations import CustomLocations
 from .runtime_catalog import get_runtime_catalog
+from .runtime_profiles import RuntimeChannel
+from .deployment_policy import get_deployment_policy
 from .runtime_requirements import validate_runtime_requirements
 from .rp_namespace import HEALTH_PROVIDER, register_providers
 from .targets import InitTargets, InstancePhase
@@ -212,6 +214,8 @@ class WorkManager:
 
         if not self._targets.location:
             self._targets.location = cluster["location"]
+        if not self._apply_foundation:
+            self._targets.location = self._targets.deployment_policy.validate_location(self._targets.location)
 
     def _process_extension_dependencies(self):
         missing_exts = []
@@ -342,13 +346,19 @@ class WorkManager:
         **kwargs,
     ):
         self._dependency_requirements = ()
+        policy = get_deployment_policy(self.cmd)
         if not apply_foundation:
-            catalog = get_runtime_catalog()
+            if use_preview:
+                policy.validate_runtime(RuntimeChannel.PREVIEW)
+            catalog = get_runtime_catalog(policy.cloud_name)
             profile = catalog.for_create(use_preview=use_preview)
             self._dependency_requirements = catalog.dependency_requirements
             identity = profile.validate_overrides(version=kwargs.get("ops_version"), train=kwargs.get("ops_train"))
             validate_runtime_requirements("iot ops create", identity, kwargs, cmd=self.cmd)
             kwargs["runtime_profile"] = profile
+        kwargs["cloud_name"] = policy.cloud_name
+        if not apply_foundation:
+            policy.validate_location(kwargs.get("location"))
         self._bootstrap_ux(show_progress=show_progress)
         self._work_id = str(uuid4())
         self._work_format_str = f"aziotops.{{op}}.{self._work_id}"
