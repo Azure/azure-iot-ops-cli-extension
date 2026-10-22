@@ -371,7 +371,7 @@ def test_policy_consumes_generated_inputs_and_returns_private_copies(mocker):
     public = DeploymentPolicy("AzureCloud")
     assert public.foundation_targets == {}
     assert public.aio_configuration == {}
-    assert public.allowed_locations == ()
+    assert not public.allowed_locations
 
 
 def test_bundled_ff_source_is_pinned_separately_from_public_runtime():
