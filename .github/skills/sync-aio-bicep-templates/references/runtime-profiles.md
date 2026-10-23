@@ -29,6 +29,102 @@ Use the following layout for this repository:
 | Shared foundation | `TEMPLATE_BLUEPRINT_ENABLEMENT` | `azext_edge/edge/providers/orchestration/template.py` |
 | GA instance | `TEMPLATE_BLUEPRINT_INSTANCE` | `azext_edge/edge/providers/orchestration/template.py` |
 | Preview instance | `TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW` | `azext_edge/edge/providers/orchestration/template_preview.py` |
+| FF enablement source | `TEMPLATE_BLUEPRINT_ENABLEMENT_FAIRFAX` | `azext_edge/edge/providers/orchestration/template_fairfax.py` |
+| FF instance source | `TEMPLATE_BLUEPRINT_INSTANCE_FAIRFAX` | `azext_edge/edge/providers/orchestration/template_fairfax.py` |
+
+### Fairfax policy refresh
+
+Use the existing generated `TemplateBlueprint` representation, not a custom release-input projection or a new
+generator utility. Generate `TEMPLATE_BLUEPRINT_ENABLEMENT_FAIRFAX` and `TEMPLATE_BLUEPRINT_INSTANCE_FAIRFAX`
+in `azext_edge/edge/providers/orchestration/template_fairfax.py`, importing `TemplateBlueprint` from `.template`
+just as the preview module does. Keep Public GA, preview, shared enablement, package versions, and runtime catalog
+unchanged during an FF-only refresh, except for the FF-specific catalog registration and provenance.
+
+For `AzureUSGovernment`, select the complete FF enablement and instance blueprints, not a fixed list of deltas
+applied to Public templates. The cloud-specific catalog supplies the FF artifact identity, connector backfill,
+and reviewed management API. Keep its source version/train unchanged: a source `preview` artifact train does not
+enable the CLI's Public preview channel or preview-runtime-only commands. The default FF release occupies the
+non-preview CLI selection within the Government catalog only; it does not promote the artifact to GA or establish
+release qualification. Currently only the exact bundled FF identity has an explicit cloud mapping.
+Normal upgrade planning for additional installed baselines requires reviewed mappings, not suffix-based guessing.
+Preserve the existing internal stable-to-stable compatibility bypass separately; it does not qualify an FF
+migration or permit unreviewed target version/train overrides. Do not advertise hidden options in CLI guidance.
+
+1. Require an explicit FF ref in addition to any selected Public refs. Resolve and verify its remote commit using
+   the parent source-safety checks; never substitute another branch without approval. Record provisional inputs
+   as provisional, not release-qualified.
+2. Inspect `Deployment/fairfax/azure-iot-operations-enablement-fairfax.bicep` and
+   `Deployment/fairfax/azure-iot-operations-instance-fairfax.bicep` at that commit, including their transitive
+   imports and loaded files. Compare the complete delta against the bundled GA source. Derive dependency
+   version/train pairs, chart settings, supported locations, and runtime/API/artifact compatibility from the
+   approved handoff. Update only the FF-specific catalog inputs; never copy FF AIO defaults over the Public GA profile.
+3. Export, compile, redact, and optimize both FF sources using the parent workflow. The mandatory GDS exclusion
+   applies to the FF instance too: remove its parameter, decorator, and all readers in the exported source, then
+   recompile. Keep the unredacted evidence until validation passes. Never retain loaded-file blobs or unapproved
+   development artifacts in the generated FF module.
+   Preserve the compiler-declared `clusterLocation.allowedValues` in the FF output: the generic optimizer removes
+   this field, so save it from the fresh compile and restore that exact field in the temporary optimized output
+   before rendering. This is preservation of a source constraint, not a handwritten region override. Do not change
+   Public optimizer behavior or insert region literals in runtime policy code.
+4. Present every behavioral difference with old/new values and exact source commit/path. Obtain behavioral
+   approval before editing. Review new parameters, child-resource naming, deployment phases, management API
+   compatibility, and upgrade/backfill requirements; full generation does not wire new CLI inputs automatically.
+5. Render the complete approved FF blueprint assignments with `repr()` and Black, like GA/preview.
+   Derive each `commit_id` using the parent's transitive-provenance checks and record the selected source
+   ref/resolved commit in the module notes. Do not hand-edit generated values or infer runtime support from
+   dependency preview trains. Update independent expectations in `test_deployment_policy_unit.py` and
+   `test_template_fairfax_unit.py`. Confirm init/create/upgrade use the same cloud policy, unsupported FF preview
+   is rejected, full source parameters/resources/settings are preserved, and FF values do not leak into Public deployments.
+6. Require AST/literal equality between each FF blueprint and its own final optimized compile, including the
+   preserved source location constraint. Repeating generation from the same inputs must be byte-identical. Run the
+   deployment-policy tests and the parent template/targets/work/upgrade suites, plus runtime command
+   and preview-operation tests for any affected guards. Assert all nonselected Public generated assignments and
+   their hashes are unchanged from pre-run snapshots, and test alternating Public/FF preparation in one process.
+
+Report mock-based validation separately from live FF qualification. The latter must cover actual Schema Registry
+access, affected chart/component behavior, and approved lifecycle scenarios. Do not change package versions or
+claim publication/qualification as part of a policy refresh.
+
+After the export/ref checks, use the configured development interpreter and compiler:
+
+```shell
+az bicep build \
+  --file <ff-export>/Deployment/fairfax/azure-iot-operations-enablement-fairfax.bicep \
+  --outfile <ff-temp>/enablement.json
+az bicep build \
+  --file <ff-export>/Deployment/fairfax/azure-iot-operations-instance-fairfax.bicep \
+  --outfile <ff-temp>/instance.json
+```
+
+After source review/redactions and recompilation, run the existing optimizer in each temporary output directory.
+For the FF instance, preserve its source constraint before rendering:
+
+```python
+import json
+from pathlib import Path
+
+TEMP = Path("<ff-temp>")
+raw = json.loads((TEMP / "instance.json").read_text())
+optimized = json.loads((TEMP / "opt_instance.json").read_text())
+locations = raw["parameters"]["clusterLocation"]["allowedValues"]
+assert isinstance(locations, list) and locations
+assert all(isinstance(value, str) and value.strip() and not value.startswith("[") for value in locations)
+assert len(locations) == len(set(locations))
+optimized["parameters"]["clusterLocation"]["allowedValues"] = locations
+(TEMP / "opt_instance.json").write_text(json.dumps(optimized, indent=2))
+```
+
+Render the two complete `TemplateBlueprint(commit_id=..., content=...)` assignments into `template_fairfax.py`
+with the parent's `repr()` plus Black procedure. Use the same per-assignment AST equality, loaded-file/GDS
+scans, provenance checks, and source-literal currency validation as the selected GA/preview blueprints.
+
+Use temporary output for the behavioral review first; write the final destination only after approval. All inputs,
+including release metadata and transitive Bicep dependencies, must come from the same export. Missing required
+inputs or unresolved literals block activation; do not fill gaps from Public templates or previous FF pins.
+Review newly required FF settings for create, explicit overrides, and upgrade handling rather than silently ignoring
+a changed contract. Upgrade is not an ARM template redeployment: new resources/expressions may need explicit
+migration/backfill work, and ARM expressions must never be sent as literal extension configuration.
+An FF-only input refresh does not require regenerating unchanged Public GA/preview blueprints.
 
 The preview module imports `TemplateBlueprint` from `.template`; do not duplicate the class, helpers, or shared
 foundation. Do not synthesize preview by copying the GA dictionary and changing its version/train.

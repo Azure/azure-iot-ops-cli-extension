@@ -46,6 +46,7 @@ from .resources.connector_templates import ConnectorTemplates
 from .resources.instances import SECRET_SYNC_RESOURCE_TYPE, SPC_RESOURCE_TYPE, Instances
 from .targets import InitTargets
 from .runtime_catalog import get_runtime_catalog
+from .deployment_policy import get_deployment_policy
 from .runtime_profiles import (
     RuntimeChannel,
     RuntimeIdentity,
@@ -139,13 +140,16 @@ class UpgradeManager:
         self.instance_record = self.instances.show(
             name=self.instance_name, resource_group_name=self.resource_group_name
         )
-        self.runtime_catalog = get_runtime_catalog()
+        policy = get_deployment_policy(self.cmd)
+        self.runtime_catalog = get_runtime_catalog(policy.cloud_name)
         self.runtime_context = self.instances.get_runtime_context(
             self.instance_record, self.runtime_catalog.qualification_identities,
             allow_unbundled_integration=True,
         )
         self.runtime_context.require_upgradeable()
         self.runtime_profile = self.runtime_catalog.for_upgrade(self.runtime_context.identity)
+        policy.validate_runtime(self.runtime_profile.channel)
+        policy.validate_location(self.instance_record.get("location"))
         self.instance_record = self.instances.use_runtime_profile(self.runtime_profile, self.instance_record)
         self.registry_endpoints = RegistryEndpoints(self.cmd, instances=self.instances)
         self.connector_templates = ConnectorTemplates(self.cmd, instances=self.instances)
@@ -155,6 +159,7 @@ class UpgradeManager:
             resource_group_name=resource_group_name,
             adr_namespace_resource_id=adr_namespace_resource_id,
             runtime_profile=self.runtime_profile,
+            cloud_name=policy.cloud_name,
         )
         self.secretsync_migration = SecretSyncMigrationManager(
             cmd=self.cmd,
@@ -191,14 +196,29 @@ class UpgradeManager:
             if not self.resource_map.connected_cluster.connected:
                 raise ValidationError(f"Cluster {self.resource_map.connected_cluster.cluster_name} is not connected.")
 
+            extensions_map = self._get_extensions_for_plan()
+            override_map = build_override_map(**override_kwargs)
+            policy = self.targets.deployment_policy
+            ops_extension = extensions_map.get(EXTENSION_TYPE_OPS)
+            if policy.is_fairfax and ops_extension:
+                if not self.force and self.runtime_context.identity.cloud_name != policy.cloud_name:
+                    validate_upgrade_boundary(self.runtime_context.identity, self.runtime_profile.identity)
+                ops_override = override_map.setdefault(EXTENSION_MONIKER_OPS, ConfigOverride())
+                self.runtime_profile.validate_overrides(version=ops_override.version, train=ops_override.train)
+                policy.merge_aio_configuration(ops_override.config)
+                current_config = ops_extension["properties"].get("configurationSettings") or {}
+                ops_override.config.update({
+                    key: value for key, value in policy.aio_configuration.items()
+                    if current_config.get(key) != value
+                })
             state = ClusterUpgradeState(
-                extensions_map=self._get_extensions_for_plan(),
+                extensions_map=extensions_map,
                 init_version_map={
                     **self.targets.get_extension_versions(),
                     **self.targets.get_extension_versions(False),
                 },
                 desired_config_map=self.get_desired_config(),
-                override_map=build_override_map(**override_kwargs),
+                override_map=override_map,
                 instance=self.instance_record,
                 adr_namespace_resource_id=self.targets.adr_namespace_resource_id,
                 registry_endpoint_check=self._check_default_registry_needed,

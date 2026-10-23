@@ -10,6 +10,7 @@ from typing import Dict, Tuple
 
 from ...util import parse_kvp_nargs
 from .runtime import OperationRequirements, ParameterRequirement
+from .deployment_policy import get_deployment_policy
 
 
 # Register only communicated restrictions; a Preview help label alone is not a
@@ -38,6 +39,8 @@ def validate_runtime_requirements(command: str, identity, arguments: dict, cmd=N
     that snapshot also avoids mistaking handler defaults/renamed arguments for user
     requests. Direct provider callers retain validation of their supplied arguments.
     """
+    if cmd is not None:
+        get_deployment_policy(cmd).validate_runtime(identity.channel)
     requirements, parameters = get_runtime_requirements(command, cmd)
     if requirements is not None:
         requirements.validate_identity(identity)
