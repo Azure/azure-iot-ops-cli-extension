@@ -544,7 +544,7 @@ class WorkManager:
 
                 self._complete_step(
                     category=WorkCategoryKey.DEPLOY_IOT_OPS,
-                    completed_step=WorkStepKey.DEPLOY_INSTANCE,
+                    completed_step=WorkStepKey.DEPLOY_RESOURCES,
                 )
 
             return self._get_user_result()
