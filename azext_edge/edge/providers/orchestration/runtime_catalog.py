@@ -20,10 +20,6 @@ from .template_preview import TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW
 from .template_fairfax import TEMPLATE_BLUEPRINT_INSTANCE_FAIRFAX
 
 
-# Keep the existing GA-bound blueprint and its actual train unchanged. In an alpha
-# build this may still deploy from integration; it is not silently promoted to stable.
-# Register the preview source as supplied, including its actual integration train.
-# Registration selects release inputs; it is not a claim of live qualification.
 PREVIEW_PROFILE: Optional[RuntimeProfile] = RuntimeProfile(
     channel=RuntimeChannel.PREVIEW,
     release="prev2610",
@@ -58,7 +54,7 @@ def get_runtime_catalog(cloud_name: str = CLOUD_AZURE_PUBLIC) -> RuntimeProfileC
         channel=RuntimeChannel.STABLE,
         release=str(AIO_RELEASE),
         source_ref="releases/v1.5.x/2610",
-        source_commit="6e698e1f36141a7dc670607ba2f282fc7e5d4f36",
+        source_commit="7b3394800282382ca61654842fc466e6a0be33dd",
         instance_blueprint=TEMPLATE_BLUEPRINT_INSTANCE,
         opcua_connector_version=OPCUA_CONNECTOR_VERSION,
     )
