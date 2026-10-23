@@ -7,6 +7,7 @@
 import json
 import re
 from typing import Optional
+from urllib.parse import parse_qs, urlsplit
 
 import pytest
 import responses
@@ -616,18 +617,168 @@ class TestSetupUserRoleAssignments:
             )
 
 
-class TestNormalizeUserObjectIds:
-    def test_normalizes_and_deduplicates(self):
-        assert LiveData._normalize_user_object_ids(
+class TestNormalizeObjectIds:
+    @pytest.mark.parametrize("principal_kind", ["user", "subscriber"])
+    def test_normalizes_and_deduplicates(self, principal_kind):
+        assert LiveData._normalize_object_ids(
             [
                 "AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
                 "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
-            ]
+            ],
+            principal_kind,
         ) == ["aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]
 
-    def test_invalid_id_raises(self):
-        with pytest.raises(ValidationError, match="Invalid Microsoft Entra user object ID"):
-            LiveData._normalize_user_object_ids(["not-a-guid"])
+    @pytest.mark.parametrize("principal_kind", ["user", "subscriber"])
+    def test_invalid_id_raises(self, principal_kind):
+        with pytest.raises(ValidationError, match=f"Invalid Microsoft Entra {principal_kind} object ID"):
+            LiveData._normalize_object_ids(["not-a-guid"], principal_kind)
+
+
+class TestSetupSubscriberRoleAssignments:
+    PRINCIPAL_1 = "11111111-1111-1111-1111-111111111111"
+    PRINCIPAL_2 = "22222222-2222-2222-2222-222222222222"
+
+    @pytest.mark.parametrize("ra_scope", list(LiveDataRoleScope))
+    def test_assigns_subscribers_at_selected_scope(self, mocked_cmd, mocker, ra_scope):
+        provider = LiveData(mocked_cmd)
+        manager = mocker.patch.object(provider, "_permission_manager").return_value
+        manager.ensure_role_assignment.side_effect = [
+            ({"id": "/assignments/new"}, True),
+            ({"id": "/assignments/existing"}, False),
+        ]
+        eg_ctx = _make_eg_ctx()
+        scope = provider._role_scope(eg_ctx, ra_scope, "topic")
+
+        result = provider._setup_subscriber_role_assignments(
+            eg_ctx, ra_scope, "topic", [self.PRINCIPAL_1, self.PRINCIPAL_2],
+        )
+
+        assert result == {
+            "roleId": EG_TOPICSPACES_SUBSCRIBER_ROLE_ID,
+            "scope": scope,
+            "preservedOnDisable": ra_scope == LiveDataRoleScope.NAMESPACE,
+            "assignments": [
+                {"principalId": self.PRINCIPAL_1, "assignmentId": "/assignments/new", "created": True},
+                {"principalId": self.PRINCIPAL_2, "assignmentId": "/assignments/existing", "created": False},
+            ],
+        }
+        assert [call.kwargs for call in manager.ensure_role_assignment.call_args_list] == [
+            {
+                "scope": scope,
+                "principal_id": principal,
+                "role_def_id": (
+                    f"/subscriptions/{eg_ctx.subscription_id}/providers/Microsoft.Authorization/"
+                    f"roleDefinitions/{EG_TOPICSPACES_SUBSCRIBER_ROLE_ID}"
+                ),
+                "principal_type": None,
+            }
+            for principal in [self.PRINCIPAL_1, self.PRINCIPAL_2]
+        ]
+        manager.delete_role_assignment.assert_not_called()
+
+    @pytest.mark.parametrize("cleanup_fails", [False, True])
+    def test_failure_rolls_back_only_new_subscribers(self, mocked_cmd, mocker, cleanup_fails):
+        provider = LiveData(mocked_cmd)
+        manager = mocker.patch.object(provider, "_permission_manager").return_value
+        manager.ensure_role_assignment.side_effect = [
+            ({"id": "/assignments/existing"}, False),
+            ({"id": "/assignments/new"}, True),
+            HttpResponseError(message="denied"),
+        ]
+        if cleanup_fails:
+            manager.delete_role_assignment.side_effect = HttpResponseError(message="cleanup denied")
+        principal_3 = "33333333-3333-3333-3333-333333333333"
+        with pytest.raises(ValidationError) as exc:
+            provider._setup_subscriber_role_assignments(
+                _make_eg_ctx(), LiveDataRoleScope.NAMESPACE, "topic",
+                [self.PRINCIPAL_1, self.PRINCIPAL_2, principal_3],
+            )
+
+        message = str(exc.value)
+        assert principal_3 in message
+        assert EG_TOPICSPACES_SUBSCRIBER_ROLE_ID in message
+        assert "/assignments/new" in message
+        assert ("Cleanup failed" if cleanup_fails else "Rolled back") in message
+        manager.delete_role_assignment.assert_called_once_with("/assignments/new")
+
+    def test_missing_assignment_id_raises(self, mocked_cmd, mocker):
+        provider = LiveData(mocked_cmd)
+        manager = mocker.patch.object(provider, "_permission_manager").return_value
+        manager.ensure_role_assignment.return_value = ({}, True)
+        with pytest.raises(ValidationError, match="no assignment Id was returned"):
+            provider._setup_subscriber_role_assignments(
+                _make_eg_ctx(), LiveDataRoleScope.NAMESPACE, "topic", [self.PRINCIPAL_1],
+            )
+
+    @pytest.mark.parametrize("government", [False, True])
+    @pytest.mark.parametrize("ra_scope", list(LiveDataRoleScope))
+    def test_requests_omit_principal_type_and_reenable_is_additive(
+        self, mocked_cmd, mocked_responses, mocker, government, ra_scope,
+    ):
+        endpoint = BASE_URL
+        if government:
+            endpoint = "https://management.usgovcloudapi.net"
+            mocked_cmd.cli_ctx.cloud.name = "AzureUSGovernment"
+            mocked_cmd.cli_ctx.cloud.endpoints.resource_manager = endpoint + "/"
+        token = mocker.patch("azext_edge.edge.util.az_client.AZURE_CLI_CREDENTIAL.get_token")
+        token.return_value.token = "test-token"
+        token.return_value.expires_on = 9999999999
+        token.return_value.refresh_on = None
+        eg_ctx = _make_eg_ctx()
+        subscription = "33333333-3333-3333-3333-333333333333"
+        eg_ctx = eg_ctx._replace(
+            subscription_id=subscription,
+            resource_id=eg_ctx.resource_id.replace(ZEROED_SUBSCRIPTION, subscription),
+        )
+        provider = LiveData(mocked_cmd)
+        scope = provider._role_scope(eg_ctx, ra_scope, "topic")
+        role_def_id = (
+            f"/subscriptions/{subscription}/providers/Microsoft.Authorization/"
+            f"roleDefinitions/{EG_TOPICSPACES_SUBSCRIBER_ROLE_ID}"
+        )
+        url = f"{endpoint}{scope}/providers/Microsoft.Authorization/roleAssignments"
+        assignments = {}
+
+        def list_assignments(request):
+            principal = parse_qs(urlsplit(request.url).query)["$filter"][0].split("'")[1]
+            return 200, {}, json.dumps({"value": [assignments[principal]] if principal in assignments else []})
+
+        def create_assignment(request):
+            properties = json.loads(request.body)["properties"]
+            assert properties == {
+                "principalId": self.PRINCIPAL_1 if not assignments else self.PRINCIPAL_2,
+                "roleDefinitionId": role_def_id,
+            }
+            principal = properties["principalId"]
+            assignment = {
+                "id": f"{scope}/providers/Microsoft.Authorization/roleAssignments/{principal}",
+                "properties": {**properties, "scope": scope},
+            }
+            assignments[principal] = assignment
+            return 201, {}, json.dumps(assignment)
+
+        mocked_responses.add_callback(responses.GET, url, callback=list_assignments)
+        mocked_responses.add_callback(
+            responses.PUT, re.compile(re.escape(url) + "/[^/?]+"), callback=create_assignment,
+        )
+        first = provider._setup_subscriber_role_assignments(
+            eg_ctx, ra_scope, "topic", [self.PRINCIPAL_1],
+        )
+        second = provider._setup_subscriber_role_assignments(
+            eg_ctx, ra_scope, "topic", [self.PRINCIPAL_1, self.PRINCIPAL_2],
+        )
+        third = provider._setup_subscriber_role_assignments(
+            eg_ctx, ra_scope, "topic", [self.PRINCIPAL_2],
+        )
+
+        assert first["assignments"][0]["created"] is True
+        assert second["assignments"][0]["assignmentId"] == first["assignments"][0]["assignmentId"]
+        assert [assignment["created"] for assignment in second["assignments"]] == [False, True]
+        assert third["assignments"][0]["created"] is False
+        assert set(assignments) == {self.PRINCIPAL_1, self.PRINCIPAL_2}
+        assert [call.request.method for call in mocked_responses.calls] == ["GET", "PUT", "GET", "GET", "PUT", "GET"]
+        assert all(call.request.url.startswith(endpoint + scope) for call in mocked_responses.calls)
+        assert token.call_args.args == (endpoint + "/.default",)
 
 
 # ---------------------------------------------------------------------------
@@ -1102,6 +1253,7 @@ class TestEnable:
             return_value={"instance": {"principalId": "pub-pid"}, "adrNamespace": {"principalId": "adr-pid"}},
         )
         setup_user_ra = mocker.patch.object(LiveData, "_setup_user_role_assignments")
+        setup_subscriber_ra = mocker.patch.object(LiveData, "_setup_subscriber_role_assignments")
         _register_enable_mocks(mocked_responses, instance_name, rg, ns_name, adr_ns, eg_rid, hostname, instance_rid)
 
         provider = LiveData(cmd=mocked_cmd)
@@ -1118,6 +1270,7 @@ class TestEnable:
         assert result["eventGrid"]["namespace"]["name"] == ns_name
         assert result["deviceRegistryNamespace"]["outboundIdentity"] == {"type": "SystemAssigned"}
         setup_user_ra.assert_not_called()
+        setup_subscriber_ra.assert_not_called()
 
     def test_cloud_gate_blocks(self, mocked_cmd, mocker):
         cloud = mocker.MagicMock()
@@ -1140,18 +1293,150 @@ class TestEnable:
         )
         setup_ra = mocker.patch.object(LiveData, "_setup_role_assignments")
         setup_user_ra = mocker.patch.object(LiveData, "_setup_user_role_assignments")
+        setup_subscriber_ra = mocker.patch.object(LiveData, "_setup_subscriber_role_assignments")
         _register_enable_mocks(mocked_responses, instance_name, rg, ns_name, adr_ns, eg_rid, hostname, instance_rid)
 
         provider = LiveData(cmd=mocked_cmd)
         result = provider.enable(
             name=instance_name, resource_group_name=rg, eg_resource_id=eg_rid,
             user_object_ids=["not-a-guid"],
+            subscriber_object_ids=["also-not-a-guid"],
             skip_role_assignments=True, wait_sec=0,
         )
         assert "roleAssignments" not in result
         setup_ra.assert_not_called()
         setup_user_ra.assert_not_called()
+        setup_subscriber_ra.assert_not_called()
         assert "--skip-ra takes precedence" in caplog.text
+        assert "--subscriber-object-ids" in caplog.text
+
+    @pytest.mark.parametrize("ra_scope", list(LiveDataRoleScope))
+    def test_subscribers_in_result_preserve_adr_and_user_assignments(
+        self, mocked_cmd, mocked_responses, mocker, ra_scope,
+    ):
+        rg, instance_name, ns_name = "rg", "instance", "eg"
+        adr_ns = "adr"
+        eg_rid = _build_eg_resource_id(ns_name, rg)
+        instance_rid = _build_instance_response(instance_name, rg)["id"]
+        mocker.patch.object(LiveData, "_resolve_ops_extension_identity", return_value="pub-pid")
+        mocker.patch.object(
+            LiveData, "_setup_role_assignments",
+            return_value={"instance": {"principalId": "pub-pid"}, "adrNamespace": {"principalId": "adr-pid"}},
+        )
+        user_ra = mocker.patch.object(LiveData, "_setup_user_role_assignments", return_value={"roleId": "reader"})
+        _register_enable_mocks(
+            mocked_responses, instance_name, rg, ns_name, adr_ns, eg_rid, "eg.example.com", instance_rid,
+        )
+        provider = LiveData(mocked_cmd)
+        manager = mocker.patch.object(provider, "_permission_manager").return_value
+        manager.ensure_role_assignment.return_value = ({"id": "/assignments/subscriber"}, True)
+        subscriber = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+
+        result = provider.enable(
+            instance_name, rg, eg_rid, ra_scope=ra_scope.value,
+            user_object_ids=[subscriber],
+            subscriber_object_ids=[subscriber.upper(), subscriber],
+            adr_role_ids=["custom-adr-role"],
+            wait_sec=0,
+        )
+
+        assert result["roleAssignments"]["instance"]["principalId"] == "pub-pid"
+        assert result["roleAssignments"]["adrNamespace"]["principalId"] == "adr-pid"
+        assert result["roleAssignments"]["users"] == {"roleId": "reader"}
+        subscribers = result["roleAssignments"]["subscribers"]
+        assert subscribers["roleId"] == EG_TOPICSPACES_SUBSCRIBER_ROLE_ID
+        assert subscribers["preservedOnDisable"] == (ra_scope == LiveDataRoleScope.NAMESPACE)
+        assert subscribers["assignments"] == [
+            {"principalId": subscriber, "assignmentId": "/assignments/subscriber", "created": True},
+        ]
+        assert subscribers["scope"] == provider._role_scope(
+            _make_eg_ctx(ns_name, rg), ra_scope, result["eventGrid"]["topicSpace"]["name"],
+        )
+        manager.ensure_role_assignment.assert_called_once()
+        user_ra.assert_called_once()
+
+    @pytest.mark.parametrize("ra_scope", list(LiveDataRoleScope))
+    @pytest.mark.parametrize("with_subscribers", [True, False])
+    @pytest.mark.parametrize("reader_failure", ["first", "later", "rollback-failure", "missing-id"])
+    def test_reader_failure_reports_retained_subscribers(
+        self, mocked_cmd, mocked_responses, mocker, ra_scope, with_subscribers, reader_failure,
+    ):
+        rg, instance_name, ns_name, adr_ns = "rg", "instance", "eg", "adr"
+        eg_rid = _build_eg_resource_id(ns_name, rg)
+        instance_rid = _build_instance_response(instance_name, rg)["id"]
+        mocker.patch.object(LiveData, "_resolve_ops_extension_identity", return_value="pub-pid")
+        mocker.patch.object(
+            LiveData, "_setup_role_assignments", return_value={"instance": {}, "adrNamespace": {}},
+        )
+        _register_enable_mocks(
+            mocked_responses, instance_name, rg, ns_name, adr_ns, eg_rid, "eg.example.com", instance_rid,
+        )
+        reader_manager = mocker.patch(
+            "azext_edge.edge.providers.orchestration.live_data.PermissionManager",
+        ).return_value
+        reader_manager.ensure_role_assignment.side_effect = HttpResponseError(message="Reader denied")
+        if reader_failure != "first":
+            last_result = (
+                ({}, True) if reader_failure == "missing-id" else HttpResponseError(message="Reader denied")
+            )
+            reader_manager.ensure_role_assignment.side_effect = [
+                ({"id": "/assignments/new-reader"}, True),
+                last_result,
+            ]
+        if reader_failure == "rollback-failure":
+            reader_manager.delete_role_assignment.side_effect = HttpResponseError(message="cleanup denied")
+        provider = LiveData(mocked_cmd)
+        eg_manager = mocker.patch.object(provider, "_permission_manager").return_value
+        eg_manager.ensure_role_assignment.side_effect = [
+            ({"id": "/assignments/new-subscriber"}, True),
+            ({"id": "/assignments/existing-subscriber"}, False),
+        ]
+        object_ids = [
+            "11111111-1111-1111-1111-111111111111",
+            "22222222-2222-2222-2222-222222222222",
+        ]
+
+        with pytest.raises(ValidationError) as exc:
+            provider.enable(
+                instance_name, rg, eg_rid, ra_scope=ra_scope.value,
+                user_object_ids=object_ids,
+                subscriber_object_ids=object_ids if with_subscribers else None,
+                wait_sec=0,
+            )
+
+        message = str(exc.value)
+        assert "No role assignments were created earlier in this operation." not in message
+        assert LIVE_DATA_USER_ROLE_ID in message or reader_failure == "missing-id"
+        if reader_failure == "first":
+            assert "No new role assignments were created earlier in this assignment batch." in message
+            reader_manager.delete_role_assignment.assert_not_called()
+        else:
+            assert "/assignments/new-reader" in message
+            assert ("Cleanup failed" if reader_failure == "rollback-failure" else "Rolled back") in message
+            reader_manager.delete_role_assignment.assert_called_once_with("/assignments/new-reader")
+        if with_subscribers:
+            assert isinstance(exc.value.__cause__, ValidationError)
+            assert "/assignments/new-subscriber" in message
+            assert "/assignments/existing-subscriber" in message
+            assert "Retained Subscriber assignment IDs (new or pre-existing)" in message
+            assert "No Subscriber assignments were rolled back" in message
+            assert "az role assignment delete --ids" in message
+            expected_scope = eg_rid
+            if ra_scope == LiveDataRoleScope.TOPIC_SPACE:
+                expected_scope += f"/topicSpaces/{get_live_data_topic_space_name(instance_rid)}"
+            assert f"remain in place at scope '{expected_scope}'" in message
+            assert eg_manager.ensure_role_assignment.call_count == 2
+        else:
+            assert "Retained Subscriber assignment IDs" not in message
+            eg_manager.ensure_role_assignment.assert_not_called()
+        eg_manager.delete_role_assignment.assert_not_called()
+
+    def test_invalid_subscriber_rejected_before_any_resource_requests(self, mocked_cmd, mocked_responses):
+        with pytest.raises(ValidationError, match="Invalid Microsoft Entra subscriber object ID"):
+            LiveData(mocked_cmd).enable(
+                "instance", "rg", "eg", subscriber_object_ids=["not-a-guid"],
+            )
+        assert not mocked_responses.calls
 
     def test_user_role_assignments_in_result(self, mocked_cmd, mocked_responses: responses, mocker):
         rg = generate_random_string()
@@ -1265,6 +1550,149 @@ class TestShow:
                 LiveData(mocked_cmd).show("instance", "rg")
         assert all(call.request.method == "GET" for call in mocked_responses.calls)
 
+    @pytest.mark.parametrize("government", [False, True])
+    def test_subscriber_assignments_output_and_pagination(
+        self, mocked_cmd, mocked_responses, mocker, government,
+    ):
+        endpoint = "https://management.usgovcloudapi.net" if government else BASE_URL
+        if government:
+            mocked_cmd.cli_ctx.cloud.name = "AzureUSGovernment"
+            mocked_cmd.cli_ctx.cloud.endpoints.resource_manager = endpoint + "/"
+        token = mocker.patch("azext_edge.edge.util.az_client.AZURE_CLI_CREDENTIAL.get_token")
+        token.return_value.token = "test-token"
+        token.return_value.expires_on = 9999999999
+        token.return_value.refresh_on = None
+        subscription = "11111111-1111-1111-1111-111111111111"
+        eg_id = _build_eg_resource_id("eg", "rg", subscription)
+        topic_name = get_live_data_topic_space_name(_build_instance_response("instance", "rg")["id"])
+        self._register_show_mocks(
+            mocked_responses, "instance", "rg", "eg", "instance-adr-ns", eg_id, "eg.example.com",
+            topic_name, endpoint=endpoint,
+        )
+        if government:
+            dataflow_url = _build_iotops_endpoint(
+                "instance", "rg", sub_resource=f"/dataflowEndpoints/{LIVE_DATA_ENDPOINT_NAME}",
+            ).replace(BASE_URL, endpoint, 1)
+            mocked_responses.replace(
+                responses.GET, dataflow_url,
+                json=_build_dataflow_endpoint_response("instance", "eg.example.com", authentication={
+                    "method": "SystemAssignedManagedIdentity",
+                    "systemAssignedManagedIdentitySettings": {"audience": "https://eventgrid.azure.us"},
+                }),
+            )
+        role_id = (
+            f"/subscriptions/{subscription}/providers/Microsoft.Authorization/"
+            f"roleDefinitions/{EG_TOPICSPACES_SUBSCRIBER_ROLE_ID}"
+        )
+        expected = {}
+        for scope in [eg_id, f"{eg_id}/topicSpaces/{topic_name}"]:
+            def assignment(name, principal_type="User", **properties):
+                return {
+                    "id": f"{scope}/providers/Microsoft.Authorization/roleAssignments/{name}",
+                    "properties": {
+                        "principalId": name, "principalType": principal_type, "scope": scope,
+                        "roleDefinitionId": role_id, **properties,
+                    },
+                }
+
+            user = assignment("user", scope=scope.upper(), roleDefinitionId=role_id.upper())
+            group = assignment("group", "Group")
+            adr = assignment("adr", "ServicePrincipal")
+            url = f"{endpoint}{scope}/providers/Microsoft.Authorization/roleAssignments"
+            next_url = url + "?api-version=2022-04-01&$skiptoken=next"
+            mocked_responses.replace(
+                responses.GET, url,
+                json={
+                    "value": [
+                        user,
+                        assignment("wrong-role", roleDefinitionId=role_id + "-other"),
+                        assignment("publisher", roleDefinitionId=role_id.replace(
+                            EG_TOPICSPACES_SUBSCRIBER_ROLE_ID, EG_TOPICSPACES_PUBLISHER_ROLE_ID,
+                        )),
+                        assignment("inherited", scope=f"/subscriptions/{subscription}"),
+                        assignment("unrelated", scope=eg_id + "/topicSpaces/other-instance"),
+                    ],
+                    "nextLink": next_url,
+                },
+                match=[responses.matchers.query_param_matcher({"$filter": "atScope()"}, strict_match=False)],
+            )
+            mocked_responses.add(
+                responses.GET, next_url, json={"value": [group, adr]},
+                match=[responses.matchers.query_param_matcher({"$skiptoken": "next"}, strict_match=False)],
+            )
+            expected[scope] = [
+                {
+                    "principalId": item["properties"]["principalId"], "assignmentId": item["id"],
+                    "principalType": item["properties"]["principalType"],
+                }
+                for item in [user, group, adr]
+            ]
+
+        result = LiveData(mocked_cmd).show("instance", "rg")
+
+        assert result["enabled"] is True
+        assert result["eventGrid"]["namespace"]["subscriberAssignments"] == expected[eg_id]
+        assert result["eventGrid"]["topicSpace"]["subscriberAssignments"] == expected[
+            f"{eg_id}/topicSpaces/{topic_name}"
+        ]
+        assert result["deviceRegistryNamespace"]["userReaderAssignments"] == []
+        role_requests = [
+            call.request for call in mocked_responses.calls
+            if "/Microsoft.Authorization/roleAssignments" in call.request.url
+        ]
+        assert len(role_requests) == 5
+        assert all(request.url.startswith(endpoint) for request in role_requests)
+        assert sum(f"/subscriptions/{subscription}/" in request.url for request in role_requests) == 4
+        assert token.call_args.args == (endpoint + "/.default",)
+        assert all(call.request.method == "GET" for call in mocked_responses.calls)
+
+    @pytest.mark.parametrize("status", [403, 404, 500])
+    @pytest.mark.parametrize("ra_scope", list(LiveDataRoleScope))
+    def test_subscriber_assignment_errors_are_surfaced(
+        self, mocked_cmd, mocked_responses, caplog, status, ra_scope,
+    ):
+        eg_id = _build_eg_resource_id("eg", "rg")
+        topic_name = get_live_data_topic_space_name(_build_instance_response("instance", "rg")["id"])
+        self._register_show_mocks(
+            mocked_responses, "instance", "rg", "eg", "instance-adr-ns", eg_id, "eg.example.com", topic_name,
+        )
+        scope = eg_id if ra_scope == LiveDataRoleScope.NAMESPACE else f"{eg_id}/topicSpaces/{topic_name}"
+        url = f"{BASE_URL}{scope}/providers/Microsoft.Authorization/roleAssignments"
+        mocked_responses.replace(
+            responses.GET, url, json={"error": {"code": "AssignmentReadFailed", "message": "unavailable"}},
+            status=status,
+        )
+        mocked_responses.assert_all_requests_are_fired = False
+
+        with pytest.raises(HttpResponseError) as exc:
+            LiveData(mocked_cmd).show("instance", "rg")
+
+        assert exc.value.status_code == status
+        assert "Event Grid namespace 'eg' not found" not in caplog.text
+        assert all(call.request.method == "GET" for call in mocked_responses.calls)
+
+    def test_missing_topic_space_keeps_namespace_subscriber_list(self, mocked_cmd, mocked_responses):
+        eg_id = _build_eg_resource_id("eg", "rg")
+        topic_name = get_live_data_topic_space_name(_build_instance_response("instance", "rg")["id"])
+        self._register_show_mocks(
+            mocked_responses, "instance", "rg", "eg", "instance-adr-ns", eg_id, "eg.example.com", topic_name,
+        )
+        topic_url = f"{BASE_URL}{eg_id}/topicSpaces/{topic_name}"
+        mocked_responses.replace(
+            responses.GET, topic_url + f"?api-version={EVENTGRID_API_VERSION}",
+            json={"error": {"code": "ResourceNotFound"}}, status=404,
+        )
+        assignment_url = topic_url + "/providers/Microsoft.Authorization/roleAssignments"
+        mocked_responses.remove(responses.GET, assignment_url)
+
+        result = LiveData(mocked_cmd).show("instance", "rg")
+
+        assert result["enabled"] is False
+        assert result["eventGrid"]["namespace"]["subscriberAssignments"] == []
+        assert result["eventGrid"]["topicSpace"]["exists"] is False
+        assert result["eventGrid"]["topicSpace"]["subscriberAssignments"] == []
+        assert not any(call.request.url.startswith(assignment_url) for call in mocked_responses.calls)
+
     def _register_show_mocks(
         self,
         mocked_responses,
@@ -1277,6 +1705,7 @@ class TestShow:
         ts_name,
         observability_enabled: Optional[bool] = True,
         mixed_case: bool = False,
+        endpoint: str = BASE_URL,
     ):
         cl_id = MOCK_EXTENDED_LOCATION["name"]
         obs_endpoint = {
@@ -1284,11 +1713,11 @@ class TestShow:
             "scopeId": instance_name, "resourceId": eg_rid,
         }
         mocked_responses.add(
-            method=responses.GET, url=_build_iotops_endpoint(instance_name, rg),
+            method=responses.GET, url=_build_iotops_endpoint(instance_name, rg).replace(BASE_URL, endpoint, 1),
             json=_build_instance_response(instance_name, rg, adr_namespace_name=adr_ns), status=200,
         )
         mocked_responses.add(
-            method=responses.GET, url=_build_adr_endpoint(adr_ns, rg),
+            method=responses.GET, url=_build_adr_endpoint(adr_ns, rg).replace(BASE_URL, endpoint, 1),
             json=_build_adr_namespace_response(
                 adr_ns, rg, identity_type="SystemAssigned", principal_id="adr-pid",
                 observability_endpoints={
@@ -1301,11 +1730,12 @@ class TestShow:
             status=200,
         )
         mocked_responses.add(
-            method=responses.GET, url=_build_eg_endpoint(ns_name, rg),
+            method=responses.GET, url=f"{endpoint}{eg_rid}?api-version={EVENTGRID_API_VERSION}",
             json=_build_eg_namespace_response(ns_name, rg, mqtt_hostname=hostname), status=200,
         )
         mocked_responses.add(
-            method=responses.GET, url=_build_eg_endpoint(ns_name, rg, sub_resource=f"/topicSpaces/{ts_name}"),
+            method=responses.GET,
+            url=f"{endpoint}{eg_rid}/topicSpaces/{ts_name}?api-version={EVENTGRID_API_VERSION}",
             json={
                 "id": "/fake", "name": ts_name,
                 "properties": {"topicTemplates": [LIVE_DATA_TOPIC_TEMPLATE.format(scope_id=instance_name)]},
@@ -1314,7 +1744,9 @@ class TestShow:
         )
         mocked_responses.add(
             method=responses.GET,
-            url=_build_iotops_endpoint(instance_name, rg, sub_resource=f"/dataflowProfiles/{LIVE_DATA_PROFILE_NAME}"),
+            url=_build_iotops_endpoint(
+                instance_name, rg, sub_resource=f"/dataflowProfiles/{LIVE_DATA_PROFILE_NAME}",
+            ).replace(BASE_URL, endpoint, 1),
             json={
                 "id": "/fake", "name": LIVE_DATA_PROFILE_NAME,
                 "properties": {"instanceCount": 1, "diagnostics": {"logs": {"level": "info"}}},
@@ -1322,10 +1754,16 @@ class TestShow:
         )
         mocked_responses.add(
             method=responses.GET,
-            url=_build_iotops_endpoint(instance_name, rg, sub_resource=f"/dataflowEndpoints/{LIVE_DATA_ENDPOINT_NAME}"),
+            url=_build_iotops_endpoint(
+                instance_name, rg, sub_resource=f"/dataflowEndpoints/{LIVE_DATA_ENDPOINT_NAME}",
+            ).replace(BASE_URL, endpoint, 1),
             json=_build_dataflow_endpoint_response(instance_name, hostname), status=200,
         )
-        _register_reader_assignments(mocked_responses, _build_adr_namespace_resource_id(adr_ns, rg))
+        _register_reader_assignments(
+            mocked_responses, _build_adr_namespace_resource_id(adr_ns, rg), endpoint=endpoint,
+        )
+        _register_reader_assignments(mocked_responses, eg_rid, endpoint=endpoint)
+        _register_reader_assignments(mocked_responses, f"{eg_rid}/topicSpaces/{ts_name}", endpoint=endpoint)
 
     @pytest.mark.parametrize("mixed_case", [False, True])
     def test_enabled_all_present(self, mocked_cmd, mocked_responses: responses, mixed_case):
@@ -1351,6 +1789,8 @@ class TestShow:
         assert result["deviceRegistryNamespace"]["observabilityEnabled"] is True
         assert result["deviceRegistryNamespace"]["userReaderAssignments"] == []
         assert result["eventGrid"]["topicSpace"]["exists"] is True
+        assert result["eventGrid"]["namespace"]["subscriberAssignments"] == []
+        assert result["eventGrid"]["topicSpace"]["subscriberAssignments"] == []
         assert result["instance"]["dataflowProfile"]["exists"] is True
         assert result["instance"]["dataflowEndpoint"]["configured"] is True
 
@@ -2148,6 +2588,8 @@ def test_adr_lifecycle_uses_referenced_subscription(mocked_cmd, mocked_responses
         )
         mocked_responses.add(responses.DELETE, endpoint, status=204)
     _register_reader_assignments(mocked_responses, namespace_id)
+    _register_reader_assignments(mocked_responses, eg_ctx.resource_id)
+    _register_reader_assignments(mocked_responses, f"{eg_ctx.resource_id}/topicSpaces/{topic_name}")
     assert provider.show("instance", "rg")["deviceRegistryNamespace"]["subscriptionId"] == other_subscription
     mocked_responses.add(
         responses.DELETE, _build_eg_endpoint("eg", "rg", sub_resource=f"/topicSpaces/{topic_name}"), status=204,
@@ -2203,6 +2645,36 @@ def test_government_live_data_role_requests_use_active_cloud(mocked_cmd, mocked_
 
 
 class TestCommandAdapters:
+    def test_subscriber_argument_registration(self, mocker):
+        from azure.cli.core import AzCli
+        from azext_edge import OpsExtensionCommandsLoader
+        from azext_edge.edge import _help
+        from knack.help_files import helps
+
+        cli = mocker.Mock(spec=AzCli)
+        cli.cloud = mocker.Mock(profile="latest")
+        cli.data = {"completer_active": False}
+        cli.enable_color = False
+        cli.config = mocker.Mock()
+        cli.invocation = mocker.Mock(data={})
+        loader = OpsExtensionCommandsLoader(cli)
+        cli.invocation.commands_loader = loader
+        loader.load_command_table([])
+        name = "iot ops live-data enable"
+        loader.command_name = name
+        cli.invocation.data["command_string"] = name
+        loader.load_arguments(name)
+
+        option = loader.argument_registry.get_cli_argument(name, "subscriber_object_ids").settings
+        assert option["options_list"] == ["--subscriber-object-ids"]
+        assert option["nargs"] == "+"
+        assert option["arg_group"] == "Role Assignment"
+        assert "--ra-scope" in option["help"]
+        assert "--skip-ra" in option["help"]
+        _help.load_iotops_help()
+        assert "--subscriber-object-ids" in helps[name]
+        assert "--subscriber-object-ids" in helps["iot ops live-data disable"]
+
     def test_enable_delegates(self, mocker):
         from azext_edge.edge import commands_live_data
 
@@ -2214,11 +2686,15 @@ class TestCommandAdapters:
             resource_group_name="rg",
             eg_resource_id="eg",
             user_object_ids=["11111111-1111-1111-1111-111111111111"],
+            subscriber_object_ids=["22222222-2222-2222-2222-222222222222"],
         )
         mock_provider.enable.assert_called_once()
         assert mock_provider.enable.call_args.kwargs["name"] == "i"
         assert mock_provider.enable.call_args.kwargs["user_object_ids"] == [
             "11111111-1111-1111-1111-111111111111"
+        ]
+        assert mock_provider.enable.call_args.kwargs["subscriber_object_ids"] == [
+            "22222222-2222-2222-2222-222222222222"
         ]
 
     def test_show_delegates(self, mocker):
