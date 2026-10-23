@@ -1,0 +1,69 @@
+# Copyright (c) Microsoft Corporation. All rights reserved.
+
+trigger: none
+pr: none
+name: ops-integration-$(Date:yyyyMMdd).$(Rev:r)
+lockBehavior: sequential
+pool:
+  vmImage: ubuntu-24.04
+
+parameters:
+  - name: mode
+    displayName: Run mode
+    type: string
+    default: Dry run
+    values: [Dry run, Integration tests]
+  - name: testScenarios
+    displayName: Ops scenarios (Default scenarios excludes explicit-only cases)
+    type: stringList
+    default: [edge]
+    values:
+      - Default scenarios
+      - edge
+      - broker-diagnostics-removal
+      - insecure-listener
+      - rpsaas
+      - runtime-channel
+      - upgrade
+      - upgrade-path
+      - mgmtactions
+      - livedata
+      - redeploy
+      - essentials-sku
+      - trustbundle
+  - name: runtimeChannels
+    displayName: Runtime channels (independent clusters)
+    type: stringList
+    default: [stable]
+    values: [stable, preview]
+  - name: pythonVersions
+    displayName: Python versions
+    type: stringList
+    default: ['3.13']
+    values: ['3.10', '3.11', '3.12', '3.13']
+  - name: upgradeBaselines
+    displayName: Pinned upgrade-path baselines by runtime channel (JSON)
+    type: string
+    default: '{}'
+  - name: scenarioTimeoutMinutes
+    displayName: Scenario job timeout (plus reserved cleanup buffer)
+    type: number
+    default: 360
+    values: [90, 180, 360]
+  - name: azureServiceConnection
+    displayName: Authorized Azure service connection
+    type: string
+    default: az-iot-ops-int-sp-ado
+  - name: subscriptionId
+    type: string
+    default: a386d5ea-ea90-441a-8263-d816368c84a1
+  - name: resourceGroup
+    type: string
+    default: ops-cli-int-test-rg
+  - name: customLocationsObjectId
+    type: string
+    default: 51dfe1e8-70c6-4de5-a08e-e18aff23d815
+
+extends:
+  template: templates/integration-pipeline.yml
+  parameters: ${{ parameters }}
