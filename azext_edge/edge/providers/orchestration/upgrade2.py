@@ -201,6 +201,8 @@ class UpgradeManager:
             policy = self.targets.deployment_policy
             ops_extension = extensions_map.get(EXTENSION_TYPE_OPS)
             if policy.is_fairfax and ops_extension:
+                if not self.force and self.runtime_context.identity.cloud_name != policy.cloud_name:
+                    validate_upgrade_boundary(self.runtime_context.identity, self.runtime_profile.identity)
                 ops_override = override_map.setdefault(EXTENSION_MONIKER_OPS, ConfigOverride())
                 self.runtime_profile.validate_overrides(version=ops_override.version, train=ops_override.train)
                 policy.merge_aio_configuration(ops_override.config)

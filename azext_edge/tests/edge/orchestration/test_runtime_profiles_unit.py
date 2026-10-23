@@ -89,6 +89,21 @@ def test_integration_requires_exact_mapping():
 
 
 @pytest.mark.parametrize(
+    "identity_factory",
+    [tuple, iter, lambda identities: (identity for identity in identities)],
+    ids=["tuple", "iterator", "generator"],
+)
+@pytest.mark.parametrize(
+    "channel,version",
+    [(RuntimeChannel.STABLE, "1.5.7"), (RuntimeChannel.PREVIEW, "1.6.0-preview.4")],
+)
+def test_integration_mapping_accepts_single_pass_iterables(identity_factory, channel, version):
+    identity = RuntimeIdentity(channel, version, "integration")
+    identities = identity_factory([identity])
+    assert resolve_runtime_identity(version, "Integration", identities) == identity
+
+
+@pytest.mark.parametrize(
     "channel,version,train",
     [
         (RuntimeChannel.STABLE, "1.6.0-preview.4", "stable"),

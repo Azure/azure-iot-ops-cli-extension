@@ -66,6 +66,7 @@ def test_ff_targets_are_isolated_from_public_and_preview_blueprints():
             TEMPLATE_BLUEPRINT_ENABLEMENT, TEMPLATE_BLUEPRINT_INSTANCE, TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW,
         )
     ]
+    public_variables = originals[0]["variables"]
     for cloud_name in ("AzureCloud", "AzureUSGovernment", "AzureCloud", "AzureUSGovernment"):
         targets = InitTargets(
             "cluster", "rg", cloud_name=cloud_name, ops_config=["custom.setting=keep"],
@@ -79,8 +80,8 @@ def test_ff_targets_are_isolated_from_public_and_preview_blueprints():
             assert FF_CONFIGURATION.items() <= configuration.items()
             assert instance["parameters"]["clusterLocation"]["allowedValues"] == ["usgovvirginia"]
         else:
-            assert enablement["variables"]["VERSIONS"] == {"certManager": "1.2.0", "secretStore": "1.5.5"}
-            assert enablement["variables"]["TRAINS"] == {"certManager": "stable", "secretStore": "stable"}
+            assert enablement["variables"]["VERSIONS"] == public_variables["VERSIONS"]
+            assert enablement["variables"]["TRAINS"] == public_variables["TRAINS"]
             assert not (FF_CONFIGURATION.keys() & configuration.keys())
             assert "allowedValues" not in instance["parameters"]["clusterLocation"]
     assert originals == [
@@ -272,13 +273,14 @@ def test_ff_upgrade_preserves_missing_ops_extension_validation(ff_upgrade_manage
 
 
 @pytest.mark.parametrize("force", [False, True])
-def test_unmapped_ff_stable_baseline_preserves_internal_compatibility_bypass(ff_upgrade_manager, force):
+@pytest.mark.parametrize("version", ["1.5.41", "1.5.43"])
+def test_unmapped_ff_stable_baseline_preserves_internal_compatibility_bypass(ff_upgrade_manager, force, version):
     manager, extensions = ff_upgrade_manager
     manager.force = force
     properties = extensions[EXTENSION_TYPE_OPS]["properties"]
-    properties.update({"version": "1.5.41", "currentVersion": "1.5.41"})
+    properties.update({"version": version, "currentVersion": version})
     manager.runtime_context.identity = resolve_runtime_identity(
-        "1.5.41", "stable", manager.runtime_catalog.qualification_identities,
+        version, "stable", manager.runtime_catalog.qualification_identities,
     )
     if not force:
         with pytest.raises(ValidationError, match="not mapped to AzureUSGovernment") as error:
@@ -288,10 +290,38 @@ def test_unmapped_ff_stable_baseline_preserves_internal_compatibility_bypass(ff_
     state = manager.analyze_cluster()
     ops = next(ext for ext in state.extension_upgrades if ext.moniker == EXTENSION_MONIKER_OPS)
     patch = ops.get_patch()["properties"]
-    assert patch["version"] == "1.5.42"
+    if version == "1.5.41":
+        assert patch["version"] == "1.5.42"
+    else:
+        assert "version" not in patch
     assert FF_CONFIGURATION.items() <= patch["configurationSettings"].items()
     assert "unrelated.setting" not in patch["configurationSettings"]
     assert properties["configurationSettings"] == {"unrelated.setting": "keep"}
+
+
+@pytest.mark.parametrize("force", [False, True])
+def test_unmapped_newer_ff_baseline_is_checked_before_connector_backfill(ff_upgrade_manager, force):
+    manager, extensions = ff_upgrade_manager
+    manager.force = force
+    properties = extensions[EXTENSION_TYPE_OPS]["properties"]
+    properties.update({"version": "1.5.43", "currentVersion": "1.5.43"})
+    properties["configurationSettings"].update(FF_CONFIGURATION)
+    manager.runtime_context.identity = resolve_runtime_identity(
+        "1.5.43", "stable", manager.runtime_catalog.qualification_identities,
+    )
+    manager._check_opcua_connector_template_needed.return_value = (True, None)
+    original = deepcopy(extensions)
+    if not force:
+        with pytest.raises(ValidationError, match="not mapped to AzureUSGovernment"):
+            manager.analyze_cluster()
+        manager._check_opcua_connector_template_needed.assert_not_called()
+    else:
+        state = manager.analyze_cluster()
+        assert state.connector_template_needed
+        assert state.connector_template_version == manager.runtime_profile.opcua_connector_version
+        ops = next(ext for ext in state.extension_upgrades if ext.moniker == EXTENSION_MONIKER_OPS)
+        assert not ops.get_patch()
+    assert extensions == original
 
 
 @pytest.mark.parametrize("key", list(FF_CONFIGURATION))

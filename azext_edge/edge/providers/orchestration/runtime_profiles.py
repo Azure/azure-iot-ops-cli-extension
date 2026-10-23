@@ -179,6 +179,7 @@ def resolve_runtime_identity(
     if not isinstance(train, str) or not train:
         raise ValidationError("Unable to determine AIO release train.")
     normalized_train = train.lower()
+    qualification_identities = tuple(qualification_identities)
     cloud_matches = {
         identity for identity in qualification_identities
         if identity.cloud_name == CLOUD_AZURE_US_GOVERNMENT
