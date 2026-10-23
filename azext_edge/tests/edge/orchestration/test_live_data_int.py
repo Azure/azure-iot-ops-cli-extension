@@ -17,12 +17,17 @@ assignments target and in the ADR namespace outbound identity written, not only
 in a config field. Unlike mgmt-actions there is no CLI `execute` equivalent —
 per-session data flow is owned by DOE — so the assertions cover the ARM
 resources the CLI provisions and the role assignments it grants.
+
+Set azext_edge_live_data_subscriber_object_ids to space-separated, tenant-local
+Entra user and group object IDs to exercise direct Subscriber assignments at both
+namespace and topic-space scope. Only test-created namespace assignments are
+explicitly cleaned up; topic-space assignments follow topic-space deletion.
 """
 
 import os
 import subprocess
 from typing import Dict, List
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 from knack.log import get_logger
@@ -479,3 +484,79 @@ def test_live_data_user_reader_assignment(request, live_data_setup, settings) ->
         assignee=user_object_id,
         expected_role_ids=LIVE_DATA_USER_ROLE_ID,
     )
+
+
+@pytest.mark.parametrize("ra_scope", ["namespace", "topic-space"])
+def test_live_data_subscriber_assignments(request, live_data_setup, settings, ra_scope) -> None:
+    """Explicit subscribers are additive, idempotent, and follow the selected scope."""
+    from ...settings import EnvironmentVariables
+
+    object_ids = settings.add_to_config(
+        EnvironmentVariables.live_data_subscriber_object_ids.value, conversion=str.split,
+    )
+    if not object_ids:
+        pytest.skip(
+            "Set azext_edge_live_data_subscriber_object_ids to space-separated Entra user/group object IDs "
+            "from the resource tenant to test direct subscriber assignments."
+        )
+    object_ids = list(dict.fromkeys(str(UUID(value)) for value in object_ids))
+    instance_name = live_data_setup["instanceName"]
+    resource_group = live_data_setup["resourceGroup"]
+    common = f"-i {instance_name} -g {resource_group}"
+    enable_command = [
+        "az", "iot", "ops", "live-data", "enable", "-i", instance_name, "-g", resource_group,
+        "--eg-resource-id", live_data_setup["egResourceId"], "--ra-scope", ra_scope, "--no-progress",
+    ]
+    created_assignments = []
+
+    def _cleanup() -> None:
+        try:
+            run(f"az iot ops live-data disable {common} -y")
+        except Exception:
+            logger.error("Failed to disable live-data after the subscriber assignment test.")
+        if ra_scope == "namespace":
+            for assignment_id in created_assignments:
+                try:
+                    run(["az", "role", "assignment", "delete", "--ids", assignment_id], shell_mode=False)
+                except Exception:
+                    logger.error(f"Failed to remove test-created role assignment {assignment_id}.")
+
+    request.addfinalizer(_cleanup)
+
+    first = run(enable_command + ["--subscriber-object-ids", *object_ids], shell_mode=False)
+    subscribers = first["roleAssignments"]["subscribers"]
+    created_assignments.extend(
+        assignment["assignmentId"] for assignment in subscribers["assignments"] if assignment["created"]
+    )
+    expected_scope = live_data_setup["egResourceId"]
+    if ra_scope == "topic-space":
+        expected_scope += f'/topicSpaces/{first["eventGrid"]["topicSpace"]["name"]}'
+    assert subscribers["scope"].lower() == expected_scope.lower()
+    assert subscribers["roleId"] == EG_TOPICSPACES_SUBSCRIBER_ROLE_ID
+    assert subscribers["preservedOnDisable"] == (ra_scope == "namespace")
+    assert [assignment["principalId"] for assignment in subscribers["assignments"]] == object_ids
+    for object_id in object_ids:
+        assert_role_assignment(expected_scope, object_id, EG_TOPICSPACES_SUBSCRIBER_ROLE_ID)
+
+    shown = run(f"az iot ops live-data show {common}")
+    scope_section = "namespace" if ra_scope == "namespace" else "topicSpace"
+    shown_assignments = shown["eventGrid"][scope_section]["subscriberAssignments"]
+    for assignment in subscribers["assignments"]:
+        assert any(
+            item["principalId"].lower() == assignment["principalId"].lower()
+            and item["assignmentId"].lower() == assignment["assignmentId"].lower()
+            for item in shown_assignments
+        )
+
+    second = run(enable_command + ["--subscriber-object-ids", *object_ids], shell_mode=False)
+    assert second["roleAssignments"]["subscribers"]["assignments"] == [
+        {**assignment, "created": False} for assignment in subscribers["assignments"]
+    ]
+    run(enable_command, shell_mode=False)
+    for object_id in object_ids:
+        assert_role_assignment(expected_scope, object_id, EG_TOPICSPACES_SUBSCRIBER_ROLE_ID)
+
+    run(f"az iot ops live-data disable {common} -y")
+    if ra_scope == "namespace":
+        for object_id in object_ids:
+            assert_role_assignment(expected_scope, object_id, EG_TOPICSPACES_SUBSCRIBER_ROLE_ID)
