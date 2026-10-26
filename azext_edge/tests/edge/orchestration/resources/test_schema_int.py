@@ -6,16 +6,31 @@
 
 from random import randint
 import json
+from time import sleep
 import pytest
+from azure.cli.core.azclierror import CLIInternalError
 from knack.log import get_logger
 from ....generators import generate_random_string
 from ....helpers import create_file, run
 
 logger = get_logger(__name__)
 MAX_TRIES = 3
+PUBLIC_NETWORK_MAX_RETRIES = 10
+PUBLIC_NETWORK_RETRY_INTERVAL = 30
+PUBLIC_NETWORK_ERROR = "Schema versions require public network access to be enabled"
 VERSION_STRINGIFY_FORMAT = "aio-sr://{schema_name}:{version}"
 # pytest mark for rpsaas (cloud-side) tests
 pytestmark = pytest.mark.rpsaas
+
+
+def run_with_public_network_retry(command: str):
+    for attempt in range(PUBLIC_NETWORK_MAX_RETRIES):
+        try:
+            return run(command)
+        except CLIInternalError as ex:
+            if PUBLIC_NETWORK_ERROR not in ex.error_msg or attempt == PUBLIC_NETWORK_MAX_RETRIES - 1:
+                raise
+            sleep(PUBLIC_NETWORK_RETRY_INTERVAL)
 
 
 def test_schema_lifecycle(settings_with_rg, tracked_resources, tracked_files):
@@ -60,7 +75,7 @@ def test_schema_lifecycle(settings_with_rg, tracked_resources, tracked_files):
     schema_name2 = f"schema-{generate_random_string(force_lower=True, size=6)}"
     delta_content = generate_random_string()
     version_num = 1
-    schema1 = run(
+    schema1 = run_with_public_network_retry(
         f"az iot ops schema create -n {schema_name1} -g {registry_rg} --registry {registry_name} "
         f"--format delta --type message --version-content {delta_content}"
     )

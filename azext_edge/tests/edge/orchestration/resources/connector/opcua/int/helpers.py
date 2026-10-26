@@ -24,6 +24,8 @@ import datetime
 logger = get_logger(__name__)
 ROLE_MAX_RETRIES = 5
 ROLE_RETRY_INTERVAL = 15
+SECRETSYNC_MAX_RETRIES = 20
+SECRETSYNC_RETRY_INTERVAL = 5
 
 
 def run_json(command: str, **kwargs) -> Dict[str, Any]:
@@ -187,12 +189,25 @@ def assert_ssc_secret_exists(
     cert_extension = file_name_info[1].replace(".", "")
     secret_name = f"{file_name_info[0]}-{cert_extension}"
     result = next((rec for rec in secretsync_records if rec["name"] == ssc_name), None)
-    assert result is not None, f"SecretSync record '{ssc_name}' not found"
-    assert result["extendedLocation"]["name"] == extended_location
-    assert result["resourceGroup"] == resource_group
-    assert result["name"] == ssc_name
-    secret_mappings = result["properties"].get("objectSecretMapping", [])
-    assert any(mapping.get("sourcePath", "") == secret_name for mapping in secret_mappings)
+
+    for attempt in range(SECRETSYNC_MAX_RETRIES):
+        if result:
+            assert result["extendedLocation"]["name"] == extended_location
+            assert result["resourceGroup"] == resource_group
+            assert result["name"] == ssc_name
+            secret_mappings = result["properties"].get("objectSecretMapping", [])
+            if any(mapping.get("sourcePath", "") == secret_name for mapping in secret_mappings):
+                return
+        if attempt < SECRETSYNC_MAX_RETRIES - 1:
+            sleep(SECRETSYNC_RETRY_INTERVAL)
+            try:
+                result = run_json(f"az iot ops secretsync show --name {ssc_name} -g {resource_group}")
+            except CLIInternalError as ex:
+                if "not found" not in ex.error_msg.lower():
+                    raise
+                result = None
+
+    raise AssertionError(f"SecretSync record '{ssc_name}' did not contain secret {secret_name}.")
 
 
 def assert_cluster_side_secret_exists(
