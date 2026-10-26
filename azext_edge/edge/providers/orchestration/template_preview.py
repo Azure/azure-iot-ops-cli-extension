@@ -5,13 +5,9 @@
 # ----------------------------------------------------------------------------------------------
 
 
-"""Generated preview instance blueprint for internal qualification.
+"""Generated public-preview instance blueprint.
 
-Development connector registries are retained for internal qualification by approval.
-Public release is blocked until the development registry, repository, and tag
-coordinates are replaced with release-owner-approved public artifact locations.
 The source GDS parameter and configuration reader are removed before compiling.
-Runtime catalog registration preserves these inputs and the actual deployment train.
 MCP defaults to Preview; explicit feature modes override that generated default.
 """
 
@@ -27,7 +23,7 @@ TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW = TemplateBlueprint(
         "languageVersion": "2.0",
         "contentVersion": "1.0.0.0",
         "metadata": {
-            "_generator": {"name": "bicep", "version": "0.48.1.52935", "templateHash": "12082610186429603788"}
+            "_generator": {"name": "bicep", "version": "0.48.1.52935", "templateHash": "6860184499187617120"}
         },
         "definitions": {
             "_1.AdvancedConfig": {
@@ -810,7 +806,7 @@ TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW = TemplateBlueprint(
         },
         "variables": {
             "VERSIONS": {"iotOperations": "1.6.0-preview.57", "connectors": "1.5.19"},
-            "TRAINS": {"iotOperations": "integration"},
+            "TRAINS": {"iotOperations": "preview"},
             "HASH": "[coalesce(tryGet(parameters('advancedConfig'), 'resourceSuffix'), take(uniqueString(resourceGroup().id, parameters('clusterName'), parameters('clusterNamespace')), 5))]",
             "AIO_EXTENSION_SUFFIX": "[take(uniqueString(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName'))), 5)]",
             "CUSTOM_LOCATION_NAMESPACE": "[parameters('clusterNamespace')]",

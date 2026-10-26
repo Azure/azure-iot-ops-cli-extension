@@ -2932,7 +2932,7 @@ def test_preview_upgrade_routes_instance_and_backfills_to_profile_api(mocked_cmd
 
     name, resource_group = "preview-instance", "previewrg"
     scenario = UpgradeScenario().set_extension(
-        EXTENSION_TYPE_OPS, ext_vers="1.6.0-preview.43", ext_train="integration",
+        EXTENSION_TYPE_OPS, ext_vers="1.6.0-preview.43", ext_train="preview",
     )
     scenario.set_instance_mock(mocked_responses, name, resource_group)
     preview_record = deepcopy(scenario.instance_record)
@@ -3281,16 +3281,17 @@ def test_reconcile_cannot_bypass_release_train_guard(built_in_train, train_overr
 
 @pytest.mark.parametrize("explicit_target", [False, True])
 @pytest.mark.parametrize("force", [False, True])
-def test_ga_catalog_train_change_preserves_force_behavior(explicit_target, force):
+def test_ga_catalog_target_upgrade_behavior(explicit_target, force):
     from azext_edge.edge.providers.orchestration.runtime_catalog import get_runtime_catalog
     from azext_edge.edge.providers.orchestration.runtime_profiles import RuntimeChannel
 
     catalog = get_runtime_catalog()
     target = catalog.get(RuntimeChannel.STABLE).identity
+    current_train = "stable"
     ext = build_ext_upgrade_state(
         ext_type=EXTENSION_TYPE_OPS,
         current_version="1.4.112",
-        current_train="stable",
+        current_train=current_train,
         built_in_version=target.version,
         built_in_train=target.train,
         version_override=target.version if explicit_target else None,
@@ -3299,7 +3300,15 @@ def test_ga_catalog_train_change_preserves_force_behavior(explicit_target, force
         qualification_identities=catalog.qualification_identities,
     )
 
-    if force:
+    if target.train == current_train:
+        ext.validate_upgrade()
+        properties = ext.get_patch()["properties"]
+        assert properties["version"] == target.version
+        if explicit_target:
+            assert properties["releaseTrain"] == target.train
+        else:
+            assert "releaseTrain" not in properties
+    elif force:
         ext.validate_upgrade()
         properties = ext.get_patch()["properties"]
         assert properties["version"] == target.version
