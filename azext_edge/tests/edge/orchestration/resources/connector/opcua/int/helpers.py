@@ -201,7 +201,7 @@ def assert_ssc_secret_exists(
                 return
         if attempt < SECRETSYNC_MAX_RETRIES - 1:
             sleep(SECRETSYNC_RETRY_INTERVAL)
-            refreshed_records = run_json(f"az iot ops secretsync list -i {instance_name} -g {resource_group}")
+            refreshed_records = run(f"az iot ops secretsync list -i {instance_name} -g {resource_group}")
             result = next((rec for rec in refreshed_records if rec["name"] == ssc_name), None)
 
     raise AssertionError(f"SecretSync record '{ssc_name}' did not contain secret {secret_name}.")
