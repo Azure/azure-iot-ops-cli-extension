@@ -180,6 +180,7 @@ def assert_spc_secret_exists(spc_records: list, spc_name: str, instance_name: st
 def assert_ssc_secret_exists(
     secretsync_records: list,
     extended_location: str,
+    instance_name: str,
     resource_group: str,
     cert_file: str,
     ssc_name: Optional[str],
@@ -200,12 +201,8 @@ def assert_ssc_secret_exists(
                 return
         if attempt < SECRETSYNC_MAX_RETRIES - 1:
             sleep(SECRETSYNC_RETRY_INTERVAL)
-            try:
-                result = run_json(f"az iot ops secretsync show --name {ssc_name} -g {resource_group}")
-            except CLIInternalError as ex:
-                if "not found" not in ex.error_msg.lower():
-                    raise
-                result = None
+            refreshed_records = run_json(f"az iot ops secretsync list -i {instance_name} -g {resource_group}")
+            result = next((rec for rec in refreshed_records if rec["name"] == ssc_name), None)
 
     raise AssertionError(f"SecretSync record '{ssc_name}' did not contain secret {secret_name}.")
 

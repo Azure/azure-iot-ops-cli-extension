@@ -92,6 +92,7 @@ def test_opcua_cert_issuer(cluster_connection, opcua_certs_issuer_test_setup, tr
     assert_ssc_secret_exists(
         secretsync_records=secretsync_records,
         extended_location=extended_loc,
+        instance_name=instance_name,
         resource_group=resource_group,
         cert_file=cert_file,
         ssc_name=OPCUA_ISSUER_LIST_SECRET_SYNC_NAME,

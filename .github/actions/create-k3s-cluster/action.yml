@@ -54,8 +54,8 @@ runs:
               fi
 
               echo "k3s node did not become ready."
-              tail -200 "$log_file"
-              exit 1
+              # Let the shared process/log checks below determine whether this failure is retryable.
+              break
             fi
 
             echo "Waiting for API server and node registration (attempt $api_attempt/$max_api_retries)..."
