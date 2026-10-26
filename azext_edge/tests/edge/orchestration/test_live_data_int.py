@@ -486,6 +486,8 @@ def test_live_data_user_reader_assignment(request, live_data_setup, settings) ->
     )
 
 
+@pytest.mark.livedata
+@pytest.mark.serial
 @pytest.mark.parametrize("ra_scope", ["namespace", "topic-space"])
 def test_live_data_subscriber_assignments(request, live_data_setup, settings, ra_scope) -> None:
     """Explicit subscribers are additive, idempotent, and follow the selected scope."""
