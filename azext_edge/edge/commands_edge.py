@@ -485,15 +485,17 @@ def enable_rsync(
     )
 
 
-def get_versions(inline: Optional[bool] = None):
+def get_versions(inline: Optional[bool] = None, cmd=None):
     if inline:
         from ..constants import AIO_RELEASE, VERSION
         from .providers.orchestration.runtime_catalog import get_runtime_catalog
         from .providers.orchestration.targets import InitTargets
+        from .util.cloud_config import CLOUD_AZURE_PUBLIC, CloudConfig
 
-        catalog = get_runtime_catalog()
+        cloud_name = CloudConfig(cmd).name if cmd is not None else CLOUD_AZURE_PUBLIC
+        catalog = get_runtime_catalog(cloud_name)
         default_profile = catalog.for_create()
-        targets = InitTargets("", "", runtime_profile=default_profile)
+        targets = InitTargets("", "", runtime_profile=default_profile, cloud_name=cloud_name)
         return {
             "cliVersion": VERSION,
             "iotOpsRelease": AIO_RELEASE,

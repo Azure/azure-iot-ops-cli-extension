@@ -18,6 +18,7 @@ from typing import Iterable, Optional
 from azure.cli.core.azclierror import ValidationError
 
 from ...util.az_client import DEFAULT_IOTOPS_MGMT_API_VERSION
+from ...util.cloud_config import CLOUD_AZURE_PUBLIC, CLOUD_AZURE_US_GOVERNMENT
 from ...util.machinery import scoped_semver_import
 from .common import EXTENSION_MONIKER_OPS
 from .runtime_dependencies import DependencyRequirement
@@ -41,16 +42,21 @@ class RuntimeIdentity:
     channel: RuntimeChannel
     version: str
     train: str
+    cloud_name: str = CLOUD_AZURE_PUBLIC
 
     def __post_init__(self):
         object.__setattr__(self, "channel", RuntimeChannel(self.channel))
         if not isinstance(self.train, str) or not self.train:
             raise ValidationError("Unable to determine AIO release train.")
         object.__setattr__(self, "train", self.train.lower())
-        if self.train not in (self.channel.value, "integration"):
+        artifact_channel = self.channel
+        if self.cloud_name == CLOUD_AZURE_US_GOVERNMENT and self.channel == RuntimeChannel.STABLE:
+            if self.train == "preview":
+                artifact_channel = RuntimeChannel.PREVIEW
+        if self.train not in (artifact_channel.value, "integration"):
             raise ValidationError(f"Train {self.train!r} conflicts with the {self.channel.value} runtime profile.")
         version = parse_runtime_version(self.version)
-        if self.channel == RuntimeChannel.STABLE:
+        if artifact_channel == RuntimeChannel.STABLE:
             valid = version.prerelease is None
         else:
             valid = version.patch == 0 and re.fullmatch(r"preview\.[1-9][0-9]*", version.prerelease or "")
@@ -67,6 +73,7 @@ class RuntimeProfile:
     instance_blueprint: InitVar[TemplateBlueprint]
     opcua_connector_version: Optional[str] = None
     iotops_api_version: str = DEFAULT_IOTOPS_MGMT_API_VERSION.value
+    cloud_name: str = CLOUD_AZURE_PUBLIC
     identity: RuntimeIdentity = field(init=False)
     _instance_blueprint: TemplateBlueprint = field(init=False, repr=False, compare=False)
 
@@ -80,6 +87,7 @@ class RuntimeProfile:
             channel=self.channel,
             version=variables.get("VERSIONS", {}).get(EXTENSION_MONIKER_OPS),
             train=variables.get("TRAINS", {}).get(EXTENSION_MONIKER_OPS),
+            cloud_name=self.cloud_name,
         )
         object.__setattr__(self, "identity", identity)
         object.__setattr__(self, "_instance_blueprint", blueprint)
@@ -96,7 +104,11 @@ class RuntimeProfile:
         return self.opcua_connector_version
 
     def validate_overrides(self, version: Optional[str] = None, train: Optional[str] = None) -> RuntimeIdentity:
-        target = RuntimeIdentity(self.channel, version or self.identity.version, train or self.identity.train)
+        target = RuntimeIdentity(
+            self.channel, version or self.identity.version, train or self.identity.train, self.cloud_name,
+        )
+        if self.cloud_name == CLOUD_AZURE_US_GOVERNMENT and target != self.identity:
+            raise ValidationError("An FF runtime override requires matching reviewed cloud profile inputs.")
         if target.train != self.identity.train:
             raise ValidationError("AIO train overrides cannot change the selected runtime profile's deployment train.")
         # Integration identities require an explicit, reviewed version/profile association.
@@ -118,7 +130,8 @@ class RuntimeProfileCatalog:
                 raise ValidationError(f"Multiple target profiles registered for {profile.channel.value}.")
             self._profiles[profile.channel] = profile
         self.qualification_identities = tuple(qualification_identities) + tuple(
-            profile.identity for profile in self._profiles.values() if profile.identity.train == "integration"
+            profile.identity for profile in self._profiles.values()
+            if profile.identity.train == "integration" or profile.cloud_name == CLOUD_AZURE_US_GOVERNMENT
         )
         self.dependency_requirements = tuple(dependency_requirements)
         types = [requirement.extension_type for requirement in self.dependency_requirements]
@@ -166,6 +179,14 @@ def resolve_runtime_identity(
     if not isinstance(train, str) or not train:
         raise ValidationError("Unable to determine AIO release train.")
     normalized_train = train.lower()
+    qualification_identities = tuple(qualification_identities)
+    cloud_matches = {
+        identity for identity in qualification_identities
+        if identity.cloud_name == CLOUD_AZURE_US_GOVERNMENT
+        and identity.train == normalized_train and identity.version == version
+    }
+    if len(cloud_matches) == 1:
+        return cloud_matches.pop()
     if normalized_train in (RuntimeChannel.STABLE.value, RuntimeChannel.PREVIEW.value):
         return RuntimeIdentity(RuntimeChannel(normalized_train), version, normalized_train)
     if normalized_train == "integration":
@@ -189,6 +210,16 @@ def validate_upgrade_boundary(installed: RuntimeIdentity, target: RuntimeIdentit
     This deliberately has no force/preflight override. Path-specific upgrade policies
     must run separately after this check and before any mutations.
     """
+    if installed.cloud_name != target.cloud_name:
+        if installed.cloud_name == CLOUD_AZURE_PUBLIC and target.cloud_name == CLOUD_AZURE_US_GOVERNMENT:
+            raise ValidationError(
+                f"Cannot upgrade AIO: installed runtime {installed.version}/{installed.train} "
+                "is not mapped to AzureUSGovernment. "
+                "Use a CLI release with a reviewed FF mapping for this installed baseline."
+            )
+        raise ValidationError(
+            f"Cannot upgrade AIO across cloud runtime identities: {installed.cloud_name} to {target.cloud_name}."
+        )
     if installed.channel != target.channel or installed.train != target.train:
         raise ValidationError(
             f"Cannot upgrade AIO from {installed.channel.value}/{installed.train} "
