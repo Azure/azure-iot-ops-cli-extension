@@ -347,7 +347,7 @@ class Instances(Queryable):
         profile = None
         connector_version = None
         if enable_opcua or requirements is not None or any(parameter.applies(selections) for parameter in parameters):
-            catalog = get_runtime_catalog()
+            catalog = get_runtime_catalog(CloudConfig(self.cmd).name)
             runtime = self.get_runtime_context(instance, catalog.qualification_identities)
             if enable_opcua:
                 runtime.require_ready()
