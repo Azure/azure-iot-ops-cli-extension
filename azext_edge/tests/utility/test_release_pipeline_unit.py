@@ -130,7 +130,7 @@ def test_release_defaults_to_github_only(candidate, monkeypatch, tmp_path):
 @pytest.mark.parametrize("allowed", [True, False])
 def test_access_probe_uses_job_token_without_queuing(candidate, monkeypatch, allowed):
     monkeypatch.setenv("SYSTEM_ACCESSTOKEN", "offline-job-token")
-    request = Mock(return_value=allowed)
+    request = Mock(return_value={"count": 1, "value": [allowed]})
     monkeypatch.setattr(release, "api", request)
     if allowed:
         release.check_access()
@@ -139,8 +139,20 @@ def test_access_probe_uses_job_token_without_queuing(candidate, monkeypatch, all
             release.check_access()
     assert len(request.call_args_list) == 4
     assert all("/_apis/permissions/" in call.args[0] and call.args[1] == "offline-job-token"
+               and call.args[0].endswith("api-version=7.1")
                and not call.kwargs for call in request.call_args_list)
     release.ado.assert_not_called()
+
+
+@pytest.mark.parametrize("response", [
+    False, True, {}, {"count": 1, "value": ["true"]}, {"count": 0, "value": []},
+    {"count": 2, "value": [True, True]},
+])
+def test_access_probe_rejects_ambiguous_permission_responses(candidate, monkeypatch, response):
+    monkeypatch.setenv("SYSTEM_ACCESSTOKEN", "offline-job-token")
+    monkeypatch.setattr(release, "api", Mock(return_value=response))
+    with pytest.raises(ValueError, match="Unexpected build-permission response"):
+        release.check_access()
 
 
 @pytest.mark.parametrize("name,value", [

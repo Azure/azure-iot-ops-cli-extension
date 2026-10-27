@@ -120,12 +120,17 @@ def github(resource, **kwargs):
 
 def check_access():
     query = urlencode({"tokens": environment("SYSTEM_TEAMPROJECTID") + "/164",
-                       "alwaysAllowAdministrators": "false", "api-version": "7.1-preview.1"})
+                       "alwaysAllowAdministrators": "false", "api-version": "7.1"})
     granted = {}
     for name, bit in (("View builds", 1), ("Queue builds", 128), ("Stop builds", 512),
                       ("View build pipeline", 1024)):
-        granted[name] = api(f"{PERMISSIONS}/33344d9c-fc72-4d6f-aba5-fa317101a7e9/{bit}?{query}",
-                            environment("SYSTEM_ACCESSTOKEN")) is True
+        response = api(f"{PERMISSIONS}/33344d9c-fc72-4d6f-aba5-fa317101a7e9/{bit}?{query}",
+                       environment("SYSTEM_ACCESSTOKEN"))
+        if (not isinstance(response, dict) or response.get("count") != 1
+                or not isinstance(response.get("value"), list) or len(response["value"]) != 1
+                or type(response["value"][0]) is not bool):
+            raise ValueError("Unexpected build-permission response; authorization could not be established.")
+        granted[name] = response["value"][0]
     print(json.dumps({"pipeline": 164, "jobTokenPermissions": granted}, indent=2), flush=True)
     if not all(granted.values()):
         raise ValueError("The release Build Service needs scoped View/Queue/Stop permissions on pipeline 164.")
