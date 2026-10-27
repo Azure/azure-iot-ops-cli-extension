@@ -74,6 +74,12 @@ def test_enablement_template():
 def test_instance_template():
     assert TEMPLATE_BLUEPRINT_INSTANCE.commit_id
     assert TEMPLATE_BLUEPRINT_INSTANCE.content
+    aio_resources = [
+        resource for resource in TEMPLATE_BLUEPRINT_INSTANCE.content["resources"].values()
+        if resource["type"].startswith("Microsoft.IoTOperations/")
+    ]
+    assert len(aio_resources) == 8
+    assert {resource["apiVersion"] for resource in aio_resources} == {"2026-10-01"}
 
     for key in EXPECTED_INSTANCE_RESOURCE_KEYS:
         assert key in TEMPLATE_BLUEPRINT_INSTANCE.content["resources"]
@@ -151,11 +157,11 @@ def test_template_blueprint(content: dict):
 
 EXTENSION_CONFIGS = {
     "enablement": [
-        (EXTENSION_TYPE_CM, "1.2.0", "stable"),
-        (EXTENSION_TYPE_SSC, "1.5.5", "stable"),
+        (EXTENSION_TYPE_CM, "1.2.1", "stable"),
+        (EXTENSION_TYPE_SSC, "1.6.0", "stable"),
     ],
     "instance": [
-        (EXTENSION_TYPE_OPS, "1.5.33", "integration"),
+        (EXTENSION_TYPE_OPS, "1.5.41", "stable"),
     ],
 }
 

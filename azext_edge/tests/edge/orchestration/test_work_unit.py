@@ -63,6 +63,7 @@ from azext_edge.edge.providers.orchestration.targets import (
 from azext_edge.edge.providers.orchestration.work import (
     PROVISIONING_STATE_SUCCESS,
     ClusterConnectStatus,
+    WorkStepKey,
 )
 from azext_edge.edge.util import assemble_nargs_to_dict
 from azext_edge.edge.util.az_client import DEFAULT_DEVICEREGISTRY_MGMT_API_VERSION
@@ -1566,8 +1567,16 @@ def assert_logger(mocked_logger: Mock, target_scenario: dict):
 
 
 def assert_create_displays(spy_work_displays: Dict[str, Mock], target_scenario: dict):
-    # TODO
-    pass
+    expected_steps = []
+    if not target_scenario.get("no_preflight"):
+        expected_steps.extend([WorkStepKey.REG_RP, WorkStepKey.ENUMERATE_PRE_FLIGHT])
+    expected_steps.extend([WorkStepKey.DEPLOY_INSTANCE, WorkStepKey.DEPLOY_RESOURCES])
+    complete_step = spy_work_displays["complete_step"]
+    assert [
+        call.kwargs["completed_step"] for call in complete_step.call_args_list
+    ] == expected_steps
+    work_manager = complete_step.call_args.args[0]
+    assert set(work_manager._completed_steps) == set(expected_steps)
 
 
 def get_expected_keys_for(phase: InstancePhase) -> Tuple[set[str], set[str]]:

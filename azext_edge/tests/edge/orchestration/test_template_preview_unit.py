@@ -4,7 +4,7 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-"""Checks for the generated internal-qualification artifact, not live compatibility."""
+"""Checks for the generated public-preview artifact, not live compatibility."""
 
 import json
 from copy import deepcopy
@@ -32,6 +32,10 @@ EXPECTED_PREVIEW_RESOURCE_KEYS = frozenset({
 })
 EXTENSION_KEYS = {"cluster", "aioExtension"}
 INSTANCE_KEYS = EXTENSION_KEYS | {"customLocation", "aioInstance"}
+EXPECTED_PREVIEW_FEATURES = (
+    "[union(createObject('mcp', createObject('mode', 'Preview')), "
+    "coalesce(parameters('features'), createObject()))]"
+)
 
 
 @pytest.fixture
@@ -49,19 +53,20 @@ def qualification_profile():
 def test_preview_source_identity_and_contract(qualification_profile):
     blueprint = TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW
     content = blueprint.content
-    assert blueprint.commit_id == "a0c7a346fe406ede6a6dee5f05ed9a01368c7517"
+    assert blueprint.commit_id == "f306f5abaf891dddf7a1f9db00b13a8a742d5ad8"
     assert content
-    assert content["variables"]["VERSIONS"] == {"iotOperations": "1.6.0-preview.49", "connectors": "1.5.19"}
-    assert content["variables"]["TRAINS"] == {"iotOperations": "integration"}
-    assert qualification_profile.identity.train == "integration"
+    assert content["variables"]["VERSIONS"] == {"iotOperations": "1.6.0-preview.57", "connectors": "1.5.19"}
+    assert content["variables"]["TRAINS"] == {"iotOperations": "preview"}
+    assert qualification_profile.identity.train == "preview"
     assert qualification_profile.identity.channel == RuntimeChannel.PREVIEW
     assert set(content["resources"]) == EXPECTED_PREVIEW_RESOURCE_KEYS
     aio_resources = [r for r in content["resources"].values() if r["type"].startswith("Microsoft.IoTOperations/")]
     assert len(aio_resources) == 10
-    assert {r["apiVersion"] for r in aio_resources} == {"2026-09-03-preview"}
+    assert {r["apiVersion"] for r in aio_resources} == {"2026-11-01-preview"}
     assert content["resources"]["aioExtension"]["properties"]["autoUpgradeMinorVersion"] is False
     assert "disableOpcUaFeature" not in content["parameters"]
     assert content["definitions"]["_1.InstanceFeature"]["properties"]["settings"]["nullable"] is True
+    assert content["resources"]["aioInstance"]["properties"]["features"] == EXPECTED_PREVIEW_FEATURES
 
 
 def test_preview_keeps_approved_scalars_without_loaded_source_blob():
@@ -145,6 +150,8 @@ def test_preview_phase_resources_and_defaults(qualification_profile, phase):
     assert "enablePersistence" not in parameters
     assert "sku" not in parameters
     assert "features" not in parameters
+    if phase in (None, InstancePhase.INSTANCE):
+        assert resources["aioInstance"]["properties"]["features"] == EXPECTED_PREVIEW_FEATURES
     assert "enableGdsManager" not in template["parameters"]
     assert template["parameters"]["enablePersistence"]["defaultValue"] is True
     assert template["variables"]["defaultAioConfigurationSettings"] == source["variables"][
@@ -178,7 +185,7 @@ def test_preview_mcp_policy_preserves_source_contract(qualification_profile, ins
     policy = template["resources"]["mcpDefaultPolicy"]
     assert "features" not in parameters
     assert policy["type"] == "Microsoft.IoTOperations/instances/mcpAuthorizationPolicies"
-    assert policy["apiVersion"] == "2026-09-03-preview"
+    assert policy["apiVersion"] == "2026-11-01-preview"
     assert "condition" not in policy
     assert policy["properties"]["policies"] == "[_2.mcpDefaultPolicies()]"
     rules = template["functions"][0]["members"]["mcpDefaultPolicies"]["output"]["value"]
@@ -198,7 +205,7 @@ def test_preview_mcp_connection_preserves_source_contract(qualification_profile,
     connection = template["resources"]["mcpAioConnection"]
     assert "features" not in parameters
     assert "condition" not in connection
-    assert connection["apiVersion"] == "2026-09-03-preview"
+    assert connection["apiVersion"] == "2026-11-01-preview"
     assert connection["type"] == "Microsoft.IoTOperations/instances/mcpServerConnections"
     assert connection["dependsOn"] == ["aioInstance", "customLocation", "mcpDefaultPolicy"]
     assert connection["properties"]["authorization"] == {
@@ -216,16 +223,17 @@ def test_preview_mcp_connection_preserves_source_contract(qualification_profile,
 def test_preview_extension_versions_exclude_connector_metadata(qualification_profile):
     targets = InitTargets("cluster", "rg", runtime_profile=qualification_profile)
     assert targets.get_extension_versions(False) == {
-        "iotOperations": {"version": "1.6.0-preview.49", "train": "integration"},
+        "iotOperations": {"version": "1.6.0-preview.57", "train": "preview"},
     }
 
 
 @pytest.mark.parametrize("mode", ["Preview", "Disabled"])
-def test_preview_mcp_feature_is_not_exposed_by_cli(qualification_profile, mode):
-    from azure.cli.core.azclierror import InvalidArgumentValueError
-
-    with pytest.raises(InvalidArgumentValueError, match="Supported feature keys: opcua.mode"):
-        InitTargets("cluster", "rg", runtime_profile=qualification_profile, instance_features=[f"mcp.mode={mode}"])
+def test_preview_mcp_feature_uses_source_contract(qualification_profile, mode):
+    template, parameters = InitTargets(
+        "cluster", "rg", runtime_profile=qualification_profile, instance_features=[f"mcp.mode={mode}"]
+    ).get_ops_instance_template()
+    assert parameters["features"] == {"value": {"mcp": {"mode": mode, "settings": {}}}}
+    assert template["resources"]["aioInstance"]["properties"]["features"] == EXPECTED_PREVIEW_FEATURES
 
 
 @pytest.mark.parametrize("mode", ["Stable", "Preview", "Disabled"])
@@ -234,10 +242,10 @@ def test_preview_features_use_source_contract(qualification_profile, mode):
         "cluster", "rg", runtime_profile=qualification_profile, instance_features=[f"opcua.mode={mode}"]
     ).get_ops_instance_template()
     assert parameters["features"] == {"value": {"opcua": {"mode": mode, "settings": {}}}}
-    assert template["resources"]["aioInstance"]["properties"]["features"] == "[parameters('features')]"
+    assert template["resources"]["aioInstance"]["properties"]["features"] == EXPECTED_PREVIEW_FEATURES
     assert ("opcUaConnectorTemplate" in template["resources"]) == (mode != "Disabled")
     assert "effectiveFeatures" not in template["variables"]
-    assert template["variables"]["TRAINS"]["iotOperations"] == "integration"
+    assert template["variables"]["TRAINS"]["iotOperations"] == "preview"
 
 
 def test_preview_explicit_configuration_overlays_preserve_other_defaults(qualification_profile):
@@ -290,8 +298,8 @@ def test_bundled_preview_registered_without_changing_default_or_train():
     assert catalog.for_create().channel == RuntimeChannel.STABLE
     profile = catalog.for_create(use_preview=True)
     assert profile is PREVIEW_PROFILE
-    assert profile.source_commit == "d1021a9cb265da141e70f05695e930345e23d32e"
-    assert profile.iotops_api_version == "2026-09-03-preview"
+    assert profile.source_commit == "f306f5abaf891dddf7a1f9db00b13a8a742d5ad8"
+    assert profile.iotops_api_version == "2026-11-01-preview"
     assert profile.copy_instance_blueprint() == TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW
     assert resolve_runtime_identity(
         profile.identity.version, profile.identity.train, catalog.qualification_identities

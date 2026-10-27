@@ -981,14 +981,30 @@ def test_parse_feature_kvp_nargs(feature_scenario: Optional[dict], mocked_featur
             "inputs": ["opcua.mode=Enabled"],
             "errors": ["opcua.mode has an invalid value."],
         },
+        {
+            "inputs": ["mcp.mode=Preview"],
+            "expected": {"mcp": {"mode": "Preview"}},
+        },
+        {
+            "inputs": ["mcp.mode=Disabled"],
+            "expected": {
+                "mcp": {"mode": "Disabled"},
+                "mqttBroker": {"settings": {"preview": "Enabled"}},
+            },
+            "initialState": {"mqttBroker": {"settings": {"preview": "Enabled"}}},
+        },
+        {
+            "inputs": ["mcp.mode=Stable"],
+            "errors": ["mcp.mode has an invalid value."],
+        },
     ],
 )
-def test_instance_update_opcua_mode(
+def test_instance_update_feature_mode(
     mocked_cmd,
     mocked_responses: responses,
     features_scenario: dict,
 ):
-    """Verify opcua.mode feature works through the update path against the real COMPAT_FEAT_KEY_SET."""
+    """Verify supported feature modes work through update against the real COMPAT_FEAT_KEY_SET."""
     instance_name = generate_random_string()
     resource_group_name = generate_random_string()
     instance_endpoint = get_instance_endpoint(resource_group_name=resource_group_name, instance_name=instance_name)

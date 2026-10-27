@@ -86,6 +86,25 @@ def test_shared_instance_update_preserves_runtime_channel(channel_target):
 
 
 @pytest.mark.serial
+def test_preview_mcp_feature_toggle(channel_target):
+    name, group, channel = channel_target
+    if channel != "preview":
+        pytest.skip("MCP is only supported on the preview runtime.")
+    instance = run(f"az iot ops show -n {name} -g {group}")
+    original_mode = instance.get("properties", {}).get("features", {}).get("mcp", {}).get("mode") or "Preview"
+    try:
+        disabled = run(f"az iot ops update -n {name} -g {group} --feature mcp.mode=Disabled")
+        assert disabled["properties"]["features"]["mcp"]["mode"] == "Disabled"
+        enabled = run(f"az iot ops update -n {name} -g {group} --feature mcp.mode=Preview")
+        assert enabled["properties"]["features"]["mcp"]["mode"] == "Preview"
+    finally:
+        subprocess.run(
+            ["az", "iot", "ops", "update", "-n", name, "-g", group, "--feature", f"mcp.mode={original_mode}"],
+            check=True,
+        )
+
+
+@pytest.mark.serial
 def test_cross_channel_upgrade_rejected_without_mutation(channel_target):
     name, group, channel = channel_target
     assert_runtime(name, group, channel)

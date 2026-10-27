@@ -59,8 +59,8 @@ def test_bundled_profiles_select_management_api_without_changing_preview_bluepri
     stable = catalog.get(RuntimeChannel.STABLE)
     assert stable.iotops_api_version == "2026-10-01"
     preview = catalog.get(RuntimeChannel.PREVIEW)
-    assert preview.iotops_api_version == "2026-09-03-preview"
-    assert preview.copy_instance_blueprint().content["resources"]["aioInstance"]["apiVersion"] == "2026-09-03-preview"
+    assert preview.iotops_api_version == "2026-11-01-preview"
+    assert preview.copy_instance_blueprint().content["resources"]["aioInstance"]["apiVersion"] == "2026-11-01-preview"
 
 
 def test_catalog_missing_and_duplicate_profiles_fail(profiles):
@@ -86,6 +86,21 @@ def test_integration_requires_exact_mapping():
         resolve_runtime_identity("1.6.0-preview.5", "integration", identities)
     with pytest.raises(ValidationError, match="must remain"):
         validate_upgrade_boundary(stable, preview)
+
+
+@pytest.mark.parametrize(
+    "identity_factory",
+    [tuple, iter, lambda identities: (identity for identity in identities)],
+    ids=["tuple", "iterator", "generator"],
+)
+@pytest.mark.parametrize(
+    "channel,version",
+    [(RuntimeChannel.STABLE, "1.5.7"), (RuntimeChannel.PREVIEW, "1.6.0-preview.4")],
+)
+def test_integration_mapping_accepts_single_pass_iterables(identity_factory, channel, version):
+    identity = RuntimeIdentity(channel, version, "integration")
+    identities = identity_factory([identity])
+    assert resolve_runtime_identity(version, "Integration", identities) == identity
 
 
 @pytest.mark.parametrize(

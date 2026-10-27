@@ -20,6 +20,7 @@ from ...common import (
     DEFAULT_ARTIFACT_REGISTRY,
 )
 from ...util import parse_kvp_nargs, url_safe_hash_phrase
+from ...util.cloud_config import CLOUD_AZURE_PUBLIC
 from ...util.id_tools import is_valid_resource_id, parse_resource_id
 from ..orchestration.common import (
     EXTENSION_MONIKER_CM,
@@ -33,8 +34,8 @@ from ..orchestration.resources.brokers import Brokers
 from ..orchestration.resources.connector_templates import ConnectorTemplates
 from ..orchestration.resources.instances import parse_feature_kvp_nargs
 from .runtime_profiles import RuntimeChannel, RuntimeProfile
+from .deployment_policy import DeploymentPolicy
 from .template import (
-    TEMPLATE_BLUEPRINT_ENABLEMENT,
     TEMPLATE_BLUEPRINT_INSTANCE,
     TemplateBlueprint,
     get_insecure_listener,
@@ -110,10 +111,21 @@ class InitTargets:
         user_trust: Optional[bool] = None,
         trust_settings: Optional[List[str]] = None,
         runtime_profile: Optional[RuntimeProfile] = None,
+        cloud_name: str = CLOUD_AZURE_PUBLIC,
         **_,
     ):
+        self.deployment_policy = DeploymentPolicy(cloud_name)
+        if self.deployment_policy.is_fairfax:
+            from .runtime_catalog import get_runtime_catalog
+
+            self.deployment_policy.validate_runtime(
+                runtime_profile.channel if runtime_profile is not None else RuntimeChannel.STABLE
+            )
+            if runtime_profile is None or runtime_profile.cloud_name != cloud_name:
+                runtime_profile = get_runtime_catalog(cloud_name).for_create()
         self.runtime_profile = runtime_profile
         if runtime_profile is not None:
+            self.deployment_policy.validate_runtime(runtime_profile.channel)
             runtime_profile.validate_overrides(version=ops_version, train=ops_train)
         self._instance_blueprint = (
             runtime_profile.copy_instance_blueprint()
@@ -138,7 +150,7 @@ class InitTargets:
             parameter="--ns-resource-id",
         )
         self.cluster_namespace = self._sanitize_k8s_name(cluster_namespace)
-        self.location = location
+        self.location = self.deployment_policy.validate_location(location)
         if not custom_location_name:
             custom_location_name = get_default_cl_name(
                 resource_group_name=resource_group_name, cluster_name=cluster_name, namespace=cluster_namespace
@@ -156,18 +168,21 @@ class InitTargets:
         self.tags = tags
 
         # Extensions
+        foundation_targets = self.deployment_policy.foundation_targets
+        cm_target = foundation_targets.get(EXTENSION_MONIKER_CM, {})
+        ssc_target = foundation_targets.get(EXTENSION_MONIKER_SSC, {})
         self.extension_manager = ExtensionConfigManager()
         self.extension_manager.register_extension(
             moniker=EXTENSION_MONIKER_CM,
-            version=cm_version,
-            train=cm_train,
+            version=cm_version or cm_target.get("version"),
+            train=cm_train or cm_target.get("train"),
             user_config=parse_kvp_nargs(cm_config),
             default_config_getter=get_default_cm_config,
         )
         self.extension_manager.register_extension(
             moniker=EXTENSION_MONIKER_SSC,
-            version=ssc_version,
-            train=ssc_train,
+            version=ssc_version or ssc_target.get("version"),
+            train=ssc_train or ssc_target.get("train"),
             user_config=parse_kvp_nargs(ssc_config),
             default_config_getter=get_default_ssc_config,
         )
@@ -175,7 +190,7 @@ class InitTargets:
             moniker=EXTENSION_MONIKER_OPS,
             version=ops_version,
             train=ops_train,
-            user_config=parse_kvp_nargs(ops_config),
+            user_config=self.deployment_policy.merge_aio_configuration(parse_kvp_nargs(ops_config)),
         )
 
         self.user_trust = user_trust
@@ -250,10 +265,12 @@ class InitTargets:
                 "clusterName": self.cluster_name,
                 "trustConfig": self.trust_config,
             },
-            template_blueprint=TEMPLATE_BLUEPRINT_ENABLEMENT,
+            template_blueprint=self.deployment_policy.copy_enablement_blueprint(),
         )
 
-        self.extension_manager.apply_to_template(template.content)
+        self.extension_manager.apply_to_template(
+            template.content, preserve_generated_config=self.deployment_policy.is_fairfax,
+        )
 
         if self.user_trust:
             # patch enablement template expecting full trust settings for source: CustomerManaged
@@ -265,6 +282,7 @@ class InitTargets:
         cl_extension_ids: Optional[List[str]] = None,
         phase: Optional[InstancePhase] = None,
     ) -> Tuple[dict, dict]:
+        self.location = self.deployment_policy.validate_location(self.location)
         if not cl_extension_ids:
             cl_extension_ids = []
         template, parameters = self._handle_apply_targets(
@@ -457,7 +475,9 @@ class InitTargets:
         result = {"source": source}
         if self.trust_settings:
             target_settings: Dict[str, str] = {}
-            trust_bundle_def = TEMPLATE_BLUEPRINT_ENABLEMENT.get_type_definition("_1.TrustBundleSettings")["properties"]
+            trust_bundle_def = self.deployment_policy.copy_enablement_blueprint().get_type_definition(
+                "_1.TrustBundleSettings"
+            )["properties"]
             allowed_issuer_kinds: Optional[List[str]] = trust_bundle_def.get(TRUST_ISSUER_KIND_KEY, {}).get(
                 "allowedValues"
             )
@@ -597,7 +617,9 @@ class ExtensionConfigManager:
 
         return config
 
-    def apply_to_template(self, template: dict, template_type: str = "enablement") -> None:
+    def apply_to_template(
+        self, template: dict, template_type: str = "enablement", preserve_generated_config: bool = False,
+    ) -> None:
         """Apply all extension configurations to a template.
 
         Args:
@@ -619,7 +641,11 @@ class ExtensionConfigManager:
                         template["variables"]["defaultAioConfigurationSettings"] = merged_config
                 else:
                     # Standard extension configuration
-                    config = self.get_merged_config(ext.moniker)
+                    defaults = (
+                        template["resources"][resource_key]["properties"].get("configurationSettings")
+                        if preserve_generated_config else None
+                    )
+                    config = self.get_merged_config(ext.moniker, defaults)
                     if config:
                         template["resources"][resource_key]["properties"]["configurationSettings"] = config
 

@@ -259,6 +259,30 @@ def mocked_upgrade_manager():
         yield mock
 
 
+@pytest.fixture
+def unbundled_upgrade_catalog(mocker):
+    from azext_edge.edge.providers.orchestration.runtime_profiles import RuntimeChannel, RuntimeProfileCatalog
+    from .test_runtime_profiles_unit import make_profile
+
+    # Fixed installed-version boundaries must not move with bundled release targets.
+    catalog = RuntimeProfileCatalog([
+        make_profile(
+            RuntimeChannel.STABLE, "1.5.33", train="integration",
+            opcua_connector_version=OPCUA_CONNECTOR_VERSION,
+        ),
+        make_profile(
+            RuntimeChannel.PREVIEW, "1.6.0-preview.49", train="integration",
+            opcua_connector_version=OPCUA_CONNECTOR_VERSION,
+            iotops_api_version="2026-09-03-preview",
+        ),
+    ])
+    for module in ("runtime_catalog", "upgrade2"):
+        mocker.patch(
+            f"azext_edge.edge.providers.orchestration.{module}.get_runtime_catalog", return_value=catalog,
+        )
+    return catalog
+
+
 class UpgradeScenario:
     def __init__(self, description: Optional[str] = None, confirm_yes: bool = True):
         self.extensions: Dict[str, dict] = {}
@@ -2908,12 +2932,12 @@ def test_preview_upgrade_routes_instance_and_backfills_to_profile_api(mocked_cmd
 
     name, resource_group = "preview-instance", "previewrg"
     scenario = UpgradeScenario().set_extension(
-        EXTENSION_TYPE_OPS, ext_vers="1.6.0-preview.43", ext_train="integration",
+        EXTENSION_TYPE_OPS, ext_vers="1.6.0-preview.43", ext_train="preview",
     )
     scenario.set_instance_mock(mocked_responses, name, resource_group)
     preview_record = deepcopy(scenario.instance_record)
     preview_record["properties"]["previewOnlyProperty"] = {"retained": ["value"]}
-    api_version = "2026-09-03-preview"
+    api_version = "2026-11-01-preview"
     endpoint = get_instance_endpoint(resource_group, name, api_version=api_version)
     base_url = endpoint.split("?")[0]
     mocked_responses.add(responses.GET, endpoint, json=preview_record)
@@ -3257,16 +3281,17 @@ def test_reconcile_cannot_bypass_release_train_guard(built_in_train, train_overr
 
 @pytest.mark.parametrize("explicit_target", [False, True])
 @pytest.mark.parametrize("force", [False, True])
-def test_ga_catalog_train_change_preserves_force_behavior(explicit_target, force):
+def test_ga_catalog_target_upgrade_behavior(explicit_target, force):
     from azext_edge.edge.providers.orchestration.runtime_catalog import get_runtime_catalog
     from azext_edge.edge.providers.orchestration.runtime_profiles import RuntimeChannel
 
     catalog = get_runtime_catalog()
     target = catalog.get(RuntimeChannel.STABLE).identity
+    current_train = "stable"
     ext = build_ext_upgrade_state(
         ext_type=EXTENSION_TYPE_OPS,
         current_version="1.4.112",
-        current_train="stable",
+        current_train=current_train,
         built_in_version=target.version,
         built_in_train=target.train,
         version_override=target.version if explicit_target else None,
@@ -3275,7 +3300,15 @@ def test_ga_catalog_train_change_preserves_force_behavior(explicit_target, force
         qualification_identities=catalog.qualification_identities,
     )
 
-    if force:
+    if target.train == current_train:
+        ext.validate_upgrade()
+        properties = ext.get_patch()["properties"]
+        assert properties["version"] == target.version
+        if explicit_target:
+            assert properties["releaseTrain"] == target.train
+        else:
+            assert "releaseTrain" not in properties
+    elif force:
         ext.validate_upgrade()
         properties = ext.get_patch()["properties"]
         assert properties["version"] == target.version
@@ -3349,7 +3382,7 @@ def test_explicit_unbundled_ga_integration_force_upgrade(current_version, curren
     ],
 )
 def test_unbundled_integration_force_command_preserves_boundaries(
-    mocked_cmd, mocked_responses, mocked_sleep,
+    mocked_cmd, mocked_responses, mocked_sleep, unbundled_upgrade_catalog,
     current_version, current_train, force, ops_version, ops_train, error,
 ):
     from azext_edge.edge.commands_edge import upgrade_instance
@@ -3403,7 +3436,7 @@ def test_unbundled_integration_force_command_preserves_boundaries(
 @pytest.mark.parametrize("ops_train", [None, "integration"])
 @pytest.mark.parametrize("auto_upgrade", [False, True, None])
 def test_unbundled_installed_runtime_force_and_repair_contract(
-    mocked_cmd, mocked_responses, mocked_sleep,
+    mocked_cmd, mocked_responses, mocked_sleep, unbundled_upgrade_catalog,
     current_version, force, provisioning_state, ops_train, auto_upgrade,
 ):
     from azext_edge.edge.commands_edge import upgrade_instance
@@ -3459,7 +3492,8 @@ def test_unbundled_installed_runtime_force_and_repair_contract(
     ],
 )
 def test_unbundled_integration_force_preserves_readiness_and_ownership(
-    mocked_cmd, mocked_responses, auto_upgrade, connectivity, instance_state, error, current_version, ops_train,
+    mocked_cmd, mocked_responses, unbundled_upgrade_catalog,
+    auto_upgrade, connectivity, instance_state, error, current_version, ops_train,
 ):
     from azext_edge.edge.commands_edge import upgrade_instance
     from azext_edge.edge.providers.orchestration.runtime_catalog import get_runtime_catalog
