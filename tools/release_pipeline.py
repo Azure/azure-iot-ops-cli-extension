@@ -119,7 +119,10 @@ def github(resource, **kwargs):
 
 
 def check_access():
-    query = urlencode({"tokens": environment("SYSTEM_TEAMPROJECTID") + "/164",
+    definition = ado("build/definitions/164")
+    folder = definition["path"].replace("\\", "/").strip("/")
+    token = "/".join(part for part in (environment("SYSTEM_TEAMPROJECTID"), folder, "164") if part)
+    query = urlencode({"tokens": token,
                        "alwaysAllowAdministrators": "false", "api-version": "7.1"})
     granted = {}
     for name, bit in (("View builds", 1), ("Queue builds", 128), ("Stop builds", 512),

@@ -13,6 +13,7 @@ import json
 from pathlib import Path
 import sys
 from unittest.mock import Mock
+from urllib.parse import parse_qs, urlsplit
 from zipfile import ZipFile
 
 import pytest
@@ -128,8 +129,14 @@ def test_release_defaults_to_github_only(candidate, monkeypatch, tmp_path):
 
 
 @pytest.mark.parametrize("allowed", [True, False])
-def test_access_probe_uses_job_token_without_queuing(candidate, monkeypatch, allowed):
+@pytest.mark.parametrize("folder,token", [
+    ("\\", f"{PROJECT}/164"),
+    ("\\official", f"{PROJECT}/official/164"),
+    ("\\official\\release checks", f"{PROJECT}/official/release checks/164"),
+])
+def test_access_probe_uses_job_token_without_queuing(candidate, monkeypatch, allowed, folder, token):
     monkeypatch.setenv("SYSTEM_ACCESSTOKEN", "offline-job-token")
+    monkeypatch.setattr(release, "ado", Mock(return_value={"path": folder}))
     request = Mock(return_value={"count": 1, "value": [allowed]})
     monkeypatch.setattr(release, "api", request)
     if allowed:
@@ -141,7 +148,9 @@ def test_access_probe_uses_job_token_without_queuing(candidate, monkeypatch, all
     assert all("/_apis/permissions/" in call.args[0] and call.args[1] == "offline-job-token"
                and call.args[0].endswith("api-version=7.1")
                and not call.kwargs for call in request.call_args_list)
-    release.ado.assert_not_called()
+    assert all(parse_qs(urlsplit(call.args[0]).query)["tokens"] == [token]
+               for call in request.call_args_list)
+    release.ado.assert_called_once_with("build/definitions/164")
 
 
 @pytest.mark.parametrize("response", [
@@ -150,6 +159,7 @@ def test_access_probe_uses_job_token_without_queuing(candidate, monkeypatch, all
 ])
 def test_access_probe_rejects_ambiguous_permission_responses(candidate, monkeypatch, response):
     monkeypatch.setenv("SYSTEM_ACCESSTOKEN", "offline-job-token")
+    monkeypatch.setattr(release, "ado", Mock(return_value={"path": "\\official"}))
     monkeypatch.setattr(release, "api", Mock(return_value=response))
     with pytest.raises(ValueError, match="Unexpected build-permission response"):
         release.check_access()
