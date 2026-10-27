@@ -1,6 +1,6 @@
 ---
 name: sync-aio-bicep-templates
-description: Generate and safely integrate GA or preview AIO runtime templates from azure-iot-operations-tests at explicit source refs, excluding GDS Manager from both profiles. Use for template sync, adding a separate preview blueprint, or refreshing release inputs without changing the other runtime profile or shared init dependencies.
+description: Generate and safely integrate GA, preview, or Fairfax AIO blueprints from azure-iot-operations-tests at explicit refs or active source PRs, excluding GDS Manager. Use for template sync, separate preview blueprints, or release-input refreshes. Keep Fairfax cloud overrides separate from Public runtime profiles and shared init defaults.
 ---
 
 # Synchronize AIO Bicep templates
@@ -23,10 +23,30 @@ An unspecified scope must be resolved before generation; do not infer it from th
 supplied as the preview source selects preview scope, but does not establish its actual deployment train, final
 release approval, or permission to publish it.
 
+### Source pull requests
+
+Accept the source selector the user supplies: a branch, tag, commit, or source PR URL. Do not prefer one form
+or substitute another. For a PR URL, use the source host's read-only PR metadata
+(`az repos pr show` for Azure DevOps or `gh pr view` for GitHub) to resolve its source repository, source branch,
+and exact source-head commit. Handle forks using the source repository, not the target repository by assumption.
+Verify that head against the advertised remote source ref and apply the same local/remote freshness and fetch
+approval checks below. Record the PR URL, source ref, and full resolved SHA in the handoff. If the PR moves during
+generation, do not mix commits; report the new head and obtain approval before refreshing.
+
+Do not use a PR's synthetic merge commit or its target branch unless explicitly requested. A draft/unmerged PR
+provides provisional inputs, not release approval. Do not merge, push, or publish the source PR as part of sync.
+
+### Fairfax / Azure US Government inputs
+
+Fairfax uses cloud-specific full deployment blueprints, not a third runtime channel. Read the
+[Fairfax refresh procedure](./references/runtime-profiles.md#fairfax-policy-refresh) when the request involves
+FF inputs or deployment files. Do not regenerate Public GA/shared or preview assignments from an FF-only source.
+An FF refresh and a Public GA/preview template refresh are separate scopes with separate source refs.
+
 ## Required inputs
 
 - Local path to the `azure-iot-operations-tests` deployment repository.
-- Explicit release branch, tag, or commit. Release branches are named for the product series and the moniker, so
+- Explicit release branch, tag, commit, or source PR URL. Release branches are named for the product series and the moniker, so
   the series segment changes when the product's minor version changes; take the ref exactly as given rather than
   assuming a series.
 - AIO release moniker, such as the four-digit `YYMM` identifier for the release.

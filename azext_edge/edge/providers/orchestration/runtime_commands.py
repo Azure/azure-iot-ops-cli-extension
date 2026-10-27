@@ -27,6 +27,7 @@ from azure.cli.core.commands import AzCommandGroup
 from knack.log import get_logger
 
 from .runtime_profiles import RuntimeChannel
+from .deployment_policy import get_deployment_policy
 from .runtime_requirements import get_runtime_requirements, requested_selections
 
 
@@ -94,7 +95,7 @@ class RuntimeTarget:
         instances = Instances(cmd, subscription_id=subscription)
         instance = instances.show(name=name, resource_group_name=resource_group)
         return instances.get_runtime_context(
-            instance, get_runtime_catalog().qualification_identities,
+            instance, get_runtime_catalog(get_deployment_policy(cmd).cloud_name).qualification_identities,
             allow_unbundled_integration=self.allow_unbundled_integration,
         )
 
@@ -171,7 +172,11 @@ def runtime_validation_handler(cli_ctx, **kwargs):
             active.insert(0, requirement)
         if not active:
             return
+        policy = get_deployment_policy(cmd)
+        if any(rule.channels == {RuntimeChannel.PREVIEW} for rule in active):
+            policy.validate_runtime(RuntimeChannel.PREVIEW)
         runtime = command.runtime_target(cmd, namespace)
+        policy.validate_runtime(runtime.identity.channel)
         for rule in active:
             rule.validate(runtime)
         cmd.runtime_context = runtime

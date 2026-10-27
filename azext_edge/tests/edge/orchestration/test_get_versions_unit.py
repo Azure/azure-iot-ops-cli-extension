@@ -165,3 +165,17 @@ def test_browser_versions_does_not_construct_runtime_catalog(mocker):
     mocker.patch("azext_edge.edge.providers.orchestration.runtime_catalog.get_runtime_catalog",
                  side_effect=AssertionError("runtime catalog"))
     get_versions()
+
+
+def test_inline_versions_select_active_government_cloud_without_network(mocker):
+    from azext_edge.tests.helpers import build_mock_cmd_for_cloud
+
+    mocker.patch("requests.sessions.Session.request", side_effect=AssertionError("network"))
+    result = get_versions(inline=True, cmd=build_mock_cmd_for_cloud("AzureUSGovernment"))
+    assert result["extensions"] == {
+        "certManager": {"version": "1.2.1", "train": "preview"},
+        "secretStore": {"version": "1.6.0", "train": "preview"},
+        "iotOperations": {"version": "1.5.42", "train": "stable"},
+    }
+    assert set(result["runtimeProfiles"]) == {"stable"}
+    assert result["runtimeProfiles"]["stable"]["sourceRef"] == "releases/v1.5.x/2610-ff"
