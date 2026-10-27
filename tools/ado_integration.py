@@ -23,6 +23,8 @@ from zipfile import ZipFile
 
 import yaml
 
+import release_pipeline as release
+
 
 ROOT = Path(__file__).resolve().parents[1]
 PYTHONS = {"3.10", "3.11", "3.12", "3.13"}
@@ -74,7 +76,19 @@ def scenario_timeout():
     return int(value)
 
 
+def release_build_id():
+    value = os.environ.get("OPS_RELEASE_BUILD_ID", "0")
+    if value != "0":
+        release.identifier(value)
+        if producer()["pipeline"] != "164" or os.environ.get("OPS_HEALTH_HISTORY"):
+            raise ValueError("Only manual pipeline 164 can consume a release candidate, never Health.")
+    return value
+
+
 def plan(output):
+    parent = release_build_id()
+    if parent != "0" and required("OPS_MODE") != "Integration tests":
+        raise ValueError("A release candidate requires live integration, not a dry run.")
     health = None
     if os.environ.get("OPS_HEALTH_HISTORY"):
         from integration_health import resolve
@@ -125,6 +139,8 @@ def plan(output):
         value["health"] = health
         value["locations"] = {key: health["profile"][key] for key in
                               ("clusterRegion", "resourceRegion", "namespaceRegion")}
+    if parent != "0":
+        value["releaseBuildId"] = parent
     write(output / "plan.json", value)
     print(json.dumps(value, indent=2))
     output_variable("matrix", json.dumps({
@@ -135,6 +151,8 @@ def plan(output):
 
 
 def candidate(output):
+    if release_build_id() != "0":
+        raise ValueError("A release candidate must be acquired from 165, never rebuilt.")
     wheels = list(output.glob("*.whl"))
     if len(wheels) != 1 or not re.fullmatch(r"azure_iot_ops-[A-Za-z0-9_.+!-]+\.whl", wheels[0].name):
         raise ValueError("Build must produce exactly one azure-iot-ops wheel.")
@@ -151,8 +169,62 @@ def candidate(output):
     output_variable("artifact", f"ops-wheel-{required('SYSTEM_JOBATTEMPT')}")
 
 
+def acquire(output):
+    parent_id = release_build_id()
+    if parent_id == "0":
+        raise ValueError("A trusted release producer is required.")
+    source = Path(required("OPS_RELEASE_INPUT"))
+    parent = release.ado(f"build/builds/{parent_id}")
+    parameters = parent.get("templateParameters", {})
+    if isinstance(parameters, str):
+        parameters = json.loads(parameters)
+    if (parent["definition"]["id"] != 165 or parent["repository"]["id"] != release.REPOSITORY
+            or parent["repository"]["type"] != "GitHub"
+            or parent["project"]["id"].lower() != required("SYSTEM_TEAMPROJECTID").lower()
+            or parameters.get("mode") not in {"Validate", "Release"}
+            or release.branch(parameters["sourceBranch"]) != required("BUILD_SOURCEBRANCH")
+            or parent.get("result") not in (None, "succeeded")):
+        raise ValueError("Untrusted, failed, or nonqualifying release producer.")
+    value = release.verify_candidate(
+        source, expected_producer={"definition": "165", "build": parent_id,
+                                   "commit": release.commit(parent["sourceVersion"])},
+        source_branch=required("BUILD_SOURCEBRANCH"), source_commit=producer()["commit"],
+    )
+    if value["cohorts"] != release.source_cohorts(ROOT):
+        raise ValueError("Release cohort inventory differs from the pinned integration source.")
+    child = release.ado(f"build/builds/{producer()['build']}")
+    matches = []
+    for key in value["cohorts"]:
+        try:
+            release.validate_integration(child, value, key)
+            matches.append(key)
+        except ValueError:
+            continue
+    if len(matches) != 1:
+        raise ValueError("Child parameters do not identify exactly one declared release cohort.")
+    output.mkdir(parents=True, exist_ok=False)
+    for name in ("candidate.json", "SBOM.zip", value["wheel"]["file"]):
+        shutil.copyfile(source / name, output / name)
+    write(output / "handoff.json", {
+        "consumer": producer(), "cohort": matches[0], "candidateSha256": digest(output / "candidate.json"),
+    })
+    verified_candidate(output, value["wheel"]["sha256"])
+    output_variable("digest", value["wheel"]["sha256"])
+    output_variable("artifact", f"ops-wheel-{required('SYSTEM_JOBATTEMPT')}")
+
+
 def verified_candidate(directory, expected_digest):
     value = read(directory / "candidate.json")
+    parent = release_build_id()
+    if parent != "0":
+        release.verify_candidate(
+            directory, expected_producer={"definition": "165", "build": parent,
+                                          "commit": release.commit(value["producer"]["commit"])},
+            source_branch=required("BUILD_SOURCEBRANCH"), source_commit=producer()["commit"], consumer=producer(),
+        )
+        if value["wheel"]["sha256"] != expected_digest:
+            raise ValueError("Release candidate digest mismatch.")
+        return directory / value["wheel"]["file"]
     if value.get("schema") != 1 or value.get("producer") != producer():
         raise ValueError("Candidate producer does not match this run and source.")
     name = value["wheel"]["file"]
@@ -178,6 +250,13 @@ def prepare(output):
     if row is None or row["python"] != f"{sys.version_info.major}.{sys.version_info.minor}":
         raise ValueError("Selected row or Python does not match the plan.")
     wheel = verified_candidate(Path(required("OPS_CANDIDATE")), required("OPS_CANDIDATE_DIGEST"))
+    if release_build_id() != "0":
+        directory = Path(required("OPS_CANDIDATE"))
+        release_candidate = read(directory / "candidate.json")
+        handoff = read(directory / "handoff.json")
+        if (value.get("releaseBuildId") != release_build_id()
+                or value["rows"] != [release_candidate["cohorts"][handoff["cohort"]]["row"]]):
+            raise ValueError("Execution plan does not match the exact release cohort.")
     suffix = uuid4().hex[:11]
     prefix = f"/subscriptions/{value['subscription']}/resourceGroups/{value['resourceGroup']}/providers"
     cluster, storage = f"opado{suffix}", f"initstore{suffix}"
@@ -269,6 +348,17 @@ def gate(output):
     value = read(required("OPS_PLAN"))
     if value["producer"] != producer():
         raise ValueError("Qualification plan does not match this run.")
+    parent = release_build_id()
+    release_candidate = None
+    if parent != value.get("releaseBuildId", "0"):
+        raise ValueError("Qualification plan has a different release producer.")
+    if parent != "0":
+        candidate_directory = Path(required("OPS_CANDIDATE"))
+        verified_candidate(candidate_directory, required("OPS_CANDIDATE_DIGEST"))
+        release_candidate = read(candidate_directory / "candidate.json")
+        handoff = read(candidate_directory / "handoff.json")
+        if value["rows"] != [release_candidate["cohorts"][handoff["cohort"]]["row"]]:
+            raise ValueError("Selected integration rows differ from the release cohort.")
     history = Path(required("OPS_HISTORY"))
     verified = []
     output.mkdir(parents=True, exist_ok=False)
@@ -306,16 +396,19 @@ def gate(output):
         verified.append(receipt)
     subprocess.run([sys.executable, "-m", "coverage", "combine", str(coverage)], cwd=ROOT, check=True)
     subprocess.run([sys.executable, "-m", "coverage", "xml", "-o", str(output / "coverage.xml")], cwd=ROOT, check=True)
-    write(output / "qualification.json", {
+    qualification = {
         "schema": 1, "producer": producer(), "sha256": required("OPS_CANDIDATE_DIGEST"),
         "scope": "selected ops scenarios", "scenarios": verified, "releaseQualified": False,
         "coverageScope": "unit tests plus selected ops scenarios",
-    })
+    }
+    if release_candidate:
+        qualification["releaseCandidate"] = release_candidate
+    write(output / "qualification.json", qualification)
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("operation", choices=["plan", "candidate", "prepare", "report", "gate"])
+    parser.add_argument("operation", choices=["plan", "candidate", "acquire", "prepare", "report", "gate"])
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     globals()[args.operation](args.output.resolve())

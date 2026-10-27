@@ -8,6 +8,10 @@ pool:
   vmImage: ubuntu-24.04
 
 parameters:
+  - name: releaseBuildId
+    displayName: Exact pipeline 165 candidate build (0 builds this source normally)
+    type: number
+    default: 0
   - name: mode
     displayName: Run mode
     type: string

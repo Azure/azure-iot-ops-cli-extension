@@ -93,9 +93,67 @@ Resource IDs are published before provisioning. If an agent is lost, use that re
 and clean up precisely those resources; test-specific fixtures retain their existing cleanup responsibilities.
 
 The resulting report qualifies **selected integration scenarios only**, not a release. It does not implement
-the container integration workflow, exact collected-case inventory parity, release security checks, publication,
-or release-candidate handoff. Pipeline 165 remains a disabled-by-default release starter.
+the container integration workflow or exact collected-case inventory parity. A nonzero `releaseBuildId`
+consumes the exact candidate artifact from pipeline 165 instead of rebuilding. It requires a matching upstream
+producer, source commit, declared scenario/channel cohort and wheel/SBOM digests. Health cannot use this path.
 Do not remove GitHub federation or disable the old workflows until replacement coverage is proven.
+
+## Azure Pipelines release automation
+
+Pipeline **165** uses `.azure-devops/release.yml` and official 1ES templates.
+It shares the publication contract with IoT CLI pipeline **161**:
+
+| Mode / option | Behavior |
+| --- | --- |
+| `Plan` (default) | Configuration and governed onboarding only; no candidate or publication. |
+| `Validate` | Freeze source; build one wheel and pinned-tool SBOM; run twelve Python/OS unit/style combinations, security, command lint, external-wheel index lint, and live qualification through 164. No publication. |
+| `Release` | The same required gates, then approved public GitHub publication from protected upstream `dev`. |
+| `createIndexPr` (default false) | After public GitHub publication, submit the exact wheel to the extension index for review. Never merge. Rejected outside `Release`. |
+| `uploadWheel` (default false, Ops only) | Also upload to an explicitly configured Azure Storage container without overwriting different bytes. Rejected outside `Release`. |
+
+During development, select the migration branch for both pipeline automation and `sourceBranch`, with
+`Plan` or `Validate`. Every downstream job checks out the resolved source SHA, not a moving branch tip.
+`Release` requires both automation and candidate source on protected upstream `dev`.
+No tag, GitHub release, index PR or storage upload occurs in `Plan` or `Validate`.
+
+Build freezes every default scenario from `.github/test-scenarios.yml` across **stable and preview** on
+**Python 3.13**, excluding explicit-only/baseline-required scenarios just as the existing default matrix does.
+The governed unit/style matrix covers Python 3.10-3.13 on Linux, Windows and macOS.
+Each release matrix job queues one 164 cohort, serially, using the same retained wheel. The parent waits
+without provisioning Azure resources until there is enough headroom before the 08:00 cleanup and 09:00
+integration schedule. Child admission still checks actual start time and competing ADO integration runs.
+It does not query GitHub run statuses: maintainers must coordinate manual GitHub activity and Health runs.
+A full qualification can span multiple days; the release waiter uses a governed agent while waiting.
+Pool capacity and automatic schedules are not changed.
+
+All cohort jobs must succeed, including verification of retained wheel/SBOM bytes, exact candidate provenance,
+scenario evidence and cleanup. A green selected-scope Health run is not release qualification.
+Retries reattach to the unique child for this parent/cohort. Completed children are reused and reverified;
+failed children must be recovered in 164 before retrying the parent. An uncertain retry never blindly
+queues another cohort. Cancellation targets only that job's owned child. Retain all artifacts and check
+cleanup manifests after agent loss. Do not rebuild or replace a candidate within the same release run.
+
+Publication is checkout-free and consumes governed candidate/tooling artifacts. It stages a draft, verifies
+both asset digests, and makes the release public only after pinning the tag to the qualified source.
+Conflicting tags or assets are never overwritten. Identical public releases and existing index PRs are reused.
+An index failure leaves the GitHub release public; retry Publish, not Build.
+
+**Administrator prerequisites:** authorize 165 for the shared official-template repository and
+`iotupx-1espt-release-probe` pool; install Microsoft Security DevOps; approve the `aziotcli/pip` corporate
+feed route and its Build Service access. Give `aziotcli Build Service (azureiotdevxp)` Queue/View/Stop
+permissions on 164 and read access to 165 artifacts. Runtime job-token checks, not human-user permissions,
+must establish these grants. Only 164/167 need the integration Azure connection.
+
+Before enabling `Release`, create a protected `aziotops_release_publish` Library group with branch-control
+and required approval checks, scoped only to reviewed 165 automation. Configure an organization-approved
+secret `ReleaseGitHubToken`; only index opt-in needs `IndexForkRepository` and fork/index write permissions.
+Only storage opt-in needs `StorageContainerUrl`, `ReleaseStorageServiceConnection`, its per-pipeline
+authorization, and the minimum blob data permission. No storage endpoint, credential or broad authorization
+is supplied by this YAML. Protect `dev`, pipeline editing and the publishing group; script guards are not
+a substitute for those controls. Do not authorize feature-branch publication or use personal-token shortcuts.
+
+This is additive migration code. Nonpublishing Plan/preview results do not prove full live release qualification,
+security-task availability, dependency-route approval, or production credential readiness.
 
 ## Cloud-aware management clients
 

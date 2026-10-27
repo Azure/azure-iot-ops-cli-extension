@@ -1,6 +1,9 @@
 # Copyright (c) Microsoft Corporation. All rights reserved.
 
 parameters:
+  - name: releaseBuildId
+    type: number
+    default: 0
   - name: health
     type: boolean
     default: false
@@ -70,6 +73,8 @@ stages:
             name: plan
             displayName: Validate selection before Azure access
             env:
+              OPS_RELEASE_BUILD_ID: ${{ parameters.releaseBuildId }}
+              OPS_MODE: ${{ parameters.mode }}
               OPS_SCENARIOS: ${{ join(',', parameters.testScenarios) }}
               OPS_CHANNELS: ${{ join(',', parameters.runtimeChannels) }}
               OPS_PYTHONS: ${{ join(',', parameters.pythonVersions) }}
@@ -96,13 +101,34 @@ stages:
               - task: UsePythonVersion@0
                 inputs:
                   versionSpec: '3.13'
-              - bash: |
-                  set -euo pipefail
-                  python -m pip install build PyYAML
-                  python -m build --wheel
-                  python tools/ado_integration.py candidate --output dist
-                name: candidate
-                displayName: Bind candidate wheel to source and producer
+              - ${{ if eq(parameters.releaseBuildId, 0) }}:
+                  - bash: |
+                      set -euo pipefail
+                      python -m pip install build PyYAML
+                      python -m build --wheel
+                      python tools/ado_integration.py candidate --output dist
+                    name: candidate
+                    displayName: Bind candidate wheel to source and producer
+              - ${{ if ne(parameters.releaseBuildId, 0) }}:
+                  - task: DownloadPipelineArtifact@2
+                    inputs:
+                      buildType: specific
+                      project: $(System.TeamProjectId)
+                      definition: "165"
+                      buildVersionToDownload: specific
+                      pipelineId: ${{ parameters.releaseBuildId }}
+                      artifactName: release-candidate
+                      targetPath: $(Pipeline.Workspace)/release-input
+                  - bash: |
+                      set -euo pipefail
+                      python -m pip install PyYAML
+                      python tools/ado_integration.py acquire --output dist
+                    name: candidate
+                    displayName: Verify pipeline 165 provenance and retain its wheel without rebuilding
+                    env:
+                      SYSTEM_ACCESSTOKEN: $(System.AccessToken)
+                      OPS_RELEASE_BUILD_ID: ${{ parameters.releaseBuildId }}
+                      OPS_RELEASE_INPUT: $(Pipeline.Workspace)/release-input
               - publish: dist
                 artifact: ops-wheel-$(System.JobAttempt)
 
@@ -123,6 +149,8 @@ stages:
                   .tox/lint/bin/python -m pylint tools/ado_integration.py tools/ado_cluster.py tools/ado_auth.py --rcfile .pylintrc
                   .tox/lint/bin/python -m flake8 tools/integration_health.py --config setup.cfg
                   .tox/lint/bin/python -m pylint tools/integration_health.py --rcfile .pylintrc
+                  .tox/lint/bin/python -m flake8 tools/release_pipeline.py --config setup.cfg
+                  .tox/lint/bin/python -m pylint tools/release_pipeline.py --rcfile .pylintrc
                 displayName: Existing extension style checks and ADO orchestration checks
 
       - stage: Unit
@@ -195,6 +223,7 @@ stages:
                   python tools/ado_integration.py prepare --output attempt
                 displayName: Verify candidate and prepare isolated scenario
                 env:
+                  OPS_RELEASE_BUILD_ID: ${{ parameters.releaseBuildId }}
                   OPS_PLAN: $(Pipeline.Workspace)/plan/plan.json
                   OPS_CANDIDATE: $(Pipeline.Workspace)/candidate
                   OPS_CANDIDATE_DIGEST: $(candidateDigest)
@@ -258,6 +287,7 @@ stages:
         dependsOn: [Plan, Build, Lint, Unit, Integration]
         variables:
           planArtifact: $[ stageDependencies.Plan.Plan.outputs['plan.artifact'] ]
+          candidateArtifact: $[ stageDependencies.Build.Build.outputs['candidate.artifact'] ]
           candidateDigest: $[ stageDependencies.Build.Build.outputs['candidate.digest'] ]
           unitCoverageArtifact: $[ stageDependencies.Unit.Unit.outputs['unit.coverageArtifact'] ]
         jobs:
@@ -276,6 +306,8 @@ stages:
                   python tools/ado_integration.py gate --output qualification
                 displayName: Reject missing, stale or failed scenario evidence
                 env:
+                  OPS_RELEASE_BUILD_ID: ${{ parameters.releaseBuildId }}
+                  OPS_CANDIDATE: $(Pipeline.Workspace)/history/$(candidateArtifact)
                   OPS_PLAN: $(Pipeline.Workspace)/history/$(planArtifact)/plan.json
                   OPS_HISTORY: $(Pipeline.Workspace)/history
                   OPS_CANDIDATE_DIGEST: $(candidateDigest)
