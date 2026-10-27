@@ -2539,6 +2539,20 @@ def load_iotops_help():
             these assignments. Individual user assignments are required during Public Preview when
             group-based authorization is unavailable.
 
+            Use --subscriber-object-ids to grant Event Grid TopicSpaces Subscriber directly to
+            Microsoft Entra users or groups from the resource tenant for direct MQTT access, such
+            as through VS Code. These assignments supplement the ADR identity's Subscriber access;
+            they do not grant Reader on ADR. Supply object IDs, not display names or application
+            client IDs. Assignments follow --ra-scope and always use the built-in Subscriber role,
+            independently of --adr-role-ids. Re-running enable adds missing assignments without
+            removing existing subscribers. Namespace-scoped assignments are preserved on disable;
+            topic-space-scoped assignments are removed with the topic space. Enable returns assignment
+            IDs for explicit cleanup with az role assignment delete --ids. --skip-ra skips these
+            assignments too. If a subsequent ADR Reader assignment fails, completed Subscriber
+            assignments remain in place and their IDs are included in the error, separated into
+            newly created and pre-existing lists. To undo access added by this invocation, delete
+            only the newly created assignments and leave pre-existing assignments unchanged.
+
         examples:
         - name: Enable Live Data using a system-assigned managed identity and default roles.
           text: >
@@ -2561,6 +2575,11 @@ def load_iotops_help():
           text: >
             az iot ops live-data enable --instance myinstance -g myresourcegroup
             --eg-resource-id $EG_NAMESPACE_RESOURCE_ID --skip-ra
+        - name: Enable Live Data and grant direct subscription access to a user and a group.
+          text: >
+            az iot ops live-data enable --instance myinstance -g myresourcegroup
+            --eg-resource-id $EG_NAMESPACE_RESOURCE_ID
+            --subscriber-object-ids $USER_OBJECT_ID $GROUP_OBJECT_ID
     """
 
     helps[
@@ -2580,8 +2599,8 @@ def load_iotops_help():
             is missing. If the Event Grid namespace cannot be located, a warning identifies
             the topic space that may require manual cleanup.
 
-            Event Grid namespace-scoped managed-identity role assignments are preserved;
-            topic-space-scoped managed-identity assignments are removed together with the topic
+            Event Grid namespace-scoped role assignments, including those created for
+            --subscriber-object-ids, are preserved; topic-space-scoped assignments are removed together with the topic
             space. Reader assignments created for --user-object-ids are always scoped to the Device
             Registry namespace, are unaffected by --ra-scope, and are preserved. Use the assignment
             IDs returned by enable if explicit cleanup is required.
@@ -2615,6 +2634,16 @@ def load_iotops_help():
             assignments created outside Live Data enable. Inherited and group assignments are
             excluded. Reading this list requires Microsoft.Authorization/roleAssignments/read;
             authorization or service errors are surfaced rather than reported as an empty list.
+            Event Grid namespace and topic-space status each include subscriberAssignments with
+            principal IDs, assignment IDs, and principal types for the built-in Event Grid
+            TopicSpaces Subscriber role at that exact scope. These lists include users, groups,
+            and service principals (including the ADR identity), whether assigned by Live Data
+            enable or manually. Inherited assignments from higher scopes and custom roles are
+            excluded. A missing topic space has an empty assignment list. Reading these lists
+            requires Microsoft.Authorization/roleAssignments/read at the corresponding Event Grid
+            scopes; authorization and service errors are surfaced. Assignment presence does not
+            change the top-level enabled flag. If the Event Grid namespace cannot be discovered
+            from ADR, its assignments cannot be reported.
 
         examples:
         - name: Show Live Data configuration for an instance.
