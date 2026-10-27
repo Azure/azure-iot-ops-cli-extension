@@ -2549,8 +2549,9 @@ def load_iotops_help():
             topic-space-scoped assignments are removed with the topic space. Enable returns assignment
             IDs for explicit cleanup with az role assignment delete --ids. --skip-ra skips these
             assignments too. If a subsequent ADR Reader assignment fails, completed Subscriber
-            assignments remain in place and their IDs are included in the error. Review the IDs
-            before deleting assignments that may have existed before this enable operation.
+            assignments remain in place and their IDs are included in the error, separated into
+            newly created and pre-existing lists. To undo access added by this invocation, delete
+            only the newly created assignments and leave pre-existing assignments unchanged.
 
         examples:
         - name: Enable Live Data using a system-assigned managed identity and default roles.

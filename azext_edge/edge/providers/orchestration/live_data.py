@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Dict, List, Optional, Tuple
 from uuid import UUID
 
 from azure.cli.core.azclierror import ValidationError
-from azure.core.exceptions import HttpResponseError, ResourceNotFoundError
+from azure.core.exceptions import AzureError, HttpResponseError, ResourceNotFoundError
 from knack.log import get_logger
 from rich.console import Console
 
@@ -366,16 +366,9 @@ class LiveData(EventGridProviderBase):
                         except ValidationError as exc:
                             if resolved_subscriber_object_ids:
                                 subscribers = role_assignments_result["subscribers"]
-                                assignment_ids = " ".join(
-                                    assignment["assignmentId"] for assignment in subscribers["assignments"]
-                                )
                                 raise ValidationError(
                                     f"{exc}\n"
-                                    "Event Grid Subscriber assignments from the completed subscriber phase "
-                                    f"remain in place at scope '{subscribers['scope']}'.\n"
-                                    f"Retained Subscriber assignment IDs (new or pre-existing): {assignment_ids}\n"
-                                    "No Subscriber assignments were rolled back. Review these IDs before "
-                                    "removing any with 'az role assignment delete --ids'."
+                                    f"{self._format_retained_subscriber_detail(subscribers)}"
                                 ) from exc
                             raise
                         display.update_step(cat_roles, "Reader (users)", StepState.COMPLETE, "done")
@@ -411,6 +404,24 @@ class LiveData(EventGridProviderBase):
             result["roleAssignments"] = role_assignments_result
 
         return result
+
+    @staticmethod
+    def _format_retained_subscriber_detail(subscribers: Dict) -> str:
+        new_ids = " ".join(
+            assignment["assignmentId"] for assignment in subscribers["assignments"] if assignment["created"]
+        )
+        existing_ids = " ".join(
+            assignment["assignmentId"] for assignment in subscribers["assignments"] if not assignment["created"]
+        )
+        return (
+            "Event Grid Subscriber assignments from the completed subscriber phase "
+            f"remain in place at scope '{subscribers['scope']}'.\n"
+            f"Newly created Subscriber assignment IDs: {new_ids or '(none)'}\n"
+            f"Pre-existing Subscriber assignment IDs: {existing_ids or '(none)'}\n"
+            "No Subscriber assignments were rolled back. To undo access added by this invocation, "
+            "use 'az role assignment delete --ids' with only the newly created assignment IDs; "
+            "leave pre-existing assignments unchanged."
+        )
 
     @classmethod
     def _resolve_object_ids(
@@ -496,6 +507,10 @@ class LiveData(EventGridProviderBase):
         principal_type: Optional[str] = None,
     ) -> Dict:
         role_def_id = ROLE_DEF_FORMAT_STR.format(subscription_id=subscription_id, role_id=role_id)
+        role_name = {
+            LIVE_DATA_USER_ROLE_ID: "Reader",
+            EG_TOPICSPACES_SUBSCRIBER_ROLE_ID: "Event Grid TopicSpaces Subscriber",
+        }[role_id]
         assignments: List[Dict] = []
         for object_id in object_ids:
             try:
@@ -506,23 +521,24 @@ class LiveData(EventGridProviderBase):
                     role_def_id=role_def_id,
                     principal_type=principal_type,
                 )
-            except HttpResponseError as e:
+            except AzureError as e:
                 rolled_back, rollback_failures = self._rollback_role_assignments(manager, assignments)
                 rollback_detail = self._format_assignment_rollback_detail(rolled_back, rollback_failures)
                 raise ValidationError(
-                    f"Failed to assign role '{role_id}' to principal '{object_id}' "
+                    f"Failed to assign role '{role_name}' ({role_id}) to principal '{object_id}' "
                     f"at scope '{scope}'.\n"
-                    f"Error: {e.message}\n"
+                    f"Error: {e}\n"
                     f"  Scope: {scope}\n  Principal ID: {object_id}\n"
                     f"  Role ID: {role_id}\n{rollback_detail}"
-                )
+                ) from e
 
             assignment_id = role_assignment.get("id", "") if role_assignment else ""
             if not assignment_id:
                 rolled_back, rollback_failures = self._rollback_role_assignments(manager, assignments)
                 rollback_detail = self._format_assignment_rollback_detail(rolled_back, rollback_failures)
                 raise ValidationError(
-                    f"Role assignment for principal '{object_id}' succeeded but no assignment Id was returned. "
+                    f"Role assignment for '{role_name}' ({role_id}) to principal '{object_id}' "
+                    "succeeded but no assignment Id was returned. "
                     "The current assignment could not be targeted for cleanup.\n"
                     f"{rollback_detail}"
                 )
@@ -555,7 +571,7 @@ class LiveData(EventGridProviderBase):
             assignment_id = assignment["assignmentId"]
             try:
                 manager.delete_role_assignment(assignment_id)
-            except HttpResponseError:
+            except AzureError:
                 rollback_failures.append(assignment_id)
             else:
                 rolled_back.append(assignment_id)

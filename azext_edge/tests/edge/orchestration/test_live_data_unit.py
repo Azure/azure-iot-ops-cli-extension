@@ -12,7 +12,7 @@ from urllib.parse import parse_qs, urlsplit
 import pytest
 import responses
 from azure.cli.core.azclierror import ValidationError
-from azure.core.exceptions import HttpResponseError, ResourceNotFoundError
+from azure.core.exceptions import HttpResponseError, ResourceNotFoundError, ServiceRequestError, ServiceResponseError
 
 from azext_edge.edge.providers.orchestration.common import (
     EG_TOPICSPACES_PUBLISHER_ROLE_ID,
@@ -549,18 +549,22 @@ class TestSetupUserRoleAssignments:
             assert call.kwargs["principal_type"] == PrincipalType.USER.value
             assert call.kwargs["role_def_id"].endswith(LIVE_DATA_USER_ROLE_ID)
 
-    def test_assignment_failure_identifies_user(self, mocked_cmd, mocker):
+    @pytest.mark.parametrize("error_type", [HttpResponseError, ServiceRequestError, ServiceResponseError])
+    def test_assignment_failure_identifies_user(self, mocked_cmd, mocker, error_type):
         adr_namespace_id = _build_adr_namespace_resource_id("adr-ns", "rg")
         manager = mocker.patch(
             "azext_edge.edge.providers.orchestration.live_data.PermissionManager"
         ).return_value
-        manager.ensure_role_assignment.side_effect = HttpResponseError(message="denied")
+        manager.ensure_role_assignment.side_effect = error_type(message="denied")
 
-        with pytest.raises(ValidationError, match=self.USER_1):
+        with pytest.raises(ValidationError, match=self.USER_1) as exc:
             LiveData(cmd=mocked_cmd)._setup_user_role_assignments(
                 adr_namespace_id=adr_namespace_id,
                 user_object_ids=[self.USER_1],
             )
+        assert "'Reader'" in str(exc.value)
+        assert LIVE_DATA_USER_ROLE_ID in str(exc.value)
+        assert isinstance(exc.value.__cause__, error_type)
         manager.delete_role_assignment.assert_not_called()
 
     def test_later_failure_rolls_back_only_new_assignments(self, mocked_cmd, mocker):
@@ -638,6 +642,30 @@ class TestSetupSubscriberRoleAssignments:
     PRINCIPAL_1 = "11111111-1111-1111-1111-111111111111"
     PRINCIPAL_2 = "22222222-2222-2222-2222-222222222222"
 
+    @pytest.mark.parametrize("created", [True, False])
+    def test_retained_assignment_details_distinguish_ownership(self, created):
+        detail = LiveData._format_retained_subscriber_detail({
+            "scope": "/namespace",
+            "assignments": [{"assignmentId": "/assignment", "created": created}],
+        })
+        assert f"Newly created Subscriber assignment IDs: {'/assignment' if created else '(none)'}\n" in detail
+        assert f"Pre-existing Subscriber assignment IDs: {'(none)' if created else '/assignment'}\n" in detail
+        assert "leave pre-existing assignments unchanged" in detail
+
+    @pytest.mark.parametrize("error_type", [HttpResponseError, ServiceRequestError, ServiceResponseError])
+    def test_rollback_continues_after_sdk_delete_failure(self, mocker, error_type):
+        manager = mocker.Mock()
+        manager.delete_role_assignment.side_effect = [error_type(message="delete failed"), None]
+        result = LiveData._rollback_role_assignments(manager, [
+            {"assignmentId": "/existing", "created": False},
+            {"assignmentId": "/new-first", "created": True},
+            {"assignmentId": "/new-second", "created": True},
+        ])
+        assert result == (["/new-first"], ["/new-second"])
+        assert manager.delete_role_assignment.call_args_list == [
+            mocker.call("/new-second"), mocker.call("/new-first"),
+        ]
+
     @pytest.mark.parametrize("ra_scope", list(LiveDataRoleScope))
     def test_assigns_subscribers_at_selected_scope(self, mocked_cmd, mocker, ra_scope):
         provider = LiveData(mocked_cmd)
@@ -677,16 +705,17 @@ class TestSetupSubscriberRoleAssignments:
         manager.delete_role_assignment.assert_not_called()
 
     @pytest.mark.parametrize("cleanup_fails", [False, True])
-    def test_failure_rolls_back_only_new_subscribers(self, mocked_cmd, mocker, cleanup_fails):
+    @pytest.mark.parametrize("error_type", [HttpResponseError, ServiceRequestError, ServiceResponseError])
+    def test_failure_rolls_back_only_new_subscribers(self, mocked_cmd, mocker, cleanup_fails, error_type):
         provider = LiveData(mocked_cmd)
         manager = mocker.patch.object(provider, "_permission_manager").return_value
         manager.ensure_role_assignment.side_effect = [
             ({"id": "/assignments/existing"}, False),
             ({"id": "/assignments/new"}, True),
-            HttpResponseError(message="denied"),
+            error_type(message="denied"),
         ]
         if cleanup_fails:
-            manager.delete_role_assignment.side_effect = HttpResponseError(message="cleanup denied")
+            manager.delete_role_assignment.side_effect = error_type(message="cleanup denied")
         principal_3 = "33333333-3333-3333-3333-333333333333"
         with pytest.raises(ValidationError) as exc:
             provider._setup_subscriber_role_assignments(
@@ -697,6 +726,8 @@ class TestSetupSubscriberRoleAssignments:
         message = str(exc.value)
         assert principal_3 in message
         assert EG_TOPICSPACES_SUBSCRIBER_ROLE_ID in message
+        assert "'Event Grid TopicSpaces Subscriber'" in message
+        assert isinstance(exc.value.__cause__, error_type)
         assert "/assignments/new" in message
         assert ("Cleanup failed" if cleanup_fails else "Rolled back") in message
         manager.delete_role_assignment.assert_called_once_with("/assignments/new")
@@ -1358,8 +1389,9 @@ class TestEnable:
     @pytest.mark.parametrize("ra_scope", list(LiveDataRoleScope))
     @pytest.mark.parametrize("with_subscribers", [True, False])
     @pytest.mark.parametrize("reader_failure", ["first", "later", "rollback-failure", "missing-id"])
+    @pytest.mark.parametrize("error_type", [HttpResponseError, ServiceRequestError, ServiceResponseError])
     def test_reader_failure_reports_retained_subscribers(
-        self, mocked_cmd, mocked_responses, mocker, ra_scope, with_subscribers, reader_failure,
+        self, mocked_cmd, mocked_responses, mocker, ra_scope, with_subscribers, reader_failure, error_type,
     ):
         rg, instance_name, ns_name, adr_ns = "rg", "instance", "eg", "adr"
         eg_rid = _build_eg_resource_id(ns_name, rg)
@@ -1374,17 +1406,17 @@ class TestEnable:
         reader_manager = mocker.patch(
             "azext_edge.edge.providers.orchestration.live_data.PermissionManager",
         ).return_value
-        reader_manager.ensure_role_assignment.side_effect = HttpResponseError(message="Reader denied")
+        reader_manager.ensure_role_assignment.side_effect = error_type(message="Reader denied")
         if reader_failure != "first":
             last_result = (
-                ({}, True) if reader_failure == "missing-id" else HttpResponseError(message="Reader denied")
+                ({}, True) if reader_failure == "missing-id" else error_type(message="Reader denied")
             )
             reader_manager.ensure_role_assignment.side_effect = [
                 ({"id": "/assignments/new-reader"}, True),
                 last_result,
             ]
         if reader_failure == "rollback-failure":
-            reader_manager.delete_role_assignment.side_effect = HttpResponseError(message="cleanup denied")
+            reader_manager.delete_role_assignment.side_effect = error_type(message="cleanup denied")
         provider = LiveData(mocked_cmd)
         eg_manager = mocker.patch.object(provider, "_permission_manager").return_value
         eg_manager.ensure_role_assignment.side_effect = [
@@ -1418,7 +1450,8 @@ class TestEnable:
             assert isinstance(exc.value.__cause__, ValidationError)
             assert "/assignments/new-subscriber" in message
             assert "/assignments/existing-subscriber" in message
-            assert "Retained Subscriber assignment IDs (new or pre-existing)" in message
+            assert "Newly created Subscriber assignment IDs: /assignments/new-subscriber\n" in message
+            assert "Pre-existing Subscriber assignment IDs: /assignments/existing-subscriber\n" in message
             assert "No Subscriber assignments were rolled back" in message
             assert "az role assignment delete --ids" in message
             expected_scope = eg_rid
@@ -1427,7 +1460,7 @@ class TestEnable:
             assert f"remain in place at scope '{expected_scope}'" in message
             assert eg_manager.ensure_role_assignment.call_count == 2
         else:
-            assert "Retained Subscriber assignment IDs" not in message
+            assert "Subscriber assignment IDs" not in message
             eg_manager.ensure_role_assignment.assert_not_called()
         eg_manager.delete_role_assignment.assert_not_called()
 
