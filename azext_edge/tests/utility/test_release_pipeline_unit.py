@@ -526,6 +526,25 @@ def test_yaml_serial_qualification_requires_all_gates_and_no_default_publication
     assert "cp .pylintrc" not in compatibility and "cp linter_exclusions.yml" not in compatibility
 
 
+def test_security_stages_verified_engine_before_scanning_without_reducing_coverage():
+    template = yaml.safe_load((ROOT / ".azure-devops/templates/release-stages.yml").read_text(encoding="utf-8"))
+    stages = template["stages"][1]["${{ if ne(parameters.mode, 'Plan') }}"]
+    steps = next(stage for stage in stages if stage["stage"] == "Security")["jobs"][0]["steps"]
+    bootstrap = next(step for step in steps if step.get("name") == "stageMsdo")
+    scanner = next(step for step in steps if step.get("task") == "MicrosoftSecurityDevOps@1")
+    assert steps.index(bootstrap) < steps.index(scanner)
+    assert bootstrap["env"] == {"SYSTEM_ACCESSTOKEN": "$(System.AccessToken)"}
+    script = bootstrap["pwsh"]
+    assert "https://pkgs.dev.azure.com/azureiotdevxp/aziotcli/_packaging/pip/nuget/v3/flat2" in script
+    assert "api.nuget.org" not in script and "PreserveAuthorizationOnRedirect" not in script
+    assert script.index("Get-FileHash") < script.index("Expand-Archive") < script.index("task.setvariable")
+    assert scanner["env"]["MSDO_FILEPATH"] == "$(stageMsdo.directory)/guardian.cmd"
+    assert scanner["env"]["MSDO_VERSION"] == "$(stageMsdo.version)"
+    assert scanner["env"]["BUILD_SOURCEVERSION"] == "$(sourceCommit)"
+    assert scanner["inputs"]["break"] is True and scanner["inputs"]["publish"] is True
+    assert not {"tools", "categories", "languages", "policy"} & scanner["inputs"].keys()
+
+
 def test_manual_and_health_do_not_rebuild_a_release_candidate():
     path = ROOT / ".azure-devops/templates/integration-pipeline.yml"
     template = yaml.safe_load(path.read_text(encoding="utf-8"))
