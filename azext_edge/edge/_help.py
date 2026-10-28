@@ -391,6 +391,7 @@ def load_iotops_help():
         short-summary: Create or replace an mqtt broker authentication resource.
         long-summary: |
           An example of the config file format is as follows:
+          Replace CUSTOM_AUTH_SERVER_HTTPS_URL with your authentication server's HTTPS URL.
 
           ```
           {
@@ -398,7 +399,7 @@ def load_iotops_help():
                   {
                       "method": "Custom",
                       "customSettings": {
-                          "endpoint": "https://auth-server-template",
+                          "endpoint": "CUSTOM_AUTH_SERVER_HTTPS_URL",
                           "caCertConfigMap": "custom-auth-ca",
                           "auth": {
                               "x509": {

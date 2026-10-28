@@ -196,6 +196,7 @@ stages:
                   azdev setup -c "$AGENT_TEMPDIRECTORY/azure-cli" -r "$SOURCE"
                   az extension add --source "$CANDIDATE/"*.whl --yes
                   cp linter_exclusions.yml "$AZURE_EXTENSION_DIR/azure-iot-ops/"
+                  cp .pylintrc pylintrc
                   azdev linter --include-whl-extensions azure-iot-ops --min-severity medium
                 displayName: Run the existing release command-table linter
                 env:
