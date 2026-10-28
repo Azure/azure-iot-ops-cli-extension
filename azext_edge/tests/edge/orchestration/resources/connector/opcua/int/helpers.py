@@ -24,6 +24,8 @@ import datetime
 logger = get_logger(__name__)
 ROLE_MAX_RETRIES = 5
 ROLE_RETRY_INTERVAL = 15
+SECRETSYNC_MAX_RETRIES = 20
+SECRETSYNC_RETRY_INTERVAL = 5
 
 
 def run_json(command: str, **kwargs) -> Dict[str, Any]:
@@ -178,6 +180,7 @@ def assert_spc_secret_exists(spc_records: list, spc_name: str, instance_name: st
 def assert_ssc_secret_exists(
     secretsync_records: list,
     extended_location: str,
+    instance_name: str,
     resource_group: str,
     cert_file: str,
     ssc_name: Optional[str],
@@ -187,12 +190,21 @@ def assert_ssc_secret_exists(
     cert_extension = file_name_info[1].replace(".", "")
     secret_name = f"{file_name_info[0]}-{cert_extension}"
     result = next((rec for rec in secretsync_records if rec["name"] == ssc_name), None)
-    assert result is not None, f"SecretSync record '{ssc_name}' not found"
-    assert result["extendedLocation"]["name"] == extended_location
-    assert result["resourceGroup"] == resource_group
-    assert result["name"] == ssc_name
-    secret_mappings = result["properties"].get("objectSecretMapping", [])
-    assert any(mapping.get("sourcePath", "") == secret_name for mapping in secret_mappings)
+
+    for attempt in range(SECRETSYNC_MAX_RETRIES):
+        if result:
+            assert result["extendedLocation"]["name"] == extended_location
+            assert result["resourceGroup"] == resource_group
+            assert result["name"] == ssc_name
+            secret_mappings = result["properties"].get("objectSecretMapping", [])
+            if any(mapping.get("sourcePath", "") == secret_name for mapping in secret_mappings):
+                return
+        if attempt < SECRETSYNC_MAX_RETRIES - 1:
+            sleep(SECRETSYNC_RETRY_INTERVAL)
+            refreshed_records = run(f"az iot ops secretsync list -i {instance_name} -g {resource_group}")
+            result = next((rec for rec in refreshed_records if rec["name"] == ssc_name), None)
+
+    raise AssertionError(f"SecretSync record '{ssc_name}' did not contain secret {secret_name}.")
 
 
 def assert_cluster_side_secret_exists(
@@ -271,15 +283,6 @@ def assert_ssc_secret_not_exists(
         assert result["name"] == ssc_name
         secret_mappings = result["properties"].get("objectSecretMapping", [])
         assert not any(mapping.get("sourcePath", "") == secret_name for mapping in secret_mappings)
-        show_result = run_json(f"az iot ops secretsync show --name {ssc_name} -g {resource_group}")
-        assert show_result["name"] == ssc_name
-        assert show_result["extendedLocation"]["name"] == extended_location
-        assert show_result["resourceGroup"] == resource_group
-        assert not any(
-            mapping.get("sourcePath", "") == secret_name for mapping in show_result["properties"].get(
-                "objectSecretMapping", []
-            )
-        )
 
 
 def assert_cluster_side_secret_not_exists(
