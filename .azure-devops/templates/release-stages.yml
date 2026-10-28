@@ -162,8 +162,19 @@ stages:
                   version: 8.0.x
               - pwsh: |
                   $ErrorActionPreference = 'Stop'
-                  Update-MpSignature -UpdateSource MMPC
-                displayName: Refresh Defender signatures from Microsoft's protection service
+                  $update = Join-Path $env:AGENT_TEMPDIRECTORY "defender-signatures-$env:SYSTEM_JOBATTEMPT.exe"
+                  if (Test-Path $update) { throw "Defender update staging path already exists." }
+                  Invoke-WebRequest 'https://go.microsoft.com/fwlink/?LinkID=121721&arch=x64' -OutFile $update
+                  $signature = Get-AuthenticodeSignature $update
+                  if ($signature.Status -ne 'Valid' -or
+                      $signature.SignerCertificate.Subject -notmatch '(^|,\s*)O=Microsoft Corporation(,|$)') {
+                    throw "The Defender update does not have a trusted Microsoft signature."
+                  }
+                  $process = Start-Process -FilePath $update -Wait -PassThru
+                  if ($process.ExitCode -ne 0) { throw "Defender update failed with exit code $($process.ExitCode)." }
+                  Get-MpComputerStatus | Select-Object AntivirusSignatureVersion, AntivirusSignatureLastUpdated
+                name: updateDefender
+                displayName: Install signed Microsoft Defender security intelligence
                 timeoutInMinutes: 5
               - pwsh: |
                   $ErrorActionPreference = 'Stop'
