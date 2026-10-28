@@ -77,7 +77,13 @@ stages:
                   python tools/release_pipeline.py build
                   --source "$(Agent.TempDirectory)/release-source"
                   --work-dir "$(Agent.TempDirectory)"
+                  --inventory "$(Build.SourcesDirectory)/.release-runtime"
                 displayName: Build wheel and runtime SBOM using the authenticated package feed
+              - script: >-
+                  python tools/release_pipeline.py verify-runtime
+                  --source "$(Agent.TempDirectory)/release-source"
+                  --inventory "$(Build.SourcesDirectory)/.release-runtime"
+                displayName: Require every installed dependency and its resolved SBOM graph
               - script: >-
                   python tools/release_pipeline.py candidate
                   --source "$(Agent.TempDirectory)/release-source"
@@ -91,7 +97,8 @@ stages:
                   set -euo pipefail
                   python -m venv "$AGENT_TEMPDIRECTORY/publication-venv"
                   source "$AGENT_TEMPDIRECTORY/publication-venv/bin/activate"
-                  python -m pip install azdev==0.2.13 packaging
+                  python -m pip install azdev==0.2.13 packaging "editorconfig>=0.12.2"
+                  python -m pip check
                   python tools/release_pipeline.py prepare-publication \
                     --directory "$BUILD_ARTIFACTSTAGINGDIRECTORY/release-candidate" \
                     --prepared "$BUILD_ARTIFACTSTAGINGDIRECTORY/release-tooling" \
@@ -222,6 +229,7 @@ stages:
                   MSDO_DIRECTORY: $(stageMsdo.directory)
                   MSDO_FILEPATH: $(stageMsdo.directory)/guardian.cmd
                   MSDO_VERSION: $(stageMsdo.version)
+                  CKV_SKIP_PACKAGE_UPDATE_CHECK: "true"
                   GDN_BANDIT_TARGET: $(Build.SourcesDirectory)/azext_edge
                   GDN_BANDIT_RECURSIVE: "true"
                   BUILD_SOURCEVERSION: $(sourceCommit)
@@ -250,7 +258,8 @@ stages:
                   python -m venv "$AGENT_TEMPDIRECTORY/lint-venv"
                   source "$AGENT_TEMPDIRECTORY/lint-venv/bin/activate"
                   cd "$SOURCE"
-                  python -m pip install azdev==0.2.13
+                  python -m pip install azdev==0.2.13 "editorconfig>=0.12.2"
+                  python -m pip check
                   git clone --quiet --depth=1 --branch dev https://github.com/Azure/azure-cli.git \
                     "$AGENT_TEMPDIRECTORY/azure-cli"
                   azdev setup -c "$AGENT_TEMPDIRECTORY/azure-cli" -r "$SOURCE"
@@ -304,7 +313,8 @@ stages:
                   git clone --quiet --depth=1 --branch main https://github.com/Azure/azure-cli-extensions.git \
                     "$COMPAT_ROOT/azure-cli-extensions"
                   python -m pip install --upgrade pip
-                  python -m pip install azdev==0.2.13 build wheel
+                  python -m pip install azdev==0.2.13 build wheel "editorconfig>=0.12.2"
+                  python -m pip check
                   azdev setup -c "$COMPAT_ROOT/azure-cli" -r "$COMPAT_ROOT/azure-cli-extensions"
                   python "$BUILD_SOURCESDIRECTORY/tools/release_pipeline.py" verify --directory "$CANDIDATE"
                   az extension add --source "$CANDIDATE/"*.whl --yes
