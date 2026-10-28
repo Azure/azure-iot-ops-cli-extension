@@ -162,6 +162,11 @@ stages:
                   version: 8.0.x
               - pwsh: |
                   $ErrorActionPreference = 'Stop'
+                  Update-MpSignature -UpdateSource MMPC
+                displayName: Refresh Defender signatures from Microsoft's protection service
+                timeoutInMinutes: 5
+              - pwsh: |
+                  $ErrorActionPreference = 'Stop'
                   $id = 'microsoft.security.devops.cli.win-x64'
                   $version = '0.215.0'
                   # SHA-512 published in the NuGet catalog for this exact package version.
