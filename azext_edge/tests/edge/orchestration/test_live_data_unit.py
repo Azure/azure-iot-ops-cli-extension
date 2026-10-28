@@ -6,6 +6,7 @@
 
 import json
 import re
+from copy import deepcopy
 from typing import Optional
 from urllib.parse import parse_qs, urlsplit
 
@@ -1610,7 +1611,7 @@ class TestShow:
                 responses.GET, dataflow_url,
                 json=_build_dataflow_endpoint_response("instance", "eg.example.com", authentication={
                     "method": "SystemAssignedManagedIdentity",
-                    "systemAssignedManagedIdentitySettings": {"audience": "https://eventgrid.azure.us"},
+                    "systemAssignedManagedIdentitySettings": {"audience": "https://eventgrid.azure.net"},
                 }),
             )
         role_id = (
@@ -2304,15 +2305,30 @@ def _set_endpoint_drift(endpoint: dict, field: str) -> None:
         mqtt["host"] = "stale.example.com"
     elif field == "prefix":
         mqtt["clientIdPrefix"] = "stale-prefix"
+    elif field == "audience":
+        authentication = mqtt["authentication"]
+        method = authentication["method"]
+        settings = authentication[method[0].lower() + method[1:] + "Settings"]
+        if method == "UserAssignedManagedIdentity":
+            settings["scope"] = "https://eventgrid.azure.us/.default"
+        else:
+            settings["audience"] = "https://eventgrid.azure.us"
     else:
         raise AssertionError(f"Unknown drift field {field}")
 
 
-@pytest.mark.parametrize("field", ["type", "tls", "auth", "host", "prefix"])
+@pytest.mark.parametrize("government", [False, True])
+@pytest.mark.parametrize("field", ["type", "tls", "auth", "host", "prefix", "audience"])
 @pytest.mark.parametrize("identity", ["systemAssigned", "userAssigned"])
-def test_enable_repairs_all_endpoint_drift(mocked_cmd, mocked_responses, field, identity):
+def test_enable_repairs_all_endpoint_drift(mocked_cmd, mocked_responses, field, identity, government):
+    arm_endpoint = "https://management.usgovcloudapi.net" if government else BASE_URL
+    if government:
+        mocked_cmd.cli_ctx.cloud.name = "AzureUSGovernment"
+        mocked_cmd.cli_ctx.cloud.endpoints.resource_manager = arm_endpoint + "/"
     provider = LiveData(mocked_cmd)
-    eg_ctx = _make_eg_ctx("eg", "rg")
+    eg_ctx = _make_eg_ctx(
+        "eg", "rg", mqtt_hostname="eg.usgovvirginia-1.ts.eventgrid.azure.us" if government else None,
+    )
     mi_resource = None
     authentication = None
     if identity == "userAssigned":
@@ -2324,9 +2340,11 @@ def test_enable_repairs_all_endpoint_drift(mocked_cmd, mocked_responses, field, 
             },
         }
     desired = _build_dataflow_endpoint_response("instance", eg_ctx.mqtt_hostname, authentication)
-    existing = _build_dataflow_endpoint_response("instance", eg_ctx.mqtt_hostname, authentication)
+    existing = deepcopy(desired)
     _set_endpoint_drift(existing, field)
-    endpoint = _build_iotops_endpoint("instance", "rg", sub_resource=f"/dataflowEndpoints/{LIVE_DATA_ENDPOINT_NAME}")
+    endpoint = _build_iotops_endpoint(
+        "instance", "rg", sub_resource=f"/dataflowEndpoints/{LIVE_DATA_ENDPOINT_NAME}",
+    ).replace(BASE_URL, arm_endpoint, 1)
     mocked_responses.add(responses.GET, endpoint, json=existing)
     mocked_responses.add(responses.PUT, endpoint, json=desired)
     result = provider._setup_eg_dataflow_endpoint(
