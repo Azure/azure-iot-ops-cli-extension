@@ -248,7 +248,9 @@ stages:
                   azdev setup -c "$COMPAT_ROOT/azure-cli" -r "$COMPAT_ROOT/azure-cli-extensions"
                   python "$BUILD_SOURCESDIRECTORY/tools/release_pipeline.py" verify --directory "$CANDIDATE"
                   az extension add --source "$CANDIDATE/"*.whl --yes
-                  azdev linter --include-whl-extensions azure-iot-ops --min-severity high \
+                  # azdev's coverage rules inspect Git even for installed-wheel lint.
+                  cd "$COMPAT_ROOT/azure-cli-extensions"
+                  azdev linter --include-whl-extensions azure-iot-ops --min-severity medium \
                     2>&1 | tee "$COMPAT_ROOT/reports/linter.log"
                 displayName: Lint the exact external wheel without source-tree exclusions
                 env:

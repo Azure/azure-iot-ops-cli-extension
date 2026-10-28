@@ -520,6 +520,10 @@ def test_yaml_serial_qualification_requires_all_gates_and_no_default_publication
     lint = next(step["bash"] for step in stages["CommandLint"]["jobs"][0]["steps"] if "bash" in step)
     assert lint.index("cp .pylintrc pylintrc") < lint.index("azdev linter ")
     assert "--min-severity medium" in lint
+    compatibility = next(step["bash"] for step in stages["IndexCompatibility"]["jobs"][0]["steps"] if "bash" in step)
+    assert compatibility.index('cd "$COMPAT_ROOT/azure-cli-extensions"') < compatibility.index("azdev linter ")
+    assert "--min-severity medium" in compatibility
+    assert "cp .pylintrc" not in compatibility and "cp linter_exclusions.yml" not in compatibility
 
 
 def test_manual_and_health_do_not_rebuild_a_release_candidate():
