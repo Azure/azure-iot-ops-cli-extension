@@ -77,12 +77,12 @@ stages:
                   python tools/release_pipeline.py build
                   --source "$(Agent.TempDirectory)/release-source"
                   --work-dir "$(Agent.TempDirectory)"
-                  --inventory "$(Build.SourcesDirectory)/.release-runtime"
+                  --inventory "$(Build.SourcesDirectory)/release-runtime-inventory"
                 displayName: Build wheel and runtime SBOM using the authenticated package feed
               - script: >-
                   python tools/release_pipeline.py verify-runtime
                   --source "$(Agent.TempDirectory)/release-source"
-                  --inventory "$(Build.SourcesDirectory)/.release-runtime"
+                  --inventory "$(Build.SourcesDirectory)/release-runtime-inventory"
                 displayName: Require every installed dependency and its resolved SBOM graph
               - script: >-
                   python tools/release_pipeline.py candidate
