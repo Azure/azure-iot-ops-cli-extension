@@ -551,6 +551,36 @@ def test_scenario_cannot_override_execution_contract(name, tmp_path):
         cluster.test_environment(state, tmp_path)
 
 
+@pytest.mark.parametrize("mutation", [None, "digest", "origin", "missing"])
+def test_inventory_recovers_only_the_exact_tox_candidate(tmp_path, monkeypatch, mutation):
+    monkeypatch.setattr(pipeline, "ROOT", tmp_path)
+    original = tmp_path / ".tox/.tmp/package/1/azure_iot_ops-2.0.0b1.tar.gz"
+    retained = tmp_path / ".tox/.pkg/dist" / original.name
+    retained.parent.mkdir(parents=True)
+    retained.write_bytes(b"installed candidate archive")
+    provenance = {"url": original.as_uri(), "archive_info": {"hashes": {"sha256": pipeline.digest(retained)}}}
+    if mutation == "digest":
+        retained.write_bytes(b"different archive")
+    elif mutation == "origin":
+        provenance["url"] = (tmp_path / "another.tar.gz").as_uri()
+    elif mutation == "missing":
+        retained.unlink()
+    monkeypatch.setattr(pipeline, "distribution", Mock(return_value=SimpleNamespace(
+        read_text=lambda _: json.dumps(provenance))))
+    requirements = f"azure-iot-ops @ {original.as_uri()}\nshared==1.0\n"
+    monkeypatch.setattr(pipeline.subprocess, "check_output", Mock(return_value=requirements))
+    output = tmp_path / "dependency-inventory"
+    if mutation:
+        with pytest.raises(ValueError, match="exact installed candidate"):
+            pipeline.inventory(output)
+        assert not output.exists()
+    else:
+        pipeline.inventory(output)
+        assert (output / "environment/requirements.txt").read_text() == (
+            f"azure-iot-ops @ {retained.as_uri()}\nshared==1.0\n"
+        )
+
+
 def test_dependency_inventory_preserves_each_installed_environment(tmp_path, monkeypatch):
     extension = tmp_path / "azure-iot-ops"
     extension.mkdir()
