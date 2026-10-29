@@ -29,14 +29,17 @@ Plan resolves the run's actual branch and queued UTC day, preserving the selecte
 profile, configuration digest, source commit, and locations in `ops-plan-*`.
 Job retries reuse that profile even if Library configuration changes. Each Health
 scenario has its configured execution budget inside a 360-minute job envelope
-with bounded cleanup; serial scenarios still require sufficient time before the
-next cleanup window. Measure complete profiles before enabling large daily matrices.
+with bounded cleanup. There is no admission check against scheduled cleanup.
+Measure complete profiles before enabling large daily matrices.
 Fresh Arc/AIO, storage, registry and namespace locations are verified and retained
 in receipts. Qualification rejects missing regional evidence.
 
-Admission coordinates 164 and Health runs without querying GitHub run statuses.
-It is a preflight, not an atomic lock. Keep manual GitHub jobs and whole-RG cleanup
-operationally coordinated. Dashboard widgets should use the Health definition and
+Integration, Health and Release have no overlap, cleanup-window or quota/capacity
+admission guards. Other ADO/GitHub runs do not block live execution, and release
+children are queued without a safe-window wait. Azure quota, subscription and
+resource-group failures surface normally. Scheduled whole-RG cleanup is unchanged
+and can interrupt live tests. Do not configure exclusive locks on shared integration
+resources. Dashboard widgets should use the Health definition and
 integration results, excluding unit results. A small rollout profile is selected
 coverage, not full GitHub scenario parity or release qualification.
 
@@ -45,9 +48,9 @@ with the `iotupx-1espt-ubuntu2404` image. It is stateless, has no warm agents, a
 capped at one 8-vCPU/32-GB agent. Build, lint and unit jobs remain Microsoft-hosted.
 Its reviewed ARM definition is `.azure-devops/integration-pool.json`; deployment
 and per-pipeline pool authorization are separate administrator operations.
-The standard Microsoft-hosted Linux agent is too small for an AIO cluster. Before
-provisioning, the runner requires at least 4 CPUs, 16 GB RAM and 30 GB free agent
-disk; increasing test timeouts does not compensate for missing capacity.
+The standard Microsoft-hosted Linux agent is too small for an AIO cluster.
+The runner does not precheck CPU, RAM or disk capacity; provisioning failures
+surface directly. Agent-pool capacity can still queue jobs.
 
 This guide will assist you in setting up a local development environment for this extension.
 
@@ -119,12 +122,10 @@ No tag, GitHub release, index PR or storage upload occurs in `Plan` or `Validate
 Build freezes every default scenario from `.github/test-scenarios.yml` across **stable and preview** on
 **Python 3.13**, excluding explicit-only/baseline-required scenarios just as the existing default matrix does.
 The governed unit/style matrix covers Python 3.10-3.13 on Linux, Windows and macOS.
-Each release matrix job queues one 164 cohort, serially, using the same retained wheel. The parent waits
-without provisioning Azure resources until there is enough headroom before the 08:00 cleanup and 09:00
-integration schedule. Child admission still checks actual start time and competing ADO integration runs.
-It does not query GitHub run statuses: maintainers must coordinate manual GitHub activity and Health runs.
-A full qualification can span multiple days; the release waiter uses a governed agent while waiting.
-Pool capacity and automatic schedules are not changed.
+Each release matrix job queues one 164 cohort, serially, using the same retained wheel. Neither the parent
+nor the child waits for other live runs or for headroom before the 08:00 cleanup and 09:00 integration
+schedule. The release waiter uses a governed agent while its child runs.
+Pool capacity, within-run matrix parallelism and automatic schedules are not changed.
 
 All cohort jobs must succeed, including verification of retained wheel/SBOM bytes, exact candidate provenance,
 scenario evidence and cleanup. A green selected-scope Health run is not release qualification.

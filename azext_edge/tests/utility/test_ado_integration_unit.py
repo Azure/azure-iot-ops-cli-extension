@@ -6,7 +6,6 @@
 
 """Offline contract tests for ops ADO orchestration and fail-closed qualification."""
 
-from datetime import datetime, timezone
 import importlib
 import json
 from pathlib import Path
@@ -237,50 +236,6 @@ def test_gate_rejects_missing_stale_or_failed_evidence(tmp_path, monkeypatch, mu
         pipeline.gate(tmp_path / "qualification")
 
 
-@pytest.mark.parametrize("hour", [2, 7, 8])
-def test_admission_refuses_cleanup_or_github_schedule_window(hour, monkeypatch):
-    lookup = Mock()
-    monkeypatch.setattr(cluster, "get_json", lookup)
-    with pytest.raises(ValueError, match="safe time"):
-        cluster.admission(datetime(2026, 10, 17, hour, tzinfo=timezone.utc))
-    lookup.assert_not_called()
-
-
-def test_admission_refuses_other_ado_run(monkeypatch):
-    monkeypatch.setattr(cluster, "get_json", Mock(return_value={"value": [
-        {"id": 123, "definition": {"id": 164, "name": "manual"}},
-        {"id": 124, "definition": {"id": 170, "name": "Azure IoT Operations CLI - Integration Health"}},
-    ]}))
-    with pytest.raises(ValueError, match="Another ADO"):
-        cluster.admission(datetime(2026, 10, 17, 15, tzinfo=timezone.utc))
-
-
-def test_admission_accepts_idle_window_without_querying_github(monkeypatch):
-    lookup = Mock(return_value={"value": [{"id": 123, "definition": {"id": 164, "name": "manual"}}]})
-    monkeypatch.setattr(cluster, "get_json", lookup)
-    cluster.admission(datetime(2026, 10, 17, 15, tzinfo=timezone.utc))
-    lookup.assert_called_once_with(
-        "https://dev.azure.com/azureiotdevxp/aziotcli/_apis/build/builds",
-        token="offline-token",
-        params={"statusFilter": "inProgress,notStarted", "api-version": "7.1", "$top": 100},
-    )
-
-
-@pytest.mark.parametrize("hour,allowed", [(1, True), (5, True), (6, False), (8, False)])
-def test_quick_run_reserves_timeout_and_cleanup_buffer(hour, allowed, monkeypatch):
-    monkeypatch.setenv("OPS_SCENARIO_TIMEOUT_MINUTES", "90")
-    lookup = Mock(return_value={"value": [{"id": 123, "definition": {"id": 164, "name": "manual"}}]})
-    monkeypatch.setattr(cluster, "get_json", lookup)
-    now = datetime(2026, 10, 17, hour, tzinfo=timezone.utc)
-    if allowed:
-        cluster.admission(now)
-        lookup.assert_called_once()
-    else:
-        with pytest.raises(ValueError, match="safe time"):
-            cluster.admission(now)
-        lookup.assert_not_called()
-
-
 @pytest.mark.parametrize("field", ["producer", "resources", "subscription", "suffix", "cluster", "instance"])
 def test_cleanup_rejects_foreign_state_before_commands(tmp_path, monkeypatch, field):
     state = make_state()
@@ -421,27 +376,13 @@ def test_cluster_waits_for_its_registered_ready_node(monkeypatch, tmp_path, fail
     assert pipeline.read(tmp_path / "state.json")["clusterStarted"] is True
 
 
-@pytest.mark.parametrize("cpus,memory_gb,disk_gb", [
-    (4, 16, 30), (2, 32, 100), (8, 8, 100), (8, 32, 29), (None, 32, 100),
-])
-def test_agent_capacity_requires_cpu_memory_and_free_disk(monkeypatch, cpus, memory_gb, disk_gb):
-    monkeypatch.setattr(cluster.os, "cpu_count", Mock(return_value=cpus))
-    sizes = {"SC_PAGE_SIZE": 4096, "SC_PHYS_PAGES": memory_gb * 10**9 // 4096}
-    # Exercise the missing-API case on every unit-test platform.
-    monkeypatch.delattr(cluster.os, "sysconf", raising=False)
-    monkeypatch.setattr(cluster.os, "sysconf", lambda name: sizes[name], raising=False)
-    monkeypatch.setattr(cluster.shutil, "disk_usage", Mock(return_value=SimpleNamespace(free=disk_gb * 10**9)))
-    if cpus == 4:
-        cluster.check_agent_capacity()
-    else:
-        with pytest.raises(ValueError, match="Ops integration requires"):
-            cluster.check_agent_capacity()
-
-
-def test_run_always_cleans_after_provision_failure(monkeypatch, tmp_path):
+@pytest.mark.parametrize("definition", ["164", "167"])
+def test_run_without_admission_still_cleans_after_provision_failure(monkeypatch, tmp_path, definition):
+    monkeypatch.setenv("SYSTEM_DEFINITIONID", definition)
     pipeline.write(tmp_path / "state.json", make_state())
-    monkeypatch.setattr(cluster, "check_agent_capacity", Mock())
-    monkeypatch.setattr(cluster, "admission", Mock())
+    monkeypatch.setattr(cluster.os, "cpu_count", Mock(return_value=1))
+    lookup = Mock(side_effect=AssertionError("Unexpected admission lookup"))
+    monkeypatch.setattr(auth.requests, "get", lookup)
     identity = Mock(poll=Mock(return_value=None))
     monkeypatch.setattr(cluster, "start_auth", Mock(return_value=identity))
     commands = Mock()
@@ -453,6 +394,8 @@ def test_run_always_cleans_after_provision_failure(monkeypatch, tmp_path):
     monkeypatch.setattr(cluster, "cleanup", cleanup)
     with pytest.raises(RuntimeError, match="offline setup failure"):
         cluster.run(tmp_path)
+    lookup.assert_not_called()
+    cluster.start_cluster.assert_called_once()
     cleanup.assert_called_once_with(tmp_path)
     identity.terminate.assert_called_once()
 

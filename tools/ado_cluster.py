@@ -7,13 +7,11 @@
 """Execute one ops scenario on fresh resources; never sweep the shared resource group."""
 
 import argparse
-from datetime import datetime, timedelta, timezone
 import hashlib
 import json
 import os
 from pathlib import Path
 import re
-import shutil
 import signal
 import subprocess
 import sys
@@ -21,7 +19,6 @@ import time
 from uuid import UUID
 from xml.etree import ElementTree
 
-import requests
 import yaml
 
 from ado_integration import (
@@ -80,40 +77,6 @@ class Commands:
 
     def az_json(self, *arguments):
         return json.loads(self.run(["az", *arguments, "--output", "json"], capture=True))
-
-
-def get_json(url, *, token=None, params=None):
-    headers = {"Authorization": f"Bearer {token}"} if token else {}
-    with requests.get(url, headers=headers, params=params, timeout=(10, 30), allow_redirects=False) as response:
-        if response.status_code != 200:
-            raise RuntimeError(f"Admission lookup failed with HTTP {response.status_code}.")
-        return response.json()
-
-
-def admission(now=None):
-    now = now or datetime.now(timezone.utc)
-    # Existing GitHub cleanup starts at 08:00 UTC and the daily integration at 09:00.
-    # Reserve the full configured job timeout plus an hour for cancellation/cleanup.
-    window = timedelta(minutes=scenario_timeout() + 60)
-    for hour in (8, 9):
-        scheduled = now.replace(hour=hour, minute=0, second=0, microsecond=0)
-        if scheduled <= now:
-            scheduled += timedelta(days=1)
-        if scheduled - now < window:
-            raise ValueError("Insufficient safe time before scheduled ops cleanup/integration; no resources created.")
-    runs = get_json(
-        "https://dev.azure.com/azureiotdevxp/aziotcli/_apis/build/builds",
-        token=required("SYSTEM_ACCESSTOKEN"),
-        params={"statusFilter": "inProgress,notStarted",
-                "api-version": "7.1", "$top": 100},
-    )
-    if len(runs["value"]) >= 100:
-        raise ValueError("Too many ADO runs to establish safe admission.")
-    for build in runs["value"]:
-        definition = build["definition"]
-        family = definition["id"] == 164 or definition["name"] == "Azure IoT Operations CLI - Integration Health"
-        if family and str(build["id"]) != required("BUILD_BUILDID"):
-            raise ValueError("Another ADO ops integration or health run is active or queued.")
 
 
 def validate_state(state):
@@ -190,15 +153,6 @@ def stop_auth(process):
 def cluster_paths(state):
     directory = Path(required("AGENT_TEMPDIRECTORY")) / f"ops-k3s-{state['suffix']}"
     return directory, f"ops-k3s-{state['suffix']}"
-
-
-def check_agent_capacity():
-    cpus = os.cpu_count() or 0
-    memory = os.sysconf("SC_PAGE_SIZE") * os.sysconf("SC_PHYS_PAGES")
-    free = shutil.disk_usage(required("AGENT_TEMPDIRECTORY")).free
-    print(f"Agent capacity: {cpus} CPUs, {memory / 10**9:.1f} GB RAM, {free / 10**9:.1f} GB free disk.", flush=True)
-    if cpus < 4 or memory < 16 * 10**9 or free < 30 * 10**9:
-        raise ValueError("Ops integration requires at least 4 CPUs, 16 GB RAM and 30 GB free agent disk.")
 
 
 def start_cluster(commands, state, output, issuer=None):
@@ -457,8 +411,6 @@ def run(output):
     validate_state(state)
     auth = None
     try:
-        check_agent_capacity()
-        admission()
         auth = start_auth(output)
         commands = Commands(auth, budget=scenario_timeout() * 60 if state.get("health") else None)
         check_account(commands, state)

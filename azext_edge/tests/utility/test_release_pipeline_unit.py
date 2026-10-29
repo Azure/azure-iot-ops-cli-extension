@@ -204,16 +204,15 @@ def test_invalid_candidate_rejected(candidate, mutation):
         release.verify_candidate(directory)
 
 
-@pytest.mark.parametrize("hour,minute,expected", [(10, 0, 0), (23, 0, 0), (0, 1, 32640), (8, 30, 2100)])
-def test_queue_waits_across_unsafe_daily_windows(hour, minute, expected):
-    assert release.safe_queue_delay(datetime(2026, 10, 27, hour, minute, tzinfo=timezone.utc)) == expected
-
-
-def test_queue_uses_build_api_and_exact_serialized_parameters(candidate, monkeypatch, tmp_path):
+@pytest.mark.parametrize("hour", [8, 9])
+def test_queue_uses_exact_parameters_without_waiting_for_cleanup(candidate, monkeypatch, tmp_path, hour):
     directory, value = candidate
     monkeypatch.setattr(release, "existing_integration", Mock(return_value=None))
-    monkeypatch.setattr(release, "safe_queue_delay", Mock(side_effect=[60, 0]))
-    monkeypatch.setattr(release.time, "sleep", Mock())
+    monkeypatch.setattr(
+        release, "datetime", Mock(now=Mock(return_value=datetime(2026, 10, 29, hour, tzinfo=timezone.utc))),
+        raising=False,
+    )
+    monkeypatch.setattr(release.time, "sleep", Mock(side_effect=AssertionError("Unexpected admission wait")))
     network = Mock(side_effect=[{"id": 901}, child(value)])
     monkeypatch.setattr(release, "ado", network)
     assert release.integrate(directory, tmp_path / "record") == "901"
@@ -224,7 +223,9 @@ def test_queue_uses_build_api_and_exact_serialized_parameters(candidate, monkeyp
         "templateParameters": child(value)["templateParameters"],
     }
     assert release.read(tmp_path / "record")["cohort"] == COHORT
-    release.time.sleep.assert_called_once_with(60)
+    assert network.call_count == 2
+    assert network.call_args_list[1].args == ("build/builds/901",)
+    release.time.sleep.assert_not_called()
 
 
 def test_retry_finds_only_its_own_cohort(candidate, monkeypatch, tmp_path):

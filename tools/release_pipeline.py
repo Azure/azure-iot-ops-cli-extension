@@ -8,7 +8,6 @@
 
 import argparse
 import base64
-from datetime import datetime, timedelta, timezone
 from email.parser import Parser
 import hashlib
 import json
@@ -507,21 +506,6 @@ def cancel_integration(record, directory):
         print(f"Requested cancellation of pipeline 164 build {run['id']}.", flush=True)
 
 
-def safe_queue_delay(now=None):
-    now = now or datetime.now(timezone.utc)
-    if now.hour == 9 and now.minute < 5:
-        return (now.replace(minute=5, second=0, microsecond=0) - now).total_seconds()
-    # Queue only with the child's six-hour budget, cleanup hour and startup margin.
-    for hour in (8, 9):
-        scheduled = now.replace(hour=hour, minute=0, second=0, microsecond=0)
-        if scheduled <= now:
-            scheduled += timedelta(days=1)
-        if scheduled - now < timedelta(hours=8):
-            resume = scheduled.replace(hour=9, minute=5)
-            return max(0, (resume - now).total_seconds())
-    return 0
-
-
 def integrate(directory, record, timeout=25200):
     candidate = verify_candidate(directory)
     payload = {
@@ -536,12 +520,6 @@ def integrate(directory, record, timeout=25200):
     if run is None:
         if int(os.environ.get("SYSTEM_JOBATTEMPT", "1")) != 1:
             raise ValueError("No child found on a retried job; do not risk requeuing an uncertain prior request.")
-        delay = safe_queue_delay()
-        if delay:
-            print("Waiting without Azure resources until the next safe Ops qualification window.", flush=True)
-            while delay > 0:
-                time.sleep(min(60, delay))
-                delay = safe_queue_delay()
         run = ado("build/builds", method="POST", data=payload)
     run_id = identifier(run["id"])
     write(record, {"id": run_id, "producer": candidate["producer"], "cohort": environment("RELEASE_COHORT")})
