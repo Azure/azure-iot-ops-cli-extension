@@ -79,7 +79,7 @@ runs:
           ${{ env.ARC_CLUSTER_CONFIG && format('--kube-config {0}', env.ARC_CLUSTER_CONFIG) || '' }}
       shell: bash
     - name: "Update cluster to enable workload identity"
-      if: inputs.enable-workload-identity
+      if: inputs.enable-workload-identity == 'true'
       env:
         cluster-name: "${{ inputs.cluster-name }}"
         resource-group: "${{ inputs.resource-group }}"
@@ -112,7 +112,7 @@ runs:
         fi
       shell: bash
     - name: "Update the cluster issuer's URL"
-      if: inputs.enable-workload-identity
+      if: inputs.enable-workload-identity == 'true'
       env:
         cluster-name: "${{ inputs.cluster-name }}"
         resource-group: "${{ inputs.resource-group }}"
@@ -131,20 +131,20 @@ runs:
         retry_count=0
         max_retries=30
         sleep_interval=10
-        until sudo k3s kubectl get nodes &>/dev/null; do
+        until nodes=$(sudo k3s kubectl get nodes -o name 2>/dev/null) && [ -n "$nodes" ]; do
           retry_count=$((retry_count + 1))
           if [ $retry_count -ge $max_retries ]; then
-            echo "k3s API server did not become reachable after $((max_retries * sleep_interval))s."
+            echo "k3s API server and node did not become ready after $((max_retries * sleep_interval))s."
             exit 1
           fi
-          echo "Waiting for API server (attempt $retry_count/$max_retries)..."
+          echo "Waiting for API server and node registration (attempt $retry_count/$max_retries)..."
           sleep $sleep_interval
         done
         sudo k3s kubectl wait --for=condition=Ready node --all --timeout=300s
         echo "k3s cluster is ready after restart."
       shell: bash
     - name: "Check OpenID Configuration"
-      if: inputs.enable-workload-identity
+      if: inputs.enable-workload-identity == 'true'
       run: |
         kubectl get --raw /.well-known/openid-configuration
       shell: bash

@@ -29,27 +29,58 @@ runs:
         # config
         K3S_KUBECONFIG_MODE: 644
       run: |
-        # start cluster in background
-        sudo k3s server --cluster-init &
-
-        # wait for API server to accept connections
-        echo "Waiting for k3s API server..."
-        retry_count=0
-        max_retries=30
+        max_start_attempts=2
+        max_api_retries=30
         sleep_interval=10
-        until sudo k3s kubectl get nodes &>/dev/null; do
-          retry_count=$((retry_count + 1))
-          if [ $retry_count -ge $max_retries ]; then
-            echo "k3s API server did not become reachable after $((max_retries * sleep_interval))s."
+        retryable_error='cloud-controller-manager exited:.*extension-apiserver-authentication.*forbidden'
+
+        for start_attempt in $(seq 1 "$max_start_attempts"); do
+          log_file="/tmp/k3s-server-attempt-${start_attempt}.log"
+          echo "Starting k3s server (attempt ${start_attempt}/${max_start_attempts})..."
+          sudo k3s server --cluster-init >"$log_file" 2>&1 &
+          k3s_pid=$!
+
+          echo "Waiting for k3s API server and node registration..."
+          for api_attempt in $(seq 1 "$max_api_retries"); do
+            if ! sudo kill -0 "$k3s_pid" 2>/dev/null; then
+              break
+            fi
+
+            if nodes=$(sudo k3s kubectl get nodes -o name 2>/dev/null) &&
+               [ -n "$nodes" ]; then
+              if sudo k3s kubectl wait --for=condition=Ready node --all --timeout=300s; then
+                echo "k3s cluster is ready."
+                exit 0
+              fi
+
+              echo "k3s node did not become ready."
+              # Let the shared process/log checks below determine whether this failure is retryable.
+              break
+            fi
+
+            echo "Waiting for API server and node registration (attempt $api_attempt/$max_api_retries)..."
+            sleep "$sleep_interval"
+          done
+
+          if sudo kill -0 "$k3s_pid" 2>/dev/null; then
+            echo "k3s API server and node did not become ready after $((max_api_retries * sleep_interval))s."
+            tail -200 "$log_file"
             exit 1
           fi
-          echo "Waiting for API server (attempt $retry_count/$max_retries)..."
-          sleep $sleep_interval
-        done
 
-        # wait for node to be fully ready
-        sudo k3s kubectl wait --for=condition=Ready node --all --timeout=300s
-        echo "k3s cluster is ready."
+          wait "$k3s_pid" || true
+          echo "k3s server exited during startup."
+          tail -200 "$log_file"
+
+          if [ "$start_attempt" -lt "$max_start_attempts" ] &&
+             grep -Eq "$retryable_error" "$log_file"; then
+            echo "Detected retryable k3s cloud-controller-manager startup failure."
+            sleep "$sleep_interval"
+            continue
+          fi
+
+          exit 1
+        done
       shell: bash
     - name: "Write cluster config"
       run: |

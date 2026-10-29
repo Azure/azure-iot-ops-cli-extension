@@ -157,11 +157,11 @@ def test_template_blueprint(content: dict):
 
 EXTENSION_CONFIGS = {
     "enablement": [
-        (EXTENSION_TYPE_CM, "1.2.1", "stable"),
-        (EXTENSION_TYPE_SSC, "1.6.0", "stable"),
+        (EXTENSION_TYPE_CM, "1.2.3", "stable"),
+        (EXTENSION_TYPE_SSC, "1.6.1", "stable"),
     ],
     "instance": [
-        (EXTENSION_TYPE_OPS, "1.5.41", "stable"),
+        (EXTENSION_TYPE_OPS, "1.5.43", "integration"),
     ],
 }
 

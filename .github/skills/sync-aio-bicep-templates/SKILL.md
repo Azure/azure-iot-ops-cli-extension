@@ -635,7 +635,10 @@ After editing:
    is not evidence the sync is complete: `test_targets_unit.py` and `test_work_unit.py` assert the instance
    resource key set independently, and `test_upgrade2_unit.py` holds the only mechanical guard tying a constant
    reconciled in section 4 to the tag the template stamps — a redaction literal and its matching constant can
-   drift apart with every other check still green.
+   drift apart with every other check still green. These files are a fast feedback set, not the complete release
+   consumer inventory. Search the entire `azext_edge/tests` tree recursively for the previous bundled release values
+   and source commits, including nested resource/connector tests. Classify each match as a bundled-artifact assertion
+   or a fixed historical/synthetic fixture before changing it; never bulk-replace release strings.
 
    All of them must be green before the sync is reported as successful. A failure of the form
    `assert N == M` on `len(template["resources"])`, or a set-equality failure naming an extra or missing resource,
@@ -643,8 +646,25 @@ After editing:
    template tag means the section 4 constant reconciliation is incomplete. Do not report success, hand the branch
    back, or move on to step 6 while any of them fails.
 
-3. Show the final diff summary, detected versions/trains, and behavioral changes.
-4. Print the Bicep sources the templates were generated from and a ready-to-run verification block, so a developer
+3. Before reporting a successful sync or preparing a commit/PR, run the **full CI-equivalent unit selection** from
+   the repository root with the configured development interpreter:
+
+   ```shell
+   python -m pytest -q -k "_unit.py" azext_edge/tests
+   ```
+
+   Confirm this selector still matches the unit-test command in `tox.ini`, invoked by `.github/workflows/tox.yml`;
+   follow the current CI command if it changes. Do not substitute a handpicked module list, deselect failures, or
+   include live integration tests. Investigate every failure against the approved release inputs. Preserve fixed
+   historical/invalid runtime cases and production compatibility guards; update only stale bundled-artifact
+   expectations or explicitly isolate synthetic fixtures from moving production defaults.
+
+   If the full run cannot finish, report its status as pending/blocked and list only the focused checks actually
+   completed. A focused pass is not evidence that all unit tests pass. Report the exact command, interpreter and
+   result; local success on one interpreter is not validation of the entire CI OS/Python matrix.
+
+4. Show the final diff summary, detected versions/trains, and behavioral changes.
+5. Print the Bicep sources the templates were generated from and a ready-to-run verification block, so a developer
    can confirm the result independently. Give the resolved commit for each file, not just the branch. Because step 2
    deletes its temporary files, make the block self-contained: recompile, then inspect. Substitute the real exported
    path and file names rather than printing placeholders.
