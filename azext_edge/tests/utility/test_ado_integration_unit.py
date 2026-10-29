@@ -551,6 +551,75 @@ def test_scenario_cannot_override_execution_contract(name, tmp_path):
         cluster.test_environment(state, tmp_path)
 
 
+def test_dependency_inventory_preserves_each_installed_environment(tmp_path, monkeypatch):
+    extension = tmp_path / "azure-iot-ops"
+    extension.mkdir()
+    candidate = "azure-iot-ops @ file:///candidate/azure_iot_ops-2.0.0b1-py3-none-any.whl\n"
+    packages = Mock(side_effect=[
+        "azure-cli==2.80.0\nshared==1.0\n",
+        candidate + "shared==2.0\n",
+    ])
+    monkeypatch.setattr(pipeline.subprocess, "check_output", packages)
+    output = tmp_path / "dependency-inventory"
+    pipeline.inventory(output, extension)
+    assert (output / "environment/requirements.txt").read_text() == "azure-cli==2.80.0\nshared==1.0\n"
+    assert (output / "extension/requirements.txt").read_text() == candidate + "shared==2.0\n"
+    assert "--path" not in packages.call_args_list[0].args[0]
+    assert packages.call_args_list[1].args[0][-2:] == ["--path", str(extension)]
+
+
+@pytest.mark.parametrize("extension_packages", ["", "shared==2.0\n"])
+def test_dependency_inventory_rejects_missing_installed_extension(tmp_path, monkeypatch, extension_packages):
+    extension = tmp_path / "azure-iot-ops"
+    extension.mkdir()
+    monkeypatch.setattr(pipeline.subprocess, "check_output", Mock(side_effect=[
+        "azure-cli==2.80.0\n", extension_packages,
+    ]))
+    output = tmp_path / "dependency-inventory"
+    with pytest.raises(ValueError, match="empty|installed extension is missing"):
+        pipeline.inventory(output, extension)
+    assert not (output / "extension/requirements.txt").exists()
+
+
+def test_dependency_inventory_requires_existing_extension_directory(tmp_path, monkeypatch):
+    packages = Mock()
+    monkeypatch.setattr(pipeline.subprocess, "check_output", packages)
+    with pytest.raises(ValueError, match="directory is missing"):
+        pipeline.inventory(tmp_path / "dependency-inventory", tmp_path / "missing")
+    packages.assert_not_called()
+
+
+@pytest.mark.parametrize("result", ["", subprocess.CalledProcessError(1, ["pip", "freeze"])])
+def test_dependency_inventory_rejects_empty_or_failed_collection(tmp_path, monkeypatch, result):
+    packages = Mock(side_effect=result) if isinstance(result, Exception) else Mock(return_value=result)
+    monkeypatch.setattr(pipeline.subprocess, "check_output", packages)
+    with pytest.raises((ValueError, subprocess.CalledProcessError)):
+        pipeline.inventory(tmp_path / "dependency-inventory")
+    assert not (tmp_path / "dependency-inventory").exists()
+
+
+def test_yaml_exposes_installed_dependencies_even_after_test_failure():
+    template = yaml.safe_load((ROOT / ".azure-devops/templates/integration-pipeline.yml").read_text())
+    live = template["stages"][1]["${{ if eq(parameters.mode, 'Integration tests') }}"]
+    jobs = {stage["stage"]: stage["jobs"][0]["steps"] for stage in live}
+    for stage, interpreter in (("Build", "python"), ("Lint", ".tox/lint/bin/python"),
+                               ("Unit", ".tox/python/bin/python")):
+        step = next(step for step in jobs[stage] if " inventory" in step.get("bash", ""))
+        assert f"{interpreter} tools/ado_integration.py inventory" in step["bash"]
+        assert f"$(Build.SourcesDirectory)/dependency-inventory/{stage.lower()}" in step["bash"]
+        assert step["condition"] == "succeededOrFailed()"
+    assert "sysconfig.get_paths()" in step["bash"] and '--extension-dir "$extension"' in step["bash"]
+    scenario = jobs["Integration"]
+    prepare = next(step for step in scenario if " prepare --output" in step.get("bash", ""))
+    assert prepare["bash"].index(" prepare --output") < prepare["bash"].index(" inventory")
+    cleanup = next(step for step in scenario if "cleanup --output" in step.get("inputs", {}).get("inlineScript", ""))
+    inventory = next(step for step in scenario if step.get("displayName", "").startswith("Refresh installed"))
+    assert scenario.index(inventory) > scenario.index(cleanup)
+    assert inventory["condition"] == "always()"
+    assert '$(Build.SourcesDirectory)/dependency-inventory/scenario' in inventory["bash"]
+    assert '--extension-dir "$(Agent.TempDirectory)/azure-cli-extensions/azure-iot-ops"' in inventory["bash"]
+
+
 def test_yaml_keeps_dry_run_separate_and_reuses_existing_tests():
     value = yaml.safe_load((ROOT / ".azure-devops/integration.yml").read_text())
     assert value["trigger"] == "none" and value["pr"] == "none" and "schedules" not in value

@@ -53,6 +53,28 @@ def digest(path):
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
+def inventory(output, extension_dir=None):
+    environments = [("environment", None)]
+    if extension_dir is not None:
+        if not extension_dir.is_dir():
+            raise ValueError("The installed extension dependency directory is missing.")
+        environments.append(("extension", extension_dir))
+    for name, path in environments:
+        arguments = [sys.executable, "-m", "pip", "freeze", "--all", "--disable-pip-version-check"]
+        if path is not None:
+            arguments += ["--path", str(path)]
+        requirements = subprocess.check_output(arguments, text=True)
+        if not requirements.strip():
+            raise ValueError(f"The {name} dependency inventory is empty.")
+        if path is not None and not re.search(r"(?im)^azure[-_]iot[-_]ops(?:==| @ )", requirements):
+            raise ValueError("The installed extension is missing from its dependency inventory.")
+        # Preserve local candidate URLs: unpublished versions cannot be resolved from a feed.
+        destination = output / name / "requirements.txt"
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_text(requirements, encoding="utf-8")
+        print(f"Recorded installed package inventory in {destination}", flush=True)
+
+
 def producer():
     value = {key: required(name) for key, name in (
         ("pipeline", "SYSTEM_DEFINITIONID"), ("build", "BUILD_BUILDID"), ("commit", "BUILD_SOURCEVERSION"),
@@ -408,10 +430,14 @@ def gate(output):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("operation", choices=["plan", "candidate", "acquire", "prepare", "report", "gate"])
+    parser.add_argument("operation", choices=["plan", "candidate", "acquire", "prepare", "report", "gate", "inventory"])
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--extension-dir", type=Path)
     args = parser.parse_args()
-    globals()[args.operation](args.output.resolve())
+    if args.operation == "inventory":
+        inventory(args.output.resolve(), args.extension_dir)
+    else:
+        globals()[args.operation](args.output.resolve())
 
 
 if __name__ == "__main__":
