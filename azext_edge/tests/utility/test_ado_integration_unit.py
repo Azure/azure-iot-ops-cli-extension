@@ -551,7 +551,7 @@ def test_scenario_cannot_override_execution_contract(name, tmp_path):
         cluster.test_environment(state, tmp_path)
 
 
-@pytest.mark.parametrize("mutation", [None, "digest", "origin", "missing"])
+@pytest.mark.parametrize("mutation", [None, "digest", "origin", "missing", "fragment"])
 def test_inventory_recovers_only_the_exact_tox_candidate(tmp_path, monkeypatch, mutation):
     monkeypatch.setattr(pipeline, "ROOT", tmp_path)
     original = tmp_path / ".tox/.tmp/package/1/azure_iot_ops-2.0.0b1.tar.gz"
@@ -559,6 +559,7 @@ def test_inventory_recovers_only_the_exact_tox_candidate(tmp_path, monkeypatch, 
     retained.parent.mkdir(parents=True)
     retained.write_bytes(b"installed candidate archive")
     provenance = {"url": original.as_uri(), "archive_info": {"hashes": {"sha256": pipeline.digest(retained)}}}
+    fragment = "#sha256=" + ("0" * 64 if mutation == "fragment" else pipeline.digest(retained))
     if mutation == "digest":
         retained.write_bytes(b"different archive")
     elif mutation == "origin":
@@ -567,7 +568,7 @@ def test_inventory_recovers_only_the_exact_tox_candidate(tmp_path, monkeypatch, 
         retained.unlink()
     monkeypatch.setattr(pipeline, "distribution", Mock(return_value=SimpleNamespace(
         read_text=lambda _: json.dumps(provenance))))
-    requirements = f"azure-iot-ops @ {original.as_uri()}\nshared==1.0\n"
+    requirements = f"azure-iot-ops @ {original.as_uri()}{fragment}\nshared==1.0\n"
     monkeypatch.setattr(pipeline.subprocess, "check_output", Mock(return_value=requirements))
     output = tmp_path / "dependency-inventory"
     if mutation:
@@ -577,7 +578,7 @@ def test_inventory_recovers_only_the_exact_tox_candidate(tmp_path, monkeypatch, 
     else:
         pipeline.inventory(output)
         assert (output / "environment/requirements.txt").read_text() == (
-            f"azure-iot-ops @ {retained.as_uri()}\nshared==1.0\n"
+            f"azure-iot-ops @ {retained.as_uri()}{fragment}\nshared==1.0\n"
         )
 
 

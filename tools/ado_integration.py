@@ -18,7 +18,7 @@ import runpy
 import shutil
 import subprocess
 import sys
-from urllib.parse import urlsplit
+from urllib.parse import urldefrag, urlsplit
 from urllib.request import url2pathname
 from uuid import UUID, uuid4
 from xml.etree import ElementTree
@@ -67,10 +67,13 @@ def retained_candidate(requirements):
     retained = ROOT / ".tox/.pkg/dist" / original.name
     provenance = json.loads(distribution("azure-iot-ops").read_text("direct_url.json"))
     expected = provenance.get("archive_info", {}).get("hashes", {}).get("sha256")
-    if (provenance.get("url") != match[1] or not retained.is_file()
+    origin, fragment = urldefrag(match[1])
+    if (provenance.get("url") != origin or not retained.is_file()
+            or (fragment and fragment != f"sha256={expected}")
             or not expected or digest(retained) != expected):
         raise ValueError("Cannot recover the exact installed candidate for dependency scanning.")
-    return requirements[:match.start()] + f"azure-iot-ops @ {retained.as_uri()}" + requirements[match.end():]
+    reference = retained.as_uri() + (f"#{fragment}" if fragment else "")
+    return requirements[:match.start()] + f"azure-iot-ops @ {reference}" + requirements[match.end():]
 
 
 def inventory(output, extension_dir=None):
