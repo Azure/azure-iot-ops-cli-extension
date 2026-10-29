@@ -53,11 +53,11 @@ def qualification_profile():
 def test_preview_source_identity_and_contract(qualification_profile):
     blueprint = TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW
     content = blueprint.content
-    assert blueprint.commit_id == "f306f5abaf891dddf7a1f9db00b13a8a742d5ad8"
+    assert blueprint.commit_id == "f8ddf631ada8ad5f72aa86961eece38ed62e0ead"
     assert content
-    assert content["variables"]["VERSIONS"] == {"iotOperations": "1.6.0-preview.57", "connectors": "1.5.19"}
-    assert content["variables"]["TRAINS"] == {"iotOperations": "preview"}
-    assert qualification_profile.identity.train == "preview"
+    assert content["variables"]["VERSIONS"] == {"iotOperations": "1.6.0-preview.59", "connectors": "1.5.21"}
+    assert content["variables"]["TRAINS"] == {"iotOperations": "integration"}
+    assert qualification_profile.identity.train == "integration"
     assert qualification_profile.identity.channel == RuntimeChannel.PREVIEW
     assert set(content["resources"]) == EXPECTED_PREVIEW_RESOURCE_KEYS
     aio_resources = [r for r in content["resources"].values() if r["type"].startswith("Microsoft.IoTOperations/")]
@@ -223,7 +223,7 @@ def test_preview_mcp_connection_preserves_source_contract(qualification_profile,
 def test_preview_extension_versions_exclude_connector_metadata(qualification_profile):
     targets = InitTargets("cluster", "rg", runtime_profile=qualification_profile)
     assert targets.get_extension_versions(False) == {
-        "iotOperations": {"version": "1.6.0-preview.57", "train": "preview"},
+        "iotOperations": {"version": "1.6.0-preview.59", "train": "integration"},
     }
 
 
@@ -245,7 +245,7 @@ def test_preview_features_use_source_contract(qualification_profile, mode):
     assert template["resources"]["aioInstance"]["properties"]["features"] == EXPECTED_PREVIEW_FEATURES
     assert ("opcUaConnectorTemplate" in template["resources"]) == (mode != "Disabled")
     assert "effectiveFeatures" not in template["variables"]
-    assert template["variables"]["TRAINS"]["iotOperations"] == "preview"
+    assert template["variables"]["TRAINS"]["iotOperations"] == "integration"
 
 
 def test_preview_explicit_configuration_overlays_preserve_other_defaults(qualification_profile):
@@ -298,14 +298,14 @@ def test_bundled_preview_registered_without_changing_default_or_train():
     assert catalog.for_create().channel == RuntimeChannel.STABLE
     profile = catalog.for_create(use_preview=True)
     assert profile is PREVIEW_PROFILE
-    assert profile.source_commit == "f306f5abaf891dddf7a1f9db00b13a8a742d5ad8"
+    assert profile.source_commit == "4415b49794d02dc6b3493bea7e7e5f427a080615"
     assert profile.iotops_api_version == "2026-11-01-preview"
     assert profile.copy_instance_blueprint() == TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW
     assert resolve_runtime_identity(
         profile.identity.version, profile.identity.train, catalog.qualification_identities
     ) == profile.identity
     assert catalog.for_upgrade(profile.identity) is profile
-    assert profile.require_opcua_connector_version() == "1.5.19"
+    assert profile.require_opcua_connector_version() == "1.5.21"
     assert profile.require_opcua_connector_version() == (
         TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW.content["variables"]["VERSIONS"]["connectors"]
     )

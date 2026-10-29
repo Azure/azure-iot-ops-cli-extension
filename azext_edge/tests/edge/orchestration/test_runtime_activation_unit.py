@@ -160,7 +160,7 @@ def test_bundled_preview_upgrade_repairs_same_runtime_without_qualification_bloc
         EXTENSION_TYPE_OPS, ext_vers=profile.identity.version, ext_train=profile.identity.train,
         provisioning_state="Failed",
     )
-    scenario.set_auxiliary_kwargs(opcua_connector_template_exists=connector_exists, opcua_connector_version="1.5.19")
+    scenario.set_auxiliary_kwargs(opcua_connector_template_exists=connector_exists, opcua_connector_version="1.5.21")
     scenario.set_instance_mock(mocked_responses, "instance", "rg", iotops_api_version="2026-11-01-preview")
     upgrade_instance(mocked_cmd, "rg", "instance", confirm_yes=True, no_progress=True)
     patches = [c for c in mocked_responses.calls if c.request.method == "PATCH"]
@@ -181,5 +181,5 @@ def test_bundled_preview_upgrade_repairs_same_runtime_without_qualification_bloc
             {"endpointType": "Microsoft.OpcUa"}, {"endpointType": "Microsoft.OpcUa.WoT"},
         ]
         assert connector["connectorMetadataRef"] == (
-            "mcr.microsoft.com/azureiotoperations/aio-connectors/opcua-metadata:1.5.19"
+            "mcr.microsoft.com/azureiotoperations/aio-connectors/opcua-metadata:1.5.21"
         )
