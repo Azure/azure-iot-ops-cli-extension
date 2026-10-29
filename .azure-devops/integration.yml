@@ -8,16 +8,16 @@ pool:
 
 parameters:
   - name: releaseBuildId
-    displayName: Exact pipeline 165 candidate build (0 builds this source normally)
+    displayName: Release build ID
     type: number
     default: 0
   - name: mode
-    displayName: Run mode
+    displayName: Mode
     type: string
     default: Dry run
     values: [Dry run, Integration tests]
   - name: testScenarios
-    displayName: Ops scenarios (Default scenarios excludes explicit-only cases)
+    displayName: Scenarios
     type: stringList
     default: [edge]
     values:
@@ -35,7 +35,7 @@ parameters:
       - essentials-sku
       - trustbundle
   - name: runtimeChannels
-    displayName: Runtime channels (independent clusters)
+    displayName: Runtime channels
     type: stringList
     default: [stable]
     values: [stable, preview]
@@ -45,16 +45,16 @@ parameters:
     default: ['3.13']
     values: ['3.10', '3.11', '3.12', '3.13']
   - name: upgradeBaselines
-    displayName: Pinned upgrade-path baselines by runtime channel (JSON)
+    displayName: Upgrade baselines (JSON)
     type: string
     default: '{}'
   - name: scenarioTimeoutMinutes
-    displayName: Scenario job timeout (plus reserved cleanup buffer)
+    displayName: Timeout (min)
     type: number
     default: 360
     values: [90, 180, 360]
   - name: azureServiceConnection
-    displayName: Authorized Azure service connection
+    displayName: Service connection
     type: string
     default: az-iot-ops-int-sp-ado
   - name: subscriptionId

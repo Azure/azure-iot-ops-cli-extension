@@ -7,10 +7,11 @@ parameters:
 
 steps:
   - task: PipAuthenticate@1
+    displayName: Authenticate feed
     condition: ${{ parameters.condition }}
     inputs:
       artifactFeeds: aziotcli/pip
       onlyAddExtraIndex: false
   - script: python tools/release_pipeline.py feed-environment
     condition: ${{ parameters.condition }}
-    displayName: Require the authenticated feed and disable alternate pip sources
+    displayName: Configure feed

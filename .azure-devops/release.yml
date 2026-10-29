@@ -6,20 +6,20 @@ name: ops-release-$(Date:yyyyMMdd).$(Rev:r)
 
 parameters:
   - name: mode
-    displayName: Plan checks governance; Validate runs live tests; Release also publishes
+    displayName: Mode
     type: string
     default: Plan
     values: [Plan, Validate, Release]
   - name: sourceBranch
-    displayName: Candidate source branch (Release requires protected dev)
+    displayName: Source branch
     type: string
     default: dev
   - name: createIndexPr
-    displayName: Submit an extension-index PR after GitHub publication (Release only)
+    displayName: Create index PR
     type: boolean
     default: false
   - name: uploadWheel
-    displayName: Also upload the wheel to approved Azure Storage (Release only)
+    displayName: Upload wheel
     type: boolean
     default: false
 

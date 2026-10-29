@@ -590,7 +590,8 @@ def test_yaml_exposes_installed_dependencies_even_after_test_failure():
     prepare = next(step for step in scenario if " prepare --output" in step.get("bash", ""))
     assert prepare["bash"].index(" prepare --output") < prepare["bash"].index(" inventory")
     cleanup = next(step for step in scenario if "cleanup --output" in step.get("inputs", {}).get("inlineScript", ""))
-    inventory = next(step for step in scenario if step.get("displayName", "").startswith("Refresh installed"))
+    inventory = next(step for step in scenario if "tools/ado_integration.py inventory" in step.get("bash", "")
+                     and step.get("condition") == "always()")
     assert scenario.index(inventory) > scenario.index(cleanup)
     assert inventory["condition"] == "always()"
     assert '$(Build.SourcesDirectory)/dependency-inventory/scenario' in inventory["bash"]
