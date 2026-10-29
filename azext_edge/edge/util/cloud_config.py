@@ -39,10 +39,11 @@ SERVICEBUS_SUFFIX_MAP = {
     CLOUD_AZURE_CHINA: "servicebus.chinacloudapi.cn",
 }
 
-# Event Grid token audience per cloud. Not provided by the Azure CLI cloud framework.
+# Event Grid token audience per cloud. Government uses the Public audience despite its .us service hostname.
+# Not provided by the Azure CLI cloud framework.
 EVENTGRID_AUDIENCE_MAP = {
     CLOUD_AZURE_PUBLIC: "https://eventgrid.azure.net",
-    CLOUD_AZURE_US_GOVERNMENT: "https://eventgrid.azure.us",
+    CLOUD_AZURE_US_GOVERNMENT: "https://eventgrid.azure.net",
     CLOUD_AZURE_CHINA: "https://eventgrid.azure.cn",
 }
 
