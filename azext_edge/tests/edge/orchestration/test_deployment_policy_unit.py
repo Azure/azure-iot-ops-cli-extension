@@ -406,7 +406,7 @@ def test_policy_consumes_generated_inputs_and_returns_private_copies(mocker):
 
 def test_bundled_ff_source_is_pinned_separately_from_public_runtime():
     assert TEMPLATE_BLUEPRINT_ENABLEMENT_FAIRFAX.commit_id == "486ede1e8e72c25a02c04d07e4bdc3310661beee"
-    assert TEMPLATE_BLUEPRINT_INSTANCE_FAIRFAX.commit_id == "3f1e5039d3900d254685d0c8a7c676b06b4b89fa"
+    assert TEMPLATE_BLUEPRINT_INSTANCE_FAIRFAX.commit_id == "9f47bf136714796d8be77fb8042affa959c74f8a"
     variables = TEMPLATE_BLUEPRINT_INSTANCE_FAIRFAX.content["variables"]
     assert variables["VERSIONS"] == {"iotOperations": "1.5.44", "connectors": "1.5.21"}
     assert variables["TRAINS"] == {"iotOperations": "stable"}

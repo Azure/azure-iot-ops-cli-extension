@@ -12,7 +12,7 @@ GDS Manager inputs/readers are excluded before compilation. Source location
 constraints are retained after optimization. Live FF qualification remains pending.
 """
 
-# selected source releases/v1.5.x/2610-ff @ 56d1f14b761f3af61804c7f602796f4d555a956f
+# selected source releases/v1.5.x/2610-ff @ 9f47bf136714796d8be77fb8042affa959c74f8a
 # source release 2610
 from .template import TemplateBlueprint
 
@@ -742,7 +742,7 @@ TEMPLATE_BLUEPRINT_ENABLEMENT_FAIRFAX = TemplateBlueprint(
 )
 
 TEMPLATE_BLUEPRINT_INSTANCE_FAIRFAX = TemplateBlueprint(
-    commit_id="3f1e5039d3900d254685d0c8a7c676b06b4b89fa",
+    commit_id="9f47bf136714796d8be77fb8042affa959c74f8a",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "languageVersion": "2.0",

@@ -97,7 +97,7 @@ def test_ff_artifact_mapping_does_not_enable_public_preview_or_leak_into_public_
     assert profile.identity.channel == RuntimeChannel.STABLE
     assert (profile.identity.version, profile.identity.train) == ("1.5.44", "stable")
     assert profile.source_ref == "releases/v1.5.x/2610-ff"
-    assert profile.source_commit == "56d1f14b761f3af61804c7f602796f4d555a956f"
+    assert profile.source_commit == "9f47bf136714796d8be77fb8042affa959c74f8a"
     assert profile.require_opcua_connector_version() == "1.5.21"
     assert profile.iotops_api_version == "2026-10-01"
     assert catalog.for_upgrade(profile.identity) is profile
