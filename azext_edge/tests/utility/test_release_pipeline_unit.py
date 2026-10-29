@@ -542,8 +542,9 @@ def test_security_stages_verified_engine_before_scanning_without_reducing_covera
     assert scanner["env"]["MSDO_FILEPATH"] == "$(stageMsdo.directory)/guardian.cmd"
     assert scanner["env"]["MSDO_VERSION"] == "$(stageMsdo.version)"
     assert scanner["env"]["BUILD_SOURCEVERSION"] == "$(sourceCommit)"
-    assert scanner["inputs"]["break"] is True and scanner["inputs"]["publish"] is True
-    assert not {"tools", "categories", "languages", "policy"} & scanner["inputs"].keys()
+    assert scanner["inputs"] == {
+        "break": True, "publish": True, "artifactName": "release-security-$(System.JobAttempt)",
+    }
 
 
 def test_manual_and_health_do_not_rebuild_a_release_candidate():
