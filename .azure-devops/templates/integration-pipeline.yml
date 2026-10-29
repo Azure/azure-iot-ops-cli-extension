@@ -134,6 +134,9 @@ stages:
                   --output "$(Build.SourcesDirectory)/dependency-inventory/build"
                 condition: succeededOrFailed()
                 displayName: Expose installed build dependencies to the native scan
+              - template: release-feed.yml
+                parameters:
+                  condition: succeededOrFailed()
               - publish: dist
                 artifact: ops-wheel-$(System.JobAttempt)
 
@@ -162,6 +165,9 @@ stages:
                   --output "$(Build.SourcesDirectory)/dependency-inventory/lint"
                 condition: succeededOrFailed()
                 displayName: Expose installed lint dependencies to the native scan
+              - template: release-feed.yml
+                parameters:
+                  condition: succeededOrFailed()
 
       - stage: Unit
         displayName: Existing ops unit suite
@@ -188,6 +194,9 @@ stages:
                     --output "$(Build.SourcesDirectory)/dependency-inventory/unit" --extension-dir "$extension"
                 condition: succeededOrFailed()
                 displayName: Expose tested interpreter and extension dependencies to the native scan
+              - template: release-feed.yml
+                parameters:
+                  condition: succeededOrFailed()
               - task: PublishTestResults@2
                 condition: always()
                 inputs:
@@ -294,6 +303,9 @@ stages:
                   --extension-dir "$(Agent.TempDirectory)/azure-cli-extensions/azure-iot-ops"
                 condition: always()
                 displayName: Refresh installed scenario dependencies after execution and cleanup
+              - template: release-feed.yml
+                parameters:
+                  condition: always()
               - bash: python tools/ado_integration.py report --output attempt
                 condition: always()
                 displayName: Record failures and incomplete execution explicitly

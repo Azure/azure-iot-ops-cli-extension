@@ -608,6 +608,9 @@ def test_yaml_exposes_installed_dependencies_even_after_test_failure():
         assert f"{interpreter} tools/ado_integration.py inventory" in step["bash"]
         assert f"$(Build.SourcesDirectory)/dependency-inventory/{stage.lower()}" in step["bash"]
         assert step["condition"] == "succeededOrFailed()"
+        feed = next(item for item in jobs[stage] if item.get("template") == "release-feed.yml")
+        assert jobs[stage].index(feed) > jobs[stage].index(step)
+        assert feed["parameters"]["condition"] == step["condition"]
     assert "sysconfig.get_paths()" in step["bash"] and '--extension-dir "$extension"' in step["bash"]
     scenario = jobs["Integration"]
     prepare = next(step for step in scenario if " prepare --output" in step.get("bash", ""))
@@ -618,6 +621,13 @@ def test_yaml_exposes_installed_dependencies_even_after_test_failure():
     assert inventory["condition"] == "always()"
     assert '$(Build.SourcesDirectory)/dependency-inventory/scenario' in inventory["bash"]
     assert '--extension-dir "$(Agent.TempDirectory)/azure-cli-extensions/azure-iot-ops"' in inventory["bash"]
+    feed = next(step for step in scenario if step.get("template") == "release-feed.yml")
+    assert scenario.index(feed) > scenario.index(inventory)
+    assert feed["parameters"]["condition"] == "always()"
+    template = yaml.safe_load((ROOT / ".azure-devops/templates/release-feed.yml").read_text())
+    assert template["parameters"][0]["default"] == "succeeded()"
+    assert all(step["condition"] == "${{ parameters.condition }}" for step in template["steps"])
+    assert template["steps"][0]["inputs"] == {"artifactFeeds": "aziotcli/pip", "onlyAddExtraIndex": False}
 
 
 def test_yaml_keeps_dry_run_separate_and_reuses_existing_tests():
