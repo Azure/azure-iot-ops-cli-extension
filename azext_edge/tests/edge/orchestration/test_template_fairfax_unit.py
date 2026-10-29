@@ -57,7 +57,7 @@ def test_ff_instance_preserves_source_contract():
     assert set(content["resources"]) == set(EXPECTED_INSTANCE_RESOURCE_KEYS)
     assert content["parameters"]["clusterLocation"]["allowedValues"] == ["usgovvirginia"]
     assert "defaultValue" not in content["parameters"]["clusterLocation"]
-    assert content["variables"]["VERSIONS"] == {"iotOperations": "1.5.42", "connectors": "1.5.19"}
+    assert content["variables"]["VERSIONS"] == {"iotOperations": "1.5.44", "connectors": "1.5.21"}
     assert content["variables"]["TRAINS"] == {"iotOperations": "stable"}
     assert FF_CONFIGURATION.items() <= content["variables"]["defaultAioConfigurationSettings"].items()
     assert content["resources"]["aioExtension"]["properties"]["autoUpgradeMinorVersion"] is False
@@ -79,7 +79,7 @@ def test_ff_selects_complete_cloud_blueprint_in_every_deployment_phase(phase):
     template, _ = targets.get_ops_instance_template(phase=phase)
     assert template["variables"]["VERSIONS"]["iotOperations"] == profile.identity.version
     assert template["variables"]["TRAINS"]["iotOperations"] == profile.identity.train
-    assert template["variables"]["VERSIONS"]["connectors"] == original["variables"]["VERSIONS"]["connectors"]
+    assert template["variables"]["VERSIONS"]["connectors"] == "1.5.21"
     assert FF_CONFIGURATION.items() <= template["variables"]["defaultAioConfigurationSettings"].items()
     if phase in (None, InstancePhase.EXT):
         assert template["resources"]["aioExtension"]["properties"]["version"] == "[variables('resolvedVersion')]"
@@ -95,7 +95,10 @@ def test_ff_artifact_mapping_does_not_enable_public_preview_or_leak_into_public_
     profile = catalog.for_create()
     assert profile.cloud_name == "AzureUSGovernment"
     assert profile.identity.channel == RuntimeChannel.STABLE
-    assert (profile.identity.version, profile.identity.train) == ("1.5.42", "stable")
+    assert (profile.identity.version, profile.identity.train) == ("1.5.44", "stable")
+    assert profile.source_ref == "releases/v1.5.x/2610-ff"
+    assert profile.source_commit == "56d1f14b761f3af61804c7f602796f4d555a956f"
+    assert profile.require_opcua_connector_version() == "1.5.21"
     assert profile.iotops_api_version == "2026-10-01"
     assert catalog.for_upgrade(profile.identity) is profile
     assert resolve_runtime_identity(

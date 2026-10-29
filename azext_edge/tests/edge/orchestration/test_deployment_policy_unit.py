@@ -45,8 +45,8 @@ FF_CONFIGURATION = {
     "Azure.Cluster.Cloud": "AZUREUSGOVERNMENTCLOUD",
 }
 FF_FOUNDATION = {
-    "certManager": {"version": "1.2.1", "train": "preview"},
-    "secretStore": {"version": "1.6.0", "train": "preview"},
+    "certManager": {"version": "1.2.3", "train": "preview"},
+    "secretStore": {"version": "1.6.1", "train": "preview"},
 }
 
 
@@ -223,8 +223,8 @@ def ff_upgrade_manager(mocker):
     extensions = {}
     for extension_type, version, train in (
         (EXTENSION_TYPE_OPS, profile.identity.version, profile.identity.train),
-        (EXTENSION_TYPE_CM, "1.2.1", "preview"),
-        (EXTENSION_TYPE_SSC, "1.6.0", "preview"),
+        (EXTENSION_TYPE_CM, "1.2.3", "preview"),
+        (EXTENSION_TYPE_SSC, "1.6.1", "preview"),
     ):
         extensions[extension_type] = {"properties": {
             "extensionType": extension_type, "version": version, "currentVersion": version,
@@ -273,7 +273,7 @@ def test_ff_upgrade_preserves_missing_ops_extension_validation(ff_upgrade_manage
 
 
 @pytest.mark.parametrize("force", [False, True])
-@pytest.mark.parametrize("version", ["1.5.41", "1.5.43"])
+@pytest.mark.parametrize("version", ["1.5.41", "1.5.45"])
 def test_unmapped_ff_stable_baseline_preserves_internal_compatibility_bypass(ff_upgrade_manager, force, version):
     manager, extensions = ff_upgrade_manager
     manager.force = force
@@ -291,7 +291,7 @@ def test_unmapped_ff_stable_baseline_preserves_internal_compatibility_bypass(ff_
     ops = next(ext for ext in state.extension_upgrades if ext.moniker == EXTENSION_MONIKER_OPS)
     patch = ops.get_patch()["properties"]
     if version == "1.5.41":
-        assert patch["version"] == "1.5.42"
+        assert patch["version"] == "1.5.44"
     else:
         assert "version" not in patch
     assert FF_CONFIGURATION.items() <= patch["configurationSettings"].items()
@@ -304,10 +304,10 @@ def test_unmapped_newer_ff_baseline_is_checked_before_connector_backfill(ff_upgr
     manager, extensions = ff_upgrade_manager
     manager.force = force
     properties = extensions[EXTENSION_TYPE_OPS]["properties"]
-    properties.update({"version": "1.5.43", "currentVersion": "1.5.43"})
+    properties.update({"version": "1.5.45", "currentVersion": "1.5.45"})
     properties["configurationSettings"].update(FF_CONFIGURATION)
     manager.runtime_context.identity = resolve_runtime_identity(
-        "1.5.43", "stable", manager.runtime_catalog.qualification_identities,
+        "1.5.45", "stable", manager.runtime_catalog.qualification_identities,
     )
     manager._check_opcua_connector_template_needed.return_value = (True, None)
     original = deepcopy(extensions)
@@ -405,8 +405,8 @@ def test_policy_consumes_generated_inputs_and_returns_private_copies(mocker):
 
 
 def test_bundled_ff_source_is_pinned_separately_from_public_runtime():
-    assert TEMPLATE_BLUEPRINT_ENABLEMENT_FAIRFAX.commit_id == "dbe60868edbd354658365cf374667446181f97b1"
-    assert TEMPLATE_BLUEPRINT_INSTANCE_FAIRFAX.commit_id == "089d884ecbcfd770f845d7e570b9eed5e7581701"
+    assert TEMPLATE_BLUEPRINT_ENABLEMENT_FAIRFAX.commit_id == "486ede1e8e72c25a02c04d07e4bdc3310661beee"
+    assert TEMPLATE_BLUEPRINT_INSTANCE_FAIRFAX.commit_id == "3f1e5039d3900d254685d0c8a7c676b06b4b89fa"
     variables = TEMPLATE_BLUEPRINT_INSTANCE_FAIRFAX.content["variables"]
-    assert variables["VERSIONS"] == {"iotOperations": "1.5.42", "connectors": "1.5.19"}
+    assert variables["VERSIONS"] == {"iotOperations": "1.5.44", "connectors": "1.5.21"}
     assert variables["TRAINS"] == {"iotOperations": "stable"}

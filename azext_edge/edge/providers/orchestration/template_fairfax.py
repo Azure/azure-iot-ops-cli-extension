@@ -6,23 +6,23 @@
 
 """Generated Fairfax blueprints selected for AzureUSGovernment deployments.
 
-The FF cloud release retains its source artifact version/train independently of
-Public preview feature eligibility. These are provisional release inputs.
+The FF cloud release is independent of Public preview feature eligibility.
+These are provisional release inputs.
 GDS Manager inputs/readers are excluded before compilation. Source location
 constraints are retained after optimization. Live FF qualification remains pending.
 """
 
-# selected source releases/v1.5.x/2610-ff @ 089d884ecbcfd770f845d7e570b9eed5e7581701
+# selected source releases/v1.5.x/2610-ff @ 56d1f14b761f3af61804c7f602796f4d555a956f
 # source release 2610
 from .template import TemplateBlueprint
 
 TEMPLATE_BLUEPRINT_ENABLEMENT_FAIRFAX = TemplateBlueprint(
-    commit_id="dbe60868edbd354658365cf374667446181f97b1",
+    commit_id="486ede1e8e72c25a02c04d07e4bdc3310661beee",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "languageVersion": "2.0",
         "contentVersion": "1.0.0.0",
-        "metadata": {"_generator": {"name": "bicep", "version": "0.48.1.52935", "templateHash": "9657611590825977368"}},
+        "metadata": {"_generator": {"name": "bicep", "version": "0.48.1.52935", "templateHash": "9608902776531409645"}},
         "definitions": {
             "_1.AdvancedConfig": {
                 "type": "object",
@@ -662,7 +662,7 @@ TEMPLATE_BLUEPRINT_ENABLEMENT_FAIRFAX = TemplateBlueprint(
             "advancedConfig": {"$ref": "#/definitions/_1.AdvancedConfig", "defaultValue": {}},
         },
         "variables": {
-            "VERSIONS": {"certManager": "1.2.1", "secretStore": "1.6.0"},
+            "VERSIONS": {"certManager": "1.2.3", "secretStore": "1.6.1"},
             "TRAINS": {"certManager": "preview", "secretStore": "preview"},
         },
         "resources": {
@@ -742,14 +742,12 @@ TEMPLATE_BLUEPRINT_ENABLEMENT_FAIRFAX = TemplateBlueprint(
 )
 
 TEMPLATE_BLUEPRINT_INSTANCE_FAIRFAX = TemplateBlueprint(
-    commit_id="089d884ecbcfd770f845d7e570b9eed5e7581701",
+    commit_id="3f1e5039d3900d254685d0c8a7c676b06b4b89fa",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "languageVersion": "2.0",
         "contentVersion": "1.0.0.0",
-        "metadata": {
-            "_generator": {"name": "bicep", "version": "0.48.1.52935", "templateHash": "13856876116043094645"}
-        },
+        "metadata": {"_generator": {"name": "bicep", "version": "0.48.1.52935", "templateHash": "834751618760721463"}},
         "definitions": {
             "_1.AdvancedConfig": {
                 "type": "object",
@@ -1456,7 +1454,7 @@ TEMPLATE_BLUEPRINT_INSTANCE_FAIRFAX = TemplateBlueprint(
             "aioExtensionTrain": {"type": "string", "defaultValue": ""},
         },
         "variables": {
-            "VERSIONS": {"iotOperations": "1.5.42", "connectors": "1.5.19"},
+            "VERSIONS": {"iotOperations": "1.5.44", "connectors": "1.5.21"},
             "TRAINS": {"iotOperations": "stable"},
             "HASH": "[coalesce(tryGet(parameters('advancedConfig'), 'resourceSuffix'), take(uniqueString(resourceGroup().id, parameters('clusterName'), parameters('clusterNamespace')), 5))]",
             "AIO_EXTENSION_SUFFIX": "[take(uniqueString(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName'))), 5)]",
