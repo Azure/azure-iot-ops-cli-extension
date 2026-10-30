@@ -54,7 +54,7 @@ def get_runtime_catalog(cloud_name: str = CLOUD_AZURE_PUBLIC) -> RuntimeProfileC
         channel=RuntimeChannel.STABLE,
         release=str(AIO_RELEASE),
         source_ref="releases/v1.5.x/2610",
-        source_commit="97933f54e677de0354b5b6ff144d153b8aff72f2",
+        source_commit="87c6c83e945c318ebf76a3189e8212c3dd17fbc6",
         instance_blueprint=TEMPLATE_BLUEPRINT_INSTANCE,
         opcua_connector_version=OPCUA_CONNECTOR_VERSION,
     )
