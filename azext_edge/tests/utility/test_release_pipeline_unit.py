@@ -519,7 +519,9 @@ def test_yaml_serial_qualification_requires_all_gates_and_no_default_publication
     assert "ReleaseGitHubToken" not in json.dumps(template["stages"][:-1])
     unit = yaml.safe_load((ROOT / ".azure-devops/templates/release-unit.yml").read_text(encoding="utf-8"))
     assert "$(" not in unit["jobs"][0]["displayName"]
-    assert len(unit["jobs"][0]["strategy"]["matrix"]) * len(stages["Unit"]["jobs"]) == 12
+    matrix = unit["jobs"][0]["strategy"]["matrix"]
+    assert all(name == "py" + leg["python"].replace(".", "") for name, leg in matrix.items())
+    assert len(matrix) * len(stages["Unit"]["jobs"]) == 12
     lint = next(step["bash"] for step in stages["CommandLint"]["jobs"][0]["steps"] if "bash" in step)
     assert lint.index("cp .pylintrc pylintrc") < lint.index("azdev linter ")
     assert "--min-severity medium" in lint
