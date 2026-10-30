@@ -8,7 +8,7 @@
 """Generated preview-channel instance blueprint.
 
 The source GDS parameter and configuration reader are removed before compiling.
-The upstream integration train is retained for qualification, not public-release approval.
+The upstream integration train is promoted to preview before compilation.
 MCP defaults to Preview; explicit feature modes override that generated default.
 """
 
@@ -24,7 +24,7 @@ TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW = TemplateBlueprint(
         "languageVersion": "2.0",
         "contentVersion": "1.0.0.0",
         "metadata": {
-            "_generator": {"name": "bicep", "version": "0.48.1.52935", "templateHash": "12639858896178170792"}
+            "_generator": {"name": "bicep", "version": "0.48.1.52935", "templateHash": "18334372290429470434"}
         },
         "definitions": {
             "_1.AdvancedConfig": {
@@ -807,7 +807,7 @@ TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW = TemplateBlueprint(
         },
         "variables": {
             "VERSIONS": {"iotOperations": "1.6.0-preview.60", "connectors": "1.5.22"},
-            "TRAINS": {"iotOperations": "integration"},
+            "TRAINS": {"iotOperations": "preview"},
             "HASH": "[coalesce(tryGet(parameters('advancedConfig'), 'resourceSuffix'), take(uniqueString(resourceGroup().id, parameters('clusterName'), parameters('clusterNamespace')), 5))]",
             "AIO_EXTENSION_SUFFIX": "[take(uniqueString(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName'))), 5)]",
             "CUSTOM_LOCATION_NAMESPACE": "[parameters('clusterNamespace')]",

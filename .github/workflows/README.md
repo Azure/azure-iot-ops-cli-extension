@@ -47,8 +47,8 @@ the changes, or a fork configured with the required Azure credentials and OIDC a
 
 The scenario uses the candidate CLI's bundled runtime profiles, with independent
 `stable` and `preview` jobs by default. Set `runtime-channels` to `stable` for a
-GA-only run. The current GA profile targets AIO 1.5.33 on the integration train,
-the same 2610 diagnostics-removal build previously pinned by this scenario.
+GA-only run. The current GA profile targets AIO 1.5.45 on the stable train;
+the preview profile targets AIO 1.6.0-preview.60 on the preview train.
 Channel labels do not imply that a build has already been published on that train.
 Leave `runtime-create-args` empty for the default deployment; runtime selection
 flags (`--ops-version`, `--ops-train`, `--use-preview`) are rejected there because

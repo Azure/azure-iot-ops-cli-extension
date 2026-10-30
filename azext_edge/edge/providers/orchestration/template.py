@@ -6,8 +6,8 @@
 
 """Bundled Public blueprints from releases/v1.5.x/2610.
 
-Selected source: 97933f54e677de0354b5b6ff144d153b8aff72f2.
-The instance preserves the upstream integration train and excludes GDS before compilation.
+Selected source: 87c6c83e945c318ebf76a3189e8212c3dd17fbc6.
+The instance promotes the upstream integration train to stable and excludes GDS before compilation.
 """
 
 from copy import deepcopy
@@ -782,7 +782,7 @@ TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
 )
 
 # Source releases/v1.5.x/2610 @ 97933f54e677de0354b5b6ff144d153b8aff72f2, release 2610.
-# The upstream integration train is retained.
+# The upstream integration train is promoted to stable before compilation.
 # GDS Manager input and reader are excluded in exported source before compilation.
 TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
     commit_id="97933f54e677de0354b5b6ff144d153b8aff72f2",
@@ -790,7 +790,9 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "languageVersion": "2.0",
         "contentVersion": "1.0.0.0",
-        "metadata": {"_generator": {"name": "bicep", "version": "0.48.1.52935", "templateHash": "3506088749590497014"}},
+        "metadata": {
+            "_generator": {"name": "bicep", "version": "0.48.1.52935", "templateHash": "17707065636206652024"}
+        },
         "definitions": {
             "_1.AdvancedConfig": {
                 "type": "object",
@@ -1496,7 +1498,7 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
         },
         "variables": {
             "VERSIONS": {"iotOperations": "1.5.45", "connectors": "1.5.22"},
-            "TRAINS": {"iotOperations": "integration"},
+            "TRAINS": {"iotOperations": "stable"},
             "HASH": "[coalesce(tryGet(parameters('advancedConfig'), 'resourceSuffix'), take(uniqueString(resourceGroup().id, parameters('clusterName'), parameters('clusterNamespace')), 5))]",
             "AIO_EXTENSION_SUFFIX": "[take(uniqueString(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName'))), 5)]",
             "CUSTOM_LOCATION_NAMESPACE": "[parameters('clusterNamespace')]",
