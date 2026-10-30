@@ -228,7 +228,7 @@ stages:
           candidateDigest: $[ stageDependencies.Build.Build.outputs['candidate.digest'] ]
         jobs:
           - job: Scenario
-            displayName: $(row)
+            displayName: Scenario
             pool:
               name: iotupx-ops-integration
               demands:
