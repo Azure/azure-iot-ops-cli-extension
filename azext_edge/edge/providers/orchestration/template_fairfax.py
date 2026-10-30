@@ -7,12 +7,12 @@
 """Generated Fairfax blueprints selected for AzureUSGovernment deployments.
 
 The FF cloud release is independent of Public preview feature eligibility.
-These are provisional release inputs.
+These are final RC source inputs; CLI live qualification has not been rerun.
 GDS Manager inputs/readers are excluded before compilation. Source location
 constraints are retained after optimization. Live FF qualification remains pending.
 """
 
-# selected source releases/v1.5.x/2610-ff @ 9f47bf136714796d8be77fb8042affa959c74f8a
+# selected source releases/v1.5.x/2610-ff @ 91e541f3b2767cd227aeaf3b8dd51ff9c54af6ce
 # source release 2610
 from .template import TemplateBlueprint
 
@@ -742,12 +742,12 @@ TEMPLATE_BLUEPRINT_ENABLEMENT_FAIRFAX = TemplateBlueprint(
 )
 
 TEMPLATE_BLUEPRINT_INSTANCE_FAIRFAX = TemplateBlueprint(
-    commit_id="9f47bf136714796d8be77fb8042affa959c74f8a",
+    commit_id="91e541f3b2767cd227aeaf3b8dd51ff9c54af6ce",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "languageVersion": "2.0",
         "contentVersion": "1.0.0.0",
-        "metadata": {"_generator": {"name": "bicep", "version": "0.48.1.52935", "templateHash": "834751618760721463"}},
+        "metadata": {"_generator": {"name": "bicep", "version": "0.48.1.52935", "templateHash": "6427918958991724398"}},
         "definitions": {
             "_1.AdvancedConfig": {
                 "type": "object",
@@ -1454,7 +1454,7 @@ TEMPLATE_BLUEPRINT_INSTANCE_FAIRFAX = TemplateBlueprint(
             "aioExtensionTrain": {"type": "string", "defaultValue": ""},
         },
         "variables": {
-            "VERSIONS": {"iotOperations": "1.5.44", "connectors": "1.5.21"},
+            "VERSIONS": {"iotOperations": "1.5.46", "connectors": "1.5.22"},
             "TRAINS": {"iotOperations": "stable"},
             "HASH": "[coalesce(tryGet(parameters('advancedConfig'), 'resourceSuffix'), take(uniqueString(resourceGroup().id, parameters('clusterName'), parameters('clusterNamespace')), 5))]",
             "AIO_EXTENSION_SUFFIX": "[take(uniqueString(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName'))), 5)]",
