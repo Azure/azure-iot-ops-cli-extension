@@ -166,7 +166,7 @@ stages:
                   .tox/lint/bin/python -m pylint tools/integration_health.py --rcfile .pylintrc
                   .tox/lint/bin/python -m flake8 tools/release_pipeline.py --config setup.cfg
                   .tox/lint/bin/python -m pylint tools/release_pipeline.py --rcfile .pylintrc
-                displayName: Run lint
+                displayName: Run Lint
               - bash: >-
                   .tox/lint/bin/python tools/ado_integration.py inventory
                   --output "$(Build.SourcesDirectory)/dependency-inventory/lint"
