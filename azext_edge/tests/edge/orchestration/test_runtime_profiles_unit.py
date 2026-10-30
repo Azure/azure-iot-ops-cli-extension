@@ -66,13 +66,13 @@ def test_bundled_profiles_select_management_api_without_changing_preview_bluepri
 @pytest.mark.parametrize("channel,release,source_ref,source_commit,version,blueprint_commit", [
     (
         RuntimeChannel.STABLE, "2610", "releases/v1.5.x/2610",
-        "d2c9164ad5c6bb6cf6c6a80e39cbf3e43332e797", "1.5.43",
-        "70284ca5feb835761171b26325deacbc233bb2f9",
+        "97933f54e677de0354b5b6ff144d153b8aff72f2", "1.5.45",
+        "97933f54e677de0354b5b6ff144d153b8aff72f2",
     ),
     (
         RuntimeChannel.PREVIEW, "prev2610", "preview/v1.6.x/2610",
-        "4415b49794d02dc6b3493bea7e7e5f427a080615", "1.6.0-preview.59",
-        "f8ddf631ada8ad5f72aa86961eece38ed62e0ead",
+        "f845faae950ff57c519a1a870109c163e6751758", "1.6.0-preview.60",
+        "f2b270da385ddb544e7c1e96521ebd79eea045d7",
     ),
 ])
 def test_bundled_release_inputs_preserve_exact_integration_identity(
@@ -84,14 +84,14 @@ def test_bundled_release_inputs_preserve_exact_integration_identity(
     profile = catalog.get(channel)
     assert (profile.release, profile.source_ref, profile.source_commit) == (release, source_ref, source_commit)
     assert profile.identity == RuntimeIdentity(channel, version, "integration")
-    assert profile.require_opcua_connector_version() == "1.5.21"
+    assert profile.require_opcua_connector_version() == "1.5.22"
     assert resolve_runtime_identity(version, "integration", catalog.qualification_identities) == profile.identity
     blueprint = profile.copy_instance_blueprint()
     assert blueprint.commit_id == blueprint_commit
-    assert blueprint.content["variables"]["VERSIONS"] == {"iotOperations": version, "connectors": "1.5.21"}
+    assert blueprint.content["variables"]["VERSIONS"] == {"iotOperations": version, "connectors": "1.5.22"}
     assert blueprint.content["resources"]["aioExtension"]["properties"]["autoUpgradeMinorVersion"] is False
     with pytest.raises(ValidationError, match="matching reviewed profile inputs"):
-        profile.validate_overrides(version="1.5.44" if channel == RuntimeChannel.STABLE else "1.6.0-preview.60")
+        profile.validate_overrides(version="1.5.44" if channel == RuntimeChannel.STABLE else "1.6.0-preview.59")
 
 
 def test_catalog_missing_and_duplicate_profiles_fail(profiles):

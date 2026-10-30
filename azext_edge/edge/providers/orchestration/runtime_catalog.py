@@ -24,9 +24,9 @@ PREVIEW_PROFILE: Optional[RuntimeProfile] = RuntimeProfile(
     channel=RuntimeChannel.PREVIEW,
     release="prev2610",
     source_ref="preview/v1.6.x/2610",
-    source_commit="4415b49794d02dc6b3493bea7e7e5f427a080615",
+    source_commit="f845faae950ff57c519a1a870109c163e6751758",
     instance_blueprint=TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW,
-    opcua_connector_version="1.5.21",
+    opcua_connector_version="1.5.22",
     iotops_api_version=IoTOpsMgmtApiVersion.V20261101_preview.value,
 )
 QUALIFICATION_IDENTITIES: Tuple[RuntimeIdentity, ...] = ()
@@ -39,13 +39,13 @@ SHARED_DEPENDENCY_REQUIREMENTS: Tuple[DependencyRequirement, ...] = ()
 def get_runtime_catalog(cloud_name: str = CLOUD_AZURE_PUBLIC) -> RuntimeProfileCatalog:
     if cloud_name == CLOUD_AZURE_US_GOVERNMENT:
         # Cloud release eligibility is independent of the artifact's source train.
-        # These inputs are provisional until the final FF handoff and live qualification.
+        # Final RC source inputs; CLI live qualification is tracked separately.
         blueprint = TEMPLATE_BLUEPRINT_INSTANCE_FAIRFAX
         return RuntimeProfileCatalog([RuntimeProfile(
             channel=RuntimeChannel.STABLE,
             release=str(AIO_RELEASE),
             source_ref="releases/v1.5.x/2610-ff",
-            source_commit="9f47bf136714796d8be77fb8042affa959c74f8a",
+            source_commit="91e541f3b2767cd227aeaf3b8dd51ff9c54af6ce",
             instance_blueprint=blueprint,
             opcua_connector_version=blueprint.content["variables"]["VERSIONS"]["connectors"],
             cloud_name=cloud_name,
@@ -54,7 +54,7 @@ def get_runtime_catalog(cloud_name: str = CLOUD_AZURE_PUBLIC) -> RuntimeProfileC
         channel=RuntimeChannel.STABLE,
         release=str(AIO_RELEASE),
         source_ref="releases/v1.5.x/2610",
-        source_commit="d2c9164ad5c6bb6cf6c6a80e39cbf3e43332e797",
+        source_commit="97933f54e677de0354b5b6ff144d153b8aff72f2",
         instance_blueprint=TEMPLATE_BLUEPRINT_INSTANCE,
         opcua_connector_version=OPCUA_CONNECTOR_VERSION,
     )

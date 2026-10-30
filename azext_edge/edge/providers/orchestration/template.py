@@ -6,7 +6,7 @@
 
 """Bundled Public blueprints from releases/v1.5.x/2610.
 
-Selected source: d2c9164ad5c6bb6cf6c6a80e39cbf3e43332e797.
+Selected source: 97933f54e677de0354b5b6ff144d153b8aff72f2.
 The instance preserves the upstream integration train and excludes GDS before compilation.
 """
 
@@ -781,16 +781,16 @@ TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
     },
 )
 
-# Source releases/v1.5.x/2610 @ d2c9164ad5c6bb6cf6c6a80e39cbf3e43332e797, release 2610.
+# Source releases/v1.5.x/2610 @ 97933f54e677de0354b5b6ff144d153b8aff72f2, release 2610.
 # The upstream integration train is retained.
 # GDS Manager input and reader are excluded in exported source before compilation.
 TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
-    commit_id="70284ca5feb835761171b26325deacbc233bb2f9",
+    commit_id="97933f54e677de0354b5b6ff144d153b8aff72f2",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "languageVersion": "2.0",
         "contentVersion": "1.0.0.0",
-        "metadata": {"_generator": {"name": "bicep", "version": "0.48.1.52935", "templateHash": "1607858495355331523"}},
+        "metadata": {"_generator": {"name": "bicep", "version": "0.48.1.52935", "templateHash": "3506088749590497014"}},
         "definitions": {
             "_1.AdvancedConfig": {
                 "type": "object",
@@ -1495,7 +1495,7 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
             "advancedConfig": {"$ref": "#/definitions/_1.AdvancedConfig", "defaultValue": {}},
         },
         "variables": {
-            "VERSIONS": {"iotOperations": "1.5.43", "connectors": "1.5.21"},
+            "VERSIONS": {"iotOperations": "1.5.45", "connectors": "1.5.22"},
             "TRAINS": {"iotOperations": "integration"},
             "HASH": "[coalesce(tryGet(parameters('advancedConfig'), 'resourceSuffix'), take(uniqueString(resourceGroup().id, parameters('clusterName'), parameters('clusterNamespace')), 5))]",
             "AIO_EXTENSION_SUFFIX": "[take(uniqueString(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName'))), 5)]",

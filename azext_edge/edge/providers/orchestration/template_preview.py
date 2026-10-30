@@ -12,18 +12,20 @@ The upstream integration train is retained for qualification, not public-release
 MCP defaults to Preview; explicit feature modes override that generated default.
 """
 
-# selected source preview/v1.6.x/2610 @ 4415b49794d02dc6b3493bea7e7e5f427a080615
+# selected source preview/v1.6.x/2610 @ f845faae950ff57c519a1a870109c163e6751758
 # source release prev2610
 # no loaded-source redactions required
 from .template import TemplateBlueprint
 
 TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW = TemplateBlueprint(
-    commit_id="f8ddf631ada8ad5f72aa86961eece38ed62e0ead",
+    commit_id="f2b270da385ddb544e7c1e96521ebd79eea045d7",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "languageVersion": "2.0",
         "contentVersion": "1.0.0.0",
-        "metadata": {"_generator": {"name": "bicep", "version": "0.48.1.52935", "templateHash": "8579427651119281300"}},
+        "metadata": {
+            "_generator": {"name": "bicep", "version": "0.48.1.52935", "templateHash": "12639858896178170792"}
+        },
         "definitions": {
             "_1.AdvancedConfig": {
                 "type": "object",
@@ -804,7 +806,7 @@ TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW = TemplateBlueprint(
             "advancedConfig": {"$ref": "#/definitions/_1.AdvancedConfig", "defaultValue": {}},
         },
         "variables": {
-            "VERSIONS": {"iotOperations": "1.6.0-preview.59", "connectors": "1.5.21"},
+            "VERSIONS": {"iotOperations": "1.6.0-preview.60", "connectors": "1.5.22"},
             "TRAINS": {"iotOperations": "integration"},
             "HASH": "[coalesce(tryGet(parameters('advancedConfig'), 'resourceSuffix'), take(uniqueString(resourceGroup().id, parameters('clusterName'), parameters('clusterNamespace')), 5))]",
             "AIO_EXTENSION_SUFFIX": "[take(uniqueString(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName'))), 5)]",

@@ -53,9 +53,9 @@ def qualification_profile():
 def test_preview_source_identity_and_contract(qualification_profile):
     blueprint = TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW
     content = blueprint.content
-    assert blueprint.commit_id == "f8ddf631ada8ad5f72aa86961eece38ed62e0ead"
+    assert blueprint.commit_id == "f2b270da385ddb544e7c1e96521ebd79eea045d7"
     assert content
-    assert content["variables"]["VERSIONS"] == {"iotOperations": "1.6.0-preview.59", "connectors": "1.5.21"}
+    assert content["variables"]["VERSIONS"] == {"iotOperations": "1.6.0-preview.60", "connectors": "1.5.22"}
     assert content["variables"]["TRAINS"] == {"iotOperations": "integration"}
     assert qualification_profile.identity.train == "integration"
     assert qualification_profile.identity.channel == RuntimeChannel.PREVIEW
@@ -223,7 +223,7 @@ def test_preview_mcp_connection_preserves_source_contract(qualification_profile,
 def test_preview_extension_versions_exclude_connector_metadata(qualification_profile):
     targets = InitTargets("cluster", "rg", runtime_profile=qualification_profile)
     assert targets.get_extension_versions(False) == {
-        "iotOperations": {"version": "1.6.0-preview.59", "train": "integration"},
+        "iotOperations": {"version": "1.6.0-preview.60", "train": "integration"},
     }
 
 
@@ -298,14 +298,14 @@ def test_bundled_preview_registered_without_changing_default_or_train():
     assert catalog.for_create().channel == RuntimeChannel.STABLE
     profile = catalog.for_create(use_preview=True)
     assert profile is PREVIEW_PROFILE
-    assert profile.source_commit == "4415b49794d02dc6b3493bea7e7e5f427a080615"
+    assert profile.source_commit == "f845faae950ff57c519a1a870109c163e6751758"
     assert profile.iotops_api_version == "2026-11-01-preview"
     assert profile.copy_instance_blueprint() == TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW
     assert resolve_runtime_identity(
         profile.identity.version, profile.identity.train, catalog.qualification_identities
     ) == profile.identity
     assert catalog.for_upgrade(profile.identity) is profile
-    assert profile.require_opcua_connector_version() == "1.5.21"
+    assert profile.require_opcua_connector_version() == "1.5.22"
     assert profile.require_opcua_connector_version() == (
         TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW.content["variables"]["VERSIONS"]["connectors"]
     )

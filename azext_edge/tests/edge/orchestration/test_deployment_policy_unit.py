@@ -273,7 +273,7 @@ def test_ff_upgrade_preserves_missing_ops_extension_validation(ff_upgrade_manage
 
 
 @pytest.mark.parametrize("force", [False, True])
-@pytest.mark.parametrize("version", ["1.5.41", "1.5.45"])
+@pytest.mark.parametrize("version", ["1.5.41", "1.5.45", "9.9.9"])
 def test_unmapped_ff_stable_baseline_preserves_internal_compatibility_bypass(ff_upgrade_manager, force, version):
     manager, extensions = ff_upgrade_manager
     manager.force = force
@@ -290,8 +290,8 @@ def test_unmapped_ff_stable_baseline_preserves_internal_compatibility_bypass(ff_
     state = manager.analyze_cluster()
     ops = next(ext for ext in state.extension_upgrades if ext.moniker == EXTENSION_MONIKER_OPS)
     patch = ops.get_patch()["properties"]
-    if version == "1.5.41":
-        assert patch["version"] == "1.5.44"
+    if version != "9.9.9":
+        assert patch["version"] == "1.5.46"
     else:
         assert "version" not in patch
     assert FF_CONFIGURATION.items() <= patch["configurationSettings"].items()
@@ -304,10 +304,10 @@ def test_unmapped_newer_ff_baseline_is_checked_before_connector_backfill(ff_upgr
     manager, extensions = ff_upgrade_manager
     manager.force = force
     properties = extensions[EXTENSION_TYPE_OPS]["properties"]
-    properties.update({"version": "1.5.45", "currentVersion": "1.5.45"})
+    properties.update({"version": "9.9.9", "currentVersion": "9.9.9"})
     properties["configurationSettings"].update(FF_CONFIGURATION)
     manager.runtime_context.identity = resolve_runtime_identity(
-        "1.5.45", "stable", manager.runtime_catalog.qualification_identities,
+        "9.9.9", "stable", manager.runtime_catalog.qualification_identities,
     )
     manager._check_opcua_connector_template_needed.return_value = (True, None)
     original = deepcopy(extensions)
@@ -406,7 +406,7 @@ def test_policy_consumes_generated_inputs_and_returns_private_copies(mocker):
 
 def test_bundled_ff_source_is_pinned_separately_from_public_runtime():
     assert TEMPLATE_BLUEPRINT_ENABLEMENT_FAIRFAX.commit_id == "486ede1e8e72c25a02c04d07e4bdc3310661beee"
-    assert TEMPLATE_BLUEPRINT_INSTANCE_FAIRFAX.commit_id == "9f47bf136714796d8be77fb8042affa959c74f8a"
+    assert TEMPLATE_BLUEPRINT_INSTANCE_FAIRFAX.commit_id == "91e541f3b2767cd227aeaf3b8dd51ff9c54af6ce"
     variables = TEMPLATE_BLUEPRINT_INSTANCE_FAIRFAX.content["variables"]
-    assert variables["VERSIONS"] == {"iotOperations": "1.5.44", "connectors": "1.5.21"}
+    assert variables["VERSIONS"] == {"iotOperations": "1.5.46", "connectors": "1.5.22"}
     assert variables["TRAINS"] == {"iotOperations": "stable"}
