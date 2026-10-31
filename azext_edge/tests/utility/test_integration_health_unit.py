@@ -98,6 +98,9 @@ def test_ops_rerun_pins_original_library_configuration(setup_health, tmp_path, m
     monkeypatch.setattr(health, "build_metadata", lookup)
     pipeline.plan(tmp_path / "second")
     assert pipeline.read(tmp_path / "second/plan.json") == original
+    assert pipeline.run_title(original, "Integration tests") == (
+        "ops-health-123 (cluster westus2) (runtime-channel) (stable)"
+    )
     lookup.assert_not_called()
 
 
@@ -129,3 +132,4 @@ def test_health_has_no_dry_run_or_repository_cron():
     entry = yaml.safe_load((ROOT / ".azure-devops/integration-health.yml").read_text())
     assert entry["trigger"] == entry["pr"] == "none" and "schedules" not in entry
     assert entry["extends"]["parameters"] == {"health": True, "mode": "Integration tests"}
+    assert entry["appendCommitMessageToRunName"] is False

@@ -144,6 +144,58 @@ def test_plan_reuses_channel_matrix(monkeypatch, tmp_path, capsys):
     assert "isOutput=true" in capsys.readouterr().out
 
 
+def test_title_uses_frozen_scenarios_channels_and_default_region(monkeypatch, tmp_path, capsys):
+    monkeypatch.setenv("OPS_SCENARIOS", "edge,runtime-channel")
+    monkeypatch.setenv("OPS_CHANNELS", "stable,preview")
+    monkeypatch.setenv("OPS_PYTHONS", "3.10,3.13")
+    monkeypatch.setenv("OPS_MODE", "Dry run")
+    pipeline.plan(tmp_path)
+    capsys.readouterr()
+    original = (tmp_path / "plan.json").read_bytes()
+    monkeypatch.setenv("OPS_SCENARIOS", "trustbundle")
+    monkeypatch.setenv("OPS_CHANNELS", "stable")
+    for current in ("ops-integration-20261031.1", "already renamed"):
+        monkeypatch.setenv("BUILD_BUILDNUMBER", current)
+        pipeline.title(tmp_path)
+        assert capsys.readouterr().out.splitlines()[0] == (
+            "##vso[build.updatebuildnumber]ops-integration-123 (cluster default) "
+            "(edge,runtime-channel) (dry-run,stable,preview)"
+        )
+        assert (tmp_path / "plan.json").read_bytes() == original
+
+
+def test_title_compacts_large_scenario_selection_and_identifies_release_child(monkeypatch, tmp_path):
+    catalog = yaml.safe_load((ROOT / ".github/test-scenarios.yml").read_text())["scenarios"]
+    selection = [scenario["name"] for scenario in catalog if not scenario.get("requires_baseline")]
+    monkeypatch.setenv("OPS_SCENARIOS", ",".join(selection))
+    pipeline.plan(tmp_path)
+    value = pipeline.read(tmp_path / "plan.json")
+    value["releaseBuildId"] = "456"
+    result = pipeline.run_title(value, "Integration tests")
+    assert result == (
+        "ops-integration-123 (cluster default) "
+        "(edge,broker-diagnostics-removal,insecure-listener,rpsaas +7) (release-child 456,stable)"
+    )
+    assert len(result) <= 255
+
+
+@pytest.mark.parametrize("damage", ["producer", "scenario", "empty", "mode"])
+def test_title_rejects_untrusted_plan_values(monkeypatch, tmp_path, damage):
+    pipeline.plan(tmp_path)
+    value = pipeline.read(tmp_path / "plan.json")
+    mode = "Integration tests"
+    if damage == "producer":
+        value["producer"]["build"] = "999"
+    elif damage == "scenario":
+        value["rows"][0]["scenario"]["name"] = "bad\n##vso[task.complete]-stable"
+    elif damage == "empty":
+        value["rows"] = []
+    else:
+        mode = "not a mode"
+    with pytest.raises(ValueError):
+        pipeline.run_title(value, mode)
+
+
 @pytest.mark.parametrize("name,value", [
     ("OPS_SCENARIOS", "edge,typo"), ("OPS_SCENARIOS", "Default scenarios,edge"),
     ("OPS_SCENARIOS", "edge,edge"), ("OPS_PYTHONS", "3.9"), ("OPS_PYTHONS", "3.13,3.13"),
@@ -665,12 +717,16 @@ def test_yaml_exposes_installed_dependencies_even_after_test_failure():
 def test_yaml_keeps_dry_run_separate_and_reuses_existing_tests():
     value = yaml.safe_load((ROOT / ".azure-devops/integration.yml").read_text())
     assert value["trigger"] == "none" and value["pr"] == "none" and "schedules" not in value
+    assert value["appendCommitMessageToRunName"] is False
     assert next(param for param in value["parameters"] if param["name"] == "mode")["default"] == "Dry run"
     connection = next(param for param in value["parameters"] if param["name"] == "azureServiceConnection")
     assert connection["default"] == "az-iot-ops-int-sp-ado"
     assert value["extends"]["template"] == "templates/integration-pipeline.yml"
     value = yaml.safe_load((ROOT / ".azure-devops/templates/integration-pipeline.yml").read_text())
     assert value["stages"][0]["stage"] == "Plan"
+    title_step = value["stages"][0]["jobs"][0]["steps"][-1]
+    assert title_step["bash"] == "python tools/ado_integration.py title --output plan"
+    assert title_step["env"] == {"OPS_MODE": "${{ parameters.mode }}"}
     live = value["stages"][1]["${{ if eq(parameters.mode, 'Integration tests') }}"]
     assert [stage["stage"] for stage in live] == ["Build", "Lint", "Unit", "Integration", "Qualify"]
     integration = next(stage for stage in live if stage["stage"] == "Integration")

@@ -197,6 +197,55 @@ def plan(output):
     output_variable("artifact", f"ops-plan-{required('SYSTEM_JOBATTEMPT')}")
 
 
+def run_title(value, mode):
+    if value["producer"] != producer() or mode not in {"Dry run", "Integration tests"}:
+        raise ValueError("Run title requires this run's plan and an explicit mode.")
+    if "health" in value:
+        if mode != "Integration tests":
+            raise ValueError("Health run titles require live integration mode.")
+        kind = "health"
+        region = "cluster " + value["locations"]["clusterRegion"]
+    else:
+        kind, region = "integration", "cluster default"
+    names, channels = set(), set()
+    for row in value["rows"]:
+        scenario = row["scenario"]
+        channel = scenario["channel"]
+        suffix = "-" + channel
+        if channel not in {"stable", "preview"} or not scenario["name"].endswith(suffix):
+            raise ValueError("Run title requires channel-qualified scenario names.")
+        names.add(scenario["name"][:-len(suffix)])
+        channels.add(channel)
+    catalog = yaml.safe_load((ROOT / ".github/test-scenarios.yml").read_text(encoding="utf-8"))["scenarios"]
+    ordered = [scenario["name"] for scenario in catalog if scenario["name"] in names]
+    if not names or set(ordered) != names:
+        raise ValueError("Run title requires a nonempty supported scenario selection.")
+    for count in range(len(ordered), 0, -1):
+        scope = ",".join(ordered[:count]) + (f" +{len(ordered) - count}" if count < len(ordered) else "")
+        if len(scope) <= 70:
+            break
+    else:
+        scope = f"{len(ordered)} scenarios"
+    modes = []
+    if mode == "Dry run":
+        modes.append("dry-run")
+    if "releaseBuildId" in value:
+        modes.append(f"release-child {release.identifier(value['releaseBuildId'])}")
+    modes.extend(channel for channel in ("stable", "preview") if channel in channels)
+    title = f"ops-{kind}-{value['producer']['build']} ({region}) ({scope}) ({','.join(modes)})"
+    if len(title) > 255 or not re.fullmatch(r"[A-Za-z0-9 (),+-]+", title):
+        raise ValueError("Run title exceeds Azure Pipelines length or character limits.")
+    return title
+
+
+def title(output):
+    value = read(output / "plan.json")
+    print(f"##vso[build.updatebuildnumber]{run_title(value, required('OPS_MODE'))}", flush=True)
+    print("Title location is the cluster region, or the CLI/resource-group default when none was selected.")
+    if "health" in value:
+        print("Resource and namespace regions remain separately recorded in the frozen plan.")
+
+
 def candidate(output):
     if release_build_id() != "0":
         raise ValueError("A release candidate must be acquired from 165, never rebuilt.")
@@ -455,7 +504,9 @@ def gate(output):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("operation", choices=["plan", "candidate", "acquire", "prepare", "report", "gate", "inventory"])
+    parser.add_argument("operation", choices=[
+        "plan", "title", "candidate", "acquire", "prepare", "report", "gate", "inventory",
+    ])
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--extension-dir", type=Path)
     args = parser.parse_args()

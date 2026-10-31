@@ -92,6 +92,10 @@ stages:
           - publish: plan
             displayName: Publish plan
             artifact: ops-plan-$(System.JobAttempt)
+          - bash: python tools/ado_integration.py title --output plan
+            displayName: Set run title
+            env:
+              OPS_MODE: ${{ parameters.mode }}
 
   - ${{ if eq(parameters.mode, 'Integration tests') }}:
       - stage: Build
