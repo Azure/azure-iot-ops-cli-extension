@@ -618,7 +618,8 @@ def test_yaml_keeps_dry_run_separate_and_reuses_existing_tests():
     assert [stage["stage"] for stage in live] == ["Build", "Lint", "Unit", "Integration", "Qualify"]
     integration = next(stage for stage in live if stage["stage"] == "Integration")
     job = integration["jobs"][0]
-    assert "$(" not in job["displayName"]
+    assert job["displayName"] == ""
+    assert all("scenario" not in step.get("displayName", "").lower() for step in job["steps"])
     assert job["pool"] == {
         "name": "iotupx-ops-integration",
         "demands": ["ImageOverride -equals iotupx-1espt-ubuntu2404"],

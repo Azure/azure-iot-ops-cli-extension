@@ -228,7 +228,7 @@ stages:
           candidateDigest: $[ stageDependencies.Build.Build.outputs['candidate.digest'] ]
         jobs:
           - job: Scenario
-            displayName: Scenario
+            displayName: ''
             pool:
               name: iotupx-ops-integration
               demands:
@@ -265,7 +265,7 @@ stages:
                   python tools/ado_integration.py inventory \
                     --output "$(Build.SourcesDirectory)/dependency-inventory/scenario" \
                     --extension-dir "$(Agent.TempDirectory)/azure-cli-extensions/azure-iot-ops"
-                displayName: Prepare scenario
+                displayName: Prepare tests
                 env:
                   OPS_RELEASE_BUILD_ID: ${{ parameters.releaseBuildId }}
                   OPS_PLAN: $(Pipeline.Workspace)/plan/plan.json
@@ -277,7 +277,7 @@ stages:
                 artifact: ops-manifest-$(row)-$(System.JobAttempt)
                 displayName: Publish resource manifest
               - task: AzureCLI@2
-                displayName: Run scenario
+                displayName: Run tests
                 inputs:
                   azureSubscription: ${{ parameters.azureServiceConnection }}
                   addSpnToEnvironment: true
