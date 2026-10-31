@@ -21,18 +21,39 @@ ARM_FACTORIES = [
 
 @pytest.mark.parametrize("factory_name", ARM_FACTORIES)
 @pytest.mark.parametrize("endpoint", [
-    None, "https://management.azure.com/", "https://management.usgovcloudapi.net/",
+    "https://management.azure.com/", "https://management.usgovcloudapi.net/",
     "https://management.usgovcloudapi.net", "https://management.chinacloudapi.cn",
 ])
-def test_arm_factory_defaults_scope_from_endpoint(factory_name, endpoint):
+def test_arm_factory_defaults_scope_from_endpoint(mocker, factory_name, endpoint):
     from azext_edge.edge.util import az_client
 
-    kwargs = {"endpoint": endpoint} if endpoint is not None else {}
-    client = getattr(az_client, factory_name)(subscription_id="subscription", **kwargs)
-    resource = endpoint or "https://management.azure.com"
+    active_cloud_patch = mocker.patch("azure.cli.core.cloud.get_active_cloud")
+    client = getattr(az_client, factory_name)(subscription_id="subscription", endpoint=endpoint)
 
-    assert client._config.credential_scopes == [f"{resource.rstrip('/')}/.default"]
-    assert client._config.authentication_policy._scopes == (f"{resource.rstrip('/')}/.default",)
+    assert client._config.credential_scopes == [f"{endpoint.rstrip('/')}/.default"]
+    assert client._config.authentication_policy._scopes == (f"{endpoint.rstrip('/')}/.default",)
+    assert client._client._base_url == endpoint
+    active_cloud_patch.assert_not_called()
+
+
+@pytest.mark.parametrize("factory_name", ARM_FACTORIES)
+@pytest.mark.parametrize("omitted", [{}, {"endpoint": None}])
+@pytest.mark.parametrize("resource_manager", [
+    "https://management.azure.com", "https://management.usgovcloudapi.net/",
+])
+def test_arm_factory_defaults_to_active_cloud(mocker, factory_name, omitted, resource_manager):
+    from types import SimpleNamespace
+
+    from azext_edge.edge.util import az_client
+
+    mocker.patch(
+        "azure.cli.core.cloud.get_active_cloud",
+        return_value=SimpleNamespace(endpoints=SimpleNamespace(resource_manager=resource_manager)),
+    )
+    client = getattr(az_client, factory_name)(subscription_id="subscription", **omitted)
+
+    assert client._client._base_url == resource_manager
+    assert client._config.credential_scopes == [f"{resource_manager.rstrip('/')}/.default"]
 
 
 @pytest.mark.parametrize("factory_name", ARM_FACTORIES)
