@@ -10,6 +10,17 @@
       "properties": {
         "organization": "https://dev.azure.com/azureiotdevxp",
         "projects": ["aziotcli"],
+        "organizationProfile": {
+          "type": "AzureDevOps",
+          "organizations": [
+            {
+              "url": "https://dev.azure.com/azureiotdevxp",
+              "projects": ["aziotcli"],
+              "parallelism": 22,
+              "openAccess": false
+            }
+          ]
+        },
         "sku": {
           "name": "Standard_D8ds_v5",
           "tier": "StandardSSD",
@@ -21,7 +32,7 @@
             "poolBufferPercentage": "*"
           }
         ],
-        "maxPoolSize": 1,
+        "maxPoolSize": 22,
         "agentProfile": {
           "type": "Stateless",
           "resourcePredictions": [{"00:00:00": 0}]

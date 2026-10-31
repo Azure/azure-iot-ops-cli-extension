@@ -9,6 +9,8 @@
 import importlib
 import json
 from pathlib import Path
+import random
+import shlex
 import subprocess
 import sys
 from types import SimpleNamespace
@@ -70,6 +72,61 @@ def make_state():
         "ownershipChecked": True, "phases": {"init": "passed", "scenario": "passed", "smoke": "passed"},
         "cleanup": "passed", "status": "passed",
     }
+
+
+@pytest.mark.parametrize("fixture", ["secretsync", "opcua"])
+@pytest.mark.parametrize("reuse", [False, True])
+def test_workload_identity_resources_do_not_collide_between_seeded_jobs(monkeypatch, fixture, reuse):
+    module_name = (
+        "test_secretsync_int" if fixture == "secretsync"
+        else "resources.connector.opcua.int.helpers"
+    )
+    module = importlib.import_module(f"azext_edge.tests.edge.orchestration.{module_name}")
+    created = {"keyvault": [], "identity": []}
+
+    def run(command):
+        arguments = shlex.split(command)
+        if arguments[:3] in (["az", "keyvault", "create"], ["az", "identity", "create"]):
+            kind = arguments[1]
+            name = arguments[arguments.index("-n") + 1]
+            created[kind].append(name)
+            return {"id": f"/{kind}/{name}"}
+        if arguments[:5] == ["az", "iot", "ops", "secretsync", "list"]:
+            return []
+        return None
+
+    monkeypatch.setattr(module, "run", run)
+    monkeypatch.setattr(module, "sleep", Mock())
+    settings = SimpleNamespace(add_to_config=Mock(), env=SimpleNamespace(
+        azext_edge_rg="shared-test-group", azext_edge_instance="instance",
+        azext_edge_sp_object_id=UUID_VALUE,
+        azext_edge_kv="/existing/vault" if reuse else None,
+        azext_edge_user_assigned_mi_id="/existing/identity" if reuse else None,
+    ))
+    previous_random = random.getstate()
+    try:
+        for _ in range(2):
+            random.seed(42)
+            tracked = []
+            if fixture == "secretsync":
+                setup = module.secretsync_int_setup.__wrapped__(settings, tracked)
+                try:
+                    value = next(setup)
+                    vault, identity = value["keyvaultId"], value["userAssignedId"]
+                finally:
+                    setup.close()
+            else:
+                vault, _ = module.ensure_key_vault(settings)
+                identity = module.ensure_managed_identity(settings, tracked)
+            if reuse:
+                assert (vault, identity) == ("/existing/vault", "/existing/identity")
+                assert not tracked
+            else:
+                assert tracked == [identity]
+        for names in created.values():
+            assert len(names) == len(set(names)) == (0 if reuse else 2)
+    finally:
+        random.setstate(previous_random)
 
 
 def test_plan_reuses_channel_matrix(monkeypatch, tmp_path, capsys):
@@ -617,6 +674,12 @@ def test_yaml_keeps_dry_run_separate_and_reuses_existing_tests():
     live = value["stages"][1]["${{ if eq(parameters.mode, 'Integration tests') }}"]
     assert [stage["stage"] for stage in live] == ["Build", "Lint", "Unit", "Integration", "Qualify"]
     integration = next(stage for stage in live if stage["stage"] == "Integration")
+    assert integration["dependsOn"] == ["Plan", "Build", "Lint"]
+    unit = next(stage for stage in live if stage["stage"] == "Unit")
+    assert unit["dependsOn"] == "Plan"
+    qualify = next(stage for stage in live if stage["stage"] == "Qualify")
+    assert qualify["dependsOn"] == ["Plan", "Build", "Lint", "Unit", "Integration"]
+    assert "condition" not in qualify
     job = integration["jobs"][0]
     assert job["displayName"] == ""
     assert all("scenario" not in step.get("displayName", "").lower() for step in job["steps"])
@@ -627,13 +690,18 @@ def test_yaml_keeps_dry_run_separate_and_reuses_existing_tests():
     pool = json.loads((ROOT / ".azure-devops/integration-pool.json").read_text())["resources"][0]
     assert pool["name"] == job["pool"]["name"]
     assert pool["properties"]["sku"]["name"] == "Standard_D8ds_v5"
-    assert pool["properties"]["maxPoolSize"] == 1
+    assert pool["properties"]["maxPoolSize"] == 22
+    organization, = pool["properties"]["organizationProfile"]["organizations"]
+    assert organization["parallelism"] == pool["properties"]["maxPoolSize"]
+    assert organization["url"] == pool["properties"]["organization"]
+    assert organization["projects"] == pool["properties"]["projects"]
+    assert organization["openAccess"] is False
     assert pool["properties"]["agentProfile"] == {
         "type": "Stateless", "resourcePredictions": [{"00:00:00": 0}],
     }
     assert all("pool" not in stage for stage in live)
     assert all("pool" not in job for stage in live if stage["stage"] != "Integration" for job in stage["jobs"])
-    assert job["strategy"]["maxParallel"] == 1
+    assert job["strategy"]["maxParallel"] == 0
     assert job["${{ else }}"]["timeoutInMinutes"] == "${{ parameters.scenarioTimeoutMinutes }}"
     azure = [step for step in job["steps"] if step.get("task") == "AzureCLI@2"]
     assert len(azure) == 2 and azure[1]["condition"] == "always()"

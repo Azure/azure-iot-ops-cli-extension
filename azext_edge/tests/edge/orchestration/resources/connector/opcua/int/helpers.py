@@ -10,9 +10,9 @@ from time import sleep
 from azext_edge.tests.settings import EnvironmentVariables
 from azext_edge.edge.providers.orchestration.resources.instances import SPC_RESOURCE_TYPE
 from typing import Any, Dict, Optional, cast
+from uuid import uuid4
 import pytest
 from azure.cli.core.azclierror import CLIInternalError
-from .......generators import generate_random_string
 from knack.log import get_logger
 from .......helpers import run
 from cryptography.hazmat.primitives import hashes, serialization
@@ -65,7 +65,7 @@ def ensure_key_vault(settings):
     kv_id = settings.env.azext_edge_kv
     kv_name = None
     if not kv_id:
-        kv_name = "spc" + generate_random_string(size=6)
+        kv_name = "spc" + uuid4().hex[:16]
         kv_id = run_json(f"az keyvault create -n {kv_name} -g {settings.env.azext_edge_rg}")["id"]
         run(
             "az role assignment create --role b86a8fe4-44ce-4948-aee5-eccb2c155cd7 "
@@ -81,7 +81,7 @@ def ensure_managed_identity(settings, tracked_resources):
     mi_id = settings.env.azext_edge_user_assigned_mi_id
     if not mi_id:
         mi_id = run_json(
-            f"az identity create -n spc{generate_random_string(size=6)} -g {settings.env.azext_edge_rg}"
+            f"az identity create -n spc{uuid4().hex[:16]} -g {settings.env.azext_edge_rg}"
         )["id"]
         tracked_resources.append(mi_id)
     return mi_id

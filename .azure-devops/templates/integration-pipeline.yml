@@ -221,7 +221,7 @@ stages:
 
       - stage: Integration
         displayName: Integration
-        dependsOn: [Plan, Build, Lint, Unit]
+        dependsOn: [Plan, Build, Lint]
         variables:
           planArtifact: $[ stageDependencies.Plan.Plan.outputs['plan.artifact'] ]
           candidateArtifact: $[ stageDependencies.Build.Build.outputs['candidate.artifact'] ]
@@ -239,7 +239,7 @@ stages:
               timeoutInMinutes: ${{ parameters.scenarioTimeoutMinutes }}
             cancelTimeoutInMinutes: 20
             strategy:
-              maxParallel: 1
+              maxParallel: 0
               matrix: $[ stageDependencies.Plan.Plan.outputs['plan.matrix'] ]
             steps:
               - task: UsePythonVersion@0

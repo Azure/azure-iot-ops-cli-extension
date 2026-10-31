@@ -493,7 +493,7 @@ def test_storage_verifies_content_and_never_overwrites(candidate, monkeypatch, t
     assert all(args[args.index("--overwrite") + 1] == "false" for args in uploads)
 
 
-def test_yaml_serial_qualification_requires_all_gates_and_no_default_publication():
+def test_yaml_parallel_qualification_requires_all_gates_and_no_default_publication():
     root = yaml.safe_load((ROOT / ".azure-devops/release.yml").read_text(encoding="utf-8"))
     parameters = {item["name"]: item for item in root["parameters"]}
     assert parameters["mode"]["default"] == "Plan"
@@ -508,7 +508,14 @@ def test_yaml_serial_qualification_requires_all_gates_and_no_default_publication
             assert f"eq(dependencies.{dependency}.result, 'Succeeded')" in stages[name]["condition"]
     assert "$(" not in stages["Integration"]["jobs"][0]["displayName"]
     strategy = stages["Integration"]["jobs"][0]["strategy"]
-    assert strategy["maxParallel"] == 1
+    assert strategy["maxParallel"] == 0
+    assert stages["Unit"]["dependsOn"] == "Resolve"
+    assert stages["Integration"]["dependsOn"] == ["Resolve", "Build", "Security", "CommandLint", "IndexCompatibility"]
+    assert "dependencies.Unit" not in stages["Integration"]["condition"]
+    assert stages["Publish"]["dependsOn"] == [
+        "Resolve", "Build", "Unit", "Security", "CommandLint", "IndexCompatibility", "Integration",
+    ]
+    assert "eq(dependencies.Unit.result, 'Succeeded')" in stages["Publish"]["condition"]
     assert "candidate.matrix" in strategy["matrix"]
     job = stages["Publish"]["jobs"][0]
     assert job["templateContext"]["type"] == "releaseJob"
