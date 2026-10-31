@@ -1977,8 +1977,9 @@ def load_iotops_arguments(self, _):
             "                - `mcr.microsoft.com/azureiotoperations/akri-connectors/onvif-metadata:VERSION`\n\n"
             "                3rd-party connectors:\n"
             "                - `REGISTRY.azurecr.io/PATH-metadata:VERSION`\n\n"
-            "                To list available versions for 1st-party connectors:\n"
-            "                `curl https://mcr.microsoft.com/v2/"
+            "                To list available versions for 1st-party connectors, run curl with this URL "
+            "(replace TYPE with the connector type):\n"
+            "                `https://mcr.microsoft.com/v2/"
             "azureiotoperations/akri-connectors/TYPE-metadata/tags/list`",
         )
         context.argument(

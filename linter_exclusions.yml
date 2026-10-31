@@ -38,3 +38,7 @@ iot ops broker persist update:
     broker_name:
       rule_exclusions:
       - no_parameter_defaults_for_update_commands
+iot ops connector list:
+  rule_exclusions:
+  # Marketplace rejects automated HTTP probes with 403; retain the user-facing search link.
+  - broken_site_link_from_command
