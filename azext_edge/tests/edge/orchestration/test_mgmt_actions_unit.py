@@ -5,7 +5,7 @@
 # ----------------------------------------------------------------------------------------------
 
 import json
-from typing import Optional
+from typing import List, Optional
 
 import pytest
 import responses
@@ -57,6 +57,17 @@ EVENTGRID_RP = "Microsoft.EventGrid"
 EVENTGRID_API_VERSION = DEFAULT_EVENTGRID_MGMT_API_VERSION.value
 IOTOPS_RP = "Microsoft.IoTOperations"
 IOTOPS_API_VERSION = DEFAULT_IOTOPS_MGMT_API_VERSION.value
+# Instance GETs are served by the resource provider and always use the CLI default. Child resources are served
+# through the custom location, so their API version follows the instance's AIO release (see aio_release fixture).
+IOTOPS_CHILD_API_VERSION = IOTOPS_API_VERSION
+# A 2610 instance, whose custom location enables the CLI default API version.
+INSTANCE_VERSION = "1.5.30"
+# (AIO instance version, IoT Operations API version its custom location enables for child resources)
+AIO_RELEASES = [
+    pytest.param(MIN_INSTANCE_VERSION_MGMT_ACTIONS, "2026-03-01", id="minimum-supported"),
+    pytest.param("1.4.112", "2026-07-01", id="ga-1.4"),
+    pytest.param(INSTANCE_VERSION, IOTOPS_API_VERSION, id="ga-1.5"),
+]
 UAMI_API_VERSION = MANAGED_IDENTITY_API_VERSION
 # Vendored KubernetesConfigurationClient bakes this version internally — no exported constant.
 K8S_EXTENSIONS_API_VERSION = "2023-05-01"
@@ -72,6 +83,20 @@ def suppress_workflow_display(mocker):
     mocker.patch("azext_edge.edge.providers.orchestration.mgmt_actions.WorkflowDisplay")
     mocker.patch("azext_edge.edge.providers.orchestration.mgmt_actions.render_summary")
     mocker.patch("azext_edge.edge.providers.orchestration.mgmt_actions.console")
+
+
+@pytest.fixture
+def aio_release(mocker):
+    """Model an instance on an older AIO release.
+
+    Sets the version instances report and the API version their custom location enables for child resources.
+    """
+
+    def _use(version: str, api_version: str) -> None:
+        mocker.patch(f"{__name__}.INSTANCE_VERSION", version)
+        mocker.patch(f"{__name__}.IOTOPS_CHILD_API_VERSION", api_version)
+
+    return _use
 
 
 # ---------------------------------------------------------------------------
@@ -122,8 +147,47 @@ def _build_iotops_endpoint(
     )
     if sub_resource:
         url += sub_resource
-    url += f"?api-version={IOTOPS_API_VERSION}"
+    api_version = IOTOPS_CHILD_API_VERSION if sub_resource else IOTOPS_API_VERSION
+    url += f"?api-version={api_version}"
     return url
+
+
+def _build_enabled_resource_types_endpoint(custom_location_id: str) -> str:
+    """Build the URL listing the resource types a custom location enables."""
+    return f"{BASE_URL}{custom_location_id}/enabledResourceTypes?api-version={CUSTOM_LOCATIONS_API_VERSION}"
+
+
+def _build_enabled_resource_types_response(api_versions: List[str]) -> dict:
+    """Build a custom location's enabled resource types: AIO types per API version plus an unrelated type."""
+    resource_types = ["instances/dataflowEndpoints", "instances/dataflowProfiles/dataflowGraphs"]
+    return {
+        "value": [
+            {
+                "name": "aio-enabled-types",
+                "properties": {
+                    "extensionType": "microsoft.iotoperations",
+                    "typesMetadata": [
+                        {"apiVersion": api_version, "resourceProviderNamespace": IOTOPS_RP, "resourceType": rt}
+                        for api_version in api_versions
+                        for rt in resource_types
+                    ],
+                },
+            },
+            {
+                "name": "other-enabled-types",
+                "properties": {
+                    "extensionType": "microsoft.other",
+                    "typesMetadata": [
+                        {
+                            "apiVersion": "2030-01-01",
+                            "resourceProviderNamespace": "Microsoft.Other",
+                            "resourceType": "x",
+                        },
+                    ],
+                },
+            },
+        ]
+    }
 
 
 def _build_uami_endpoint(mi_resource_id: str) -> str:
@@ -313,13 +377,13 @@ MOCK_EXTENDED_LOCATION: dict = {
 def _build_instance_response(
     instance_name: str,
     resource_group_name: str,
-    version: str = MIN_INSTANCE_VERSION_MGMT_ACTIONS,
+    version: Optional[str] = None,
     adr_namespace_name: Optional[str] = None,
     include_adr_ref: bool = True,
 ) -> dict:
     extended_location = MOCK_EXTENDED_LOCATION
     properties: dict = {
-        "version": version,
+        "version": INSTANCE_VERSION if version is None else version,
         "provisioningState": "Succeeded",
     }
     if include_adr_ref:
@@ -2689,13 +2753,17 @@ class TestEnable:
         f: dict,
         *,
         mi_response: Optional[dict] = None,
+        enabled_api_versions: Optional[List[str]] = None,
+        enabled_types_status: int = 200,
     ) -> None:
         """Register HTTP mocks for an enable() call.
 
-        Registers 16 calls (or 17 with mi_response) in the exact order
+        Registers 17 calls (or 18 with mi_response) in the exact order
         the enable() method issues them:
-          Instance GET → EG namespace GET → (UAMI GET) → topic space → permission bindings
-          → ADR namespace GET/PATCH → dataflow endpoint → dataflow graph → response dataflow.
+          Instance GET → custom location enabled types GET → EG namespace GET → (UAMI GET)
+          → topic space → permission bindings → ADR namespace GET/PATCH
+          → dataflow endpoint → dataflow graph → response dataflow.
+        The custom location enables only the child API version in use unless enabled_api_versions is given.
         """
         instance_name, rg = f["instance_name"], f["rg"]
         ns_name, hostname = f["ns_name"], f["hostname"]
@@ -2711,6 +2779,19 @@ class TestEnable:
             url=_build_iotops_endpoint(instance_name, rg),
             json=instance_response,
             status=200,
+        )
+        # 1b. GET custom location enabled resource types (preflight, before anything is created)
+        mocked_responses.add(
+            method=responses.GET,
+            url=_build_enabled_resource_types_endpoint(cl_id),
+            json=(
+                _build_enabled_resource_types_response(
+                    enabled_api_versions if enabled_api_versions is not None else [IOTOPS_CHILD_API_VERSION]
+                )
+                if enabled_types_status == 200
+                else {"error": {"code": "AuthorizationFailed"}}
+            ),
+            status=enabled_types_status,
         )
         # 2. GET EG namespace
         mocked_responses.add(
@@ -2906,8 +2987,8 @@ class TestEnable:
         # -- Assert roleAssignments section --
         assert result["roleAssignments"] == mock_role_result
 
-        # -- Assert total HTTP call count: 16 --
-        assert len(mocked_responses.calls) == 16
+        # -- Assert total HTTP call count: 17 --
+        assert len(mocked_responses.calls) == 17
 
     @pytest.mark.parametrize("version", ["1.0.0", ""], ids=["below-minimum", "empty-string"])
     def test_invalid_version(self, mocked_cmd, mocked_responses: responses, version: str):
@@ -2936,12 +3017,12 @@ class TestEnable:
         assert len(mocked_responses.calls) == 1
 
     @pytest.mark.parametrize(
-        "version",
+        "version,api_version",
         [
-            "1.3.0-main.20260307.5",
-            "1.0.0-alpha.1",
-            "1.3.14-rc.1",
-            "2.0.0-beta.1",
+            ("1.3.0-main.20260307.5", "2026-03-01"),
+            ("1.0.0-alpha.1", "2024-11-01"),
+            ("1.3.14-rc.1", "2026-03-01"),
+            ("2.0.0-beta.1", IOTOPS_API_VERSION),
         ],
         ids=[
             "ci-build-below-min-patch",
@@ -2950,10 +3031,12 @@ class TestEnable:
             "prerelease-above-min-major",
         ],
     )
-    def test_prerelease_version_skips_gate(self, mocked_cmd, mocked_responses: responses, mocker, version: str):
+    def test_prerelease_version_skips_gate(
+        self, mocked_cmd, mocked_responses: responses, mocker, aio_release, version: str, api_version: str,
+    ):
         """enable() skips the minimum version check when instance version has a pre-release component."""
+        aio_release(version, api_version)
         f = self._make_enable_fixtures()
-        f["instance_response"]["properties"]["version"] = version
         mocker.patch.object(MgmtActions, "_resolve_dataflow_auth_identity", return_value="df-pid")
         mocker.patch.object(MgmtActions, "_setup_role_assignments", return_value={})
         self._register_enable_mocks(mocked_responses, f)
@@ -2993,7 +3076,7 @@ class TestEnable:
         resp_put_url = mocked_responses.calls[-1].request.url
         assert f"/dataflowProfiles/{custom_profile}/" in resp_put_url
 
-        assert len(mocked_responses.calls) == 16
+        assert len(mocked_responses.calls) == 17
 
     def test_user_assigned_mi(self, mocked_cmd, mocked_responses: responses, mocker):
         """enable() configures UserAssignedManagedIdentity auth when mi_user_assigned is provided."""
@@ -3020,8 +3103,9 @@ class TestEnable:
         assert result["instance"]["dataflowEndpoint"]["name"] == f["ep_name"]
 
         # Verify the endpoint PUT body contains UserAssignedManagedIdentity auth
-        # Index 12: UAMI GET(2) + topic space(3-4) + bindings(5-8) + ADR(9-10) + ep GET(11) + ep PUT(12)
-        endpoint_put_call = mocked_responses.calls[12]
+        # Index 13: enabled types GET(1) + EG ns GET(2) + UAMI GET(3) + topic space(4-5) + bindings(6-9)
+        # + ADR(10-11) + ep GET(12) + ep PUT(13)
+        endpoint_put_call = mocked_responses.calls[13]
         endpoint_body = json.loads(endpoint_put_call.request.body)
         auth = endpoint_body["properties"]["mqttSettings"]["authentication"]
         assert auth["method"] == "UserAssignedManagedIdentity"
@@ -3030,7 +3114,7 @@ class TestEnable:
         assert uami_settings["tenantId"] == mi_tenant_id
         assert uami_settings["scope"] == f"{MGMT_ACTIONS_EG_AUDIENCE}/.default"
 
-        assert len(mocked_responses.calls) == 17
+        assert len(mocked_responses.calls) == 18
 
     def test_skip_role_assignments(self, mocked_cmd, mocked_responses: responses, mocker):
         """When skip_role_assignments=True, roleAssignments key is absent from result."""
@@ -3056,7 +3140,108 @@ class TestEnable:
         mock_resolve.assert_not_called()
         mock_setup_ra.assert_not_called()
 
-        assert len(mocked_responses.calls) == 16
+        assert len(mocked_responses.calls) == 17
+
+    @pytest.mark.parametrize("version,api_version", AIO_RELEASES)
+    def test_child_resources_use_instance_api_version(
+        self, mocked_cmd, mocked_responses: responses, mocker, aio_release, version: str, api_version: str,
+    ):
+        """enable() creates AIO child resources with the API version enabled for the instance's AIO version."""
+        aio_release(version, api_version)
+        f = self._make_enable_fixtures()
+        mocker.patch.object(MgmtActions, "_resolve_dataflow_auth_identity", return_value="df-pid")
+        mocker.patch.object(MgmtActions, "_setup_role_assignments", return_value={})
+        self._register_enable_mocks(mocked_responses, f)
+
+        MgmtActions(cmd=mocked_cmd).enable(
+            name=f["instance_name"], resource_group_name=f["rg"], eg_resource_id=f["eg_rid"], wait_sec=0,
+        )
+
+        iotops_urls = [c.request.url for c in mocked_responses.calls if f"/{IOTOPS_RP}/instances/" in c.request.url]
+        child_urls = [url for url in iotops_urls if "/dataflow" in url]
+        assert len(child_urls) == 6  # GET and PUT for the endpoint, graph and response dataflow
+        assert all(url.endswith(f"?api-version={api_version}") for url in child_urls)
+        # Only the instance read itself uses the CLI default API version.
+        assert [url for url in iotops_urls if url not in child_urls] == [
+            _build_iotops_endpoint(f["instance_name"], f["rg"])
+        ]
+
+    def test_older_custom_location_without_default_api(
+        self, mocked_cmd, mocked_responses: responses, mocker, aio_release,
+    ):
+        """An AIO 1.4 custom location enables 2024-11-01 to 2026-07-01 only, so nothing may use the CLI default."""
+        aio_release("1.4.112", "2026-07-01")
+        f = self._make_enable_fixtures()
+        mocker.patch.object(MgmtActions, "_resolve_dataflow_auth_identity", return_value="df-pid")
+        mocker.patch.object(MgmtActions, "_setup_role_assignments", return_value={})
+        self._register_enable_mocks(
+            mocked_responses, f,
+            enabled_api_versions=["2024-11-01", "2025-04-01", "2025-10-01", "2026-03-01", "2026-07-01"],
+        )
+
+        result = MgmtActions(cmd=mocked_cmd).enable(
+            name=f["instance_name"], resource_group_name=f["rg"], eg_resource_id=f["eg_rid"], wait_sec=0,
+        )
+
+        assert result["instance"]["dataflowEndpoint"]["name"] == f["ep_name"]
+        assert result["instance"]["requestDataflowGraph"]["name"] == f["graph_name"]
+        assert result["instance"]["responseDataflow"]["name"] == f["resp_name"]
+        assert not [
+            c for c in mocked_responses.calls
+            if "/dataflow" in c.request.url and f"api-version={IOTOPS_API_VERSION}" in c.request.url
+        ]
+
+    def test_custom_location_missing_api_fails_before_any_change(self, mocked_cmd, mocked_responses: responses):
+        """enable() refuses before creating anything when the custom location does not enable the API in use."""
+        f = self._make_enable_fixtures()
+        mocked_responses.add(
+            method=responses.GET,
+            url=_build_iotops_endpoint(f["instance_name"], f["rg"]),
+            json=f["instance_response"],
+            status=200,
+        )
+        mocked_responses.add(
+            method=responses.GET,
+            url=_build_enabled_resource_types_endpoint(f["cl_id"]),
+            json=_build_enabled_resource_types_response(["2024-11-01", "2026-07-01"]),
+            status=200,
+        )
+
+        with pytest.raises(ValidationError, match="No changes were made") as exc_info:
+            MgmtActions(cmd=mocked_cmd).enable(
+                name=f["instance_name"], resource_group_name=f["rg"], eg_resource_id=f["eg_rid"], wait_sec=0,
+            )
+
+        message = str(exc_info.value)
+        assert f"'{IOTOPS_API_VERSION}'" in message
+        assert f"'{INSTANCE_VERSION}'" in message
+        assert "only enables: 2024-11-01, 2026-07-01" in message
+        # Only the instance and the enabled resource types were read: no Event Grid, ADR or AIO request was made.
+        assert [c.request.method for c in mocked_responses.calls] == ["GET", "GET"]
+
+    @pytest.mark.parametrize(
+        "enabled_api_versions,enabled_types_status",
+        [(None, 403), ([], 200)],
+        ids=["enabled-types-not-readable", "no-aio-types-listed"],
+    )
+    def test_unknown_enabled_api_versions_do_not_block_enable(
+        self, mocked_cmd, mocked_responses: responses, mocker, enabled_api_versions, enabled_types_status: int,
+    ):
+        """Failing to learn which API versions the custom location enables must not block enablement."""
+        f = self._make_enable_fixtures()
+        mocker.patch.object(MgmtActions, "_resolve_dataflow_auth_identity", return_value="df-pid")
+        mocker.patch.object(MgmtActions, "_setup_role_assignments", return_value={})
+        self._register_enable_mocks(
+            mocked_responses, f,
+            enabled_api_versions=enabled_api_versions, enabled_types_status=enabled_types_status,
+        )
+
+        result = MgmtActions(cmd=mocked_cmd).enable(
+            name=f["instance_name"], resource_group_name=f["rg"], eg_resource_id=f["eg_rid"], wait_sec=0,
+        )
+
+        assert result
+        assert len(mocked_responses.calls) == 17
 
 
 # ---------------------------------------------------------------------------
@@ -3735,6 +3920,22 @@ class TestDisable:
         # resp + endpoint + pub + sub + ts = 5 DELETEs
         assert len(delete_paths) == 5
 
+    @pytest.mark.parametrize("version,api_version", AIO_RELEASES)
+    def test_aio_resources_use_instance_api_version(
+        self, mocked_cmd, mocked_responses: responses, mocker, aio_release, version: str, api_version: str,
+    ):
+        """disable() probes and deletes AIO child resources with the API version enabled for the instance."""
+        aio_release(version, api_version)
+        f = self._make_disable_fixtures()
+        mocker.patch(self.PROMPT_TARGET, return_value=True)
+        self._register_disable_mocks(mocked_responses, f)
+
+        self._call_disable(mocked_cmd, f)
+
+        child_urls = [c.request.url for c in mocked_responses.calls if "/dataflow" in c.request.url]
+        assert len(child_urls) == 5  # graph and endpoint probes, then response, graph and endpoint deletes
+        assert all(url.endswith(f"?api-version={api_version}") for url in child_urls)
+
 
 # ---------------------------------------------------------------------------
 # show() tests
@@ -4339,6 +4540,22 @@ class TestShow:
         assert result["instance"]["dataflowProfile"] == custom_profile
         assert result["instance"]["requestDataflowGraph"]["exists"] is True
         assert result["instance"]["responseDataflow"]["exists"] is True
+
+    @pytest.mark.parametrize("version,api_version", AIO_RELEASES)
+    def test_aio_resources_use_instance_api_version(
+        self, mocked_cmd, mocked_responses: responses, aio_release, version: str, api_version: str,
+    ):
+        """show() probes AIO child resources with the API version enabled for the instance's AIO version."""
+        aio_release(version, api_version)
+        f = self._make_show_fixtures()
+        self._register_show_mocks(mocked_responses, f)
+
+        result = MgmtActions(cmd=mocked_cmd).show(name=f["instance_name"], resource_group_name=f["rg"])
+
+        self._assert_instance_all_exist(result, f)
+        child_urls = [c.request.url for c in mocked_responses.calls if "/dataflow" in c.request.url]
+        assert len(child_urls) == 3  # endpoint, graph and response dataflow
+        assert all(url.endswith(f"?api-version={api_version}") for url in child_urls)
 
 
 class TestExecute:
