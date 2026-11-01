@@ -36,6 +36,20 @@ China endpoint coverage verifies configuration only, not live AIO service availa
 The permission-preflight helper coverage exercises the helper directly; it is not
 currently called by the deployment workflow.
 
+## IoT Operations API versions for existing instances
+
+An instance resource is served by the resource provider, but its child resources (brokers, dataflows,
+dataflow endpoints, ...) are served through its custom location. The custom location only enables the
+IoT Operations API versions shipped with the installed AIO version, so writing child resources of an older
+instance with the CLI's default API version (`DEFAULT_IOTOPS_MGMT_API_VERSION`) fails with
+`MissingAzureKubernetesMapping`.
+
+Commands that operate on an existing instance should read it, then build their IoT Operations client with
+`get_instance_iotops_api_version()` from `edge/providers/orchestration/instance_api.py`.
+Reads of the instance itself keep the default. Commands that write should also fail before their first change when
+`get_enabled_iotops_api_versions()` shows the custom location does not enable the version in use.
+When a new AIO line ships a new API version, extend `INSTANCE_API_VERSIONS` together with the CLI default.
+
 
 > You can run all commands in this setup in `bash` or `cmd` environments, this documentation just shows the `powershell` flavor.
 

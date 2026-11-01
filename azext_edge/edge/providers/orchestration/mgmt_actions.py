@@ -13,6 +13,7 @@ from knack.log import get_logger
 from rich.console import Console
 
 from ...util.az_client import (
+    DEFAULT_IOTOPS_MGMT_API_VERSION,
     get_eventgrid_mgmt_client,
     get_iotops_mgmt_client,
     get_registry_mgmt_client,
@@ -39,6 +40,7 @@ from .common import (
     MIN_INSTANCE_VERSION_MGMT_ACTIONS,
 )
 from .eg_provider_base import EgNamespaceContext, EventGridProviderBase, graceful_delete as _graceful_delete
+from .instance_api import get_enabled_iotops_api_versions, get_instance_iotops_api_version
 from .permissions import ROLE_DEF_FORMAT_STR, PermissionManager, PrincipalType
 
 if TYPE_CHECKING:
@@ -197,6 +199,7 @@ class MgmtActions(EventGridProviderBase):
 
     def __init__(self, cmd, subscription_id: Optional[str] = None):
         super().__init__(cmd=cmd, subscription_id=subscription_id)
+        self.iotops_api_version = DEFAULT_IOTOPS_MGMT_API_VERSION.value
         self.iotops_mgmt_client = get_iotops_mgmt_client(
             **self._get_client_kwargs()
         )
@@ -208,6 +211,33 @@ class MgmtActions(EventGridProviderBase):
             **self._get_client_kwargs()
         )
         self.permission_manager = PermissionManager(**self._get_client_kwargs())
+
+    def _use_instance_api_version(self, instance: Dict) -> str:
+        """Point the IoT Operations client at the API version the instance's custom location enables.
+
+        The instance is readable with the CLI default API version, but its child resources are served
+        through the custom location, which only enables the versions shipped with the installed AIO version.
+        """
+        api_version = get_instance_iotops_api_version(instance.get("properties", {}).get("version"))
+        if api_version != self.iotops_api_version:
+            self.iotops_mgmt_client = get_iotops_mgmt_client(api_version=api_version, **self._get_client_kwargs())
+            self.iotops_api_version = api_version
+        return api_version
+
+    def _validate_custom_location_api_support(self, instance: Dict) -> None:
+        """Fail before any write when the custom location does not enable the API version in use."""
+        custom_location_id: str = instance.get("extendedLocation", {}).get("name", "")
+        enabled_api_versions = get_enabled_iotops_api_versions(custom_location_id, **self._get_client_kwargs())
+        # An empty result means the enabled types could not be read, which must not block enablement.
+        if enabled_api_versions and self.iotops_api_version not in enabled_api_versions:
+            raise ValidationError(
+                f"Management actions cannot be enabled on instance '{instance.get('name', '')}'. "
+                f"This CLI uses IoT Operations API version '{self.iotops_api_version}' for AIO version "
+                f"'{instance.get('properties', {}).get('version', '')}', but the instance's custom location "
+                f"only enables: {', '.join(sorted(enabled_api_versions))}.\n"
+                "No changes were made. Ensure the AIO extension is healthy and up to date ('az iot ops upgrade'), "
+                "or use an Azure IoT Operations CLI version that supports this instance."
+            )
 
     def enable(
         self,
@@ -262,6 +292,11 @@ class MgmtActions(EventGridProviderBase):
                         f"Instance '{name}' version '{instance_version}' does not meet the minimum "
                         f"required version '{MIN_INSTANCE_VERSION_MGMT_ACTIONS}' for management actions."
                     )
+
+                # Child resources are served through the custom location, so check it supports the
+                # API version this instance needs before anything is created.
+                self._use_instance_api_version(instance)
+                self._validate_custom_location_api_support(instance)
                 display.update_step("Analyzing", "Instance & version check", StepState.COMPLETE, "done")
 
             # Validate EG namespace (format, existence, topic spaces, MQTT hostname)
@@ -519,6 +554,7 @@ class MgmtActions(EventGridProviderBase):
                     instance_name=name,
                     resource_group_name=resource_group_name,
                 )
+                self._use_instance_api_version(instance)
                 instance_resource_id: str = instance["id"]
                 custom_location_id: str = instance.get("extendedLocation", {}).get("name", "")
 
@@ -777,6 +813,7 @@ class MgmtActions(EventGridProviderBase):
                     instance_name=name,
                     resource_group_name=resource_group_name,
                 )
+                self._use_instance_api_version(instance)
                 instance_resource_id: str = instance["id"]
 
                 # Derive deterministic resource names
