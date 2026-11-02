@@ -1789,6 +1789,16 @@ def load_iotops_arguments(self, _):
             "Ignored when --skip-ra is used.",
             arg_group="Role Assignment",
         )
+        context.argument(
+            "subscriber_object_ids",
+            options_list=["--subscriber-object-ids"],
+            nargs="+",
+            help="Space-separated Microsoft Entra user or group object IDs from the resource tenant "
+            "to grant Event Grid TopicSpaces Subscriber access. Assignments are additive and follow "
+            "--ra-scope. Namespace-scoped assignments are preserved on disable; topic-space-scoped "
+            "assignments are removed with the topic space. Ignored when --skip-ra is used.",
+            arg_group="Role Assignment",
+        )
 
     with self.argument_context("iot ops schema") as context:
         context.argument(

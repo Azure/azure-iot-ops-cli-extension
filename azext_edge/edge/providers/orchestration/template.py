@@ -4,6 +4,12 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
+"""Bundled Public blueprints from releases/v1.5.x/2610.
+
+Selected source: 87c6c83e945c318ebf76a3189e8212c3dd17fbc6.
+The instance promotes the upstream integration train to stable and excludes GDS before compilation.
+"""
+
 from copy import deepcopy
 from typing import Dict, List, NamedTuple, Optional, Union
 
@@ -49,12 +55,14 @@ class TemplateBlueprint(NamedTuple):
 
 
 TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
-    commit_id="7561bbc484cdb2d817f9260a5cff52c057482fd8",
+    commit_id="47d35ef275981cb60cb46c4e95e5e6d1606c4fdd",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "languageVersion": "2.0",
         "contentVersion": "1.0.0.0",
-        "metadata": {"_generator": {"name": "bicep", "version": "0.48.1.52935", "templateHash": "2714551498982351971"}},
+        "metadata": {
+            "_generator": {"name": "bicep", "version": "0.48.1.52935", "templateHash": "12532884713713298736"}
+        },
         "definitions": {
             "_1.AdvancedConfig": {
                 "type": "object",
@@ -694,7 +702,7 @@ TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
             "advancedConfig": {"$ref": "#/definitions/_1.AdvancedConfig", "defaultValue": {}},
         },
         "variables": {
-            "VERSIONS": {"certManager": "1.2.1", "secretStore": "1.6.0"},
+            "VERSIONS": {"certManager": "1.2.3", "secretStore": "1.6.1"},
             "TRAINS": {"certManager": "stable", "secretStore": "stable"},
         },
         "resources": {
@@ -773,17 +781,17 @@ TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
     },
 )
 
-# Source releases/v1.5.x/2610 @ 7b3394800282382ca61654842fc466e6a0be33dd, release 2610.
-# The exported source is recompiled with the stable train release override.
+# Source releases/v1.5.x/2610 @ 97933f54e677de0354b5b6ff144d153b8aff72f2, release 2610.
+# The upstream integration train is promoted to stable before compilation.
 # GDS Manager input and reader are excluded in exported source before compilation.
 TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
-    commit_id="93bbf10ae19c99eb05b000c288599e6ddff2901e",
+    commit_id="97933f54e677de0354b5b6ff144d153b8aff72f2",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "languageVersion": "2.0",
         "contentVersion": "1.0.0.0",
         "metadata": {
-            "_generator": {"name": "bicep", "version": "0.48.1.52935", "templateHash": "14744835390186523893"}
+            "_generator": {"name": "bicep", "version": "0.48.1.52935", "templateHash": "17707065636206652024"}
         },
         "definitions": {
             "_1.AdvancedConfig": {
@@ -1489,7 +1497,7 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
             "advancedConfig": {"$ref": "#/definitions/_1.AdvancedConfig", "defaultValue": {}},
         },
         "variables": {
-            "VERSIONS": {"iotOperations": "1.5.41", "connectors": "1.5.19"},
+            "VERSIONS": {"iotOperations": "1.5.45", "connectors": "1.5.22"},
             "TRAINS": {"iotOperations": "stable"},
             "HASH": "[coalesce(tryGet(parameters('advancedConfig'), 'resourceSuffix'), take(uniqueString(resourceGroup().id, parameters('clusterName'), parameters('clusterNamespace')), 5))]",
             "AIO_EXTENSION_SUFFIX": "[take(uniqueString(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName'))), 5)]",

@@ -7,6 +7,7 @@
 
 import json
 import re
+from copy import deepcopy
 from enum import Enum
 from random import randint
 from typing import (
@@ -44,12 +45,14 @@ from azext_edge.edge.providers.orchestration.common import (
     ARM_ENDPOINT,
     AZURE_DEVICE_REGISTRY_ADMINISTRATOR_ROLE_ID,
     DEFAULT_HEALTH_CHECKS_INTERVAL,
+    EXTENSION_MONIKER_OPS,
     EXTENSION_TYPE_CM,
     EXTENSION_TYPE_OPS,
     EXTENSION_TYPE_SSC,
     OPS_EXTENSION_DEPS,
 )
 from azext_edge.edge.providers.orchestration.permissions import ROLE_DEF_FORMAT_STR
+from azext_edge.edge.providers.orchestration.runtime_catalog import get_runtime_catalog
 from azext_edge.edge.providers.orchestration.rp_namespace import (
     HEALTH_PROVIDER,
     RP_NAMESPACE_OPTIONAL_SET,
@@ -57,12 +60,14 @@ from azext_edge.edge.providers.orchestration.rp_namespace import (
 )
 from azext_edge.edge.providers.orchestration.resources.connector_templates import ConnectorTemplates
 from azext_edge.edge.providers.orchestration.targets import (
+    InitTargets,
     InstancePhase,
     get_default_cl_name,
 )
 from azext_edge.edge.providers.orchestration.work import (
     PROVISIONING_STATE_SUCCESS,
     ClusterConnectStatus,
+    WorkManager,
     WorkStepKey,
 )
 from azext_edge.edge.util import assemble_nargs_to_dict
@@ -77,6 +82,33 @@ from .resources.conftest import RequestKPIs, get_request_kpis
 from .test_template_unit import EXPECTED_EXTENSION_RESOURCE_KEYS, EXPECTED_INSTANCE_RESOURCE_KEYS
 
 ZEROED_SUBSCRIPTION = get_zeroed_subscription()
+
+
+@pytest.mark.parametrize(
+    "cloud_name,use_preview",
+    [("AzureCloud", False), ("AzureCloud", True), ("AzureUSGovernment", False)],
+)
+@pytest.mark.parametrize("dependency_overrides", [False, True])
+def test_create_description_shows_only_aio_without_changing_dependency_versions(
+    cloud_name, use_preview, dependency_overrides,
+):
+    profile = get_runtime_catalog(cloud_name).for_create(use_preview=use_preview)
+    overrides = (
+        {"cm_version": "1.2.2", "cm_train": "preview", "ssc_version": "1.6.1", "ssc_train": "preview"}
+        if dependency_overrides else {}
+    )
+    manager = WorkManager.__new__(WorkManager)
+    manager._targets = InitTargets("cluster", "rg", cloud_name=cloud_name, runtime_profile=profile, **overrides)
+    instance_versions = deepcopy(manager._targets.get_extension_versions(False))
+    foundation_versions = deepcopy(manager._targets.get_extension_versions())
+    aio = instance_versions[EXTENSION_MONIKER_OPS]
+
+    assert manager._format_instance_desc() == f"[dim]v{aio['version']} {aio['train']}"
+    enablement = manager._format_enablement_desc()
+    for moniker, target in foundation_versions.items():
+        assert f"{moniker}: {target['version']} {target['train']}" in enablement
+    assert manager._targets.get_extension_versions(False) == instance_versions
+    assert manager._targets.get_extension_versions() == foundation_versions
 
 
 path_pattern_base = r"^/subscriptions/[0-9a-fA-F-]+/resourcegroups/[a-zA-Z0-9]+"

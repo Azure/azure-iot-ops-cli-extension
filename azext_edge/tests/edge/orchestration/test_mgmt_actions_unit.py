@@ -855,13 +855,21 @@ class TestSetupEgPermissionBindings:
 class TestSetupEgDataflowEndpoint:
     """Tests for MgmtActions._setup_eg_dataflow_endpoint()."""
 
-    def test_create_new_system_assigned(self, mocked_cmd, mocked_responses: responses):
+    @pytest.mark.parametrize("government", [False, True])
+    def test_create_new_system_assigned(self, mocked_cmd, mocked_responses: responses, government):
         """When endpoint does not exist and no UAMI, creates with SystemAssigned MI."""
+        arm_endpoint = "https://management.usgovcloudapi.net" if government else BASE_URL
+        if government:
+            mocked_cmd.cli_ctx.cloud.name = "AzureUSGovernment"
+            mocked_cmd.cli_ctx.cloud.endpoints.resource_manager = arm_endpoint + "/"
         ns_name = generate_random_string()
         rg = generate_random_string()
         instance_name = generate_random_string()
         instance_rid = _build_eg_resource_id(instance_name, rg)
-        eg_ctx = _make_eg_ctx(namespace_name=ns_name, resource_group_name=rg)
+        eg_ctx = _make_eg_ctx(
+            namespace_name=ns_name, resource_group_name=rg,
+            mqtt_hostname=f"{ns_name}.usgovvirginia-1.ts.eventgrid.azure.us" if government else None,
+        )
         extended_location = MOCK_EXTENDED_LOCATION
 
         ep_name = get_mgmt_actions_resource_name("eg", instance_rid)
@@ -869,14 +877,18 @@ class TestSetupEgDataflowEndpoint:
         # GET returns 404 (doesn't exist)
         mocked_responses.add(
             method=responses.GET,
-            url=_build_iotops_endpoint(instance_name, rg, sub_resource=f"/dataflowEndpoints/{ep_name}"),
+            url=_build_iotops_endpoint(
+                instance_name, rg, sub_resource=f"/dataflowEndpoints/{ep_name}",
+            ).replace(BASE_URL, arm_endpoint, 1),
             json={"error": {"code": "ResourceNotFound"}},
             status=404,
         )
         # PUT creates it
         mocked_responses.add(
             method=responses.PUT,
-            url=_build_iotops_endpoint(instance_name, rg, sub_resource=f"/dataflowEndpoints/{ep_name}"),
+            url=_build_iotops_endpoint(
+                instance_name, rg, sub_resource=f"/dataflowEndpoints/{ep_name}",
+            ).replace(BASE_URL, arm_endpoint, 1),
             json={"id": f"/fake/path/dataflowEndpoints/{ep_name}", "name": ep_name},
             status=200,
         )
@@ -905,7 +917,10 @@ class TestSetupEgDataflowEndpoint:
         assert mqtt["tls"] == {"mode": "Enabled"}
         auth = mqtt["authentication"]
         assert auth["method"] == "SystemAssignedManagedIdentity"
-        assert auth["systemAssignedManagedIdentitySettings"]["audience"] == MGMT_ACTIONS_EG_AUDIENCE
+        assert auth == {
+            "method": "SystemAssignedManagedIdentity",
+            "systemAssignedManagedIdentitySettings": {"audience": "https://eventgrid.azure.net"},
+        }
 
     def test_create_new_includes_client_id_prefix(self, mocked_cmd, mocked_responses: responses):
         """The created MQTT dataflow endpoint sets clientIdPrefix to the AIO instance name."""
@@ -942,13 +957,21 @@ class TestSetupEgDataflowEndpoint:
         assert put_body["properties"]["mqttSettings"]["clientIdPrefix"] == instance_name
         assert len(mocked_responses.calls) == 2
 
-    def test_create_new_user_assigned(self, mocked_cmd, mocked_responses: responses):
+    @pytest.mark.parametrize("government", [False, True])
+    def test_create_new_user_assigned(self, mocked_cmd, mocked_responses: responses, government):
         """When endpoint does not exist and pre-resolved UAMI is provided, creates with UserAssigned MI."""
+        arm_endpoint = "https://management.usgovcloudapi.net" if government else BASE_URL
+        if government:
+            mocked_cmd.cli_ctx.cloud.name = "AzureUSGovernment"
+            mocked_cmd.cli_ctx.cloud.endpoints.resource_manager = arm_endpoint + "/"
         ns_name = generate_random_string()
         rg = generate_random_string()
         instance_name = generate_random_string()
         instance_rid = _build_eg_resource_id(instance_name, rg)
-        eg_ctx = _make_eg_ctx(namespace_name=ns_name, resource_group_name=rg)
+        eg_ctx = _make_eg_ctx(
+            namespace_name=ns_name, resource_group_name=rg,
+            mqtt_hostname=f"{ns_name}.usgovvirginia-1.ts.eventgrid.azure.us" if government else None,
+        )
         extended_location = MOCK_EXTENDED_LOCATION
 
         ep_name = get_mgmt_actions_resource_name("eg", instance_rid)
@@ -961,14 +984,18 @@ class TestSetupEgDataflowEndpoint:
         # GET dataflow endpoint returns 404
         mocked_responses.add(
             method=responses.GET,
-            url=_build_iotops_endpoint(instance_name, rg, sub_resource=f"/dataflowEndpoints/{ep_name}"),
+            url=_build_iotops_endpoint(
+                instance_name, rg, sub_resource=f"/dataflowEndpoints/{ep_name}",
+            ).replace(BASE_URL, arm_endpoint, 1),
             json={"error": {"code": "ResourceNotFound"}},
             status=404,
         )
         # PUT creates endpoint
         mocked_responses.add(
             method=responses.PUT,
-            url=_build_iotops_endpoint(instance_name, rg, sub_resource=f"/dataflowEndpoints/{ep_name}"),
+            url=_build_iotops_endpoint(
+                instance_name, rg, sub_resource=f"/dataflowEndpoints/{ep_name}",
+            ).replace(BASE_URL, arm_endpoint, 1),
             json={"id": f"/fake/path/dataflowEndpoints/{ep_name}", "name": ep_name},
             status=200,
         )
@@ -994,12 +1021,14 @@ class TestSetupEgDataflowEndpoint:
 
         # Verify the PUT payload
         put_body = json.loads(mocked_responses.calls[1].request.body)
-        auth = put_body["properties"]["mqttSettings"]["authentication"]
+        mqtt = put_body["properties"]["mqttSettings"]
+        assert mqtt["host"] == eg_ctx.mqtt_hostname
+        auth = mqtt["authentication"]
         assert auth["method"] == "UserAssignedManagedIdentity"
         uami_settings = auth["userAssignedManagedIdentitySettings"]
         assert uami_settings["clientId"] == uami_client_id
         assert uami_settings["tenantId"] == uami_tenant_id
-        assert uami_settings["scope"] == f"{MGMT_ACTIONS_EG_AUDIENCE}/.default"
+        assert uami_settings["scope"] == "https://eventgrid.azure.net/.default"
 
     def test_existing_endpoint_same_config(self, mocked_cmd, mocked_responses: responses):
         """When endpoint already exists with matching host and auth, returns without PUT."""

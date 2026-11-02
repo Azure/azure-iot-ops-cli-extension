@@ -94,8 +94,11 @@ Optional resume inputs:
 6. Validate the requested CLI version with `packaging.version.Version` and require `is_prerelease` to be true. Compare
    it with `VERSION` history on the CLI base branch and open PRs because `gh release list` cannot prove an alpha
    version is unused. Stop on reuse or ambiguity.
-7. Run all validation required by `sync-aio-bicep-templates`, then run the repository CI-equivalent tests relevant to
-   every changed file. Do not proceed while any check fails.
+7. Run all validation required by `sync-aio-bicep-templates`, including its full CI-equivalent unit selection from
+   `tox.ini`, not only its focused template/runtime modules. Release consumers include nested resource and connector
+   tests even when those files were not edited. Follow the sync skill's recursive release-expectation maintenance;
+   preserve historical/synthetic boundary fixtures. Do not proceed to commit, push or PR creation while any check
+   fails or the full unit result is pending. Report local interpreter results separately from the CI matrix.
 8. Show the complete diff summary, behavioral-change report, required-PR/commit inclusion evidence, source provenance,
    Bicep versions, selected source ref and commit, alpha version, and connector tag. Ask for confirmation before
    creating a branch, commit, push, or PR.

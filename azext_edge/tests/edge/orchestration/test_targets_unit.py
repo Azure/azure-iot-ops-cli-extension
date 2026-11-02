@@ -4,6 +4,7 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 from contextlib import nullcontext
+from copy import deepcopy
 from random import randint
 from typing import Dict, Optional, Union
 from unittest.mock import Mock
@@ -682,6 +683,8 @@ def test_extension_config_manager():
     }
     manager.apply_to_template(enablement_template, "enablement")
 
+    assert enablement_template["variables"]["VERSIONS"] == {"certManager": "1.0.0", "secretStore": "1.5.0"}
+    assert enablement_template["variables"]["TRAINS"] == {"certManager": "stable", "secretStore": "preview"}
     assert enablement_template["variables"]["VERSIONS"]["certManager"] == "1.0.0"
     assert enablement_template["variables"]["TRAINS"]["certManager"] == "stable"
     assert enablement_template["resources"]["certManagerExtension"]["properties"]["configurationSettings"] == {
@@ -703,12 +706,19 @@ def test_extension_config_manager():
     }
     manager.apply_to_template(instance_template, "instance")
 
+    assert instance_template["variables"]["VERSIONS"] == {"iotOperations": "2.0.0"}
+    assert instance_template["variables"]["TRAINS"] == {"iotOperations": "dev"}
     assert instance_template["variables"]["VERSIONS"]["iotOperations"] == "2.0.0"
     assert instance_template["variables"]["TRAINS"]["iotOperations"] == "dev"
     assert instance_template["variables"]["defaultAioConfigurationSettings"] == {
         "existing": "config",
         "ops_custom": "ops_value",
     }
+
+    for template in ({}, {"resources": {}}, {"resources": {"unrelated": {"properties": {}}}}):
+        original = deepcopy(template)
+        manager.apply_to_template(template)
+        assert template == original
 
     # Test resource key mapping
     assert manager.resource_key_map[EXTENSION_MONIKER_CM] == "certManagerExtension"

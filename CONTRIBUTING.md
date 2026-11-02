@@ -21,6 +21,14 @@ Preserve subscription IDs from resource references for cross-subscription operat
 These settings are for ARM clients only; Key Vault and other data-plane clients
 must retain their service-specific scopes.
 
+For Event Grid MQTT in Azure Government, the broker hostname uses
+`*.eventgrid.azure.us`, but the token audience remains `https://eventgrid.azure.net`
+(`https://eventgrid.azure.net/.default` for user-assigned managed identity scopes).
+Resolve this through `CloudConfig.eventgrid_audience`; do not derive the audience
+from the broker hostname. This does not change the Government authentication authority.
+Existing endpoints with a `.us` audience need their authentication settings updated;
+installing the fixed CLI alone does not repair deployed endpoints.
+
 The request-level tests in
 [`test_arm_cloud_unit.py`](./azext_edge/tests/edge/orchestration/test_arm_cloud_unit.py)
 verify request hosts and requested credential scopes with mocked transport.

@@ -2926,9 +2926,25 @@ def build_ext_upgrade_state(
     )
 
 
-def test_preview_upgrade_routes_instance_and_backfills_to_profile_api(mocked_cmd, mocked_responses, mocked_sleep):
+def test_preview_upgrade_routes_instance_and_backfills_to_profile_api(
+    mocker, mocked_cmd, mocked_responses, mocked_sleep,
+):
     from azext_edge.edge.providers.orchestration.upgrade2 import UpgradeManager
     from azext_edge.edge.providers.orchestration.resources.connector_templates import ConnectorTemplates
+    from azext_edge.edge.providers.orchestration.runtime_profiles import RuntimeChannel, RuntimeProfileCatalog
+    from .test_runtime_profiles_unit import make_profile
+
+    # Keep this historical preview-train API fixture independent of bundled integration targets.
+    catalog = RuntimeProfileCatalog([
+        make_profile(
+            RuntimeChannel.PREVIEW, "1.6.0-preview.57", opcua_connector_version=OPCUA_CONNECTOR_VERSION,
+            iotops_api_version="2026-11-01-preview",
+        ),
+    ])
+    for module in ("runtime_catalog", "upgrade2"):
+        mocker.patch(
+            f"azext_edge.edge.providers.orchestration.{module}.get_runtime_catalog", return_value=catalog,
+        )
 
     name, resource_group = "preview-instance", "previewrg"
     scenario = UpgradeScenario().set_extension(

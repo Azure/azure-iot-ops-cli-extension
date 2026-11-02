@@ -274,9 +274,18 @@ the blueprint/catalog; do not ask the user to locate stale assertions or hand-ed
    Production catalog provenance must still use the exact resolved source SHA.
 3. Follow references to the selected blueprint/profile and changed release values in the orchestration tests,
    especially `test_runtime_activation_unit.py`, `test_runtime_profiles_unit.py`, `test_runtime_commands_unit.py`
-   and `test_get_versions_unit.py`. Distinguish expectations for the actual bundled artifact from deliberately
-   synthetic versions, historical upgrade baselines and boundary cases. Never bulk-replace old version strings
-   or advance a historical fixture merely because a new release has the same-looking value.
+   and `test_get_versions_unit.py`. Search recursively across **all** `azext_edge/tests`, including nested resource
+   and connector tests, for the previous bundled versions, tags and source commits from the pre-run snapshots.
+   A top-level orchestration file glob misses consumers. Distinguish expectations for the actual bundled artifact
+   from deliberately synthetic versions, historical upgrade baselines and boundary cases. Never bulk-replace old
+   version strings or advance a historical fixture merely because a new release has the same-looking value.
+   On every preview refresh, inspect
+   `azext_edge/tests/edge/orchestration/resources/connector/akri/test_connectors_unit.py`, especially
+   `test_discovery_uses_installed_channel_and_cli_profile`: first-party discovery uses the **bundled preview profile**
+   version, while installed-runtime versions test channel eligibility independently. Update the independent pinned
+   registry-call and bundled-profile assertions from the reviewed source; preserve the historical/invalid installed
+   versions, both command/provider entry points, and list/show cases. Do not change production discovery to use an
+   installed version merely to satisfy stale release expectations.
 4. Keep artifact expectations independent: take new expected literals from the reviewed source/final compile,
    not from the object under test at test runtime. Do not replace pinned assertions with self-comparisons, weaken
    them, or skip failing cases to make a refresh green. Reuse existing fixtures and expectation sets where suitable;
@@ -286,7 +295,8 @@ the blueprint/catalog; do not ask the user to locate stale assertions or hand-ed
    permission to change the expected result. Obtain the existing behavioral approval for newly discovered changes.
 6. Run the focused checks below immediately after the related edits, then the broader section 5 suites. Include
    the reviewed old/new expectations and validation results in the handoff. Do not report a completed sync while
-   these tests fail or have not run; report a blocked/incomplete sync instead.
+   these tests fail or have not run; report a blocked/incomplete sync instead. Focused success is not a full unit-suite
+   result: complete the parent section 5 CI-equivalent unit gate before reporting success or preparing a commit/PR.
 
 For a preview refresh, run from the CLI repository root with the configured development interpreter:
 
@@ -296,7 +306,8 @@ python -m pytest -q \
   azext_edge/tests/edge/orchestration/test_runtime_activation_unit.py \
   azext_edge/tests/edge/orchestration/test_runtime_profiles_unit.py \
   azext_edge/tests/edge/orchestration/test_runtime_commands_unit.py \
-  azext_edge/tests/edge/orchestration/test_get_versions_unit.py
+  azext_edge/tests/edge/orchestration/test_get_versions_unit.py \
+  azext_edge/tests/edge/orchestration/resources/connector/akri/test_connectors_unit.py
 ```
 
 ## 5. Validate selected outputs and isolation
@@ -331,8 +342,9 @@ For every selected output independently:
 - Keep offline help/version reporting and the normal create-only selector tests green.
 
 Run the parent template/targets/work/upgrade unit suites plus runtime profile/discovery/command/dependency and
-version-reporting tests. Add tests for the actual new artifact, including catalog wiring if activated. Lint all
-changed Python files and run `git diff --check`. No live tests or workflow dispatch without explicit authorization.
+version-reporting tests, followed by the parent's full CI-equivalent unit gate. Add tests for the actual new artifact,
+including catalog wiring if activated. Lint all changed Python files and run `git diff --check`. No live tests or workflow
+dispatch without explicit authorization.
 
 Report mechanical generation/test success separately from runtime qualification and public-release readiness.
 A missing reviewed preview profile must remain visible rather than being replaced with synthetic test fixtures

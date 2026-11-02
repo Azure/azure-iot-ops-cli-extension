@@ -628,26 +628,25 @@ class ExtensionConfigManager:
         """
         for ext in self.extensions.values():
             resource_key = self.resource_key_map.get(ext.moniker)
-            if not resource_key:
+            if not resource_key or resource_key not in template.get("resources", {}):
                 continue
 
             # Apply config settings
-            if resource_key in template.get("resources", {}):
-                if ext.moniker == EXTENSION_MONIKER_OPS and template_type == "instance":
-                    # For IoT Operations, merge with existing defaultAioConfigurationSettings
-                    default_config = template.get("variables", {}).get("defaultAioConfigurationSettings", {})
-                    merged_config = self.get_merged_config(ext.moniker, default_config)
-                    if merged_config:
-                        template["variables"]["defaultAioConfigurationSettings"] = merged_config
-                else:
-                    # Standard extension configuration
-                    defaults = (
-                        template["resources"][resource_key]["properties"].get("configurationSettings")
-                        if preserve_generated_config else None
-                    )
-                    config = self.get_merged_config(ext.moniker, defaults)
-                    if config:
-                        template["resources"][resource_key]["properties"]["configurationSettings"] = config
+            if ext.moniker == EXTENSION_MONIKER_OPS and template_type == "instance":
+                # For IoT Operations, merge with existing defaultAioConfigurationSettings
+                default_config = template.get("variables", {}).get("defaultAioConfigurationSettings", {})
+                merged_config = self.get_merged_config(ext.moniker, default_config)
+                if merged_config:
+                    template["variables"]["defaultAioConfigurationSettings"] = merged_config
+            else:
+                # Standard extension configuration
+                defaults = (
+                    template["resources"][resource_key]["properties"].get("configurationSettings")
+                    if preserve_generated_config else None
+                )
+                config = self.get_merged_config(ext.moniker, defaults)
+                if config:
+                    template["resources"][resource_key]["properties"]["configurationSettings"] = config
 
             if ext.version:
                 template.setdefault("variables", {}).setdefault("VERSIONS", {})[ext.moniker] = ext.version

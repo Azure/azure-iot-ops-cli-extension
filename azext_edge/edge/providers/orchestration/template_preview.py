@@ -5,25 +5,26 @@
 # ----------------------------------------------------------------------------------------------
 
 
-"""Generated public-preview instance blueprint.
+"""Generated preview-channel instance blueprint.
 
 The source GDS parameter and configuration reader are removed before compiling.
+The upstream integration train is promoted to preview before compilation.
 MCP defaults to Preview; explicit feature modes override that generated default.
 """
 
-# selected source preview/v1.6.x/2610 @ f306f5abaf891dddf7a1f9db00b13a8a742d5ad8
+# selected source preview/v1.6.x/2610 @ f845faae950ff57c519a1a870109c163e6751758
 # source release prev2610
 # no loaded-source redactions required
 from .template import TemplateBlueprint
 
 TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW = TemplateBlueprint(
-    commit_id="f306f5abaf891dddf7a1f9db00b13a8a742d5ad8",
+    commit_id="f2b270da385ddb544e7c1e96521ebd79eea045d7",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "languageVersion": "2.0",
         "contentVersion": "1.0.0.0",
         "metadata": {
-            "_generator": {"name": "bicep", "version": "0.48.1.52935", "templateHash": "6860184499187617120"}
+            "_generator": {"name": "bicep", "version": "0.48.1.52935", "templateHash": "18334372290429470434"}
         },
         "definitions": {
             "_1.AdvancedConfig": {
@@ -805,7 +806,7 @@ TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW = TemplateBlueprint(
             "advancedConfig": {"$ref": "#/definitions/_1.AdvancedConfig", "defaultValue": {}},
         },
         "variables": {
-            "VERSIONS": {"iotOperations": "1.6.0-preview.57", "connectors": "1.5.19"},
+            "VERSIONS": {"iotOperations": "1.6.0-preview.60", "connectors": "1.5.22"},
             "TRAINS": {"iotOperations": "preview"},
             "HASH": "[coalesce(tryGet(parameters('advancedConfig'), 'resourceSuffix'), take(uniqueString(resourceGroup().id, parameters('clusterName'), parameters('clusterNamespace')), 5))]",
             "AIO_EXTENSION_SUFFIX": "[take(uniqueString(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName'))), 5)]",

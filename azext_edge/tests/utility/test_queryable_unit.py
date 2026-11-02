@@ -367,7 +367,7 @@ class TestCloudConfig:
                     "keyvault_scope": "https://vault.usgovcloudapi.net/.default",
                     "acr_suffix": ".azurecr.us",
                     "servicebus_suffix": "servicebus.usgovcloudapi.net",
-                    "eventgrid_audience": "https://eventgrid.azure.us",
+                    "eventgrid_audience": "https://eventgrid.azure.net",
                     "supports_fabric_onelake": False,
                     "supports_eventgrid_mqtt": True,
                 },

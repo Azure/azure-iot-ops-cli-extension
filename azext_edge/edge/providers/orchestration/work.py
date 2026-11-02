@@ -40,6 +40,7 @@ from .common import (
     DEFAULT_HEALTH_CHECKS_INTERVAL,
     DEFAULT_HEALTH_CHECKS_MAX,
     EXTENSION_MONIKER_CM,
+    EXTENSION_MONIKER_OPS,
     EXTENSION_TYPE_CM,
     EXTENSION_TYPE_OPS,
     EXTENSION_TYPE_SSC,
@@ -149,11 +150,8 @@ class WorkManager:
         return display_desc[:-1]
 
     def _format_instance_desc(self) -> str:
-        version_map = self._targets.get_extension_versions(False)
-        display_desc = "[dim]"
-        for moniker in version_map:
-            display_desc += f"v{version_map[moniker]['version']} {version_map[moniker]['train']}\n"
-        return display_desc[:-1]
+        aio_version = self._targets.get_extension_versions(False)[EXTENSION_MONIKER_OPS]
+        return f"[dim]v{aio_version['version']} {aio_version['train']}"
 
     def _format_instance_config_desc(self) -> str:
         instance_config = {}
