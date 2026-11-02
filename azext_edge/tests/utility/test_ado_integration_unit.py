@@ -485,6 +485,100 @@ def test_cluster_waits_for_its_registered_ready_node(monkeypatch, tmp_path, fail
     assert pipeline.read(tmp_path / "state.json")["clusterStarted"] is True
 
 
+@pytest.mark.parametrize("tox_env,channel,trust,enabled", [
+    ("python-edge-int", "stable", False, False),
+    ("python-wlif-int", "stable", True, True),
+    ("python-mgmtactions-int", "stable", False, True),
+    ("python-mgmtactions-int", "preview", False, True),
+    ("python-livedata-int", "stable", False, False),
+    ("python-livedata-int", "preview", False, True),
+])
+def test_arc_workload_identity_matches_github_scenario_prerequisites(
+    monkeypatch, tmp_path, tox_env, channel, trust, enabled,
+):
+    state = make_state()
+    state["row"]["scenario"].update(tox_env=tox_env, channel=channel, needs_trust=trust)
+    issuer = "https://issuer.example.test/cluster/"
+    commands = Mock()
+    commands.az_json.return_value = {"connectivityStatus": "Connected", "oidcIssuerProfile": {"issuerUrl": issuer}}
+    commands.run.return_value = json.dumps({"issuer": issuer})
+    restart = Mock()
+    monkeypatch.setattr(cluster, "start_cluster", restart)
+
+    cluster.connect_cluster(commands, state, tmp_path)
+
+    updates = [call.args[0] for call in commands.run.call_args_list if call.args[0][:3] == [
+        "az", "connectedk8s", "update",
+    ]]
+    if enabled:
+        assert len(updates) == 1
+        assert updates[0][-2:] == ["--enable-oidc-issuer", "--enable-workload-identity"]
+        restart.assert_called_once_with(commands, state, tmp_path, issuer)
+        commands.run.assert_any_call(["kubectl", "get", "--raw", "/.well-known/openid-configuration"], capture=True)
+    else:
+        assert not updates
+        restart.assert_not_called()
+        assert not any(call.args[0][0] == "kubectl" for call in commands.run.call_args_list)
+
+
+@pytest.mark.parametrize("missing_reads", [2, 20])
+def test_arc_waits_for_workload_identity_issuer(monkeypatch, tmp_path, missing_reads):
+    state = make_state()
+    state["row"]["scenario"]["tox_env"] = "python-mgmtactions-int"
+    issuer = "https://issuer.example.test/cluster/"
+    commands = Mock()
+    commands.az_json.side_effect = [
+        *[{"connectivityStatus": "Connected"} for _ in range(missing_reads)],
+        {"connectivityStatus": "Connected", "oidcIssuerProfile": {"issuerUrl": issuer}},
+    ]
+    commands.run.return_value = json.dumps({"issuer": issuer})
+    restart, sleep = Mock(), Mock()
+    monkeypatch.setattr(cluster, "start_cluster", restart)
+    monkeypatch.setattr(cluster.time, "sleep", sleep)
+    if missing_reads == 20:
+        with pytest.raises(RuntimeError, match="issuer did not become ready"):
+            cluster.connect_cluster(commands, state, tmp_path)
+        restart.assert_not_called()
+    else:
+        cluster.connect_cluster(commands, state, tmp_path)
+        restart.assert_called_once_with(commands, state, tmp_path, issuer)
+    assert sleep.call_count == min(missing_reads, 19)
+
+
+def test_arc_rejects_mismatched_kubernetes_issuer(monkeypatch, tmp_path):
+    state = make_state()
+    state["row"]["scenario"]["needs_trust"] = True
+    commands = Mock()
+    commands.az_json.return_value = {
+        "connectivityStatus": "Connected", "oidcIssuerProfile": {"issuerUrl": "https://issuer.example.test/cluster/"},
+    }
+    commands.run.return_value = json.dumps({"issuer": "https://different.example.test/"})
+    monkeypatch.setattr(cluster, "start_cluster", Mock())
+    with pytest.raises(RuntimeError, match="OpenID issuer differs"):
+        cluster.connect_cluster(commands, state, tmp_path)
+
+
+@pytest.mark.parametrize("failed_connects", [1, 3])
+def test_arc_connect_retries_are_bounded(monkeypatch, tmp_path, failed_connects):
+    commands, sleep = Mock(), Mock()
+    failures = iter(range(failed_connects))
+
+    def run(arguments, **_kwargs):
+        if arguments[:3] == ["az", "connectedk8s", "connect"] and next(failures, None) is not None:
+            raise subprocess.CalledProcessError(1, arguments)
+
+    commands.run.side_effect = run
+    commands.az_json.return_value = {"connectivityStatus": "Connected"}
+    monkeypatch.setattr(cluster.time, "sleep", sleep)
+    if failed_connects == 3:
+        with pytest.raises(subprocess.CalledProcessError):
+            cluster.connect_cluster(commands, make_state(), tmp_path)
+        commands.az_json.assert_not_called()
+    else:
+        cluster.connect_cluster(commands, make_state(), tmp_path)
+    assert sleep.call_count == min(failed_connects, 2)
+
+
 @pytest.mark.parametrize("definition", ["164", "167"])
 def test_run_without_admission_still_cleans_after_provision_failure(monkeypatch, tmp_path, definition):
     monkeypatch.setenv("SYSTEM_DEFINITIONID", definition)

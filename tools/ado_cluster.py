@@ -212,24 +212,41 @@ def connect_cluster(commands, state, output):
     common = ["--name", state["cluster"], "--resource-group", state["resourceGroup"]]
     custom = ["--custom-locations-oid", state["customLocationsObjectId"]]
     location = ["--location", state["locations"]["clusterRegion"]] if state.get("health") else []
-    commands.run(["az", "connectedk8s", "connect", *common, *custom, *location], timeout=1800)
+    for attempt in range(3):
+        try:
+            commands.run(["az", "connectedk8s", "connect", *common, *custom, *location], timeout=1800)
+            break
+        except subprocess.CalledProcessError:
+            if attempt == 2:
+                raise
+            print(f"Arc connection attempt {attempt + 1} failed; retrying in 60 seconds.", file=sys.stderr)
+            time.sleep(60)
     commands.run(["az", "connectedk8s", "enable-features", "--features", "custom-locations", "cluster-connect",
                   *common, *custom])
-    trust = state["row"]["scenario"]["needs_trust"]
-    if trust:
+    scenario = state["row"]["scenario"]
+    workload_identity = (
+        scenario["needs_trust"] or scenario["tox_env"] == "python-mgmtactions-int"
+        or (scenario["tox_env"] == "python-livedata-int" and scenario["channel"] == "preview")
+    )
+    if workload_identity:
         commands.run(["az", "connectedk8s", "update", *common, "--enable-oidc-issuer", "--enable-workload-identity"])
     for attempt in range(20):
         cluster = commands.az_json("connectedk8s", "show", *common)
-        if cluster.get("connectivityStatus") == "Connected":
+        issuer = (cluster.get("oidcIssuerProfile") or {}).get("issuerUrl")
+        if cluster.get("connectivityStatus") == "Connected" and (not workload_identity or issuer):
             break
         if attempt == 19:
-            raise RuntimeError("Arc cluster did not become connected.")
+            raise RuntimeError("Arc cluster connectivity or workload identity issuer did not become ready.")
         time.sleep(15)
-    if trust:
-        issuer = cluster["oidcIssuerProfile"]["issuerUrl"]
+    if workload_identity:
         if not issuer.startswith("https://"):
             raise ValueError("Invalid Arc workload identity issuer.")
         start_cluster(commands, state, output, issuer)
+        configuration = json.loads(commands.run(
+            ["kubectl", "get", "--raw", "/.well-known/openid-configuration"], capture=True,
+        ))
+        if configuration.get("issuer") != issuer:
+            raise RuntimeError("Kubernetes OpenID issuer differs from the configured Arc issuer.")
     if state.get("health") and cluster["location"].replace(" ", "").lower() != state["locations"]["clusterRegion"]:
         raise ValueError("Arc cluster location differs from the health profile.")
 
