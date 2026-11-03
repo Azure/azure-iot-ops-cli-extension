@@ -147,9 +147,12 @@ after the matrix to keep the environment referenced throughout the stage.
 This ADO lock does not coordinate GitHub runs: do not run both systems against the
 same resource group concurrently.
 
-The ADO runner captures hook Job/Pod status and bounded container logs while tests
-run, before Helm rollback can remove them. On failure it also attempts namespace
-events and the owned K3s unit journal before cleanup. Sanitized snapshots are
+The ADO runner captures hook Job status, namespace Pod status, and bounded current
+and previous container logs for hooks and unhealthy Pods while tests run, before
+Helm rollback can remove them. On failure it also attempts namespace events and the
+owned K3s unit journal before cleanup. Event snapshots prioritize warnings and recent
+events, retain complete JSON records within the size limit, and report omitted counts.
+Sanitized snapshots are
 published early as `ops-diagnostics-<row>-<attempt>` artifacts and retained under
 `diagnostics` in the normal attempt artifact. Secrets, kubeconfig contents, pod
 environment values and Helm values are not collected. Collection errors are warnings;

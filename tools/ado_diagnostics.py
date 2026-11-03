@@ -65,6 +65,26 @@ def summary(item):
     }
 
 
+def sanitize_json(value):
+    if isinstance(value, str):
+        return sanitize(value)
+    if isinstance(value, dict):
+        return {key: sanitize_json(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [sanitize_json(item) for item in value]
+    return value
+
+
+def problem_pod(pod):
+    status = pod.get("status", {})
+    if status.get("phase") in ("Pending", "Failed"):
+        return True
+    return status.get("phase") == "Running" and any(
+        not entry.get("ready", False) or entry.get("restartCount", 0)
+        for entry in status.get("containerStatuses", [])
+    )
+
+
 class HookCollector:
     def __init__(self, output, directory, unit, artifact):
         self.output = output / "diagnostics"
@@ -83,6 +103,12 @@ class HookCollector:
     def save(self, name, text):
         self.folder.joinpath(name).write_text(sanitize(text)[-LIMIT:], encoding="utf-8")
 
+    def save_json(self, name, value):
+        text = json.dumps(sanitize_json(value), separators=(",", ":"))
+        if len(text) > LIMIT:
+            raise ValueError("Structured diagnostics exceed the evidence size limit.")
+        self.folder.joinpath(name).write_text(text, encoding="utf-8")
+
     def warn(self, operation, error):
         message = f"Hook diagnostics {operation} failed ({type(error).__name__})."
         if message not in self.errors:
@@ -97,29 +123,56 @@ class HookCollector:
             item["metadata"].get("annotations", {}).get("helm.sh/hook")
             or "upgrade" in item["metadata"]["name"]
         )}
-        pods = [item for item in items if item["kind"] == "Pod" and any(
-            owner.get("uid") in jobs for owner in item["metadata"].get("ownerReferences", [])
-        )]
+        pods = [item for item in items if item["kind"] == "Pod"]
         for item in [*jobs.values(), *pods]:
             uid = item["metadata"]["uid"]
             if not re.fullmatch(r"[a-zA-Z0-9-]{1,64}", uid):
                 raise ValueError("Invalid Kubernetes evidence UID.")
-            self.save(f"{uid}.json", json.dumps(summary(item), indent=2))
+            self.save_json(f"{uid}.json", summary(item))
         failed = {uid for uid, item in jobs.items() if item.get("status", {}).get("failed")}
-        self.logs(pods, final)
+        self.logs([pod for pod in pods if problem_pod(pod) or any(
+            owner.get("uid") in jobs for owner in pod["metadata"].get("ownerReferences", [])
+        )], final)
         if final or failed - self.failures:
-            self.save("events.json", command([*self.kubectl, "get", "events", "-o", "json"]))
+            self.events()
         if failed - self.failures and self.uploads < 5:
             self.publish()
         self.failures.update(failed)
 
+    def events(self):
+        items = json.loads(command([*self.kubectl, "get", "events", "-o", "json"]))["items"]
+        items.sort(key=lambda item: (
+            item.get("type") == "Warning",
+            item.get("lastTimestamp") or item.get("eventTime") or item.get("metadata", {}).get("creationTimestamp", ""),
+        ), reverse=True)
+        payload = {"items": [], "omitted": len(items)}
+        remaining = LIMIT - len(json.dumps(payload, separators=(",", ":")))
+        for item in items:
+            record = sanitize_json({
+                key: item.get(key)
+                for key in ("type", "reason", "message", "count", "firstTimestamp", "lastTimestamp", "eventTime")
+            })
+            record["creationTimestamp"] = item.get("metadata", {}).get("creationTimestamp")
+            record["object"] = {
+                key: item.get("involvedObject", {}).get(key) for key in ("kind", "name", "uid")
+            }
+            size = len(json.dumps(record, separators=(",", ":"))) + 1
+            if size > remaining:
+                continue
+            payload["items"].append(record)
+            remaining -= size
+        payload["omitted"] -= len(payload["items"])
+        self.save_json("events.json", payload)
+
     def logs(self, pods, final):
         deadline = time.monotonic() + 20
-        pods.sort(key=lambda pod: pod.get("status", {}).get("phase") != "Failed")
+        pods.sort(key=lambda pod: (pod.get("status", {}).get("phase") != "Failed", not problem_pod(pod)))
         for pod in pods[:24]:
             for entry in pod.get("status", {}).get("initContainerStatuses", []) + (
                 pod.get("status", {}).get("containerStatuses", [])
             ):
+                if entry.get("state", {}).get("waiting") and not entry.get("restartCount", 0):
+                    continue
                 for previous in ([False, True] if entry.get("restartCount", 0) else [False]):
                     remaining = deadline - time.monotonic()
                     if remaining <= 0 or self.stop.is_set() and not final:
