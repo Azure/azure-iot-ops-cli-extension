@@ -12,6 +12,7 @@ import re
 import subprocess
 import threading
 import time
+from pathlib import Path
 from zipfile import ZIP_DEFLATED, ZipFile
 
 
@@ -58,8 +59,14 @@ def summary(item):
         "namespace": metadata.get("namespace"), "owners": metadata.get("ownerReferences", []),
         "hook": metadata.get("annotations", {}).get("helm.sh/hook"),
         "status": item.get("status", {}),
-        "containers": [{"name": value.get("name"), "image": value.get("image")}
+        "containers": [{"name": value.get("name"), "image": value.get("image"),
+                        "securityContext": value.get("securityContext", {})}
                        for key in ("initContainers", "containers") for value in spec.get(key, [])],
+        "securityContext": spec.get("securityContext", {}),
+        "volumeClaims": [
+            {"name": value.get("name"), "claim": value["persistentVolumeClaim"]}
+            for value in spec.get("volumes", []) if "persistentVolumeClaim" in value
+        ],
         "node": spec.get("nodeName"), "serviceAccount": spec.get("serviceAccountName"),
         "backoffLimit": spec.get("backoffLimit"), "activeDeadlineSeconds": spec.get("activeDeadlineSeconds"),
     }
@@ -93,6 +100,7 @@ class HookCollector:
         self.kubectl = ["kubectl", "--kubeconfig", str(directory / "user-config"), "--request-timeout=8s",
                         "--namespace", NAMESPACE]
         self.unit = unit
+        self.directory = directory
         self.artifact = artifact
         self.stop = threading.Event()
         self.thread = None
@@ -190,6 +198,54 @@ class HookCollector:
                     except (OSError, subprocess.SubprocessError, ValueError) as error:
                         self.warn("container logs", error)
 
+    def storage(self):
+        claims = json.loads(command([*self.kubectl, "get", "pvc", "-o", "json"]))["items"]
+        claims = {item["spec"]["volumeName"]: item for item in claims if item.get("spec", {}).get("volumeName")}
+        if not claims:
+            return
+        names = sorted(claims)[:24]
+        if len(names) != len(claims):
+            self.warn("storage claim limit", ValueError("Too many bound claims."))
+        if any(not re.fullmatch(r"[a-zA-Z0-9_.-]{1,253}", name) for name in names):
+            raise ValueError("Invalid persistent volume evidence name.")
+        payload = json.loads(command([*self.kubectl, "get", "pv", *names, "-o", "json"]))
+        deadline = time.monotonic() + 20
+        for volume in payload.get("items", [payload]):
+            name = volume["metadata"]["name"]
+            if name not in names:
+                raise ValueError("Unrequested persistent volume returned.")
+            claim = claims[name]
+            reference = volume["spec"].get("claimRef", {})
+            if (reference.get("namespace") != NAMESPACE
+                    or reference.get("uid") != claim["metadata"]["uid"]
+                    or reference.get("name") != claim["metadata"]["name"]):
+                raise ValueError("Persistent volume does not belong to the selected namespace claim.")
+            record = {
+                "volume": name, "claim": claim["metadata"]["name"], "claimStatus": claim.get("status", {}),
+                "storageClass": volume["spec"].get("storageClassName"),
+                "accessModes": volume["spec"].get("accessModes"), "volumeMode": volume["spec"].get("volumeMode"),
+            }
+            path = volume["spec"].get("local", {}).get("path") or volume["spec"].get("hostPath", {}).get("path")
+            if path:
+                record["path"] = path
+                roots = (self.directory / "data/storage", Path("/var/lib/rancher/k3s/storage"))
+                owned = any(Path(path).parent == root for root in roots) and Path(path).name.startswith(
+                    f"pvc-{claim['metadata']['uid']}_{NAMESPACE}_",
+                )
+                record["ownedLocalPath"] = owned
+                if owned:
+                    remaining = deadline - time.monotonic()
+                    if remaining <= 0:
+                        self.warn("storage inspection budget", TimeoutError())
+                        return
+                    record["modeUidGidType"] = command(
+                        ["sudo", "-n", "stat", "--printf=%a %u %g %F\\n", "--", path],
+                        timeout=min(5, remaining),
+                    ).strip()
+                else:
+                    self.warn("storage path ownership", ValueError("Unverified local volume path."))
+            self.save_json(f"storage-{name}.json", record)
+
     def watch(self):
         while not self.stop.is_set():
             try:
@@ -222,6 +278,11 @@ class HookCollector:
             return
         for name, collect in (
             ("final snapshot", lambda: self.snapshot(final=True)),
+            ("storage snapshot", self.storage),
+            ("K3s unit settings", lambda: self.save("k3s-unit-settings.log", command(
+                ["sudo", "-n", "systemctl", "show", self.unit, "--property=UMask", "--property=User",
+                 "--property=Group"],
+            ))),
             ("K3s journal", lambda: self.save("k3s-journal.log", journal(self.unit))),
         ):
             try:

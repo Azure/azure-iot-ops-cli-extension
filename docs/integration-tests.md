@@ -152,6 +152,9 @@ and previous container logs for hooks and unhealthy Pods while tests run, before
 Helm rollback can remove them. On failure it also attempts namespace events and the
 owned K3s unit journal before cleanup. Event snapshots prioritize warnings and recent
 events, retain complete JSON records within the size limit, and report omitted counts.
+Failed attempts also retain Pod/container security contexts, bound volume metadata,
+and read-only permission inspection of verified, owned local-path volume directories.
+The collector never changes filesystem permissions.
 Sanitized snapshots are
 published early as `ops-diagnostics-<row>-<attempt>` artifacts and retained under
 `diagnostics` in the normal attempt artifact. Secrets, kubeconfig contents, pod

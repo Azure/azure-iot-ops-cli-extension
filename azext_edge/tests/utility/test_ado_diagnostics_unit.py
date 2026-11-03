@@ -11,6 +11,8 @@ import subprocess
 from unittest.mock import Mock
 from zipfile import ZipFile
 
+import pytest
+
 from azext_edge.tests.utility.test_ado_integration_unit import cluster
 
 
@@ -73,8 +75,10 @@ def test_crashing_runtime_pod_logs_are_retained_without_a_hook(tmp_path, monkeyp
     collector = diagnostics.HookCollector(tmp_path, tmp_path, "ops-k3s-owned", "ops-diagnostics-owned-1")
     pod = {
         "kind": "Pod", "metadata": {"uid": "broker-uid", "name": "aio-broker-backend-1-0"},
-        "spec": {"containers": [{"name": "broker", "image": "example/broker:1",
-                                "env": [{"name": "PASSWORD", "value": "do-not-export"}]}]},
+        "spec": {"securityContext": {"fsGroup": 1000},
+                 "containers": [{"name": "broker", "image": "example/broker:1",
+                                 "securityContext": {"runAsUser": 1000},
+                                 "env": [{"name": "PASSWORD", "value": "do-not-export"}]}]},
         "status": {"phase": "Running", "containerStatuses": [
             {"name": "broker", "ready": False, "restartCount": 2,
              "state": {"waiting": {"reason": "CrashLoopBackOff"}}},
@@ -99,6 +103,8 @@ def test_crashing_runtime_pod_logs_are_retained_without_a_hook(tmp_path, monkeyp
     assert not any("logs" in arguments and "healthy" in arguments for arguments in calls)
     saved = (collector.folder / "broker-uid.json").read_text()
     assert json.loads(saved)["status"]["containerStatuses"][0]["restartCount"] == 2
+    assert json.loads(saved)["securityContext"] == {"fsGroup": 1000}
+    assert json.loads(saved)["containers"][0]["securityContext"] == {"runAsUser": 1000}
     assert "do-not-export" not in saved
     monkeypatch.setattr(diagnostics, "command", Mock(return_value='{"items": []}'))
     collector.snapshot()
@@ -128,6 +134,44 @@ def test_large_events_remain_valid_json_and_prioritize_warnings(tmp_path, monkey
     assert "private-value" not in text
     collector.save_json("status.json", {"message": "authorization: private-value", "phase": "Failed"})
     assert json.loads((collector.folder / "status.json").read_text())["phase"] == "Failed"
+
+
+def test_storage_inspection_is_bound_to_owned_namespace_claim_paths(tmp_path, monkeypatch, capsys):
+    collector = diagnostics.HookCollector(tmp_path, tmp_path / "owned", "ops-k3s-owned", "ops-diagnostics-owned-1")
+    claims = [
+        {"metadata": {"uid": f"claim-{index}", "name": f"claim-{index}"},
+         "spec": {"volumeName": f"pv-{index}"}, "status": {"phase": "Bound"}} for index in range(2)
+    ]
+    owned_path = str(tmp_path / "owned/data/storage/pvc-claim-0_azure-iot-operations_claim-0")
+    volumes = [
+        {"metadata": {"name": f"pv-{index}"}, "spec": {
+            "claimRef": {"namespace": diagnostics.NAMESPACE, "uid": f"claim-{index}", "name": f"claim-{index}"},
+            "hostPath": {"path": path}, "storageClassName": "local-path",
+        }} for index, path in enumerate([owned_path, "/unowned/directory"])
+    ]
+    calls = []
+
+    def run(arguments, **_kwargs):
+        calls.append(arguments)
+        if "pvc" in arguments:
+            return json.dumps({"items": claims})
+        if "pv" in arguments:
+            return json.dumps({"items": volumes})
+        assert arguments[-1] == owned_path
+        return "755 0 0 directory\n"
+
+    monkeypatch.setattr(diagnostics, "command", run)
+    collector.storage()
+    saved = json.loads((collector.folder / "storage-pv-0.json").read_text())
+    assert saved["modeUidGidType"] == "755 0 0 directory" and saved["ownedLocalPath"]
+    assert not json.loads((collector.folder / "storage-pv-1.json").read_text())["ownedLocalPath"]
+    assert not any("/unowned/directory" in arguments for arguments in calls)
+    assert "storage path ownership" in capsys.readouterr().out
+    volumes[0]["spec"]["claimRef"]["namespace"] = "another-namespace"
+    calls.clear()
+    with pytest.raises(ValueError, match="does not belong"):
+        collector.storage()
+    assert not any("stat" in arguments for arguments in calls)
 
 
 def test_api_failure_still_retains_owned_k3s_journal_and_reports_error(tmp_path, monkeypatch, capsys):
