@@ -209,9 +209,9 @@ def run_title(value, mode):
         if mode != "Integration tests":
             raise ValueError("Health run titles require live integration mode.")
         kind = "health"
-        region = "cluster " + value["locations"]["clusterRegion"]
+        region = value["locations"]["clusterRegion"]
     else:
-        kind, region = "integration", "cluster default"
+        kind, region = "integration", "default"
     names, channels = set(), set()
     for row in value["rows"]:
         scenario = row["scenario"]

@@ -174,7 +174,7 @@ def test_title_uses_frozen_scenarios_channels_and_default_region(monkeypatch, tm
         monkeypatch.setenv("BUILD_BUILDNUMBER", current)
         pipeline.title(tmp_path)
         assert capsys.readouterr().out.splitlines()[0] == (
-            "##vso[build.updatebuildnumber]ops-integration-123 (cluster default) "
+            "##vso[build.updatebuildnumber]ops-integration-123 (default) "
             "(edge,runtime-channel) (dry-run,stable,preview)"
         )
         assert (tmp_path / "plan.json").read_bytes() == original
@@ -189,7 +189,7 @@ def test_title_compacts_large_scenario_selection_and_identifies_release_child(mo
     value["releaseBuildId"] = "456"
     result = pipeline.run_title(value, "Integration tests")
     assert result == (
-        "ops-integration-123 (cluster default) "
+        "ops-integration-123 (default) "
         "(edge,broker-diagnostics-removal,insecure-listener,rpsaas +7) (release-child 456,stable)"
     )
     assert len(result) <= 255

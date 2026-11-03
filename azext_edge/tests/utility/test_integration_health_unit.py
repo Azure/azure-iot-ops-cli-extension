@@ -99,7 +99,7 @@ def test_ops_rerun_pins_original_library_configuration(setup_health, tmp_path, m
     pipeline.plan(tmp_path / "second")
     assert pipeline.read(tmp_path / "second/plan.json") == original
     assert pipeline.run_title(original, "Integration tests") == (
-        "ops-health-123 (cluster westus2) (runtime-channel) (stable)"
+        "ops-health-123 (westus2) (runtime-channel) (stable)"
     )
     lookup.assert_not_called()
 
