@@ -144,6 +144,22 @@ def test_plan_reuses_channel_matrix(monkeypatch, tmp_path, capsys):
     assert "isOutput=true" in capsys.readouterr().out
 
 
+@pytest.mark.parametrize("selection", ["edge", "trustbundle", "edge,trustbundle"])
+def test_plan_serializes_only_wlif_without_losing_rows(monkeypatch, tmp_path, selection):
+    monkeypatch.setenv("OPS_SCENARIOS", selection)
+    monkeypatch.setenv("OPS_CHANNELS", "stable,preview")
+    outputs = {}
+    monkeypatch.setattr(pipeline, "output_variable", lambda name, value: outputs.update({name: value}))
+    pipeline.plan(tmp_path)
+    rows = pipeline.read(tmp_path / "plan.json")["rows"]
+    parallel, trust = (json.loads(outputs[name + "Matrix"]) for name in ("parallel", "trustBundle"))
+    assert not set(parallel) & set(trust)
+    assert set(parallel) | set(trust) == {row["key"] for row in rows}
+    assert set(trust) == {row["key"] for row in rows if row["scenario"]["tox_env"] == "python-wlif-int"}
+    assert outputs["hasParallel"] == str(bool(parallel)).lower()
+    assert outputs["hasTrustBundle"] == str(bool(trust)).lower()
+
+
 def test_title_uses_frozen_scenarios_channels_and_default_region(monkeypatch, tmp_path, capsys):
     monkeypatch.setenv("OPS_SCENARIOS", "edge,runtime-channel")
     monkeypatch.setenv("OPS_CHANNELS", "stable,preview")
@@ -456,7 +472,15 @@ def test_cluster_waits_for_its_registered_ready_node(monkeypatch, tmp_path, fail
     binary.write_bytes(b"offline-k3s")
     commands = Mock()
     error = subprocess.CalledProcessError(1, ["kubectl", "wait"])
-    commands.run.side_effect = [None] + [error] * failed_waits + [None]
+    failures = iter(range(failed_waits))
+
+    def run(arguments, **_kwargs):
+        if "wait" in arguments and next(failures, None) is not None:
+            raise error
+
+    commands.run.side_effect = run
+    monkeypatch.setattr(cluster.diagnostics, "journal", Mock(return_value="unclassified startup failure"))
+    monkeypatch.setattr(cluster.diagnostics, "command", Mock(return_value="active"))
     sleep = Mock()
     copy_config = Mock()
     monkeypatch.setattr(cluster.time, "sleep", sleep)
@@ -473,9 +497,9 @@ def test_cluster_waits_for_its_registered_ready_node(monkeypatch, tmp_path, fail
         copy_config.assert_called_once()
         assert cluster.os.environ["KUBECONFIG"] == str(directory / "user-config")
 
-    waits = commands.run.call_args_list[1:]
+    waits = [call for call in commands.run.call_args_list if "wait" in call.args[0]]
     assert len(waits) == min(failed_waits + 1, 60)
-    assert sleep.call_count == min(failed_waits, 59)
+    assert sleep.call_count == min(failed_waits, 59) + (failed_waits < 60)
     for call in waits:
         assert call.args[0] == [
             "sudo", "-n", str(binary), "kubectl", "--kubeconfig", str(directory / "config"),
@@ -483,6 +507,36 @@ def test_cluster_waits_for_its_registered_ready_node(monkeypatch, tmp_path, fail
         ]
         assert call.kwargs == {"timeout": 20}
     assert pipeline.read(tmp_path / "state.json")["clusterStarted"] is True
+
+
+@pytest.mark.parametrize("reason,active,retries", [
+    ("cloud-controller-manager exited: extension-apiserver-authentication forbidden", "inactive", 2),
+    ("cloud-controller-manager exited: extension-apiserver-authentication forbidden", "active", 1),
+    ("unclassified fatal exit", "inactive", 1),
+])
+def test_cluster_restarts_only_the_classified_exited_startup_race(monkeypatch, tmp_path, reason, active, retries):
+    state = make_state()
+    directory, unit = cluster.cluster_paths(state)
+    directory.mkdir()
+    (directory / "k3s").write_bytes(b"offline")
+    commands = Mock()
+    error = subprocess.CalledProcessError(1, ["ready"])
+    wait = Mock(side_effect=[error, None])
+    monkeypatch.setattr(cluster, "wait_cluster", wait)
+    monkeypatch.setattr(cluster.diagnostics, "journal", Mock(return_value=reason))
+    monkeypatch.setattr(cluster.diagnostics, "command", Mock(return_value=active))
+    monkeypatch.setattr(cluster.time, "sleep", Mock())
+    monkeypatch.setattr(cluster.subprocess, "run", Mock())
+    if retries == 1:
+        with pytest.raises(subprocess.CalledProcessError):
+            cluster.start_cluster(commands, state, tmp_path)
+    else:
+        cluster.start_cluster(commands, state, tmp_path)
+    assert wait.call_count == retries
+    starts = [call.args[0] for call in commands.run.call_args_list if "systemd-run" in call.args[0]]
+    assert len(starts) == retries
+    assert all(arguments[arguments.index("--unit") + 1] == unit for arguments in starts)
+    assert list((tmp_path / "diagnostics").glob("k3s-startup-*.log"))
 
 
 @pytest.mark.parametrize("tox_env,channel,trust,enabled", [
@@ -593,13 +647,19 @@ def test_run_without_admission_still_cleans_after_provision_failure(monkeypatch,
     monkeypatch.setattr(cluster, "check_account", Mock())
     monkeypatch.setattr(cluster, "resource_ids", Mock(return_value=set()))
     monkeypatch.setattr(cluster, "start_cluster", Mock(side_effect=RuntimeError("offline setup failure")))
-    cleanup = Mock()
+    collector = Mock()
+    monkeypatch.setattr(cluster.diagnostics, "HookCollector", Mock(return_value=collector))
+    order = []
+    collector.finish.side_effect = lambda failed: order.append(("diagnostics", failed))
+    cleanup = Mock(side_effect=lambda _output: order.append(("cleanup", True)))
     monkeypatch.setattr(cluster, "cleanup", cleanup)
     with pytest.raises(RuntimeError, match="offline setup failure"):
         cluster.run(tmp_path)
     lookup.assert_not_called()
     cluster.start_cluster.assert_called_once()
     cleanup.assert_called_once_with(tmp_path)
+    assert order == [("diagnostics", True), ("cleanup", True)]
+    assert cluster.Commands.call_args.kwargs["budget"] == 360 * 60
     identity.terminate.assert_called_once()
 
 
@@ -778,7 +838,8 @@ def test_dependency_inventory_rejects_empty_or_failed_collection(tmp_path, monke
 def test_yaml_exposes_installed_dependencies_even_after_test_failure():
     template = yaml.safe_load((ROOT / ".azure-devops/templates/integration-pipeline.yml").read_text())
     live = template["stages"][1]["${{ if eq(parameters.mode, 'Integration tests') }}"]
-    jobs = {stage["stage"]: stage["jobs"][0]["steps"] for stage in live}
+    scenario_job = yaml.safe_load((ROOT / ".azure-devops/templates/integration-scenario.yml").read_text())["jobs"][0]
+    jobs = {stage["stage"]: stage["jobs"][0].get("steps", scenario_job["steps"]) for stage in live}
     for stage, interpreter in (("Build", "python"), ("Lint", ".tox/lint/bin/python"),
                                ("Unit", ".tox/python/bin/python")):
         step = next(step for step in jobs[stage] if " inventory" in step.get("bash", ""))
@@ -822,15 +883,22 @@ def test_yaml_keeps_dry_run_separate_and_reuses_existing_tests():
     assert title_step["bash"] == "python tools/ado_integration.py title --output plan"
     assert title_step["env"] == {"OPS_MODE": "${{ parameters.mode }}"}
     live = value["stages"][1]["${{ if eq(parameters.mode, 'Integration tests') }}"]
-    assert [stage["stage"] for stage in live] == ["Build", "Lint", "Unit", "Integration", "Qualify"]
+    assert [stage["stage"] for stage in live] == ["Build", "Lint", "Unit", "Integration", "TrustBundle", "Qualify"]
     integration = next(stage for stage in live if stage["stage"] == "Integration")
     assert integration["dependsOn"] == ["Plan", "Build", "Lint"]
     unit = next(stage for stage in live if stage["stage"] == "Unit")
     assert unit["dependsOn"] == "Plan"
     qualify = next(stage for stage in live if stage["stage"] == "Qualify")
-    assert qualify["dependsOn"] == ["Plan", "Build", "Lint", "Unit", "Integration"]
-    assert "condition" not in qualify
-    job = integration["jobs"][0]
+    assert qualify["dependsOn"] == ["Plan", "Build", "Lint", "Unit", "Integration", "TrustBundle"]
+    assert "in(dependencies.TrustBundle.result, 'Succeeded', 'Skipped')" in qualify["condition"]
+    trust = next(stage for stage in live if stage["stage"] == "TrustBundle")
+    assert trust["lockBehavior"] == "sequential"
+    assert trust["jobs"][0]["parameters"]["maxParallel"] == 1
+    assert trust["jobs"][1]["dependsOn"] == "Scenario"
+    assert "parameters.resourceGroup" in trust["jobs"][1]["environment"]
+    assert "parameters.subscriptionId" in trust["jobs"][1]["environment"]
+    assert "hasTrustBundle" in trust["condition"] and "hasParallel" in integration["condition"]
+    job = yaml.safe_load((ROOT / ".azure-devops/templates/integration-scenario.yml").read_text())["jobs"][0]
     assert job["displayName"] == ""
     assert all("scenario" not in step.get("displayName", "").lower() for step in job["steps"])
     assert job["pool"] == {
@@ -851,11 +919,11 @@ def test_yaml_keeps_dry_run_separate_and_reuses_existing_tests():
     }
     assert all("pool" not in stage for stage in live)
     assert all("pool" not in job for stage in live if stage["stage"] != "Integration" for job in stage["jobs"])
-    assert job["strategy"]["maxParallel"] == 0
-    assert job["${{ else }}"]["timeoutInMinutes"] == "${{ parameters.scenarioTimeoutMinutes }}"
+    assert job["strategy"]["maxParallel"] == "${{ parameters.maxParallel }}"
+    assert job["${{ elseif eq(parameters.configuration.scenarioTimeoutMinutes, 180) }}"]["timeoutInMinutes"] == 240
     azure = [step for step in job["steps"] if step.get("task") == "AzureCLI@2"]
     assert len(azure) == 2 and azure[1]["condition"] == "always()"
     assert azure[0]["inputs"]["addSpnToEnvironment"] is True
     assert "continueOnError" not in json.dumps(live)
     assert "SYSTEM_ACCESSTOKEN" in azure[0]["env"]
-    assert azure[0]["env"]["${{ else }}"]["OPS_SCENARIO_TIMEOUT_MINUTES"] == "${{ parameters.scenarioTimeoutMinutes }}"
+    assert azure[0]["env"]["OPS_SCENARIO_TIMEOUT_MINUTES"] == "$(scenarioTimeoutMinutes)"

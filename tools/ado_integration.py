@@ -190,10 +190,15 @@ def plan(output):
         value["releaseBuildId"] = parent
     write(output / "plan.json", value)
     print(json.dumps(value, indent=2))
-    output_variable("matrix", json.dumps({
+    matrix = {
         row["key"]: {"row": row["key"], "python": row["python"], "scenarioTimeoutMinutes": scenario_timeout()}
         for row in rows
-    }))
+    }
+    trust = {row["key"] for row in rows if row["scenario"]["tox_env"] == "python-wlif-int"}
+    for name, selected in (("parallel", {key: row for key, row in matrix.items() if key not in trust}),
+                           ("trustBundle", {key: row for key, row in matrix.items() if key in trust})):
+        output_variable(name + "Matrix", json.dumps(selected))
+        output_variable("has" + name[0].upper() + name[1:], str(bool(selected)).lower())
     output_variable("artifact", f"ops-plan-{required('SYSTEM_JOBATTEMPT')}")
 
 

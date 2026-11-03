@@ -166,6 +166,8 @@ stages:
                   python -m tox run -e lint
                   .tox/lint/bin/python -m flake8 tools/ado_integration.py tools/ado_cluster.py tools/ado_auth.py --config setup.cfg
                   .tox/lint/bin/python -m pylint tools/ado_integration.py tools/ado_cluster.py tools/ado_auth.py --rcfile .pylintrc
+                  .tox/lint/bin/python -m flake8 tools/ado_diagnostics.py --config setup.cfg
+                  .tox/lint/bin/python -m pylint tools/ado_diagnostics.py --rcfile .pylintrc
                   .tox/lint/bin/python -m flake8 tools/integration_health.py --config setup.cfg
                   .tox/lint/bin/python -m pylint tools/integration_health.py --rcfile .pylintrc
                   .tox/lint/bin/python -m flake8 tools/release_pipeline.py --config setup.cfg
@@ -226,124 +228,55 @@ stages:
       - stage: Integration
         displayName: Integration
         dependsOn: [Plan, Build, Lint]
+        condition: and(succeeded(), eq(dependencies.Plan.outputs['Plan.plan.hasParallel'], 'true'))
         variables:
           planArtifact: $[ stageDependencies.Plan.Plan.outputs['plan.artifact'] ]
           candidateArtifact: $[ stageDependencies.Build.Build.outputs['candidate.artifact'] ]
           candidateDigest: $[ stageDependencies.Build.Build.outputs['candidate.digest'] ]
         jobs:
-          - job: Scenario
-            displayName: ''
-            pool:
-              name: iotupx-ops-integration
-              demands:
-                - ImageOverride -equals iotupx-1espt-ubuntu2404
-            ${{ if parameters.health }}:
-              timeoutInMinutes: 360
-            ${{ else }}:
-              timeoutInMinutes: ${{ parameters.scenarioTimeoutMinutes }}
-            cancelTimeoutInMinutes: 20
+          - template: integration-scenario.yml
+            parameters:
+              configuration: ${{ parameters }}
+              matrix: $[ stageDependencies.Plan.Plan.outputs['plan.parallelMatrix'] ]
+
+      - stage: TrustBundle
+        displayName: Trust Bundle
+        dependsOn: [Plan, Build, Lint]
+        condition: and(succeeded(), eq(dependencies.Plan.outputs['Plan.plan.hasTrustBundle'], 'true'))
+        lockBehavior: sequential
+        variables:
+          planArtifact: $[ stageDependencies.Plan.Plan.outputs['plan.artifact'] ]
+          candidateArtifact: $[ stageDependencies.Build.Build.outputs['candidate.artifact'] ]
+          candidateDigest: $[ stageDependencies.Build.Build.outputs['candidate.digest'] ]
+        jobs:
+          - template: integration-scenario.yml
+            parameters:
+              configuration: ${{ parameters }}
+              matrix: $[ stageDependencies.Plan.Plan.outputs['plan.trustBundleMatrix'] ]
+              maxParallel: 1
+          # Environment checks guard the whole stage, including the serial matrix above.
+          - deployment: TrustBundleLock
+            dependsOn: Scenario
+            condition: always()
+            timeoutInMinutes: 5
+            environment: ${{ format('ops-wlif-{0}-{1}', lower(parameters.subscriptionId), lower(parameters.resourceGroup)) }}
             strategy:
-              maxParallel: 0
-              matrix: $[ stageDependencies.Plan.Plan.outputs['plan.matrix'] ]
-            steps:
-              - task: UsePythonVersion@0
-                displayName: Select Python
-                inputs:
-                  versionSpec: $(python)
-              - task: DownloadPipelineArtifact@2
-                displayName: Download artifacts
-                inputs:
-                  buildType: current
-                  artifactName: $(planArtifact)
-                  targetPath: $(Pipeline.Workspace)/plan
-              - task: DownloadPipelineArtifact@2
-                displayName: Download artifacts
-                inputs:
-                  buildType: current
-                  artifactName: $(candidateArtifact)
-                  targetPath: $(Pipeline.Workspace)/candidate
-              - bash: |
-                  set -euo pipefail
-                  python -m pip install -r dev_requirements.txt azure-cli azure-cli-testsdk pytest-randomly PyYAML
-                  python tools/ado_integration.py prepare --output attempt
-                  python tools/ado_integration.py inventory \
-                    --output "$(Build.SourcesDirectory)/dependency-inventory/scenario" \
-                    --extension-dir "$(Agent.TempDirectory)/azure-cli-extensions/azure-iot-ops"
-                displayName: Prepare tests
-                env:
-                  OPS_RELEASE_BUILD_ID: ${{ parameters.releaseBuildId }}
-                  OPS_PLAN: $(Pipeline.Workspace)/plan/plan.json
-                  OPS_CANDIDATE: $(Pipeline.Workspace)/candidate
-                  OPS_CANDIDATE_DIGEST: $(candidateDigest)
-                  OPS_ROW: $(row)
-                  AZURE_EXTENSION_DIR: $(Agent.TempDirectory)/azure-cli-extensions
-              - publish: attempt/state.json
-                artifact: ops-manifest-$(row)-$(System.JobAttempt)
-                displayName: Publish resource manifest
-              - task: AzureCLI@2
-                displayName: Run tests
-                inputs:
-                  azureSubscription: ${{ parameters.azureServiceConnection }}
-                  addSpnToEnvironment: true
-                  visibleAzLogin: false
-                  scriptType: bash
-                  scriptLocation: inlineScript
-                  inlineScript: |
-                    set -euo pipefail
-                    export AZURE_CLIENT_ID="$servicePrincipalId" AZURE_TENANT_ID="$tenantId"
-                    python tools/ado_cluster.py run --output attempt
-                env:
-                  SYSTEM_ACCESSTOKEN: $(System.AccessToken)
-                  OPS_SUBSCRIPTION: ${{ parameters.subscriptionId }}
-                  OPS_RESOURCE_GROUP: ${{ parameters.resourceGroup }}
-                  ${{ if parameters.health }}:
-                    OPS_SCENARIO_TIMEOUT_MINUTES: $(scenarioTimeoutMinutes)
-                  ${{ else }}:
-                    OPS_SCENARIO_TIMEOUT_MINUTES: ${{ parameters.scenarioTimeoutMinutes }}
-                  AZURE_EXTENSION_DIR: $(Agent.TempDirectory)/azure-cli-extensions
-                  PYTHONUNBUFFERED: '1'
-              - task: AzureCLI@2
-                condition: always()
-                displayName: Clean up
-                inputs:
-                  azureSubscription: ${{ parameters.azureServiceConnection }}
-                  visibleAzLogin: false
-                  scriptType: bash
-                  scriptLocation: inlineScript
-                  inlineScript: python tools/ado_cluster.py cleanup --output attempt
-                env:
-                  OPS_SUBSCRIPTION: ${{ parameters.subscriptionId }}
-                  OPS_RESOURCE_GROUP: ${{ parameters.resourceGroup }}
-                  AZURE_EXTENSION_DIR: $(Agent.TempDirectory)/azure-cli-extensions
-              - bash: >-
-                  python tools/ado_integration.py inventory
-                  --output "$(Build.SourcesDirectory)/dependency-inventory/scenario"
-                  --extension-dir "$(Agent.TempDirectory)/azure-cli-extensions/azure-iot-ops"
-                condition: always()
-                displayName: Refresh dependencies
-              - template: release-feed.yml
-                parameters:
-                  condition: always()
-              - bash: python tools/ado_integration.py report --output attempt
-                condition: always()
-                displayName: Record results
-              - task: PublishTestResults@2
-                displayName: Publish results
-                condition: always()
-                inputs:
-                  testResultsFormat: JUnit
-                  testResultsFiles: attempt/junit/*.xml
-                  testRunTitle: Ops $(row) attempt $(System.JobAttempt)
-                  failTaskOnFailedTests: true
-                  failTaskOnMissingResultsFile: true
-              - publish: attempt
-                displayName: Publish results
-                condition: always()
-                artifact: ops-attempt-$(row)-$(System.JobAttempt)
+              runOnce:
+                deploy:
+                  steps:
+                    - download: none
+                    - bash: echo "Trust Bundle stage finished."
+                      displayName: Release Trust Bundle lock
 
       - stage: Qualify
         displayName: Results
-        dependsOn: [Plan, Build, Lint, Unit, Integration]
+        dependsOn: [Plan, Build, Lint, Unit, Integration, TrustBundle]
+        condition: >-
+          and(not(canceled()), eq(dependencies.Plan.result, 'Succeeded'),
+          eq(dependencies.Build.result, 'Succeeded'), eq(dependencies.Lint.result, 'Succeeded'),
+          eq(dependencies.Unit.result, 'Succeeded'),
+          in(dependencies.Integration.result, 'Succeeded', 'Skipped'),
+          in(dependencies.TrustBundle.result, 'Succeeded', 'Skipped'))
         variables:
           planArtifact: $[ stageDependencies.Plan.Plan.outputs['plan.artifact'] ]
           candidateArtifact: $[ stageDependencies.Build.Build.outputs['candidate.artifact'] ]

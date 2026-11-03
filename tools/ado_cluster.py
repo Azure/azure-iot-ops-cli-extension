@@ -21,6 +21,7 @@ from xml.etree import ElementTree
 
 import yaml
 
+import ado_diagnostics as diagnostics
 from ado_integration import (
     ROOT, expected_locations, expected_phases, junit_results, producer, read, required, scenario_timeout, write,
 )
@@ -44,7 +45,7 @@ class Commands:
         if self.deadline is not None:
             timeout = min(timeout, self.deadline - time.monotonic())
             if timeout <= 0:
-                raise TimeoutError("The configured health scenario execution budget expired.")
+                raise TimeoutError("The configured scenario execution budget expired.")
         # The finally block owns bounded termination of the entire subprocess group.
         process = subprocess.Popen(  # pylint: disable=consider-using-with
             arguments, stdout=subprocess.PIPE if capture else None, text=True,
@@ -155,6 +156,23 @@ def cluster_paths(state):
     return directory, f"ops-k3s-{state['suffix']}"
 
 
+def wait_cluster(commands, state, directory, unit):
+    kubectl = ["sudo", "-n", str(directory / "k3s"), "kubectl", "--kubeconfig", str(directory / "config")]
+    for attempt in range(60):
+        commands.run(["sudo", "-n", "systemctl", "is-active", "--quiet", unit], timeout=10)
+        try:
+            commands.run([*kubectl, "wait", "--for=condition=Ready", f"node/{state['cluster']}",
+                          "--timeout=5s"], timeout=20)
+            commands.run([*kubectl, "get", "--raw=/readyz", "--request-timeout=5s"], timeout=10)
+            time.sleep(5)
+            commands.run(["sudo", "-n", "systemctl", "is-active", "--quiet", unit], timeout=10)
+            return
+        except subprocess.CalledProcessError:
+            if attempt == 59:
+                raise
+            time.sleep(5)
+
+
 def start_cluster(commands, state, output, issuer=None):
     directory, unit = cluster_paths(state)
     directory.mkdir(parents=True, exist_ok=True)
@@ -181,16 +199,31 @@ def start_cluster(commands, state, output, issuer=None):
     if issuer:
         arguments += ["--kube-apiserver-arg", f"service-account-issuer={issuer}",
                       "--kube-apiserver-arg", "service-account-max-token-expiration=24h"]
-    commands.run(arguments)
-    for attempt in range(60):
+    for attempt in range(2):
+        started = time.time()
+        commands.run(arguments)
         try:
-            commands.run(["sudo", "-n", str(binary), "kubectl", "--kubeconfig", str(directory / "config"),
-                          "wait", "--for=condition=Ready", f"node/{state['cluster']}", "--timeout=5s"], timeout=20)
+            wait_cluster(commands, state, directory, unit)
             break
         except subprocess.CalledProcessError:
-            if attempt == 59:
+            log = diagnostics.journal(unit, since=started)
+            folder = output / "diagnostics"
+            folder.mkdir(exist_ok=True)
+            (folder / f"k3s-startup-{int(started)}-{attempt + 1}.log").write_text(
+                diagnostics.sanitize(log)[-diagnostics.LIMIT:], encoding="utf-8",
+            )
+            retryable = re.search(
+                r"cloud-controller-manager exited:.*extension-apiserver-authentication.*forbidden", log,
+            )
+            # --collect can unload an exited unit: show then returns 1 with state inactive.
+            status = diagnostics.command(
+                ["sudo", "-n", "systemctl", "show", unit, "--property=ActiveState", "--value"],
+                accepted_codes=(0, 1),
+            ).strip()
+            if attempt or not retryable or status not in {"inactive", "failed"}:
                 raise
-            time.sleep(5)
+            print("Retrying the known K3s cloud-controller-manager startup race once.", flush=True)
+            time.sleep(10)
     config = directory / "user-config"
     with config.open("w", encoding="utf-8") as stream:
         subprocess.run(["sudo", "-n", "cat", str(directory / "config")], stdout=stream, check=True)
@@ -335,7 +368,7 @@ def test_phase(commands, state, output, phase, marker):
 
 def smoke(commands, state, output):
     diagnostics = output / "diagnostics"
-    diagnostics.mkdir()
+    diagnostics.mkdir(exist_ok=True)
     suite = ElementTree.Element("testsuite", name="ops-smoke")
     arguments = [
         ["support", "create-bundle"], ["support", "create-bundle", "--svc", "broker", "--broker-traces"],
@@ -427,16 +460,22 @@ def run(output):
     state = read(output / "state.json")
     validate_state(state)
     auth = None
+    collector = None
     try:
         auth = start_auth(output)
-        commands = Commands(auth, budget=scenario_timeout() * 60 if state.get("health") else None)
+        commands = Commands(auth, budget=scenario_timeout() * 60)
         check_account(commands, state)
         commands.az_json("group", "show", "--name", state["resourceGroup"])
         if resource_ids(commands, state) & {value.lower() for value in state["resources"].values()}:
             raise ValueError("Attempt resource names already exist; refusing reuse.")
         state["ownershipChecked"] = True
         write(output / "state.json", state)
+        directory, unit = cluster_paths(state)
+        collector = diagnostics.HookCollector(
+            output, directory, unit, f"ops-diagnostics-{state['row']['key']}-{state['attempt']}",
+        )
         start_cluster(commands, state, output)
+        collector.start()
         if state["row"]["scenario"]["needs_trust"]:
             configure_trust(commands)
         connect_cluster(commands, state, output)
@@ -458,11 +497,23 @@ def run(output):
         state["status"] = "passed"
         write(output / "state.json", state)
     finally:
+        failed = sys.exc_info()[0] is not None
         try:
-            cleanup(output)
+            if collector is not None:
+                try:
+                    collector.finish(failed)
+                except (OSError, RuntimeError, subprocess.SubprocessError, ValueError) as error:
+                    collector.warn("finalization", error)
         finally:
-            if auth is not None:
-                stop_auth(auth)
+            try:
+                cleanup(output)
+            except (OSError, RuntimeError, subprocess.SubprocessError, ValueError) as error:
+                print(f"##vso[task.logissue type=error]Cleanup failed ({type(error).__name__}).", flush=True)
+                if not failed:
+                    raise
+            finally:
+                if auth is not None:
+                    stop_auth(auth)
 
 
 def main():

@@ -136,6 +136,28 @@ older workflows without the group are not coordinated. Cleanup failures still ne
 investigation: the lock lasts through cleanup attempts, not until successful deletion
 is independently guaranteed.
 
+Azure Pipelines Integration and Health use the same split: ordinary scenarios run
+in parallel, while `TrustBundle` runs its matrix with `maxParallel: 1`. Before using
+a resource group, create the environment `ops-wlif-<subscription-id>-<resource-group>`
+(lowercase), add an **Exclusive lock** check, and authorize only the Integration
+and Health pipelines that use it. The environment has no deployed resources.
+Its check guards the whole Trust Bundle stage; `lockBehavior: sequential` queues
+other runs rather than canceling them. A `TrustBundleLock` deployment job finishes
+after the matrix to keep the environment referenced throughout the stage.
+This ADO lock does not coordinate GitHub runs: do not run both systems against the
+same resource group concurrently.
+
+The ADO runner captures hook Job/Pod status and bounded container logs while tests
+run, before Helm rollback can remove them. On failure it also attempts namespace
+events and the owned K3s unit journal before cleanup. Sanitized snapshots are
+published early as `ops-diagnostics-<row>-<attempt>` artifacts and retained under
+`diagnostics` in the normal attempt artifact. Secrets, kubeconfig contents, pod
+environment values and Helm values are not collected. Collection errors are warnings;
+they never replace the original test failure or prevent cleanup. The selected
+scenario execution budget remains enforced, with separate outer-job headroom for
+preparation, diagnostics and teardown. Hard agent termination can still prevent
+the final upload; already-published snapshots remain available.
+
 #### The same candidate wheel everywhere
 
 One `build-candidate` job builds the wheel and publishes its SHA256. Every integration job
