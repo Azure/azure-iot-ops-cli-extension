@@ -17,7 +17,7 @@ jobs:
       demands:
         - ImageOverride -equals iotupx-1espt-ubuntu2404
     # Keep the selected execution budget, with separate preparation/diagnostic/cleanup headroom.
-    ${{ if parameters.configuration.health }}:
+    ${{ if eq(parameters.configuration.health, true) }}:
       timeoutInMinutes: 420
     ${{ elseif eq(parameters.configuration.scenarioTimeoutMinutes, 90) }}:
       timeoutInMinutes: 150
