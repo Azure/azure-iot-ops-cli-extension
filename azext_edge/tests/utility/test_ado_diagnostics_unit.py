@@ -136,7 +136,8 @@ def test_large_events_remain_valid_json_and_prioritize_warnings(tmp_path, monkey
     assert json.loads((collector.folder / "status.json").read_text())["phase"] == "Failed"
 
 
-def test_storage_inspection_is_bound_to_owned_namespace_claim_paths(tmp_path, monkeypatch, capsys):
+@pytest.mark.parametrize("acl_missing", [False, True])
+def test_storage_inspection_is_bound_to_owned_namespace_claim_paths(tmp_path, monkeypatch, capsys, acl_missing):
     collector = diagnostics.HookCollector(tmp_path, tmp_path / "owned", "ops-k3s-owned", "ops-diagnostics-owned-1")
     claims = [
         {"metadata": {"uid": f"claim-{index}", "name": f"claim-{index}"},
@@ -158,15 +159,28 @@ def test_storage_inspection_is_bound_to_owned_namespace_claim_paths(tmp_path, mo
         if "pv" in arguments:
             return json.dumps({"items": volumes})
         assert arguments[-1] == owned_path
+        if "findmnt" in arguments:
+            return "/mnt /dev/sdb1 ext4 rw,nosuid\n"
+        if "namei" in arguments:
+            return "drwx------ root root owned\n"
+        if "getfacl" in arguments:
+            if acl_missing:
+                raise subprocess.CalledProcessError(1, arguments)
+            return "user::rwx\ngroup::rwx\nother::rwx\n"
         return "755 0 0 directory\n"
 
     monkeypatch.setattr(diagnostics, "command", run)
     collector.storage()
     saved = json.loads((collector.folder / "storage-pv-0.json").read_text())
     assert saved["modeUidGidType"] == "755 0 0 directory" and saved["ownedLocalPath"]
+    assert saved["filesystem"] == "/mnt /dev/sdb1 ext4 rw,nosuid"
+    assert saved["pathComponents"] == "drwx------ root root owned"
+    assert ("acl" not in saved) == acl_missing
     assert not json.loads((collector.folder / "storage-pv-1.json").read_text())["ownedLocalPath"]
     assert not any("/unowned/directory" in arguments for arguments in calls)
-    assert "storage path ownership" in capsys.readouterr().out
+    output = capsys.readouterr().out
+    assert "storage path ownership" in output
+    assert ("storage acl" in output) == acl_missing
     volumes[0]["spec"]["claimRef"]["namespace"] = "another-namespace"
     calls.clear()
     with pytest.raises(ValueError, match="does not belong"):
@@ -184,3 +198,52 @@ def test_api_failure_still_retains_owned_k3s_journal_and_reports_error(tmp_path,
     assert (collector.folder / "k3s-journal.log").read_text() == "k3s exited with status 1"
     output = capsys.readouterr().out
     assert "type=warning" in output and "artifact.upload" in output
+
+
+def test_runtime_storage_records_effective_identity_without_exporting_credentials(tmp_path, monkeypatch):
+    collector = diagnostics.HookCollector(tmp_path, tmp_path / "owned", "ops-k3s-owned", "ops-diagnostics-owned-1")
+    identity = "a" * 64
+    pod = {
+        "metadata": {"name": "aio-broker-backend-1-0", "uid": "pod-uid"},
+        "status": {"containerStatuses": [{"name": "broker", "containerID": f"containerd://{identity}"}]},
+    }
+    payload = {
+        "status": {"labels": {"io.kubernetes.pod.uid": "pod-uid",
+                              "io.kubernetes.pod.namespace": diagnostics.NAMESPACE}},
+        "info": {"runtimeSpec": {
+            "process": {
+                "cwd": "/", "user": {"uid": 65532, "gid": 65532}, "apparmorProfile": "runtime-profile",
+                "args": ["private-value"], "env": [
+                    "PASSWORD=private-value", "PERSISTENCE_PATH=/mnt/persistence", "PERSISTENCE_TOKEN=/private-value",
+                ],
+            },
+            "root": {"path": "rootfs", "readonly": False},
+            "mounts": [{"destination": "/mnt/persistence", "source": "/owned/volume", "options": ["rw"]},
+                       {"destination": "/credentials", "source": "private-value"}],
+        }},
+    }
+    runner = Mock(return_value=json.dumps(payload))
+    monkeypatch.setattr(diagnostics, "command", runner)
+    collector.runtime_storage([pod])
+    saved = (collector.folder / f"runtime-{identity}.json").read_text()
+    value = json.loads(saved)
+    assert value["process"]["user"] == {"uid": 65532, "gid": 65532}
+    assert value["mounts"] == [payload["info"]["runtimeSpec"]["mounts"][0]]
+    assert value["persistencePathEnvironment"] == ["PERSISTENCE_PATH=/mnt/persistence"]
+    assert "private-value" not in saved
+    assert runner.call_args.args[0][:3] == ["sudo", "-n", str(tmp_path / "owned/k3s")]
+
+
+def test_runtime_storage_rejects_another_pod_without_saving_its_spec(tmp_path, monkeypatch, capsys):
+    collector = diagnostics.HookCollector(tmp_path, tmp_path, "ops-k3s-owned", "ops-diagnostics-owned-1")
+    pod = {
+        "metadata": {"name": "aio-broker-backend-1-0", "uid": "pod-uid"},
+        "status": {"containerStatuses": [{"name": "broker", "containerID": "containerd://" + "a" * 64}]},
+    }
+    monkeypatch.setattr(diagnostics, "command", Mock(return_value=json.dumps({
+        "status": {"labels": {"io.kubernetes.pod.uid": "other-pod",
+                              "io.kubernetes.pod.namespace": diagnostics.NAMESPACE}},
+    })))
+    collector.runtime_storage([pod])
+    assert not list(collector.folder.glob("runtime-*.json"))
+    assert "container runtime storage" in capsys.readouterr().out

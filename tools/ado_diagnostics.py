@@ -60,7 +60,8 @@ def summary(item):
         "hook": metadata.get("annotations", {}).get("helm.sh/hook"),
         "status": item.get("status", {}),
         "containers": [{"name": value.get("name"), "image": value.get("image"),
-                        "securityContext": value.get("securityContext", {})}
+                        "securityContext": value.get("securityContext", {}),
+                        "workingDir": value.get("workingDir"), "volumeMounts": value.get("volumeMounts", [])}
                        for key in ("initContainers", "containers") for value in spec.get(key, [])],
         "securityContext": spec.get("securityContext", {}),
         "volumeClaims": [
@@ -141,11 +142,48 @@ class HookCollector:
         self.logs([pod for pod in pods if problem_pod(pod) or any(
             owner.get("uid") in jobs for owner in pod["metadata"].get("ownerReferences", [])
         )], final)
+        if final:
+            self.runtime_storage(pods)
         if final or failed - self.failures:
             self.events()
         if failed - self.failures and self.uploads < 5:
             self.publish()
         self.failures.update(failed)
+
+    def runtime_storage(self, pods):
+        backends = [pod for pod in pods if pod["metadata"]["name"].startswith("aio-broker-backend-")]
+        for pod in backends[:8]:
+            for entry in pod.get("status", {}).get("containerStatuses", []):
+                identity = re.fullmatch(r"containerd://([a-f0-9]{64})", entry.get("containerID", ""))
+                if entry.get("name") != "broker" or identity is None:
+                    continue
+                try:
+                    payload = json.loads(command([
+                        "sudo", "-n", str(self.directory / "k3s"), "crictl",
+                        "--config", str(self.directory / "data/agent/etc/crictl.yaml"),
+                        "inspect", identity[1],
+                    ], timeout=5))
+                    labels = payload["status"]["labels"]
+                    if (labels.get("io.kubernetes.pod.uid") != pod["metadata"]["uid"]
+                            or labels.get("io.kubernetes.pod.namespace") != NAMESPACE):
+                        raise ValueError("Container runtime identity differs from the owned pod.")
+                    spec = payload["info"]["runtimeSpec"]
+                    process = spec["process"]
+                    self.save_json(f"runtime-{identity[1]}.json", {
+                        "pod": pod["metadata"]["name"], "podUid": pod["metadata"]["uid"],
+                        "process": {key: process.get(key) for key in ("cwd", "user", "apparmorProfile")},
+                        "root": spec.get("root"),
+                        "mounts": [mount for mount in spec.get("mounts", [])
+                                   if mount.get("destination") in ("/mnt/persistence", "/tmp")],
+                        "persistencePathEnvironment": [
+                            value for value in process.get("env", [])
+                            if re.fullmatch(
+                                r"[A-Z0-9_]*PERSIST[A-Z0-9_]*(?:PATH|DIRECTORY|DIR)=/[A-Za-z0-9_./-]+", value,
+                            )
+                        ],
+                    })
+                except (OSError, subprocess.SubprocessError, ValueError, KeyError) as error:
+                    self.warn("container runtime storage", error)
 
     def events(self):
         items = json.loads(command([*self.kubectl, "get", "events", "-o", "json"]))["items"]
@@ -242,6 +280,20 @@ class HookCollector:
                         ["sudo", "-n", "stat", "--printf=%a %u %g %F\\n", "--", path],
                         timeout=min(5, remaining),
                     ).strip()
+                    for field, arguments in (
+                        ("pathComponents", ["namei", "--long", "--", path]),
+                        ("filesystem", ["findmnt", "--noheadings", "--output",
+                                        "TARGET,SOURCE,FSTYPE,OPTIONS", "--target", path]),
+                        ("acl", ["getfacl", "--absolute-names", "--", path]),
+                    ):
+                        remaining = deadline - time.monotonic()
+                        if remaining <= 0:
+                            self.warn("storage inspection budget", TimeoutError())
+                            break
+                        try:
+                            record[field] = command(["sudo", "-n", *arguments], timeout=min(5, remaining)).strip()
+                        except (OSError, subprocess.SubprocessError) as error:
+                            self.warn(f"storage {field}", error)
                 else:
                     self.warn("storage path ownership", ValueError("Unverified local volume path."))
             self.save_json(f"storage-{name}.json", record)
@@ -281,7 +333,8 @@ class HookCollector:
             ("storage snapshot", self.storage),
             ("K3s unit settings", lambda: self.save("k3s-unit-settings.log", command(
                 ["sudo", "-n", "systemctl", "show", self.unit, "--property=UMask", "--property=User",
-                 "--property=Group"],
+                 "--property=Group", "--property=ProtectSystem", "--property=ProtectHome",
+                 "--property=PrivateTmp", "--property=ReadOnlyPaths", "--property=ReadWritePaths"],
             ))),
             ("K3s journal", lambda: self.save("k3s-journal.log", journal(self.unit))),
         ):
