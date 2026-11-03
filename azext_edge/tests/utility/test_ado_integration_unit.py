@@ -11,6 +11,8 @@ import json
 from pathlib import Path
 import random
 import shlex
+import shutil
+import stat
 import subprocess
 import sys
 from types import SimpleNamespace
@@ -461,6 +463,57 @@ def test_commands_abort_when_auth_process_dies(monkeypatch):
         cluster.Commands(auth=Mock(poll=Mock(return_value=1))).run(["offline-command"])
     kill.assert_called_once_with(12345, cluster.signal.SIGTERM)
     process.wait.assert_called_once()
+
+
+@pytest.mark.skipif(sys.platform != "linux" or not shutil.which("setfacl") or not shutil.which("getfacl"),
+                    reason="Requires Linux POSIX ACL tools.")
+def test_cluster_storage_does_not_inherit_agent_default_acl(monkeypatch, tmp_path):
+    native_run = subprocess.run
+    native_run([
+        "setfacl", "-m", f"d:u::rwx,d:u:{cluster.os.getuid()}:rwx,d:g::r-x,d:m::rwx,d:o::r-x", str(tmp_path),
+    ], check=True)
+    before = tmp_path / "before" / "volume"
+    before.mkdir(parents=True)
+    before.chmod(0o2777)
+
+    def acl(path):
+        return native_run(["getfacl", "--omit-header", "--absolute-names", str(path)],
+                          stdout=subprocess.PIPE, text=True, check=True).stdout
+
+    assert stat.S_IMODE(before.stat().st_mode) == 0o2777
+    assert "group::r-x\n" in acl(before) and "mask::rwx\n" in acl(before)
+    parent_acl = acl(tmp_path)
+    state = make_state()
+    directory, _ = cluster.cluster_paths(state)
+    directory.mkdir()
+    (directory / "k3s").write_bytes(b"offline-k3s")
+    commands = Mock()
+    commands.run.side_effect = lambda arguments, **_kwargs: (
+        native_run(arguments, check=True) if arguments[0] == "setfacl" else None
+    )
+    monkeypatch.setattr(cluster, "wait_cluster", Mock())
+    monkeypatch.setattr(cluster.subprocess, "run", Mock())
+    cluster.start_cluster(commands, state, tmp_path)
+
+    after = directory / "data" / "storage" / "volume"
+    after.mkdir(parents=True)
+    after.chmod(0o2777)
+    assert "group::rwx\n" in acl(after)
+    assert "mask::" not in acl(after) and "default:" not in acl(after)
+    assert acl(tmp_path) == parent_acl
+    assert "group::r-x\n" in acl(before)
+
+
+def test_cluster_acl_setup_failure_stops_before_starting_k3s(tmp_path):
+    state = make_state()
+    directory, _ = cluster.cluster_paths(state)
+    arguments = ["setfacl", "--remove-default", "--", str(directory)]
+    commands = Mock()
+    commands.run.side_effect = subprocess.CalledProcessError(1, arguments)
+    with pytest.raises(subprocess.CalledProcessError):
+        cluster.start_cluster(commands, state, tmp_path)
+    commands.run.assert_called_once_with(arguments, timeout=10)
+    assert not state.get("clusterStarted") and not (tmp_path / "state.json").exists()
 
 
 @pytest.mark.parametrize("failed_waits", [0, 2, 60])

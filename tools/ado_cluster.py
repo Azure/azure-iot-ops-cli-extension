@@ -176,6 +176,8 @@ def wait_cluster(commands, state, directory, unit):
 def start_cluster(commands, state, output, issuer=None):
     directory, unit = cluster_paths(state)
     directory.mkdir(parents=True, exist_ok=True)
+    # Agent default ACLs can keep a volume's fsGroup read-only despite the provisioner's chmod.
+    commands.run(["setfacl", "--remove-default", "--", str(directory)], timeout=10)
     binary = directory / "k3s"
     if not binary.exists():
         release = f"https://github.com/k3s-io/k3s/releases/download/{K3S_VERSION}"
