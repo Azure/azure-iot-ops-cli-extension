@@ -873,6 +873,11 @@ def test_workflows_default_to_existing_test_resource_group(workflow, input_name)
     assert "centralus" not in source.lower()
 
 
+def test_whole_group_cleanup_requires_explicit_invocation():
+    config = yaml.load((ROOT / ".github/workflows/cluster_cleanup.yml").read_text(), Loader=yaml.BaseLoader)
+    assert set(config["on"]) == {"workflow_call", "workflow_dispatch"}
+
+
 def test_workflow_builds_once_and_tox_never_installs_checkout():
     config = yaml.safe_load((ROOT / ".github/workflows/int_test.yml").read_text())
     jobs = config["jobs"]

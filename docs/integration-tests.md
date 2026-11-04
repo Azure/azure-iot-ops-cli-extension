@@ -142,6 +142,13 @@ Retire the old environment's Exclusive lock check only after its users have
 completed, or rerun them with the updated fixtures and CLI candidate. Distinct
 resource names do not isolate subscription quotas, throttling, or scheduled cleanup.
 
+Each integration attempt remains responsible for cleaning its own resources.
+`Cluster Resource Cleanup` is explicit maintenance, not a scheduled job: its
+whole-group sweep can delete in-flight instances even when their names are unique.
+Run it only when the selected resource group is idle. If the default branch still
+contains the old schedule, keep that workflow disabled until the no-schedule
+revision is merged.
+
 For manual Azure Pipelines Integration runs, select **Cluster region** (default
 `westus2`). The frozen plan uses this region for Arc cluster creation and the run
 title, for example `ops-integration-123 (eastus2) (edge) (preview)`. The runner checks
