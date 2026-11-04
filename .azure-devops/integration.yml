@@ -54,6 +54,20 @@ parameters:
     type: number
     default: 360
     values: [90, 180, 360]
+  - name: clusterRegion
+    displayName: Cluster region
+    type: string
+    default: westus2
+    values:
+      - eastus
+      - eastus2
+      - westus
+      - westus2
+      - westus3
+      - southcentralus
+      - westeurope
+      - northeurope
+      - germanywestcentral
   - name: azureServiceConnection
     displayName: Service connection
     type: string

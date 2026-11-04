@@ -31,6 +31,16 @@ import release_pipeline as release
 
 ROOT = Path(__file__).resolve().parents[1]
 PYTHONS = {"3.10", "3.11", "3.12", "3.13"}
+CLUSTER_REGIONS = {
+    "eastus", "eastus2", "westus", "westus2", "westus3", "southcentralus",
+    "westeurope", "northeurope", "germanywestcentral",
+}
+
+
+def validate_cluster_region(value):
+    if not isinstance(value, str) or value not in CLUSTER_REGIONS:
+        raise ValueError("Select a supported Arc/AIO cluster region.")
+    return value
 
 
 def required(name):
@@ -186,6 +196,8 @@ def plan(output):
         value["health"] = health
         value["locations"] = {key: health["profile"][key] for key in
                               ("clusterRegion", "resourceRegion", "namespaceRegion")}
+    else:
+        value["locations"] = {"clusterRegion": validate_cluster_region(required("OPS_CLUSTER_REGION"))}
     if parent != "0":
         value["releaseBuildId"] = parent
     write(output / "plan.json", value)
@@ -209,9 +221,9 @@ def run_title(value, mode):
         if mode != "Integration tests":
             raise ValueError("Health run titles require live integration mode.")
         kind = "health"
-        region = value["locations"]["clusterRegion"]
     else:
-        kind, region = "integration", "default"
+        kind = "integration"
+    region = validate_cluster_region(value["locations"]["clusterRegion"])
     names, channels = set(), set()
     for row in value["rows"]:
         scenario = row["scenario"]
@@ -246,7 +258,7 @@ def run_title(value, mode):
 def title(output):
     value = read(output / "plan.json")
     print(f"##vso[build.updatebuildnumber]{run_title(value, required('OPS_MODE'))}", flush=True)
-    print("Title location is the cluster region, or the CLI/resource-group default when none was selected.")
+    print("Title location is the explicitly selected cluster region recorded in the frozen plan.")
     if "health" in value:
         print("Resource and namespace regions remain separately recorded in the frozen plan.")
 
@@ -365,6 +377,7 @@ def prepare(output):
     state = {
         "schema": 1, "producer": producer(), "row": row, "attempt": int(required("SYSTEM_JOBATTEMPT")),
         "subscription": value["subscription"], "resourceGroup": value["resourceGroup"],
+        "locations": value["locations"],
         "customLocationsObjectId": value["customLocationsObjectId"], "suffix": suffix,
         "cluster": cluster, "instance": f"inst{suffix}", "wheel": str(wheel.resolve()), "sha256": digest(wheel),
         "resources": {
@@ -378,7 +391,6 @@ def prepare(output):
     }
     if value.get("health"):
         state["health"] = value["health"]
-        state["locations"] = value["locations"]
     write(output / "state.json", state)
     extension_root = Path(required("AZURE_EXTENSION_DIR")).resolve()
     subprocess.run(["az", "extension", "add", "--source", str(wheel), "--yes"], check=True)

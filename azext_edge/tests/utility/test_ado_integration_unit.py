@@ -43,7 +43,7 @@ def pipeline_environment(monkeypatch, tmp_path):
         "SYSTEM_JOBATTEMPT": "1", "OPS_SCENARIOS": "edge", "OPS_CHANNELS": "stable", "OPS_PYTHONS": "3.13",
         "OPS_BASELINES": "{}", "OPS_SUBSCRIPTION": SUBSCRIPTION, "OPS_RESOURCE_GROUP": "ops-cli-int-test-rg",
         "OPS_CUSTOM_LOCATIONS_OID": UUID_VALUE, "OPS_CANDIDATE_DIGEST": "b" * 64,
-        "OPS_SCENARIO_TIMEOUT_MINUTES": "360",
+        "OPS_SCENARIO_TIMEOUT_MINUTES": "360", "OPS_CLUSTER_REGION": "westus2",
         "AZURE_CLIENT_ID": UUID_VALUE, "AZURE_TENANT_ID": UUID_VALUE, "SYSTEM_ACCESSTOKEN": "offline-token",
         "AZURESUBSCRIPTION_SERVICE_CONNECTION_ID": UUID_VALUE, "SYSTEM_TEAMPROJECTID": UUID_VALUE,
         "SYSTEM_PLANID": UUID_VALUE, "SYSTEM_JOBID": UUID_VALUE, "AGENT_TEMPDIRECTORY": str(tmp_path),
@@ -58,6 +58,7 @@ def make_state():
     return {
         "schema": 1, "producer": pipeline.producer(), "attempt": 1, "suffix": suffix,
         "subscription": SUBSCRIPTION, "resourceGroup": "ops-cli-int-test-rg", "customLocationsObjectId": UUID_VALUE,
+        "locations": {"clusterRegion": "westus2"},
         "cluster": f"opado{suffix}", "instance": f"inst{suffix}", "wheel": "/candidate.whl", "sha256": "b" * 64,
         "resources": {
             "cluster": f"{prefix}/Microsoft.Kubernetes/connectedClusters/opado{suffix}",
@@ -162,21 +163,24 @@ def test_plan_serializes_only_wlif_without_losing_rows(monkeypatch, tmp_path, se
     assert outputs["hasTrustBundle"] == str(bool(trust)).lower()
 
 
-def test_title_uses_frozen_scenarios_channels_and_default_region(monkeypatch, tmp_path, capsys):
+@pytest.mark.parametrize("region", ["westus2", "eastus2"])
+def test_title_uses_frozen_scenarios_channels_and_selected_region(monkeypatch, tmp_path, capsys, region):
     monkeypatch.setenv("OPS_SCENARIOS", "edge,runtime-channel")
     monkeypatch.setenv("OPS_CHANNELS", "stable,preview")
     monkeypatch.setenv("OPS_PYTHONS", "3.10,3.13")
     monkeypatch.setenv("OPS_MODE", "Dry run")
+    monkeypatch.setenv("OPS_CLUSTER_REGION", region)
     pipeline.plan(tmp_path)
     capsys.readouterr()
     original = (tmp_path / "plan.json").read_bytes()
     monkeypatch.setenv("OPS_SCENARIOS", "trustbundle")
     monkeypatch.setenv("OPS_CHANNELS", "stable")
+    monkeypatch.setenv("OPS_CLUSTER_REGION", "westeurope")
     for current in ("ops-integration-20261031.1", "already renamed"):
         monkeypatch.setenv("BUILD_BUILDNUMBER", current)
         pipeline.title(tmp_path)
         assert capsys.readouterr().out.splitlines()[0] == (
-            "##vso[build.updatebuildnumber]ops-integration-123 (default) "
+            f"##vso[build.updatebuildnumber]ops-integration-123 ({region}) "
             "(edge,runtime-channel) (dry-run,stable,preview)"
         )
         assert (tmp_path / "plan.json").read_bytes() == original
@@ -191,13 +195,13 @@ def test_title_compacts_large_scenario_selection_and_identifies_release_child(mo
     value["releaseBuildId"] = "456"
     result = pipeline.run_title(value, "Integration tests")
     assert result == (
-        "ops-integration-123 (default) "
+        "ops-integration-123 (westus2) "
         "(edge,broker-diagnostics-removal,insecure-listener,rpsaas +7) (release-child 456,stable)"
     )
     assert len(result) <= 255
 
 
-@pytest.mark.parametrize("damage", ["producer", "scenario", "empty", "mode"])
+@pytest.mark.parametrize("damage", ["producer", "scenario", "empty", "mode", "region"])
 def test_title_rejects_untrusted_plan_values(monkeypatch, tmp_path, damage):
     pipeline.plan(tmp_path)
     value = pipeline.read(tmp_path / "plan.json")
@@ -208,6 +212,8 @@ def test_title_rejects_untrusted_plan_values(monkeypatch, tmp_path, damage):
         value["rows"][0]["scenario"]["name"] = "bad\n##vso[task.complete]-stable"
     elif damage == "empty":
         value["rows"] = []
+    elif damage == "region":
+        value["locations"]["clusterRegion"] = "default"
     else:
         mode = "not a mode"
     with pytest.raises(ValueError):
@@ -221,12 +227,32 @@ def test_title_rejects_untrusted_plan_values(monkeypatch, tmp_path, damage):
     ("OPS_CHANNELS", "unknown"), ("OPS_BASELINES", "[]"), ("BUILD_SOURCEVERSION", "main"),
     ("SYSTEM_DEFINITIONID", "0"),
     ("OPS_SCENARIO_TIMEOUT_MINUTES", "0"), ("OPS_SCENARIO_TIMEOUT_MINUTES", "91"),
+    ("OPS_CLUSTER_REGION", "australiaeast"), ("OPS_CLUSTER_REGION", ""),
+    ("OPS_CLUSTER_REGION", "westus2;echo x"),
 ])
 def test_plan_rejects_invalid_inputs(monkeypatch, tmp_path, name, value):
     monkeypatch.setenv(name, value)
     with pytest.raises(ValueError):
         pipeline.plan(tmp_path)
     assert not (tmp_path / "plan.json").exists()
+
+
+def test_prepare_preserves_selected_cluster_region(monkeypatch, tmp_path):
+    version = f"{sys.version_info.major}.{sys.version_info.minor}"
+    monkeypatch.setenv("OPS_PYTHONS", version)
+    monkeypatch.setenv("OPS_CLUSTER_REGION", "eastus2")
+    pipeline.plan(tmp_path / "plan")
+    monkeypatch.setenv("OPS_CLUSTER_REGION", "westus2")
+    monkeypatch.setenv("OPS_PLAN", str(tmp_path / "plan/plan.json"))
+    monkeypatch.setenv("OPS_ROW", f"edge_stable_py{version.replace('.', '')}")
+    monkeypatch.setenv("OPS_CANDIDATE", str(tmp_path))
+    wheel = tmp_path / "candidate.whl"
+    wheel.write_bytes(b"candidate")
+    monkeypatch.setattr(pipeline, "verified_candidate", Mock(return_value=wheel))
+    monkeypatch.setattr(pipeline.subprocess, "run", Mock())
+    monkeypatch.setattr(pipeline.runpy, "run_path", Mock(return_value={"verify_installed": Mock()}))
+    pipeline.prepare(tmp_path / "attempt")
+    assert pipeline.read(tmp_path / "attempt/state.json")["locations"] == {"clusterRegion": "eastus2"}
 
 
 def test_default_selection_excludes_explicit_scenarios(monkeypatch, tmp_path):
@@ -607,7 +633,9 @@ def test_arc_workload_identity_matches_github_scenario_prerequisites(
     state["row"]["scenario"].update(tox_env=tox_env, channel=channel, needs_trust=trust)
     issuer = "https://issuer.example.test/cluster/"
     commands = Mock()
-    commands.az_json.return_value = {"connectivityStatus": "Connected", "oidcIssuerProfile": {"issuerUrl": issuer}}
+    commands.az_json.return_value = {
+        "connectivityStatus": "Connected", "oidcIssuerProfile": {"issuerUrl": issuer}, "location": "westus2",
+    }
     commands.run.return_value = json.dumps({"issuer": issuer})
     restart = Mock()
     monkeypatch.setattr(cluster, "start_cluster", restart)
@@ -636,7 +664,7 @@ def test_arc_waits_for_workload_identity_issuer(monkeypatch, tmp_path, missing_r
     commands = Mock()
     commands.az_json.side_effect = [
         *[{"connectivityStatus": "Connected"} for _ in range(missing_reads)],
-        {"connectivityStatus": "Connected", "oidcIssuerProfile": {"issuerUrl": issuer}},
+        {"connectivityStatus": "Connected", "oidcIssuerProfile": {"issuerUrl": issuer}, "location": "westus2"},
     ]
     commands.run.return_value = json.dumps({"issuer": issuer})
     restart, sleep = Mock(), Mock()
@@ -675,7 +703,7 @@ def test_arc_connect_retries_are_bounded(monkeypatch, tmp_path, failed_connects)
             raise subprocess.CalledProcessError(1, arguments)
 
     commands.run.side_effect = run
-    commands.az_json.return_value = {"connectivityStatus": "Connected"}
+    commands.az_json.return_value = {"connectivityStatus": "Connected", "location": "westus2"}
     monkeypatch.setattr(cluster.time, "sleep", sleep)
     if failed_connects == 3:
         with pytest.raises(subprocess.CalledProcessError):
@@ -684,6 +712,24 @@ def test_arc_connect_retries_are_bounded(monkeypatch, tmp_path, failed_connects)
     else:
         cluster.connect_cluster(commands, make_state(), tmp_path)
     assert sleep.call_count == min(failed_connects, 2)
+
+
+@pytest.mark.parametrize("observed", ["East US 2", "westus2"])
+def test_arc_uses_and_checks_selected_cluster_region(tmp_path, observed):
+    state = make_state()
+    state["locations"]["clusterRegion"] = "eastus2"
+    commands = Mock()
+    commands.az_json.return_value = {"connectivityStatus": "Connected", "location": observed}
+    if observed == "westus2":
+        with pytest.raises(ValueError, match="differs from the selected region"):
+            cluster.connect_cluster(commands, state, tmp_path)
+    else:
+        cluster.connect_cluster(commands, state, tmp_path)
+    connect = next(
+        call.args[0] for call in commands.run.call_args_list
+        if call.args[0][:3] == ["az", "connectedk8s", "connect"]
+    )
+    assert connect[connect.index("--location") + 1] == "eastus2"
 
 
 @pytest.mark.parametrize("definition", ["164", "167"])
@@ -930,8 +976,14 @@ def test_yaml_keeps_dry_run_separate_and_reuses_existing_tests():
     connection = next(param for param in value["parameters"] if param["name"] == "azureServiceConnection")
     assert connection["default"] == "az-iot-ops-int-sp-ado"
     assert value["extends"]["template"] == "templates/integration-pipeline.yml"
+    region = next(param for param in value["parameters"] if param["name"] == "clusterRegion")
+    assert set(region["values"]) == pipeline.CLUSTER_REGIONS
     value = yaml.safe_load((ROOT / ".azure-devops/templates/integration-pipeline.yml").read_text())
+    template_region = next(param for param in value["parameters"] if param["name"] == "clusterRegion")
+    assert template_region["default"] == region["default"] == pipeline.release.INTEGRATION_PARAMETERS["clusterRegion"]
     assert value["stages"][0]["stage"] == "Plan"
+    plan_step = next(step for step in value["stages"][0]["jobs"][0]["steps"] if step.get("name") == "plan")
+    assert plan_step["env"]["OPS_CLUSTER_REGION"] == "${{ parameters.clusterRegion }}"
     title_step = value["stages"][0]["jobs"][0]["steps"][-1]
     assert title_step["bash"] == "python tools/ado_integration.py title --output plan"
     assert title_step["env"] == {"OPS_MODE": "${{ parameters.mode }}"}

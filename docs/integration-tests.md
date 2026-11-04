@@ -147,6 +147,13 @@ after the matrix to keep the environment referenced throughout the stage.
 This ADO lock does not coordinate GitHub runs: do not run both systems against the
 same resource group concurrently.
 
+For manual Azure Pipelines Integration runs, select **Cluster region** (default
+`westus2`). The frozen plan uses this region for Arc cluster creation and the run
+title, for example `ops-integration-123 (eastus2) (edge) (preview)`. The runner checks
+that the connected cluster is in the selected region. Health continues to use its
+Library profile, and release children explicitly select `westus2`. Storage, schema
+registry, and namespace location behavior is unchanged.
+
 The ADO runner captures hook Job status, namespace Pod status, and bounded current
 and previous container logs for hooks and unhealthy Pods while tests run, before
 Helm rollback can remove them. On failure it also attempts namespace events and the

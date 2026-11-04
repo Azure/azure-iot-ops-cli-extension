@@ -253,7 +253,7 @@ def test_duplicate_owned_cohort_is_rejected(candidate, monkeypatch):
         release.existing_integration(value)
 
 
-@pytest.mark.parametrize("mutation", ["sha", "definition", "scope", "parent", "timeout"])
+@pytest.mark.parametrize("mutation", ["sha", "definition", "scope", "parent", "timeout", "region"])
 def test_child_must_match_exact_request(candidate, mutation):
     value = candidate[1]
     build = child(value)
@@ -265,6 +265,8 @@ def test_child_must_match_exact_request(candidate, mutation):
         build["templateParameters"]["runtimeChannels"] = '["preview"]'
     elif mutation == "parent":
         build["templateParameters"]["releaseBuildId"] = "899"
+    elif mutation == "region":
+        build["templateParameters"]["clusterRegion"] = "eastus2"
     else:
         build["templateParameters"]["scenarioTimeoutMinutes"] = "90"
     with pytest.raises(ValueError):
@@ -299,6 +301,7 @@ def consumer_environment(candidate, monkeypatch):
         "OPS_SCENARIOS": "edge", "OPS_CHANNELS": "stable", "OPS_PYTHONS": "3.13", "OPS_BASELINES": "{}",
         "OPS_SUBSCRIPTION": release.INTEGRATION_PARAMETERS["subscriptionId"],
         "OPS_RESOURCE_GROUP": release.INTEGRATION_PARAMETERS["resourceGroup"],
+        "OPS_CLUSTER_REGION": release.INTEGRATION_PARAMETERS["clusterRegion"],
         "OPS_CUSTOM_LOCATIONS_OID": release.INTEGRATION_PARAMETERS["customLocationsObjectId"],
         "OPS_SCENARIO_TIMEOUT_MINUTES": "360",
     }.items():

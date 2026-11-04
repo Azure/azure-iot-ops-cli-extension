@@ -15,14 +15,10 @@ import re
 from urllib.error import HTTPError
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 
-from ado_integration import producer, read, required
+from ado_integration import producer, read, required, validate_cluster_region
 
 
 DAYS = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
-CLUSTER_REGIONS = {
-    "eastus", "eastus2", "westus", "westus2", "westus3", "southcentralus",
-    "westeurope", "northeurope", "germanywestcentral",
-}
 
 
 class NoRedirect(HTTPRedirectHandler):
@@ -74,8 +70,7 @@ def validate(profile):
             "scenarios", "runtimeChannels", "scenarioTimeoutMinutes", "upgradeBaselines"}
     if not isinstance(profile, dict) or set(profile) != keys:
         raise ValueError("Ops health profile has missing or unexpected fields.")
-    if not isinstance(profile["clusterRegion"], str) or profile["clusterRegion"] not in CLUSTER_REGIONS:
-        raise ValueError("Select a supported Arc/AIO cluster region.")
+    validate_cluster_region(profile["clusterRegion"])
     for name in ("resourceRegion", "namespaceRegion"):
         if not isinstance(profile[name], str) or not re.fullmatch(r"[a-z0-9]{1,40}", profile[name]):
             raise ValueError(f"Invalid {name}.")

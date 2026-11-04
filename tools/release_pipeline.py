@@ -35,7 +35,7 @@ INTEGRATION_PARAMETERS = {
     "mode": "Integration tests", "pythonVersions": ["3.13"], "upgradeBaselines": "{}",
     "scenarioTimeoutMinutes": 360, "azureServiceConnection": "az-iot-ops-int-sp-ado",
     "subscriptionId": "a386d5ea-ea90-441a-8263-d816368c84a1",
-    "resourceGroup": "ops-cli-int-test-rg",
+    "resourceGroup": "ops-cli-int-test-rg", "clusterRegion": "westus2",
     "customLocationsObjectId": "51dfe1e8-70c6-4de5-a08e-e18aff23d815",
 }
 
@@ -168,6 +168,8 @@ def checkout(destination, resolving=False):
         integration = (destination / ".azure-devops/integration.yml").read_text(encoding="utf-8")
         if "releaseBuildId" not in integration:
             raise ValueError("The selected source does not support pipeline 164's release-candidate handoff.")
+        if "clusterRegion" not in integration:
+            raise ValueError("The selected source does not support explicit integration cluster regions.")
         print(f"##vso[task.setvariable variable=commit;isOutput=true]{selected}", flush=True)
     return selected
 

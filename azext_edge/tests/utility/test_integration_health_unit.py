@@ -46,7 +46,8 @@ def setup_health(monkeypatch, tmp_path):
     return config, build
 
 
-def test_ops_health_plan_uses_runtime_profile_and_records_regions(setup_health, tmp_path):
+def test_ops_health_plan_uses_runtime_profile_and_records_regions(setup_health, tmp_path, monkeypatch):
+    monkeypatch.setenv("OPS_CLUSTER_REGION", "eastus2")
     pipeline.plan(tmp_path)
     plan = pipeline.read(tmp_path / "plan.json")
     assert plan["health"]["day"] == "sat"

@@ -24,6 +24,7 @@ import yaml
 import ado_diagnostics as diagnostics
 from ado_integration import (
     ROOT, expected_locations, expected_phases, junit_results, producer, read, required, scenario_timeout, write,
+    validate_cluster_region,
 )
 
 
@@ -101,6 +102,7 @@ def validate_state(state):
     if (state["resources"] != expected or state["cluster"] != f"opado{suffix}"
             or state["instance"] != f"inst{suffix}"):
         raise ValueError("Refusing resources outside this attempt's exact ownership manifest.")
+    validate_cluster_region(state["locations"]["clusterRegion"])
     if state.get("health"):
         from integration_health import validate
         validate(state["health"]["profile"])
@@ -246,7 +248,7 @@ def connect_cluster(commands, state, output):
     commands.run(["az", "extension", "add", "--name", "connectedk8s", "--yes"])
     common = ["--name", state["cluster"], "--resource-group", state["resourceGroup"]]
     custom = ["--custom-locations-oid", state["customLocationsObjectId"]]
-    location = ["--location", state["locations"]["clusterRegion"]] if state.get("health") else []
+    location = ["--location", state["locations"]["clusterRegion"]]
     for attempt in range(3):
         try:
             commands.run(["az", "connectedk8s", "connect", *common, *custom, *location], timeout=1800)
@@ -282,8 +284,8 @@ def connect_cluster(commands, state, output):
         ))
         if configuration.get("issuer") != issuer:
             raise RuntimeError("Kubernetes OpenID issuer differs from the configured Arc issuer.")
-    if state.get("health") and cluster["location"].replace(" ", "").lower() != state["locations"]["clusterRegion"]:
-        raise ValueError("Arc cluster location differs from the health profile.")
+    if cluster["location"].replace(" ", "").lower() != state["locations"]["clusterRegion"]:
+        raise ValueError("Arc cluster location differs from the selected region.")
 
 
 def create_resources(commands, state):
