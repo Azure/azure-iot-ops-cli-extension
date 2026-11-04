@@ -119,7 +119,7 @@ def test_workload_identity_resources_do_not_collide_between_seeded_jobs(monkeypa
                 finally:
                     setup.close()
             else:
-                vault, _ = module.ensure_key_vault(settings)
+                vault, _ = module.ensure_key_vault(settings, SimpleNamespace(addfinalizer=Mock()))
                 identity = module.ensure_managed_identity(settings, tracked)
             if reuse:
                 assert (vault, identity) == ("/existing/vault", "/existing/identity")

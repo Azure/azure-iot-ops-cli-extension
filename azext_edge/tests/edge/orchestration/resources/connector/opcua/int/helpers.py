@@ -14,7 +14,7 @@ from uuid import uuid4
 import pytest
 from azure.cli.core.azclierror import CLIInternalError
 from knack.log import get_logger
-from .......helpers import run
+from .......helpers import run, wait_for_expected_count
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography import x509
@@ -60,7 +60,7 @@ def ensure_env_vars(settings):
         )
 
 
-def ensure_key_vault(settings):
+def ensure_key_vault(settings, request):
     """
     Ensure a Key Vault exists and the role is assigned. Returns (kv_id, kv_name_if_created_else_None).
     """
@@ -69,6 +69,7 @@ def ensure_key_vault(settings):
     if not kv_id:
         kv_name = "spc" + uuid4().hex[:16]
         kv_id = run_json(f"az keyvault create -n {kv_name} -g {settings.env.azext_edge_rg}")["id"]
+        request.addfinalizer(lambda: cleanup_test_resources(settings, kv_name))
         run(
             "az role assignment create --role b86a8fe4-44ce-4948-aee5-eccb2c155cd7 "
             f"--assignee {settings.env.azext_edge_sp_object_id} --scope {kv_id}"
@@ -96,42 +97,57 @@ def cleanup_test_resources(settings, kv_name):
     # KV deletion/purging - only delete if we created it during the test
     if kv_name:
         try:
+            instance_name = settings.env.azext_edge_instance
+            resource_group = settings.env.azext_edge_rg
+            resources = run(f"az iot ops secretsync list -n {instance_name} -g {resource_group}") or []
+            spcs = [rec for rec in resources if rec["type"].lower() == SPC_RESOURCE_TYPE]
+            owned_spcs = [
+                spc for spc in spcs if spc["properties"]["keyvaultName"].lower() == kv_name.lower()
+            ]
+            if owned_spcs:
+                assert len(owned_spcs) == len(spcs), (
+                    "Refusing to disable SecretSync resources associated with another fixture's Key Vault."
+                )
+                _disable_secretsync_and_wait(instance_name, resource_group)
             run(f"az keyvault delete -n {kv_name} -g {settings.env.azext_edge_rg}")
             sleep(ROLE_RETRY_INTERVAL)
             run(f"az keyvault purge -n {kv_name}")
             logger.info(f"Successfully deleted and purged Key Vault {kv_name}")
         except CLIInternalError as e:
             logger.error(f"Failed to delete the keyvault {kv_name} properly. {e.error_msg}")
+            raise
+
+
+def _disable_secretsync_and_wait(instance_name, resource_group):
+    run(f"az iot ops secretsync disable -n {instance_name} -g {resource_group} -y")
+    # Enable uses Resource Graph too, whose index can lag successful ARM deletes.
+    wait_for_expected_count(
+        f"az iot ops secretsync list -n {instance_name} -g {resource_group}",
+        expected_count=0,
+        max_retries=SECRETSYNC_MAX_RETRIES,
+        initial_interval=SECRETSYNC_RETRY_INTERVAL,
+        run_fn=run,
+    )
 
 
 def ensure_secretsync_enabled(settings, instance_name, resource_group, kv_id, mi_id):
     """
     Ensure secretsync is enabled for the instance. Returns the SPC name.
-    If secretsync is already enabled with a valid Key Vault, reuses it.
+    Reuses an existing SPC only when it references the requested Key Vault.
     Otherwise, enables secretsync with the provided Key Vault and managed identity.
     """
     try:
-        # Check if secretsync is already enabled
         secretsync_list = run(f"az iot ops secretsync list -n {instance_name} -g {resource_group}")
         if secretsync_list:
             spc_results = [rec for rec in secretsync_list if rec["type"].lower() == SPC_RESOURCE_TYPE]
-            if spc_results:
+            kv_name = kv_id.rsplit("/", maxsplit=1)[-1]
+            if len(spc_results) == 1 and spc_results[0]["properties"]["keyvaultName"].lower() == kv_name.lower():
                 spc_name = spc_results[0]["name"]
-                existing_kv_name = spc_results[0]["properties"]["keyvaultName"]
-
-                # Verify the existing Key Vault is still valid
-                try:
-                    run(f"az keyvault show -n {existing_kv_name}")
-                    logger.info(f"Secretsync already enabled with Key Vault {existing_kv_name}, reusing SPC {spc_name}")
-                    return spc_name
-                except CLIInternalError:
-                    logger.warning(f"Existing Key Vault {existing_kv_name} not accessible, re-enabling secretsync")
-                    # The existing Key Vault is not accessible, need to re-enable
-                    try:
-                        run(f"az iot ops secretsync disable -n {instance_name} -g {resource_group} -y")
-                        logger.info("Disabled secretsync with inaccessible Key Vault")
-                    except CLIInternalError as disable_error:
-                        logger.warning(f"Failed to disable secretsync: {str(disable_error)}")
+                run(f"az keyvault show --id {kv_id}")
+                logger.info(f"Secretsync already enabled with Key Vault {kv_name}, reusing SPC {spc_name}")
+                return spc_name
+            logger.info("Replacing SecretSync resources that do not reference the fixture's Key Vault")
+            _disable_secretsync_and_wait(instance_name, resource_group)
 
         # Enable secretsync with the provided Key Vault
         spc_name = run_json(

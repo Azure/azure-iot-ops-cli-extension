@@ -14,7 +14,6 @@ from .helpers import (
     assert_spc_secret_not_exists,
     assert_ssc_secret_exists,
     assert_ssc_secret_not_exists,
-    cleanup_test_resources,
     ensure_env_vars,
     ensure_key_vault,
     ensure_managed_identity,
@@ -33,11 +32,11 @@ ROLE_RETRY_INTERVAL = 15
 
 
 @pytest.fixture(scope="function")
-def opcua_certs_issuer_test_setup(settings, tracked_resources: List[str]):
+def opcua_certs_issuer_test_setup(settings, tracked_resources: List[str], request):
     """Setup fixture for opcua certs issuer tests."""
 
     ensure_env_vars(settings)
-    kv_id, kv_name = ensure_key_vault(settings)
+    kv_id, _ = ensure_key_vault(settings, request)
     mi_id = ensure_managed_identity(settings, tracked_resources)
     instance_name = settings.env.azext_edge_instance
     resource_group = settings.env.azext_edge_rg
@@ -52,9 +51,6 @@ def opcua_certs_issuer_test_setup(settings, tracked_resources: List[str]):
         "userAssignedId": mi_id,
         "spcName": spc_name,
     }
-
-    # Clean up only the resources we created during this test
-    cleanup_test_resources(settings, kv_name)
 
 
 @pytest.mark.require_wlif_setup
