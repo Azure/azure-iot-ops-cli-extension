@@ -80,9 +80,11 @@ def test_shared_instance_update_preserves_runtime_channel(channel_target):
         assert after.identity == before.identity
     finally:
         # Use argv rather than shell quoting for arbitrary existing descriptions.
-        subprocess.run(
-            ["az", "iot", "ops", "update", "-n", name, "-g", group, "--description", description], check=True,
+        restored = subprocess.run(
+            ["az", "iot", "ops", "update", "-n", name, "-g", group, "--description", description, "--output", "json"],
+            check=True, capture_output=True, text=True,
         )
+        assert (json.loads(restored.stdout)["properties"].get("description") or "") == description
 
 
 @pytest.mark.serial

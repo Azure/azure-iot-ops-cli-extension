@@ -36,7 +36,7 @@ China endpoint coverage verifies configuration only, not live AIO service availa
 The permission-preflight helper coverage exercises the helper directly; it is not
 currently called by the deployment workflow.
 
-## Management-actions child-resource APIs
+## Instance and child-resource APIs
 
 Management-actions enablement uses `Instances.use_child_api()` before any external
 write. Selection intersects the custom
@@ -55,8 +55,9 @@ mixed valid/malformed metadata must discard the entire result, not imply missing
 Validate each page envelope before SDK iterator flattening, including continuation-link
 types and cycles. Cache capabilities only after all pages finish successfully.
 
-The enablement client uses the SDK retry-policy seam to negotiate older supported
-stable APIs only for initial JSON child PUTs rejected with HTTP 400/404
+The shared `Instances` client and the enablement client use the SDK retry-policy
+seam to negotiate older supported stable APIs only for initial JSON instance or
+child PUTs rejected with HTTP 400/404
 `MissingAzureKubernetesMapping`. Do not parse error-message text, downgrade on unrelated
 errors, replay accepted operations, or alter read/delete or deployment/upgrade clients.
 Bound negotiation by the existing supported API enum, not a runtime-version table.
@@ -68,9 +69,16 @@ Show and disable preserve the baseline resource-provider reads/deletes without
 capability discovery or additional permissions. Do not impose enablement's child-write
 preflight on these paths or add speculative API-downgrade retries.
 
-Other child-resource commands are not wired into this selection. Preserve explicit
-`use_runtime_profile()` clients for deployment and upgrade. Adding an API to
+Other providers using `Instances` inherit rejected-PUT negotiation without adding
+capability-discovery reads or permissions. This includes identity assignment,
+instance updates, registry endpoints, connector templates and dataflow resources.
+Management-actions enable retains its optional pre-write capability discovery.
+Explicit `use_runtime_profile()` clients for deployment and upgrade disable
+negotiation, even when the profile API matches the default. Preview and unknown
+APIs are not negotiated to stable APIs. Adding an API to
 `IoTOpsMgmtApiVersion` requires verifying generated operations and payload compatibility.
+Description updates distinguish omitted (`None`, preserve) from explicitly empty
+(`""`, clear), including restoration after runtime-channel integration checks.
 
 The request-level regressions in
 [`test_instance_api_unit.py`](./azext_edge/tests/edge/orchestration/test_instance_api_unit.py)

@@ -101,8 +101,8 @@ SUPPORTED_CHILD_API_VERSIONS = frozenset(
 )
 
 
-class _ChildApiNegotiationPolicy(RetryPolicy):
-    """Negotiate only explicitly rejected JSON child PUTs, not accepted operations."""
+class _InstanceApiNegotiationPolicy(RetryPolicy):
+    """Negotiate explicitly rejected JSON instance/child PUTs, not accepted operations."""
 
     def is_retry(self, settings: dict, response: PipelineResponse) -> bool:
         settings["api_negotiation"] = False
@@ -111,7 +111,6 @@ class _ChildApiNegotiationPolicy(RetryPolicy):
         if (
             http_request.method != "PUT"
             or "/providers/microsoft.iotoperations/instances/" not in path
-            or "/" not in path.split("/providers/microsoft.iotoperations/instances/", 1)[1]
             or not isinstance(http_request.body, (str, bytes, bytearray))
         ):
             return super().is_retry(settings, response)
@@ -128,12 +127,14 @@ class _ChildApiNegotiationPolicy(RetryPolicy):
             url = urlsplit(http_request.url)
             query = parse_qsl(url.query, keep_blank_values=True)
             current_api = dict(query).get("api-version", "")
+            if current_api not in SUPPORTED_CHILD_API_VERSIONS:
+                return super().is_retry(settings, response)
             older_apis = [version for version in SUPPORTED_CHILD_API_VERSIONS if version < current_api]
             if not older_apis:
                 return super().is_retry(settings, response)
             api_version = max(older_apis)
             logger.warning(
-                "Custom location rejected the child PUT with API %s (MissingAzureKubernetesMapping); "
+                "Custom location rejected the IoT Operations PUT with API %s (MissingAzureKubernetesMapping); "
                 "retrying the rejected request with API %s.",
                 current_api, api_version,
             )
@@ -282,7 +283,8 @@ class Instances(Queryable):
         self._child_api_location: Optional[str] = None
         self._child_api_capabilities: Dict[str, set] = {}
         self.iotops_mgmt_client = get_iotops_mgmt_client(
-            **self._get_client_kwargs(subscription_id=self.subscriptions[0])
+            **self._get_client_kwargs(subscription_id=self.subscriptions[0]),
+            retry_policy=_InstanceApiNegotiationPolicy(),
         )
         self.msi_mgmt_client = get_msi_mgmt_client(
             **self._get_client_kwargs()
@@ -304,13 +306,15 @@ class Instances(Queryable):
         return result
 
     def use_runtime_profile(self, profile: RuntimeProfile, instance: dict) -> dict:
-        if self.iotops_api_version == profile.iotops_api_version:
-            return instance
+        previous_api = self.iotops_api_version
+        # Explicit deployment/upgrade profiles must not negotiate a different API.
         self.iotops_mgmt_client = get_iotops_mgmt_client(
             api_version=profile.iotops_api_version,
             **self._get_client_kwargs(subscription_id=self.subscriptions[0]),
         )
         self.iotops_api_version = profile.iotops_api_version
+        if previous_api == profile.iotops_api_version:
+            return instance
         resource = parse_resource_id(instance["id"])
         return self.iotops_mgmt_client.instance.get(
             instance_name=resource.resource_name, resource_group_name=resource.resource_group_name,
@@ -437,7 +441,7 @@ class Instances(Queryable):
         if api_version != self.iotops_api_version or self._child_api_target is None:
             self.iotops_mgmt_client = get_iotops_mgmt_client(
                 api_version=api_version, **self._get_client_kwargs(subscription_id=self.subscriptions[0]),
-                retry_policy=_ChildApiNegotiationPolicy(),
+                retry_policy=_InstanceApiNegotiationPolicy(),
             )
             self.iotops_api_version = api_version
         self._child_api_instance, self._child_api_target = instance, target
@@ -586,7 +590,7 @@ class Instances(Queryable):
         headers = kwargs.pop("headers", None)
         operation_kwargs = {"headers": headers or {"CommandName": "iot ops update"}}
 
-        if description:
+        if description is not None:
             instance["properties"]["description"] = description
 
         opcua_backfill_requested = False
