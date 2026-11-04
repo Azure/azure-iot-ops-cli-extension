@@ -10,7 +10,7 @@ import time
 from copy import deepcopy
 from contextlib import nullcontext
 from typing import Dict, Iterable, List, Optional, Tuple
-from urllib.parse import urlsplit
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 import requests
 import yaml
@@ -19,7 +19,10 @@ from azure.cli.core.azclierror import (
     InvalidArgumentValueError,
     ValidationError,
 )
-from azure.core.exceptions import HttpResponseError, ResourceNotFoundError
+from azure.core.exceptions import HttpResponseError, ResourceNotFoundError, ServiceRequestError, ServiceResponseError
+from azure.core.pipeline import PipelineResponse
+from azure.core.pipeline.policies import RetryPolicy
+from azure.core.rest import HttpResponse as RestHttpResponse
 from knack.log import get_logger
 from rich import print
 from rich.console import Console
@@ -29,6 +32,7 @@ from ....util.az_client import (
     ResourceIdContainer,
     get_clusterconfig_mgmt_client,
     get_connectedk8s_mgmt_client,
+    get_extloc_mgmt_client,
     get_iotops_mgmt_client,
     get_keyvault_client,
     get_msi_mgmt_client,
@@ -37,6 +41,7 @@ from ....util.az_client import (
     parse_resource_id,
     wait_for_terminal_state,
     wait_for_terminal_states,
+    IoTOpsMgmtApiVersion,
 )
 from ....util.common import (
     parse_kvp_nargs,
@@ -44,6 +49,7 @@ from ....util.common import (
     url_safe_hash_phrase,
 )
 from ....util.queryable import Queryable
+from ....util.id_tools import parse_resource_id as parse_resource_id_dict
 from ....util.cloud_config import CloudConfig
 from ....util.resource_graph import ResourceGraph
 from ..common import (
@@ -84,6 +90,71 @@ OIDC_DISCOVERY_PATH = "/.well-known/openid-configuration"
 OIDC_DISCOVERY_TIMEOUT_SECONDS = 5
 OIDC_DISCOVERY_MAX_RESPONSE_BYTES = 64 * 1024  # cap the response size to 64KB
 OIDC_DISCOVERY_CHUNK_SIZE_BYTES = 8 * 1024
+
+IOTOPS_CHILD_RESOURCE_TYPES = {
+    "dataflow": "instances/dataflowProfiles/dataflows",
+    "dataflow_endpoint": "instances/dataflowEndpoints",
+    "dataflow_graph": "instances/dataflowProfiles/dataflowGraphs",
+}
+SUPPORTED_CHILD_API_VERSIONS = frozenset(
+    version.value for version in IoTOpsMgmtApiVersion if not version.value.endswith("-preview")
+)
+
+
+class _ChildApiNegotiationPolicy(RetryPolicy):
+    """Negotiate only explicitly rejected JSON child PUTs, not accepted operations."""
+
+    def is_retry(self, settings: dict, response: PipelineResponse) -> bool:
+        settings["api_negotiation"] = False
+        http_request = response.http_request
+        path = urlsplit(http_request.url).path.lower()
+        if (
+            http_request.method != "PUT"
+            or "/providers/microsoft.iotoperations/instances/" not in path
+            or "/" not in path.split("/providers/microsoft.iotoperations/instances/", 1)[1]
+            or not isinstance(http_request.body, (str, bytes, bytearray))
+        ):
+            return super().is_retry(settings, response)
+        if response.http_response.status_code in (400, 404):
+            if isinstance(response.http_response, RestHttpResponse):
+                response.http_response.read()
+            try:
+                payload = json.loads(response.http_response.text())
+            except (ValueError, UnicodeError):
+                return super().is_retry(settings, response)
+            error = payload.get("error") if isinstance(payload, dict) else None
+            if not isinstance(error, dict) or error.get("code") != "MissingAzureKubernetesMapping":
+                return super().is_retry(settings, response)
+            url = urlsplit(http_request.url)
+            query = parse_qsl(url.query, keep_blank_values=True)
+            current_api = dict(query).get("api-version", "")
+            older_apis = [version for version in SUPPORTED_CHILD_API_VERSIONS if version < current_api]
+            if not older_apis:
+                return super().is_retry(settings, response)
+            api_version = max(older_apis)
+            logger.warning(
+                "Custom location rejected the child PUT with API %s (MissingAzureKubernetesMapping); "
+                "retrying the rejected request with API %s.",
+                current_api, api_version,
+            )
+            http_request.url = urlunsplit((
+                url.scheme, url.netloc, url.path,
+                urlencode([(key, api_version if key == "api-version" else value) for key, value in query]),
+                url.fragment,
+            ))
+            settings["api_negotiation"] = True
+            return True
+        return super().is_retry(settings, response)
+
+    def increment(self, settings: dict, response=None, error=None) -> bool:
+        if error is None and settings.get("api_negotiation"):
+            return True
+        settings["api_negotiation"] = False
+        return super().increment(settings, response=response, error=error)
+
+    def sleep(self, settings: dict, transport, response=None) -> None:
+        if not settings.get("api_negotiation"):
+            super().sleep(settings, transport, response=response)
 
 
 def get_user_msg_warn_ra(prefix: str, principal_id: str, scope: str) -> str:
@@ -206,6 +277,10 @@ class Instances(Queryable):
         # TODO: longer term pattern?
         super().__init__(cmd=cmd, subscriptions=[subscription_id] if subscription_id else None)
         self.iotops_api_version = DEFAULT_IOTOPS_MGMT_API_VERSION.value
+        self._child_api_target: Optional[Tuple[str, str]] = None
+        self._child_api_instance: Optional[dict] = None
+        self._child_api_location: Optional[str] = None
+        self._child_api_capabilities: Dict[str, set] = {}
         self.iotops_mgmt_client = get_iotops_mgmt_client(
             **self._get_client_kwargs(subscription_id=self.subscriptions[0])
         )
@@ -240,6 +315,131 @@ class Instances(Queryable):
         return self.iotops_mgmt_client.instance.get(
             instance_name=resource.resource_name, resource_group_name=resource.resource_group_name,
         )
+
+    def _read_child_api_capabilities(self, custom_location_id: str) -> Dict[str, set]:
+        resource = parse_resource_id_dict(custom_location_id)
+        if (
+            resource.get("namespace", "").lower() != "microsoft.extendedlocation"
+            or resource.get("type", "").lower() != "customlocations"
+            or resource.get("last_child_num")
+            or not all(resource.get(key) for key in ("subscription", "resource_group", "name"))
+        ):
+            raise ValidationError(
+                "Cannot determine instance API compatibility: extendedLocation.name must identify a custom location."
+            )
+        client = get_extloc_mgmt_client(
+            **self._get_client_kwargs(subscription_id=resource["subscription"]),
+            retry_total=0, connection_timeout=5, read_timeout=5,
+        )
+        capabilities: Dict[str, set] = {}
+        continuation_links = set()
+
+        def validate_page(response: PipelineResponse) -> None:
+            if response.http_response.status_code != 200:
+                return
+            page = response.http_response.json()
+            if not isinstance(page, dict) or not isinstance(page.get("value"), list):
+                raise ValueError("Malformed enabled-resource-type page collection.")
+            next_link = page.get("nextLink")
+            if next_link is not None and (
+                not isinstance(next_link, str) or (next_link and not next_link.strip())
+            ):
+                raise ValueError("Malformed enabled-resource-type continuation link.")
+            if next_link:
+                if next_link in continuation_links:
+                    raise ValueError("Repeated enabled-resource-type continuation link.")
+                continuation_links.add(next_link)
+
+        try:
+            for enabled_type in client.custom_locations.list_enabled_resource_types(
+                resource_group_name=resource["resource_group"], resource_name=resource["name"],
+                raw_response_hook=validate_page,
+            ):
+                if not isinstance(enabled_type, dict) or not isinstance(enabled_type.get("properties"), dict):
+                    raise ValueError("Malformed enabled-resource-type properties.")
+                metadata_entries = enabled_type["properties"].get("typesMetadata")
+                if not isinstance(metadata_entries, list):
+                    raise ValueError("Malformed enabled-resource-type metadata collection.")
+                for metadata in metadata_entries:
+                    if not isinstance(metadata, dict):
+                        raise ValueError("Malformed enabled-resource-type metadata entry.")
+                    namespace = metadata.get("resourceProviderNamespace")
+                    if not isinstance(namespace, str) or not namespace.strip():
+                        raise ValueError("Malformed enabled-resource-type provider namespace.")
+                    if namespace.lower() != "microsoft.iotoperations":
+                        continue
+                    resource_type, api_version = metadata.get("resourceType"), metadata.get("apiVersion")
+                    if (
+                        not isinstance(resource_type, str) or not resource_type.strip()
+                        or not isinstance(api_version, str)
+                        or not re.fullmatch(r"\d{4}-\d{2}-\d{2}(?:-preview)?", api_version)
+                    ):
+                        raise ValueError("Malformed IoT Operations resource-type or API-version metadata.")
+                    capabilities.setdefault(resource_type.lower(), set()).add(api_version)
+        except (
+            HttpResponseError, ServiceRequestError, ServiceResponseError,
+            KeyError, TypeError, ValueError, AttributeError,
+        ) as error:
+            raise ValidationError(
+                f"Cannot verify IoT Operations API support for custom location '{custom_location_id}'. "
+                "Check connectivity and permission to read Microsoft.ExtendedLocation/customLocations/"
+                "enabledResourceTypes, then retry. The requested child-resource operation was not sent."
+            ) from error
+        return capabilities
+
+    def use_child_api(
+        self, name: str, resource_group_name: Optional[str], operation_groups: Iterable[str], *,
+        instance: Optional[dict] = None,
+    ) -> dict:
+        if not name or not resource_group_name:
+            raise ValidationError("Instance name and resource group are required to select a child-resource API.")
+        target = (resource_group_name.lower(), name.lower())
+        if instance is None:
+            if self._child_api_target == target and self._child_api_instance is not None:
+                instance = self._child_api_instance
+            else:
+                instance = get_iotops_mgmt_client(
+                    **self._get_client_kwargs(subscription_id=self.subscriptions[0]),
+                ).instance.get(instance_name=name, resource_group_name=resource_group_name)
+        custom_location_id = (instance.get("extendedLocation") or {}).get("name", "")
+        if self._child_api_location != custom_location_id.lower():
+            try:
+                capabilities = self._read_child_api_capabilities(custom_location_id)
+            except ValidationError:
+                logger.debug(
+                    "Optional API discovery is unavailable; child PUTs will negotiate only explicit API rejections.",
+                    exc_info=True,
+                )
+                capabilities = {}
+            else:
+                self._child_api_capabilities = capabilities
+                self._child_api_location = custom_location_id.lower()
+        else:
+            capabilities = self._child_api_capabilities
+        required_types = sorted({IOTOPS_CHILD_RESOURCE_TYPES[group].lower() for group in operation_groups})
+        compatible = set(SUPPORTED_CHILD_API_VERSIONS)
+        for resource_type in required_types:
+            compatible.intersection_update(capabilities.get(resource_type, set()))
+        if not required_types or (capabilities and not compatible):
+            details = "; ".join(
+                f"{resource_type}: {', '.join(sorted(capabilities.get(resource_type, set()))) or 'not enabled'}"
+                for resource_type in required_types
+            )
+            raise ValidationError(
+                f"No CLI-supported GA API is enabled for all required IoT Operations resource types "
+                f"on custom location '{custom_location_id}'. {details}. "
+                "Update the CLI or upgrade/repair the AIO extension to provide compatible APIs. "
+                "The requested child-resource operation was not sent."
+            )
+        api_version = max(compatible) if capabilities else DEFAULT_IOTOPS_MGMT_API_VERSION.value
+        if api_version != self.iotops_api_version or self._child_api_target is None:
+            self.iotops_mgmt_client = get_iotops_mgmt_client(
+                api_version=api_version, **self._get_client_kwargs(subscription_id=self.subscriptions[0]),
+                retry_policy=_ChildApiNegotiationPolicy(),
+            )
+            self.iotops_api_version = api_version
+        self._child_api_instance, self._child_api_target = instance, target
+        return instance
 
     def _get_instance_for_write(self, name: str, resource_group_name: str) -> dict:
         return self.show(name=name, resource_group_name=resource_group_name)
