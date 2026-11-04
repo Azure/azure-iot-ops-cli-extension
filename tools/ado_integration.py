@@ -26,8 +26,6 @@ from zipfile import ZipFile
 
 import yaml
 
-import integration_resource_group as resource_groups
-
 import release_pipeline as release
 
 
@@ -354,13 +352,6 @@ def verified_candidate(directory, expected_digest):
     return wheel
 
 
-def resource_group_owner(state):
-    return ":".join(str(value) for value in (
-        "ado", state["producer"]["pipeline"], state["producer"]["build"],
-        state["row"]["key"], state["attempt"], state["suffix"],
-    ))
-
-
 def prepare(output):
     output.mkdir(parents=True, exist_ok=False)
     value = read(required("OPS_PLAN"))
@@ -396,15 +387,6 @@ def prepare(output):
         },
         "ownershipChecked": False, "phases": {}, "cleanup": "not-started", "status": "incomplete",
     }
-    if row["scenario"]["needs_trust"]:
-        state["baseResourceGroup"] = value["resourceGroup"]
-        state["resourceGroup"] = resource_groups.group_name(resource_group_owner(state))
-        state["resources"] = {
-            key: resource.replace(
-                f"/resourceGroups/{value['resourceGroup']}/",
-                f"/resourceGroups/{state['resourceGroup']}/",
-            ) for key, resource in state["resources"].items()
-        }
     if value.get("health"):
         state["health"] = value["health"]
     write(output / "state.json", state)

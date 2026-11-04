@@ -9,6 +9,7 @@ from pathlib import Path
 from time import sleep
 from azext_edge.tests.settings import EnvironmentVariables
 from azext_edge.edge.providers.orchestration.resources.instances import SPC_RESOURCE_TYPE
+from azext_edge.edge.util.common import url_safe_hash_phrase
 from typing import Any, Dict, Optional, cast
 from uuid import uuid4
 import pytest
@@ -26,6 +27,10 @@ ROLE_MAX_RETRIES = 5
 ROLE_RETRY_INTERVAL = 15
 SECRETSYNC_MAX_RETRIES = 20
 SECRETSYNC_RETRY_INTERVAL = 5
+
+
+def certificate_sync_name(instance_name: str, certificate_type: str) -> str:
+    return f"{certificate_type}-{url_safe_hash_phrase(instance_name.lower())[:16]}"
 
 
 def run_json(command: str, **kwargs) -> Dict[str, Any]:

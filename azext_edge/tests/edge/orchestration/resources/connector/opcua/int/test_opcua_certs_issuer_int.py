@@ -4,7 +4,6 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from azext_edge.edge.providers.orchestration.resources.connector.opcua.certs import OPCUA_ISSUER_LIST_SECRET_SYNC_NAME
 from .helpers import (
     assert_cluster_side_secret_exists,
     assert_cluster_side_secret_not_exists,
@@ -14,6 +13,7 @@ from .helpers import (
     assert_spc_secret_not_exists,
     assert_ssc_secret_exists,
     assert_ssc_secret_not_exists,
+    certificate_sync_name,
     ensure_env_vars,
     ensure_key_vault,
     ensure_managed_identity,
@@ -50,6 +50,7 @@ def opcua_certs_issuer_test_setup(settings, tracked_resources: List[str], reques
         "keyvaultId": kv_id,
         "userAssignedId": mi_id,
         "spcName": spc_name,
+        "secretSyncName": certificate_sync_name(instance_name, "issuer"),
     }
 
 
@@ -57,6 +58,7 @@ def opcua_certs_issuer_test_setup(settings, tracked_resources: List[str], reques
 def test_opcua_cert_issuer(cluster_connection, opcua_certs_issuer_test_setup, tracked_files: List[str]):
     resource_group = opcua_certs_issuer_test_setup["resourceGroup"]
     instance_name = opcua_certs_issuer_test_setup["instanceName"]
+    sync_name = opcua_certs_issuer_test_setup["secretSyncName"]
     kv_id = opcua_certs_issuer_test_setup["keyvaultId"]
 
     instance_info = run(f"az iot ops show -g {resource_group} -n {instance_name}")
@@ -71,7 +73,7 @@ def test_opcua_cert_issuer(cluster_connection, opcua_certs_issuer_test_setup, tr
     # add cert to issuer list
     cert_file = generate_ca_cert()
     run(f"az iot ops connector opcua issuer add --instance {instance_name} \
-        -g {resource_group} --certificate-file {cert_file} --overwrite-secret")
+        -g {resource_group} --certificate-file {cert_file} --overwrite-secret --secret-sync-name {sync_name}")
     secretsync_records = run(f"az iot ops secretsync list -i {instance_name} -g {resource_group}")
 
     # check kv secret has been created
@@ -91,23 +93,26 @@ def test_opcua_cert_issuer(cluster_connection, opcua_certs_issuer_test_setup, tr
         instance_name=instance_name,
         resource_group=resource_group,
         cert_file=cert_file,
-        ssc_name=OPCUA_ISSUER_LIST_SECRET_SYNC_NAME,
+        ssc_name=sync_name,
     )
     # check cluster side secret is being synced
     assert_cluster_side_secret_exists(
         spc_name=spc_name,
-        secret_sync_name=OPCUA_ISSUER_LIST_SECRET_SYNC_NAME,
+        secret_sync_name=sync_name,
         cert_file=cert_file,
     )
 
     # show secret sync
-    show_result = run(f"az iot ops connector opcua issuer show --instance {instance_name} -g {resource_group}")
-    assert show_result["name"] == OPCUA_ISSUER_LIST_SECRET_SYNC_NAME  # type: ignore[index]
+    show_result = run(
+        f"az iot ops connector opcua issuer show --instance {instance_name} -g {resource_group} "
+        f"--secret-sync-name {sync_name}"
+    )
+    assert show_result["name"] == sync_name  # type: ignore[index]
 
     # remove cert from issuer list
     certificate_name = cert_file.name
     run(f"az iot ops connector opcua issuer remove --instance {instance_name} -g {resource_group} \
-        --certificate-names {certificate_name} -y --include-secrets")
+        --certificate-names {certificate_name} -y --include-secrets --secret-sync-name {sync_name}")
     # get refreshed secretsync records after removal
     secretsync_records = run(f"az iot ops secretsync list -i {instance_name} -g {resource_group}")
     # check kv secret has been removed
@@ -124,12 +129,12 @@ def test_opcua_cert_issuer(cluster_connection, opcua_certs_issuer_test_setup, tr
         extended_location=extended_loc,
         resource_group=resource_group,
         cert_file=certificate_name,
-        ssc_name=OPCUA_ISSUER_LIST_SECRET_SYNC_NAME,
+        ssc_name=sync_name,
     )
     # check cluster side secret is removed
     assert_cluster_side_secret_not_exists(
         spc_name=spc_name,
-        secret_sync_name=OPCUA_ISSUER_LIST_SECRET_SYNC_NAME,
+        secret_sync_name=sync_name,
     )
     # clean up the cert file created
     cert_file.unlink(missing_ok=True)

@@ -22,10 +22,9 @@ from xml.etree import ElementTree
 import yaml
 
 import ado_diagnostics as diagnostics
-import integration_resource_group as resource_groups
 from ado_integration import (
     ROOT, expected_locations, expected_phases, junit_results, producer, read, required, scenario_timeout, write,
-    validate_cluster_region, resource_group_owner,
+    validate_cluster_region,
 )
 
 
@@ -90,12 +89,7 @@ def validate_state(state):
         raise ValueError("Invalid attempt resource suffix.")
     if not re.fullmatch(r"[A-Za-z0-9_().-]{1,90}", state["resourceGroup"]):
         raise ValueError("Invalid resource group.")
-    expected_group = required("OPS_RESOURCE_GROUP")
-    if state["row"]["scenario"]["needs_trust"]:
-        if state.get("baseResourceGroup") != expected_group:
-            raise ValueError("Temporary resource group's base does not match the approved resource group.")
-        expected_group = resource_groups.group_name(resource_group_owner(state))
-    if state["resourceGroup"] != expected_group:
+    if state["resourceGroup"] != required("OPS_RESOURCE_GROUP"):
         raise ValueError("Provisioning state does not match the approved resource group.")
     prefix = f"/subscriptions/{state['subscription']}/resourceGroups/{state['resourceGroup']}/providers"
     expected = {
@@ -420,13 +414,7 @@ def cleanup(output):
     write(output / "state.json", state)
     errors = []
     try:
-        isolated = state["row"]["scenario"]["needs_trust"]
-        present_group = True
-        if isolated:
-            present_group = resource_groups.owned_group(
-                commands, output / "resource-group.json", state["subscription"], resource_group_owner(state),
-            ) is not None
-        if state["ownershipChecked"] and present_group:
+        if state["ownershipChecked"]:
             check_account(commands, state)
             present = resource_ids(commands, state)
             if state["resources"]["instance"].lower() in present:
@@ -457,21 +445,15 @@ def cleanup(output):
                 print(f"Waiting for {len(remaining)} deleted attempt resources to disappear.", flush=True)
                 time.sleep(15)
     finally:
-        try:
-            if state["row"]["scenario"]["needs_trust"]:
-                resource_groups.cleanup(
-                    commands, output / "resource-group.json", state["subscription"], resource_group_owner(state),
-                )
-        finally:
-            if state.get("clusterStarted"):
-                _, unit = cluster_paths(state)
-                result = subprocess.run(
-                    ["sudo", "-n", "systemctl", "show", unit, "--property=LoadState", "--value"],
-                    capture_output=True, text=True, check=False,
-                )
-                if result.stdout.strip() != "not-found":
-                    result.check_returncode()
-                    commands.run(["sudo", "-n", "systemctl", "stop", unit])
+        if state.get("clusterStarted"):
+            _, unit = cluster_paths(state)
+            result = subprocess.run(
+                ["sudo", "-n", "systemctl", "show", unit, "--property=LoadState", "--value"],
+                capture_output=True, text=True, check=False,
+            )
+            if result.stdout.strip() != "not-found":
+                result.check_returncode()
+                commands.run(["sudo", "-n", "systemctl", "stop", unit])
     if errors:
         raise RuntimeError(f"Cleanup had failures: {', '.join(errors)}. Inspect retained state and retry cleanup.")
     state["cleanup"] = "passed"
@@ -487,13 +469,7 @@ def run(output):
         auth = start_auth(output)
         commands = Commands(auth, budget=scenario_timeout() * 60)
         check_account(commands, state)
-        if state["row"]["scenario"]["needs_trust"]:
-            resource_groups.create(
-                commands, output / "resource-group.json", state["subscription"],
-                state["baseResourceGroup"], resource_group_owner(state),
-            )
-        else:
-            commands.az_json("group", "show", "--name", state["resourceGroup"])
+        commands.az_json("group", "show", "--name", state["resourceGroup"])
         if resource_ids(commands, state) & {value.lower() for value in state["resources"].values()}:
             raise ValueError("Attempt resource names already exist; refusing reuse.")
         state["ownershipChecked"] = True

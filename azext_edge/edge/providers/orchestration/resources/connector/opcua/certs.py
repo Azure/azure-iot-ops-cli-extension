@@ -93,6 +93,7 @@ class OpcUACerts(Queryable):
         overwrite_secret: bool = False,
         secret_name: Optional[str] = None,
         expiration_date: Optional[str] = None,
+        secret_sync_name: str = OPCUA_TRUST_LIST_SECRET_SYNC_NAME,
     ) -> dict:
         self._assert_opcua_enabled()
         default_spc = self.instances.get_default_spc(
@@ -143,15 +144,20 @@ class OpcUACerts(Queryable):
 
         opcua_secret_sync = self._get_resource_by_name(
             resource_type=SECRET_SYNC_RESOURCE_TYPE,
-            resource_name=OPCUA_TRUST_LIST_SECRET_SYNC_NAME,
+            resource_name=secret_sync_name,
         )
 
+        if secret_sync_name != OPCUA_TRUST_LIST_SECRET_SYNC_NAME:
+            self._update_extension_configuration(
+                {"connectors.values.securityPki.trustedCerts": secret_sync_name},
+                f"Updating IoT Operations extension to use {secret_sync_name}...",
+            )
         return self._add_secrets_to_secret_sync(
             secrets=[(secret_name, file_name)],
             secret_sync=opcua_secret_sync,
             resource_group=self.resource_group_name,
             spc_name=spc_name,
-            secret_sync_name=OPCUA_TRUST_LIST_SECRET_SYNC_NAME,
+            secret_sync_name=secret_sync_name,
         )
 
     def issuer_add(
@@ -159,6 +165,7 @@ class OpcUACerts(Queryable):
         file: str,
         overwrite_secret: bool = False,
         secret_name: Optional[str] = None,
+        secret_sync_name: str = OPCUA_ISSUER_LIST_SECRET_SYNC_NAME,
     ) -> dict:
         self._assert_opcua_enabled()
         # get default SPC
@@ -197,7 +204,7 @@ class OpcUACerts(Queryable):
 
         opcua_secret_sync = self._get_resource_by_name(
             resource_type=SECRET_SYNC_RESOURCE_TYPE,
-            resource_name=OPCUA_ISSUER_LIST_SECRET_SYNC_NAME,
+            resource_name=secret_sync_name,
         )
 
         if cert_extension == X509FileExtension.CRL.value:
@@ -245,12 +252,17 @@ class OpcUACerts(Queryable):
             resource_group=self.resource_group_name,
         )
 
+        if secret_sync_name != OPCUA_ISSUER_LIST_SECRET_SYNC_NAME:
+            self._update_extension_configuration(
+                {"connectors.values.securityPki.issuerCerts": secret_sync_name},
+                f"Updating IoT Operations extension to use {secret_sync_name}...",
+            )
         return self._add_secrets_to_secret_sync(
             secrets=[(secret_name, file_name)],
             secret_sync=opcua_secret_sync,
             resource_group=self.resource_group_name,
             spc_name=spc_name,
-            secret_sync_name=OPCUA_ISSUER_LIST_SECRET_SYNC_NAME,
+            secret_sync_name=secret_sync_name,
         )
 
     def client_add(
@@ -262,6 +274,7 @@ class OpcUACerts(Queryable):
         application_uri: Optional[str] = None,
         public_key_secret_name: Optional[str] = None,
         private_key_secret_name: Optional[str] = None,
+        secret_sync_name: str = OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
     ) -> dict:
         self._assert_opcua_enabled()
         default_spc = self.instances.get_default_spc(
@@ -283,10 +296,9 @@ class OpcUACerts(Queryable):
 
         spc_name = default_spc["name"]
 
-        # check if there is a secret sync called "aio-opc-ua-broker-client-certificate", if not create one
         opcua_secret_sync = self._get_resource_by_name(
             resource_type=SECRET_SYNC_RESOURCE_TYPE,
-            resource_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
+            resource_name=secret_sync_name,
         )
 
         secrets_to_add = []
@@ -350,13 +362,13 @@ class OpcUACerts(Queryable):
             secret_sync=opcua_secret_sync,
             resource_group=self.resource_group_name,
             spc_name=spc_name,
-            secret_sync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
+            secret_sync_name=secret_sync_name,
             should_replace=True,
         )
 
         # update opcua extension
         return self._update_client_secret_to_extension(
-            application_cert=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
+            application_cert=secret_sync_name,
             subject_name=subject_name,
             application_uri=application_uri,
         )
@@ -368,6 +380,7 @@ class OpcUACerts(Queryable):
         confirm_yes: Optional[bool] = False,
         force: Optional[bool] = False,
         include_secrets: Optional[bool] = False,
+        is_client_cert: bool = False,
     ) -> dict:
         # prompt for deletion
         should_bail = not should_continue_prompt(confirm_yes=confirm_yes)
@@ -426,6 +439,7 @@ class OpcUACerts(Queryable):
             secrets=secret_to_remove,
             secret_sync=target_secretsync,
             resource_group=self.resource_group_name,
+            is_client_cert=is_client_cert,
         )
 
         self._remove_secrets_from_spc(secrets=secret_to_remove, spc=target_spc, resource_group=self.resource_group_name)
@@ -828,6 +842,21 @@ class OpcUACerts(Queryable):
         application_cert: str,
         subject_name: str,
         application_uri: str,
+        removed_secret_name: Optional[str] = None,
+    ) -> dict:
+        return self._update_extension_configuration(
+            {
+                "connectors.values.securityPki.applicationCert": application_cert,
+                "connectors.values.securityPki.subjectName": subject_name,
+                "connectors.values.securityPki.applicationUri": application_uri,
+            },
+            f"Updating IoT Operations extension to use {application_cert}..."
+            if application_cert else "Rollback client certificate from IoT Operations extension...",
+            removed_secret_name=removed_secret_name,
+        )
+
+    def _update_extension_configuration(
+        self, settings: dict, status_text: str, removed_secret_name: Optional[str] = None
     ) -> dict:
         # get the opcua extension
         extensions = self.resource_map.connected_cluster.get_extensions_by_type(EXTENSION_TYPE_OPS)
@@ -839,10 +868,14 @@ class OpcUACerts(Queryable):
 
         config_settings: dict = properties.get("configurationSettings", {})
 
+        if removed_secret_name and config_settings.get("connectors.values.securityPki.applicationCert") not in (
+            None, "", removed_secret_name,
+        ):
+            logger.info("The connector references a different client certificate; leaving that reference unchanged.")
+            return {}
+
         desired_config_settings = config_settings.copy()
-        desired_config_settings["connectors.values.securityPki.applicationCert"] = application_cert
-        desired_config_settings["connectors.values.securityPki.subjectName"] = subject_name
-        desired_config_settings["connectors.values.securityPki.applicationUri"] = application_uri
+        desired_config_settings.update(settings)
 
         delta = calculate_config_delta(
             current=config_settings,
@@ -850,12 +883,6 @@ class OpcUACerts(Queryable):
         )
 
         if delta:
-            status_text = (
-                f"Updating IoT Operations extension to use {application_cert}..."
-                if application_cert
-                else "Rollback client certificate from IoT Operations extension..."
-            )
-
             with console.status(status_text):
                 return self.resource_map.connected_cluster.update_aio_extension(
                     extension_name=aio_extension["name"],
@@ -892,7 +919,7 @@ class OpcUACerts(Queryable):
             return wait_for_terminal_state(poller)
 
     def _remove_secrets_from_secret_sync(
-        self, name: str, secrets: List[str], secret_sync: dict, resource_group: str
+        self, name: str, secrets: List[str], secret_sync: dict, resource_group: str, is_client_cert: bool = False
     ) -> dict:
         # check if there is a secret sync called secret_sync_name, if not create one
         secret_mapping = secret_sync.get("properties", {}).get("objectSecretMapping", [])
@@ -909,12 +936,13 @@ class OpcUACerts(Queryable):
                 )
                 result = wait_for_terminal_state(poller)
 
-            if name == OPCUA_CLIENT_CERT_SECRET_SYNC_NAME:
+            if is_client_cert or name == OPCUA_CLIENT_CERT_SECRET_SYNC_NAME:
                 # rollback aio extension settings
                 self._update_client_secret_to_extension(
                     application_cert="",
                     subject_name="",
                     application_uri="",
+                    removed_secret_name=name,
                 )
             return result
         else:

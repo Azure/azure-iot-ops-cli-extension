@@ -2064,6 +2064,13 @@ def load_iotops_arguments(self, _):
 
     with self.argument_context("iot ops connector opcua") as context:
         context.argument(
+            "secret_sync_name",
+            options_list=["--secret-sync-name"],
+            help="SecretSync resource and Kubernetes secret name. Defaults to the existing name for the certificate "
+            "type. Use a unique name per instance when sharing a resource group, and the same name for add, show "
+            "and remove. Add also updates the connector's certificate reference.",
+        )
+        context.argument(
             "instance_name",
             options_list=["--instance", "-i", "-n"],
             help="IoT Operations instance name.",

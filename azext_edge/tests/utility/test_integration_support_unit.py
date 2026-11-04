@@ -226,25 +226,17 @@ def test_workload_identity_jobs_have_no_cross_run_lock_and_keep_cleanup():
     steps = {step.get("name"): step for step in job["steps"]}
     names = list(steps)
     assert (
-        names.index("Create isolated Trust Bundle resource group")
-        < names.index("Output variables for future steps")
+        names.index("Output variables for future steps")
         < names.index("ARC connect cluster")
         < names.index("Tox INIT Integration Tests")
         < names.index("${{ matrix.scenario.description }}")
         < names.index("Delete AIO resources")
         < names.index("Delete connected cluster and resources")
-        < names.index("Delete isolated Trust Bundle resource group")
     )
-    assert "github.run_attempt" in job["env"]["RESOURCE_GROUP_OWNER"]
-    assert "matrix.scenario.name" in job["env"]["RESOURCE_GROUP_OWNER"]
+    assert "RESOURCE_GROUP_OWNER" not in job["env"]
+    assert not any("isolated Trust Bundle resource group" in name for name in names if name)
     for name in ("Delete AIO resources", "Delete connected cluster and resources"):
-        assert steps[name]["if"] == (
-            "${{ always() && (!matrix.scenario.needs_trust || steps.resource_group.outcome == 'success') }}"
-        )
-    cleanup = steps["Delete isolated Trust Bundle resource group"]
-    assert cleanup["if"] == "${{ always() && matrix.scenario.needs_trust }}"
-    assert "integration_resource_group.py cleanup" in cleanup["run"]
-    assert '--owner "$RESOURCE_GROUP_OWNER"' in cleanup["run"]
+        assert steps[name]["if"] == "${{ always() }}"
 
 
 def test_default_matrix_covers_both_channels_without_invented_baselines():
