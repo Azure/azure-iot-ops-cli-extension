@@ -247,7 +247,6 @@ stages:
         displayName: Trust Bundle
         dependsOn: [Plan, Build, Lint]
         condition: and(succeeded(), eq(dependencies.Plan.outputs['Plan.plan.hasTrustBundle'], 'true'))
-        lockBehavior: sequential
         variables:
           planArtifact: $[ stageDependencies.Plan.Plan.outputs['plan.artifact'] ]
           candidateArtifact: $[ stageDependencies.Build.Build.outputs['candidate.artifact'] ]
@@ -257,20 +256,6 @@ stages:
             parameters:
               configuration: ${{ parameters }}
               matrix: $[ stageDependencies.Plan.Plan.outputs['plan.trustBundleMatrix'] ]
-              maxParallel: 1
-          # Environment checks guard the whole stage, including the serial matrix above.
-          - deployment: TrustBundleLock
-            dependsOn: Scenario
-            condition: always()
-            timeoutInMinutes: 5
-            environment: ${{ format('ops-wlif-{0}-{1}', lower(parameters.subscriptionId), lower(parameters.resourceGroup)) }}
-            strategy:
-              runOnce:
-                deploy:
-                  steps:
-                    - download: none
-                    - bash: echo "Trust Bundle stage finished."
-                      displayName: Release Trust Bundle lock
 
       - stage: Qualify
         displayName: Results

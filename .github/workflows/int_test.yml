@@ -207,13 +207,6 @@ jobs:
     # Lint/unit checks run independently; integration still requires the shared candidate.
     needs: [setup, build-matrix, build-candidate]
     if: ${{ success() && needs.build-matrix.outputs.matrix != '[]' }}
-    concurrency:
-      group: >-
-        ${{ matrix.scenario.tox_env == 'python-wlif-int' &&
-        format('iot-ops-wlif-{0}', inputs.resource-group || 'ops-cli-int-test-rg') ||
-        format('iot-ops-int-{0}-{1}-{2}', github.run_id, github.run_attempt, matrix.scenario.name) }}
-      cancel-in-progress: false
-      queue: max
     env:
       CLUSTER_NAME: "opt${{ github.run_number }}${{ matrix.scenario.name }}"
       INSTANCE_NAME: "inst${{ github.run_number }}${{ matrix.scenario.name }}"
@@ -224,6 +217,7 @@ jobs:
       azext_edge_upgrade_baseline: ${{ toJson(matrix.scenario.baseline) }}
       azext_edge_wheel_sha256: ${{ needs.build-candidate.outputs.sha256 }}
       AZURE_EXTENSION_USE_DYNAMIC_INSTALL: "no"
+      RESOURCE_GROUP_OWNER: "github:${{ github.repository }}:${{ github.run_id }}:${{ github.run_attempt }}:${{ matrix.scenario.name }}"
     strategy:
       fail-fast: false
       matrix:
@@ -242,15 +236,6 @@ jobs:
           if [[ "$SCENARIO_ENV" != "null" && "$SCENARIO_ENV" != "[]" ]]; then
             echo "$SCENARIO_ENV" | jq -r '.[] | "\(.name)=\(.value)"' >> "$GITHUB_ENV"
           fi
-      - name: "Output variables for future steps"
-        id: "env_out"
-        run: |
-          echo "RESOURCE_GROUP=${{ env.RESOURCE_GROUP }}" >> $GITHUB_OUTPUT
-          echo "CLUSTER_NAME=${{ env.CLUSTER_NAME }}" >> $GITHUB_OUTPUT
-          echo "INSTANCE_NAME=${{ env.INSTANCE_NAME }}" >> $GITHUB_OUTPUT
-          # The resource action truncates names: use a digest so the channel suffix
-          # cannot disappear and make parallel GA/preview jobs share storage/ADR.
-          echo "RESOURCE_SUFFIX=$(printf '%s' "$CLUSTER_NAME" | sha256sum | cut -c1-11)" >> "$GITHUB_OUTPUT"
       - name: "Setup python"
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
@@ -292,6 +277,24 @@ jobs:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - name: "Create isolated Trust Bundle resource group"
+        id: resource_group
+        if: ${{ matrix.scenario.needs_trust }}
+        env:
+          TEST_SUBSCRIPTION: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+        run: |
+          python tools/integration_resource_group.py create \
+            --receipt "$RUNNER_TEMP/ops-resource-group.json" \
+            --subscription "$TEST_SUBSCRIPTION" --source-group "$RESOURCE_GROUP" \
+            --owner "$RESOURCE_GROUP_OWNER"
+      - name: "Output variables for future steps"
+        id: "env_out"
+        run: |
+          echo "RESOURCE_GROUP=$RESOURCE_GROUP" >> "$GITHUB_OUTPUT"
+          echo "CLUSTER_NAME=$CLUSTER_NAME" >> "$GITHUB_OUTPUT"
+          echo "INSTANCE_NAME=$INSTANCE_NAME" >> "$GITHUB_OUTPUT"
+          # Keep channel-specific names distinct after the resource action truncates them.
+          echo "RESOURCE_SUFFIX=$(printf '%s' "$CLUSTER_NAME" | sha256sum | cut -c1-11)" >> "$GITHUB_OUTPUT"
       - name: "ARC connect cluster"
         uses: ./.github/actions/connect-arc
         with:
@@ -418,11 +421,11 @@ jobs:
         run: |
           tox r -e python-init-int --skip-pkg-install
       - name: "Delete AIO resources"
-        if: ${{ always() }}
+        if: ${{ always() && (!matrix.scenario.needs_trust || steps.resource_group.outcome == 'success') }}
         run: |
           az iot ops delete --cluster ${{ env.CLUSTER_NAME }} -g ${{ env.RESOURCE_GROUP }} -y --force
       - name: "Delete connected cluster and resources"
-        if: ${{ always() }}
+        if: ${{ always() && (!matrix.scenario.needs_trust || steps.resource_group.outcome == 'success') }}
         run: |
           az resource delete -v --name ${{ env.CLUSTER_NAME }} -g ${{ env.RESOURCE_GROUP }} --resource-type Microsoft.Kubernetes/connectedClusters --verbose
           # Match the GA API used to create ADR resources; generic CLI selection may use v2.
@@ -441,6 +444,14 @@ jobs:
           else
             echo "No storage account to delete"
           fi
+      - name: "Delete isolated Trust Bundle resource group"
+        if: ${{ always() && matrix.scenario.needs_trust }}
+        env:
+          TEST_SUBSCRIPTION: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+        run: |
+          python tools/integration_resource_group.py cleanup \
+            --receipt "$RUNNER_TEMP/ops-resource-group.json" \
+            --subscription "$TEST_SUBSCRIPTION" --owner "$RESOURCE_GROUP_OWNER"
       - name: "Upload coverage artifacts"
         if: ${{ always() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

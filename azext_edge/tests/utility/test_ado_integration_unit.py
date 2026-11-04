@@ -29,6 +29,7 @@ try:
     pipeline = importlib.import_module("ado_integration")
     cluster = importlib.import_module("ado_cluster")
     auth = importlib.import_module("ado_auth")
+    resource_groups = importlib.import_module("integration_resource_group")
 finally:
     sys.path.pop(0)
 
@@ -255,6 +256,132 @@ def test_prepare_preserves_selected_cluster_region(monkeypatch, tmp_path):
     monkeypatch.setattr(pipeline.runpy, "run_path", Mock(return_value={"verify_installed": Mock()}))
     pipeline.prepare(tmp_path / "attempt")
     assert pipeline.read(tmp_path / "attempt/state.json")["locations"] == {"clusterRegion": "eastus2"}
+
+
+def test_trust_bundle_jobs_and_retries_use_distinct_owned_groups(monkeypatch, tmp_path):
+    version = f"{sys.version_info.major}.{sys.version_info.minor}"
+    monkeypatch.setenv("OPS_PYTHONS", version)
+    monkeypatch.setenv("OPS_SCENARIOS", "trustbundle")
+    monkeypatch.setenv("OPS_CHANNELS", "stable,preview")
+    pipeline.plan(tmp_path / "plan")
+    monkeypatch.setenv("OPS_PLAN", str(tmp_path / "plan/plan.json"))
+    monkeypatch.setenv("OPS_CANDIDATE", str(tmp_path))
+    wheel = tmp_path / "candidate.whl"
+    wheel.write_bytes(b"candidate")
+    monkeypatch.setattr(pipeline, "verified_candidate", Mock(return_value=wheel))
+    monkeypatch.setattr(pipeline.subprocess, "run", Mock())
+    monkeypatch.setattr(pipeline.runpy, "run_path", Mock(return_value={"verify_installed": Mock()}))
+    groups = []
+    for channel, attempt in (("stable", "1"), ("preview", "1"), ("stable", "2")):
+        monkeypatch.setenv("OPS_ROW", f"trustbundle_{channel}_py{version.replace('.', '')}")
+        monkeypatch.setenv("SYSTEM_JOBATTEMPT", attempt)
+        output = tmp_path / f"{channel}-{attempt}"
+        pipeline.prepare(output)
+        state = pipeline.read(output / "state.json")
+        cluster.validate_state(state)
+        groups.append(state["resourceGroup"])
+        assert state["baseResourceGroup"] == "ops-cli-int-test-rg"
+        assert all(f"/resourceGroups/{state['resourceGroup']}/" in value for value in state["resources"].values())
+        assert cluster.test_environment(state, output)["azext_edge_rg"] == state["resourceGroup"]
+        state["resourceGroup"] = "ops-cli-int-test-rg"
+        with pytest.raises(ValueError, match="approved resource group"):
+            cluster.validate_state(state)
+    assert len(set(groups)) == 3
+    assert "ops-cli-int-test-rg" not in groups
+
+
+def test_temporary_group_creation_and_cleanup_preserve_base_group(tmp_path):
+    commands = Mock()
+    owner = "test-run:stable:attempt-1"
+    expected = resource_groups.identity(SUBSCRIPTION, owner)
+    commands.az_json.side_effect = [
+        {"location": "westus"}, False, expected, True, expected, False,
+    ]
+    receipt = tmp_path / "resource-group.json"
+    assert resource_groups.create(commands, receipt, SUBSCRIPTION, "shared-base", owner) == expected["name"]
+    create_args = commands.az_json.call_args_list[2].args
+    assert create_args[create_args.index("--location") + 1] == "westus"
+    assert json.loads(receipt.read_text())["sourceGroup"] == "shared-base"
+    resource_groups.cleanup(commands, receipt, SUBSCRIPTION, owner)
+    commands.run.assert_called_once_with(
+        ["az", "group", "delete", "--name", expected["name"], "--subscription", SUBSCRIPTION, "--yes"],
+        timeout=900,
+    )
+
+
+def test_temporary_group_creation_refuses_existing_group(tmp_path):
+    commands = Mock()
+    commands.az_json.side_effect = [{"location": "westus"}, True]
+    with pytest.raises(ValueError, match="refusing reuse"):
+        resource_groups.create(commands, tmp_path / "receipt.json", SUBSCRIPTION, "base", "job")
+    assert not (tmp_path / "receipt.json").exists()
+    assert commands.az_json.call_count == 2
+
+
+def test_temporary_group_creation_cannot_target_base_group(tmp_path):
+    commands = Mock()
+    with pytest.raises(ValueError, match="differ from"):
+        resource_groups.create(
+            commands, tmp_path / "receipt.json", SUBSCRIPTION, resource_groups.group_name("job"), "job",
+        )
+    commands.az_json.assert_not_called()
+
+
+@pytest.mark.parametrize("recorded", [False, True])
+def test_temporary_group_cleanup_is_safe_without_a_live_group(tmp_path, recorded):
+    commands = Mock()
+    receipt = tmp_path / "receipt.json"
+    if recorded:
+        receipt.write_text(json.dumps({**resource_groups.identity(SUBSCRIPTION, "job"), "sourceGroup": "base"}))
+        commands.az_json.return_value = False
+    resource_groups.cleanup(commands, receipt, SUBSCRIPTION, "job")
+    commands.run.assert_not_called()
+    assert commands.az_json.call_count == int(recorded)
+
+
+@pytest.mark.parametrize("foreign", ["receipt", "tags", "id"])
+def test_temporary_group_cleanup_rejects_foreign_ownership(tmp_path, foreign):
+    expected = resource_groups.identity(SUBSCRIPTION, "job")
+    receipt = tmp_path / "receipt.json"
+    value = {**expected, "sourceGroup": "base"}
+    if foreign == "receipt":
+        value["name"] = "another-group"
+    receipt.write_text(json.dumps(value))
+    remote = {**expected}
+    if foreign == "tags":
+        remote["tags"] = {}
+    elif foreign == "id":
+        remote["id"] = f"/subscriptions/{SUBSCRIPTION}/resourceGroups/base"
+    commands = Mock()
+    commands.az_json.side_effect = [True, remote]
+    with pytest.raises(ValueError, match="different job|exact ownership"):
+        resource_groups.cleanup(commands, receipt, SUBSCRIPTION, "job")
+    commands.run.assert_not_called()
+
+
+def test_failed_group_creation_retains_intent_for_owned_cleanup(tmp_path):
+    commands = Mock()
+    commands.az_json.side_effect = [
+        {"location": "westus"}, False, subprocess.CalledProcessError(1, ["az"]),
+    ]
+    receipt = tmp_path / "receipt.json"
+    with pytest.raises(subprocess.CalledProcessError):
+        resource_groups.create(commands, receipt, SUBSCRIPTION, "base", "job")
+    assert receipt.is_file()
+    expected = resource_groups.identity(SUBSCRIPTION, "job")
+    commands.az_json.side_effect = [True, expected, False]
+    resource_groups.cleanup(commands, receipt, SUBSCRIPTION, "job")
+    commands.run.assert_called_once()
+
+
+def test_temporary_group_cleanup_does_not_hide_remaining_group(tmp_path):
+    expected = resource_groups.identity(SUBSCRIPTION, "job")
+    receipt = tmp_path / "receipt.json"
+    receipt.write_text(json.dumps({**expected, "sourceGroup": "base"}))
+    commands = Mock()
+    commands.az_json.side_effect = [True, expected, True]
+    with pytest.raises(RuntimeError, match="remains after cleanup"):
+        resource_groups.cleanup(commands, receipt, SUBSCRIPTION, "job")
 
 
 def test_default_selection_excludes_explicit_scenarios(monkeypatch, tmp_path):
@@ -764,6 +891,32 @@ def test_run_without_admission_still_cleans_after_provision_failure(monkeypatch,
     identity.terminate.assert_called_once()
 
 
+def test_trust_group_creation_failure_still_attempts_owned_cleanup(monkeypatch, tmp_path):
+    state = make_state()
+    state["row"]["scenario"]["needs_trust"] = True
+    state["baseResourceGroup"] = state["resourceGroup"]
+    state["resourceGroup"] = resource_groups.group_name(pipeline.resource_group_owner(state))
+    state["resources"] = {
+        key: value.replace("/resourceGroups/ops-cli-int-test-rg/", f"/resourceGroups/{state['resourceGroup']}/")
+        for key, value in state["resources"].items()
+    }
+    state["ownershipChecked"] = False
+    pipeline.write(tmp_path / "state.json", state)
+    identity = Mock(poll=Mock(return_value=None))
+    monkeypatch.setattr(cluster, "start_auth", Mock(return_value=identity))
+    monkeypatch.setattr(cluster, "check_account", Mock())
+    monkeypatch.setattr(cluster, "Commands", Mock(return_value=Mock()))
+    monkeypatch.setattr(resource_groups, "create", Mock(side_effect=RuntimeError("creation failed")))
+    monkeypatch.setattr(resource_groups, "owned_group", Mock(return_value=None))
+    monkeypatch.setattr(resource_groups, "cleanup", Mock())
+    monkeypatch.setattr(cluster, "start_cluster", Mock())
+    with pytest.raises(RuntimeError, match="creation failed"):
+        cluster.run(tmp_path)
+    resource_groups.cleanup.assert_called_once()
+    cluster.start_cluster.assert_not_called()
+    identity.terminate.assert_called_once()
+
+
 def test_assertion_request_is_scoped_and_never_redirects(monkeypatch):
     response = Mock(status_code=200)
     response.json.return_value = {"oidcToken": "offline-assertion"}
@@ -999,13 +1152,14 @@ def test_yaml_keeps_dry_run_separate_and_reuses_existing_tests():
     assert qualify["dependsOn"] == ["Plan", "Build", "Lint", "Unit", "Integration", "TrustBundle"]
     assert "in(dependencies.TrustBundle.result, 'Succeeded', 'Skipped')" in qualify["condition"]
     trust = next(stage for stage in live if stage["stage"] == "TrustBundle")
-    assert trust["lockBehavior"] == "sequential"
-    assert trust["jobs"][0]["parameters"]["maxParallel"] == 1
-    assert trust["jobs"][1]["dependsOn"] == "Scenario"
-    assert "parameters.resourceGroup" in trust["jobs"][1]["environment"]
-    assert "parameters.subscriptionId" in trust["jobs"][1]["environment"]
+    assert "lockBehavior" not in trust
+    assert len(trust["jobs"]) == 1
+    assert "maxParallel" not in trust["jobs"][0]["parameters"]
+    assert all("environment" not in job and "deployment" not in job for stage in live for job in stage["jobs"])
     assert "hasTrustBundle" in trust["condition"] and "hasParallel" in integration["condition"]
-    job = yaml.safe_load((ROOT / ".azure-devops/templates/integration-scenario.yml").read_text())["jobs"][0]
+    scenario_template = yaml.safe_load((ROOT / ".azure-devops/templates/integration-scenario.yml").read_text())
+    assert next(item for item in scenario_template["parameters"] if item["name"] == "maxParallel")["default"] == 0
+    job = scenario_template["jobs"][0]
     assert job["displayName"] == ""
     assert all("scenario" not in step.get("displayName", "").lower() for step in job["steps"])
     assert job["pool"] == {

@@ -217,30 +217,34 @@ def test_init_broker_rejects_custom_persistence_mismatch(init_broker_assertion, 
         assert_broker("instance", "rg", use_preview=use_preview, broker_config_file=str(config_file))
 
 
-def test_workload_identity_jobs_serialize_through_cleanup():
+def test_workload_identity_jobs_have_no_cross_run_lock_and_keep_cleanup():
     config = yaml.safe_load((ROOT / ".github/workflows/int_test.yml").read_text())
     assert "concurrency" not in config
     job = config["jobs"]["int-test"]
     assert "max-parallel" not in job["strategy"]
-    assert job["concurrency"] == {
-        "group": (
-            "${{ matrix.scenario.tox_env == 'python-wlif-int' && "
-            "format('iot-ops-wlif-{0}', inputs.resource-group || 'ops-cli-int-test-rg') || "
-            "format('iot-ops-int-{0}-{1}-{2}', github.run_id, github.run_attempt, matrix.scenario.name) }}"
-        ),
-        "cancel-in-progress": False,
-        "queue": "max",
-    }
+    assert "concurrency" not in job
     steps = {step.get("name"): step for step in job["steps"]}
     names = list(steps)
     assert (
-        names.index("Tox INIT Integration Tests")
+        names.index("Create isolated Trust Bundle resource group")
+        < names.index("Output variables for future steps")
+        < names.index("ARC connect cluster")
+        < names.index("Tox INIT Integration Tests")
         < names.index("${{ matrix.scenario.description }}")
         < names.index("Delete AIO resources")
         < names.index("Delete connected cluster and resources")
+        < names.index("Delete isolated Trust Bundle resource group")
     )
+    assert "github.run_attempt" in job["env"]["RESOURCE_GROUP_OWNER"]
+    assert "matrix.scenario.name" in job["env"]["RESOURCE_GROUP_OWNER"]
     for name in ("Delete AIO resources", "Delete connected cluster and resources"):
-        assert steps[name]["if"] == "${{ always() }}"
+        assert steps[name]["if"] == (
+            "${{ always() && (!matrix.scenario.needs_trust || steps.resource_group.outcome == 'success') }}"
+        )
+    cleanup = steps["Delete isolated Trust Bundle resource group"]
+    assert cleanup["if"] == "${{ always() && matrix.scenario.needs_trust }}"
+    assert "integration_resource_group.py cleanup" in cleanup["run"]
+    assert '--owner "$RESOURCE_GROUP_OWNER"' in cleanup["run"]
 
 
 def test_default_matrix_covers_both_channels_without_invented_baselines():

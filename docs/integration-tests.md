@@ -122,30 +122,34 @@ live API and connector compatibility must be verified separately.
 
 #### Workload identity scheduling
 
-Workload-identity jobs (`python-wlif-int`, the `trustbundle` scenario) share a
-resource-group-specific concurrency group. Only one runs at a time, from setup and
-init through tests and cleanup, because OPC UA certificate commands create fixed-name
-SecretSync resources. Other scenarios remain parallel. `parallel: false` controls
-pytest workers within a job; it does not provide this cross-job protection.
+Workload-identity jobs (`python-wlif-int`, the `trustbundle` scenario) do not use
+cross-run concurrency locks. Each Trust Bundle job creates its own `ops-cli-wlif-*`
+resource group, including runs from Integration, Health, release children, or GitHub.
+Unique cluster and Key Vault names alone are insufficient: OPC UA certificate
+commands create the fixed-name ARM SecretSync resources `aio-opc-ua-broker-trust-list`,
+`aio-opc-ua-broker-issuer-list`, and `aio-opc-ua-broker-client-certificate` at resource-group
+scope.
 
-The group spans stable/preview channels, branches and workflow runs in the same
-repository that use this configuration. `cancel-in-progress: false` preserves the
-running job and `queue: max` allows up to 100 pending jobs instead of replacing the
-previous pending job. Either channel may run first. Runs in other repositories or
-older workflows without the group are not coordinated. Cleanup failures still need
-investigation: the lock lasts through cleanup attempts, not until successful deletion
-is independently guaranteed.
+The configured resource group remains the base for metadata location; it is never
+deleted. Temporary groups inherit its location and carry job-specific ownership tags.
+Creation refuses existing groups, and cleanup verifies the recorded group ID and tags
+before deleting the entire temporary group, including fixture leftovers. Cleanup
+also runs when setup fails. Stable/preview jobs and independent runs can execute in
+parallel; `parallel: false` still runs tests sequentially within each instance.
+An agent lost before cleanup can leave an orphaned group; use the retained state and
+ownership tags for targeted recovery. Cleanup scoped to the shared base group does
+not sweep these temporary groups.
 
-Azure Pipelines Integration and Health use the same split: ordinary scenarios run
-in parallel, while `TrustBundle` runs its matrix with `maxParallel: 1`. Before using
-a resource group, create the environment `ops-wlif-<subscription-id>-<resource-group>`
-(lowercase), add an **Exclusive lock** check, and authorize only the Integration
-and Health pipelines that use it. The environment has no deployed resources.
-Its check guards the whole Trust Bundle stage; `lockBehavior: sequential` queues
-other runs rather than canceling them. A `TrustBundleLock` deployment job finishes
-after the matrix to keep the environment referenced throughout the stage.
-This ADO lock does not coordinate GitHub runs: do not run both systems against the
-same resource group concurrently.
+The pipeline identity needs permission to create/delete resource groups and deploy
+resources in the subscription. Trust fixtures also create role assignments, so
+Contributor alone is insufficient: suitable RBAC administration permissions are
+needed for the temporary groups. The pipeline does not grant itself permissions.
+
+Removing the YAML environment reference does not remove checks from already queued
+ADO runs. Those runs retain their frozen resource-group selection. Retire the old
+environment's Exclusive lock check only after its users have completed, or rerun them
+with isolated resource groups. Resource-group separation does not isolate
+subscription-wide quotas, throttling, or scheduled cleanup policies.
 
 For manual Azure Pipelines Integration runs, select **Cluster region** (default
 `westus2`). The frozen plan uses this region for Arc cluster creation and the run
