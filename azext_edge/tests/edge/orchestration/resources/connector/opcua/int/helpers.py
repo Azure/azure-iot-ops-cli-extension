@@ -6,7 +6,19 @@
 
 from base64 import b64decode
 from pathlib import Path
+from shlex import quote
 from time import sleep
+from typing import Callable
+from azure.cli.core import AzCommandsLoader, get_default_cli
+from azure.cli.core.commands import AzCliCommand
+from azure.core.exceptions import AzureError, ResourceNotFoundError
+from azext_edge.edge.providers.orchestration.common import CUSTOM_LOCATIONS_API_VERSION
+from azext_edge.edge.providers.orchestration.resources.connector.opcua.certs import (
+    OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
+    OpcUACerts,
+)
+from azext_edge.edge.util.az_client import get_resource_client, get_ssc_mgmt_client
+from azext_edge.edge.util.id_tools import is_valid_resource_id, parse_resource_id
 from azext_edge.tests.settings import EnvironmentVariables
 from azext_edge.edge.providers.orchestration.resources.instances import SPC_RESOURCE_TYPE
 from typing import Any, Dict, Optional, cast
@@ -14,6 +26,7 @@ import pytest
 from azure.cli.core.azclierror import CLIInternalError
 from .......generators import generate_random_string
 from knack.log import get_logger
+from knack.util import CLIError
 from .......helpers import run
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
@@ -36,6 +49,110 @@ def run_json(command: str, **kwargs) -> Dict[str, Any]:
     result = run(command, **kwargs)
     assert isinstance(result, dict), f"Expected dict from command, got {type(result)}"
     return cast(Dict[str, Any], result)
+
+
+def _custom_location(resource: dict) -> str:
+    extended_location = resource.get("extendedLocation")
+    location = extended_location.get("name") if isinstance(extended_location, dict) else None
+    if not isinstance(location, str) or not is_valid_resource_id(location):
+        raise CLIInternalError(f"Cannot safely clean up resource with invalid custom location: {resource}")
+    parts = parse_resource_id(location)
+    if (
+        parts.get("namespace", "").lower() != "microsoft.extendedlocation"
+        or parts.get("resource_type", "").lower() != "customlocations"
+        or not parts.get("resource_group")
+        or parts.get("last_child_num")
+    ):
+        raise CLIInternalError(f"Cannot safely clean up resource with invalid custom location: {location}")
+    return location
+
+
+def _delete_opcua_secretsync(client, resource_group: str, name: str) -> None:
+    logger.info("Deleting test SecretSync %s in resource group %s", name, resource_group)
+    try:
+        poller = client.secret_syncs.begin_delete(resource_group_name=resource_group, secret_sync_name=name)
+    except ResourceNotFoundError:
+        return
+    poller.wait(timeout=120)
+    if not poller.done():
+        raise TimeoutError(f"Timed out deleting SecretSync {name} in {resource_group}")
+    poller.result()
+    _wait_for_opcua_secretsync_deletion(client, resource_group, name)
+
+
+def _wait_for_opcua_secretsync_deletion(client, resource_group: str, name: str) -> None:
+    for attempt in range(SECRETSYNC_MAX_RETRIES):
+        try:
+            client.secret_syncs.get(resource_group_name=resource_group, secret_sync_name=name)
+        except ResourceNotFoundError:
+            return
+        if attempt + 1 < SECRETSYNC_MAX_RETRIES:
+            sleep(SECRETSYNC_RETRY_INTERVAL)
+    raise TimeoutError(f"SecretSync {name} still exists in {resource_group} after deletion")
+
+
+def prepare_opcua_secretsync(settings, name: str) -> Callable[[], None]:
+    """Remove an orphaned test SecretSync and return an ownership-checked finalizer."""
+    resource_group = settings.env.azext_edge_rg
+    instance_name = settings.env.azext_edge_instance
+    instance = run_json(f"az iot ops show -g {quote(resource_group)} -n {quote(instance_name)}")
+    location = _custom_location(instance)
+    subscription = parse_resource_id(location)["subscription"]
+    cli_ctx = get_default_cli()
+    endpoint = cli_ctx.cloud.endpoints.resource_manager
+    client = get_ssc_mgmt_client(subscription_id=subscription, endpoint=endpoint)
+
+    try:
+        existing = client.secret_syncs.get(resource_group_name=resource_group, secret_sync_name=name)
+    except ResourceNotFoundError:
+        existing = None
+    if existing is not None:
+        owner = _custom_location(existing)
+        if owner.lower() == location.lower():
+            raise CLIInternalError(
+                f"SecretSync {name} already belongs to the test instance. "
+                "Use a clean test instance; existing certificate resources will not be deleted."
+            )
+        owner_client = get_resource_client(
+            subscription_id=parse_resource_id(owner)["subscription"], endpoint=endpoint,
+        )
+        try:
+            owner_client.resources.get_by_id(owner, api_version=CUSTOM_LOCATIONS_API_VERSION)
+        except ResourceNotFoundError:
+            logger.warning("Removing orphaned OPC UA SecretSync %s whose custom location %s is missing", name, owner)
+            _delete_opcua_secretsync(client, resource_group, name)
+        else:
+            raise CLIInternalError(
+                f"SecretSync {name} belongs to another custom location: {owner}. "
+                "Refusing to delete resources owned by another deployment; use a separate resource group."
+            )
+
+    def cleanup() -> None:
+        try:
+            try:
+                resource = client.secret_syncs.get(resource_group_name=resource_group, secret_sync_name=name)
+            except ResourceNotFoundError:
+                return
+            owner = _custom_location(resource)
+            if owner.lower() != location.lower():
+                raise CLIInternalError(f"Refusing to delete SecretSync {name}: ownership changed to {owner}")
+            certs = None
+            if name == OPCUA_CLIENT_CERT_SECRET_SYNC_NAME:
+                cmd = AzCliCommand(
+                    loader=AzCommandsLoader(cli_ctx=cli_ctx),
+                    name="iot ops connector opcua client cleanup",
+                    handler=None,
+                )
+                certs = OpcUACerts(cmd=cmd, resource_group_name=resource_group, instance_name=instance_name)
+                if _custom_location({"extendedLocation": certs.extended_location}).lower() != location.lower():
+                    raise CLIInternalError(f"Refusing client certificate rollback: instance {instance_name} moved")
+            _delete_opcua_secretsync(client, resource_group, name)
+            if certs is not None:
+                certs._update_client_secret_to_extension(application_cert="", subject_name="", application_uri="")
+        except (AzureError, CLIError, TimeoutError) as error:
+            logger.warning("OPC UA teardown could not clean up SecretSync %s in %s: %s", name, resource_group, error)
+
+    return cleanup
 
 
 def ensure_env_vars(settings):

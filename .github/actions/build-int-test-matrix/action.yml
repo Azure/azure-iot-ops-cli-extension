@@ -19,6 +19,15 @@ inputs:
   upgrade-baselines:
     description: JSON object of pinned baseline wheels and runtime identities, keyed by channel
     default: '{}'
+  test-current:
+    description: Test the candidate's bundled runtime profiles
+    default: 'true'
+  test-n-1:
+    description: Discover and test the previous published GA runtime line
+    default: 'false'
+  test-n-2:
+    description: Discover and test the second previous published GA runtime line
+    default: 'false'
   runtime-init-args:
     description: Additional shared foundation arguments
     default: ''
@@ -46,6 +55,9 @@ runs:
         TEST_SCENARIOS: ${{ inputs.test-scenarios }}
         RUNTIME_CHANNELS: ${{ inputs.runtime-channels }}
         UPGRADE_BASELINES: ${{ inputs.upgrade-baselines }}
+        TEST_CURRENT: ${{ inputs.test-current }}
+        TEST_N_1: ${{ inputs.test-n-1 }}
+        TEST_N_2: ${{ inputs.test-n-2 }}
         RUNTIME_INIT_ARGS: ${{ inputs.runtime-init-args }}
         RUNTIME_CREATE_ARGS: ${{ inputs.runtime-create-args }}
       run: |

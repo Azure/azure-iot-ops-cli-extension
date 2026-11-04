@@ -76,9 +76,16 @@ def verify_integration_runtime(request):
     # the legacy continue-on-error block. Other suites validate before their first test.
     if all(item.get_closest_marker("init_scenario_test") for item in integration):
         return
-    from .runtime_checks import assert_runtime, configured_baseline
+    from .runtime_checks import assert_compat_runtime, assert_runtime, configured_baseline
 
-    assert_runtime(os.environ["azext_edge_instance"], os.environ["azext_edge_rg"], channel, configured_baseline())
+    arguments = (
+        os.environ["azext_edge_instance"], os.environ["azext_edge_rg"], channel, configured_baseline(),
+    )
+    if os.environ.get("azext_edge_preserve_runtime") == "true":
+        assert_compat_runtime(*arguments)
+        request.addfinalizer(lambda: assert_compat_runtime(*arguments))
+    else:
+        assert_runtime(*arguments)
 
 
 # Sets current working directory to the directory of the executing file

@@ -858,6 +858,75 @@ def test_live_identity_failures_are_hard_errors(mocker, records, failure):
         runtime_checks.assert_runtime("instance", "rg", "stable")
 
 
+@pytest.mark.parametrize("failure", [None, "missing-baseline", "upgraded", "auto-upgrade", "same-version"])
+def test_compatibility_requires_unchanged_older_runtime(mocker, monkeypatch, records, failure):
+    version = "1.5.45" if failure == "same-version" else "1.4.112"
+    definition = {"version": version, "train": "stable"}
+    monkeypatch.setenv("azext_edge_runtime_channel", "stable")
+    monkeypatch.setenv(
+        "azext_edge_upgrade_baseline", json.dumps(None if failure == "missing-baseline" else definition),
+    )
+    mocker.patch(
+        "azext_edge.tests.runtime_checks.get_runtime_catalog",
+        return_value=RuntimeProfileCatalog([make_profile(RuntimeChannel.STABLE, "1.5.45")]),
+    )
+    records["extensions"][0]["properties"].update(
+        currentVersion="1.5.45" if failure == "upgraded" else version,
+        version="1.5.45" if failure == "upgraded" else version,
+        autoUpgradeMinorVersion=failure == "auto-upgrade",
+    )
+    command = mocker.patch.object(runtime_checks, "run", side_effect=[
+        records["instance"], records["custom_location"], records["cluster"], {"value": records["extensions"]},
+    ])
+    if failure:
+        with pytest.raises(AssertionError):
+            runtime_checks.assert_compat_runtime("instance", "rg", "stable", runtime_checks.configured_baseline())
+    else:
+        runtime_checks.assert_compat_runtime("instance", "rg", "stable", runtime_checks.configured_baseline())
+        assert command.call_count == 4
+
+
+@pytest.mark.parametrize("enabled", [False, True])
+def test_compatibility_checks_before_and_after_suite(mocker, monkeypatch, enabled):
+    monkeypatch.setenv("azext_edge_preserve_runtime", "true" if enabled else "false")
+    monkeypatch.setenv("azext_edge_runtime_channel", "stable")
+    monkeypatch.setenv("azext_edge_instance", "instance")
+    monkeypatch.setenv("azext_edge_rg", "rg")
+    monkeypatch.setenv("azext_edge_upgrade_baseline", json.dumps(baseline() if enabled else None))
+    check = mocker.patch.object(runtime_checks, "assert_compat_runtime")
+    ordinary = mocker.patch.object(runtime_checks, "assert_runtime")
+    finalizers = []
+    item = SimpleNamespace(path=Path("test_example_int.py"), get_closest_marker=lambda _: None)
+    request = SimpleNamespace(
+        session=SimpleNamespace(items=[item]), addfinalizer=finalizers.append,
+    )
+    conftest.verify_integration_runtime.__wrapped__(request)
+    assert check.call_count == int(enabled)
+    for finalize in finalizers:
+        finalize()
+    assert check.call_count == 2 * int(enabled)
+    assert ordinary.call_count == int(not enabled)
+
+
+def test_management_compatibility_existing_state_fails_not_skips(mocker, monkeypatch):
+    from azext_edge.tests.edge.orchestration import test_mgmt_actions_int as tests
+
+    monkeypatch.setenv("azext_edge_upgrade_baseline", json.dumps(baseline()))
+    settings = SimpleNamespace(
+        add_to_config=mocker.Mock(),
+        env=SimpleNamespace(azext_edge_instance="instance", azext_edge_rg="rg"),
+    )
+    command = mocker.patch.object(tests, "run", side_effect=[
+        {"properties": {"adrNamespaceRef": {"resourceId": "/namespace"}}},
+        {"location": "eastus2"},
+        {"instance": {"requestDataflowGraph": {"exists": True}}},
+    ])
+    setup = tests.mgmt_actions_setup.__wrapped__(mocker.Mock(), settings, [])
+    with pytest.raises(pytest.fail.Exception, match="requires a clean instance"):
+        next(setup)
+    assert command.call_count == 3
+
+
 @pytest.mark.parametrize("workflow,input_name", [
     ("int_test.yml", "resource-group"),
     ("container_int_test.yml", "resource-group"),

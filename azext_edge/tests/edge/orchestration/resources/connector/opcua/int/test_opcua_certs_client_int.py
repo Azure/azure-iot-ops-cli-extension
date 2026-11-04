@@ -21,6 +21,7 @@ from .helpers import (
     ensure_secretsync_enabled,
     generate_self_signed_der_cert_with_uri,
     generate_self_signed_pem_cert,
+    prepare_opcua_secretsync,
 )
 import pytest
 from knack.log import get_logger
@@ -34,11 +35,13 @@ ROLE_RETRY_INTERVAL = 15
 
 
 @pytest.fixture(scope="function")
-def opcua_certs_client_test_setup(settings, tracked_resources: List[str]):
+def opcua_certs_client_test_setup(settings, tracked_resources: List[str], request):
     """Setup fixture for opcua certs client tests."""
 
     ensure_env_vars(settings)
     kv_id, kv_name = ensure_key_vault(settings)
+    request.addfinalizer(lambda: cleanup_test_resources(settings, kv_name))
+    request.addfinalizer(prepare_opcua_secretsync(settings, OPCUA_CLIENT_CERT_SECRET_SYNC_NAME))
     mi_id = ensure_managed_identity(settings, tracked_resources)
     instance_name = settings.env.azext_edge_instance
     resource_group = settings.env.azext_edge_rg
@@ -53,9 +56,6 @@ def opcua_certs_client_test_setup(settings, tracked_resources: List[str]):
         "userAssignedId": mi_id,
         "spcName": spc_name,
     }
-
-    # Clean up only the resources we created during this test
-    cleanup_test_resources(settings, kv_name)
 
 
 @pytest.mark.require_wlif_setup

@@ -27,7 +27,7 @@ from azext_edge.edge.providers.orchestration.common import (
 
 from ....generators import generate_random_string
 from ....helpers import assert_role_assignment, process_additional_args, run, strip_quotes
-from ....runtime_checks import assert_runtime, configured_baseline
+from ....runtime_checks import assert_compat_runtime, assert_runtime, configured_baseline
 
 logger = get_logger(__name__)
 
@@ -139,7 +139,7 @@ def test_init_scenario(init_test_setup: dict, tracked_files: list):
         baseline_command = [
             "az", "iot", "ops", "create", "-g", resource_group, "--cluster", cluster_name, "-n", instance_name,
             "--sr-resource-id", registry_id, "--ns-resource-id", adr_namespace_id, "--no-progress",
-            *shlex.split(baseline["create_args"]),
+            *shlex.split(baseline["create_args"]), *shlex.split(additional_create_args),
         ]
         subprocess.run(baseline_command, env=environment, check=True)
     else:
@@ -148,10 +148,12 @@ def test_init_scenario(init_test_setup: dict, tracked_files: list):
     channel = os.environ.get("azext_edge_runtime_channel")
     if channel:
         # Hard gate: never downgrade identity/version/readiness failures to pytest.skip.
-        assert_runtime(instance_name, resource_group, channel, baseline)
-    if baseline:
-        # Target-template defaults do not describe an older source deployment.
-        # Its readiness/identity were checked above; upgrade tests check the target.
+        if os.environ.get("azext_edge_preserve_runtime") == "true":
+            assert_compat_runtime(instance_name, resource_group, channel, baseline)
+        else:
+            assert_runtime(instance_name, resource_group, channel, baseline)
+    if baseline and os.environ.get("azext_edge_preserve_runtime") != "true":
+        # Upgrade tests check the target; compatibility jobs must also check scenario settings.
         return
 
     if init_test_setup["redeployment"]:
@@ -163,9 +165,15 @@ def test_init_scenario(init_test_setup: dict, tracked_files: list):
             expect_failure=True,
         )
 
-        run(create_command)
+        if baseline:
+            subprocess.run(baseline_command, env=environment, check=True)
+        else:
+            run(create_command)
         if channel:
-            assert_runtime(instance_name, resource_group, channel)
+            if baseline:
+                assert_compat_runtime(instance_name, resource_group, channel, baseline)
+            else:
+                assert_runtime(instance_name, resource_group, channel)
 
     # Missing:
     # init
@@ -186,6 +194,7 @@ def test_init_scenario(init_test_setup: dict, tracked_files: list):
                 resource_group=resource_group,
                 schema_registry_id=registry_id,
                 adr_namespace_id=adr_namespace_id,
+                check_defaults=not bool(baseline),
                 **create_arg_dict,
             )
     except Exception as e:  # pylint: disable=broad-except
@@ -253,27 +262,30 @@ def assert_aio_instance(
     feature: Optional[str] = None,
     sku: Optional[str] = None,
     use_preview: bool = False,
+    check_defaults: bool = True,
     **_,
 ):
     # check extensions installed
-    cluster_id = run(
-        f"az resource show -n {cluster_name} -g {resource_group} "
-        "--resource-type Microsoft.Kubernetes/connectedClusters"
-    )["id"]
-    extension_result = run(
-        f"az rest --method GET --url {cluster_id}/providers/"
-        "Microsoft.KubernetesConfiguration/extensions?api-version=2023-05-01"
-    )
-    extensions = extension_result["value"]
-    while extension_result.get("nextLink"):
-        extension_result = run(f"az rest --method GET --url {extension_result['nextLink']}")
-        extensions.extend(extension_result["value"])
-    iot_ops_ext = None
-    iot_ops_ext_principal_id = None
-    for ext in extensions:
-        if ext["properties"]["extensionType"] == EXTENSION_TYPE_OPS:
-            iot_ops_ext = ext
-            iot_ops_ext_principal_id = ext.get("identity", {}).get("principalId")
+    if check_defaults or ops_config:
+        cluster_id = run(
+            f"az resource show -n {cluster_name} -g {resource_group} "
+            "--resource-type Microsoft.Kubernetes/connectedClusters"
+        )["id"]
+        extension_result = run(
+            f"az rest --method GET --url {cluster_id}/providers/"
+            "Microsoft.KubernetesConfiguration/extensions?api-version=2023-05-01"
+        )
+        extensions = extension_result["value"]
+        while extension_result.get("nextLink"):
+            extension_result = run(f"az rest --method GET --url {extension_result['nextLink']}")
+            extensions.extend(extension_result["value"])
+        iot_ops_ext = next(
+            (ext for ext in extensions if ext["properties"]["extensionType"] == EXTENSION_TYPE_OPS), None,
+        )
+        assert iot_ops_ext, (
+            "Extensions for AIO are missing. These are the extensions "
+            f"on the cluster: {[ext['name'] for ext in extensions]}."
+        )
 
     if ops_config:
         ops_config = assemble_nargs_to_dict(ops_config.split())
@@ -281,15 +293,11 @@ def assert_aio_instance(
         for key, value in ops_config.items():
             assert configs[key] == value
 
-    if not all([iot_ops_ext]):
-        raise AssertionError(
-            "Extensions for AIO are missing. These are the extensions "
-            f"on the cluster: {[ext['name'] for ext in extensions]}."
-        )
-
     instance_show = run(f"az iot ops show -n {instance_name} -g {resource_group}")
-    tags = assemble_nargs_to_dict(tags)
-    assert instance_show.get("tags", {}) == tags
+    if check_defaults or tags is not None:
+        assert instance_show.get("tags", {}) == assemble_nargs_to_dict(
+            shlex.split(tags) if isinstance(tags, str) else tags,
+        )
     if location:
         assert instance_show["location"] == location
     expected_custom_location = instance_show["extendedLocation"]["name"].split("/")[-1]
@@ -297,7 +305,8 @@ def assert_aio_instance(
         assert custom_location == expected_custom_location
 
     instance_props = instance_show["properties"]
-    assert instance_props.get("description") == description, "Unexpected instance description."
+    if check_defaults or description is not None:
+        assert instance_props.get("description") == description, "Unexpected instance description."
     assert instance_props["schemaRegistryRef"] == {"resourceId": schema_registry_id}
     assert instance_props["adrNamespaceRef"] == {"resourceId": adr_namespace_id}
     if sku:
@@ -307,23 +316,33 @@ def assert_aio_instance(
         assert listed_instance, f"Instance '{instance_name}' was not returned by 'az iot ops list'."
         assert listed_instance.get("sku", {}).get("name") == sku
 
-    # Verify the schema registry role assignment includes Azure Device Registry Administrator
-    assert iot_ops_ext_principal_id, "IoT Operations extension is missing 'identity.principalId'."
-    assert_role_assignment(
-        scope=schema_registry_id,
-        assignee=iot_ops_ext_principal_id,
-        expected_role_ids=AZURE_DEVICE_REGISTRY_ADMINISTRATOR_ROLE_ID,
-        disallowed_role_ids=CONTRIBUTOR_ROLE_ID,
-    )
+    if check_defaults:
+        iot_ops_ext_principal_id = iot_ops_ext.get("identity", {}).get("principalId")
+        assert iot_ops_ext_principal_id, "IoT Operations extension is missing 'identity.principalId'."
+        assert_role_assignment(
+            scope=schema_registry_id,
+            assignee=iot_ops_ext_principal_id,
+            expected_role_ids=AZURE_DEVICE_REGISTRY_ADMINISTRATOR_ROLE_ID,
+            disallowed_role_ids=CONTRIBUTOR_ROLE_ID,
+        )
+        tree = run(f"az iot ops show -n {instance_name} -g {resource_group} --tree")
+        assert expected_custom_location in tree
+        if not trust_settings:
+            assert "cert-manager" in tree
 
-    tree = run(f"az iot ops show -n {instance_name} -g {resource_group} --tree")
-    assert expected_custom_location in tree
-    if not trust_settings:
-        assert "cert-manager" in tree
+    requested_features = {}
+    if not check_defaults and feature:
+        requested_features = assemble_nargs_to_dict(shlex.split(feature))
+        for key, expected in requested_features.items():
+            actual = instance_props.get("features", {})
+            for part in key.split("."):
+                assert isinstance(actual, dict), f"Missing instance feature {key}."
+                actual = actual.get(part)
+            assert actual == expected, f"Unexpected instance feature {key}."
 
     # OPC UA disabled: the instance must reflect it and no default connector template should exist.
     opcua_disabled = (feature and "opcua.mode=disabled" in str(feature).lower()) or (
-        sku and sku.lower() == "essentials"
+        sku and sku.lower() == "essentials" and (check_defaults or "opcua.mode" not in requested_features)
     )
     if opcua_disabled:
         assert instance_props.get("features", {}).get("opcua", {}).get("mode") == "Disabled"
@@ -358,6 +377,7 @@ def assert_broker_args(
     lt: Optional[str] = None,
     mp: Optional[str] = None,
     use_preview: bool = False,
+    check_defaults: bool = True,
     **_,
 ):
     if bp:
@@ -375,6 +395,13 @@ def assert_broker_args(
     if mp:
         broker_mem_profile = mp
 
+    if not check_defaults and all(value is None for value in (
+        add_insecure_listener, persist_max_size, broker_config_file, broker_mem_profile, broker_listener_type,
+        broker_backend_part, broker_backend_rf, broker_backend_workers,
+        broker_frontend_replicas, broker_frontend_workers,
+    )):
+        return
+
     broker = run(f"az iot ops broker list -g {resource_group} -i {instance_name}")
     assert len(broker) == 1
     broker = broker[0]
@@ -386,7 +413,7 @@ def assert_broker_args(
         with open(broker_config_file, "r", encoding="utf-8") as bcf:
             broker_config = json.load(bcf)
             broker_config = broker_config.get("properties", broker_config)
-            broker_mem_profile = broker_config.get("memoryProfile", "").lower()
+            broker_mem_profile = broker_config.get("memoryProfile")
 
             broker_backend = broker_config.get("cardinality", {}).get("backendChain", {})
             broker_backend_part = broker_backend.get("partitions")
@@ -398,19 +425,53 @@ def assert_broker_args(
             broker_frontend_workers = broker_frontend.get("workers")
 
     broker_props = broker["properties"]
-    assert broker_props["memoryProfile"].lower() == (broker_mem_profile or "medium")
+    if check_defaults or broker_mem_profile is not None:
+        assert broker_props["memoryProfile"].lower() == (broker_mem_profile or "medium").lower()
 
-    cardinality = broker_props["cardinality"]
-    assert cardinality["backendChain"]["partitions"] == (broker_backend_part or 2)
-    assert cardinality["backendChain"]["redundancyFactor"] == (broker_backend_rf or 2)
-    assert cardinality["backendChain"]["workers"] == (broker_backend_workers or 2)
-    assert cardinality["frontend"]["replicas"] == (broker_frontend_replicas or 2)
-    assert cardinality["frontend"]["workers"] == (broker_frontend_workers or 2)
+    for section, key, expected in (
+        ("backendChain", "partitions", broker_backend_part),
+        ("backendChain", "redundancyFactor", broker_backend_rf),
+        ("backendChain", "workers", broker_backend_workers),
+        ("frontend", "replicas", broker_frontend_replicas),
+        ("frontend", "workers", broker_frontend_workers),
+    ):
+        if check_defaults or expected is not None:
+            assert broker_props["cardinality"][section][key] == (int(expected) if expected is not None else 2)
     # there is diagnostics + generateResourceLimits but nothing from init yet
 
-    if broker_config_file:
+    _assert_broker_persistence(
+        broker_props, broker_config if broker_config_file else None, persist_max_size, use_preview, check_defaults,
+    )
+
+    # nothing interesting in the authn
+    if check_defaults:
+        authns = run(f"az iot ops broker authn list -g {resource_group} -i {instance_name} -b {broker_name}")
+        assert len(authns) == 1
+
+    if not check_defaults and add_insecure_listener is None and broker_listener_type is None:
+        return
+
+    # listener
+    listeners = run(f"az iot ops broker listener list -g {resource_group} -i {instance_name} -b {broker_name}")
+    if check_defaults:
+        assert len(listeners) == (2 if add_insecure_listener else 1)
+
+    if add_insecure_listener:
+        insecure = next((listener for listener in listeners if listener["name"] == "default-insecure"), None)
+        assert insecure, "Missing requested insecure broker listener."
+        ports = insecure["properties"]["ports"]
+        assert 1883 in [p["port"] for p in ports]
+
+    if check_defaults or broker_listener_type is not None:
+        secure_listener = [listener for listener in listeners if listener["name"] == "default"]
+        listener_props = secure_listener[0]["properties"]
+        assert listener_props["serviceType"].lower() == (broker_listener_type or "ClusterIp").lower()
+
+
+def _assert_broker_persistence(broker_props, broker_config, persist_max_size, use_preview, check_defaults):
+    if broker_config is not None:
         expected_persistence = broker_config.get("persistence")
-    elif persist_max_size or use_preview:
+    elif persist_max_size or (check_defaults and use_preview):
         expected_persistence = {
             "maxSize": persist_max_size or "3Gi",
             "encryption": {"mode": "Enabled"},
@@ -429,7 +490,8 @@ def assert_broker_args(
         expected_persistence = None
 
     if expected_persistence is None:
-        assert "persistence" not in broker_props
+        if check_defaults or "persistence" in (broker_config or {}):
+            assert "persistence" not in broker_props
     else:
         persistence = broker_props.get("persistence")
         assert isinstance(persistence, dict), "Expected broker disk persistence."
@@ -444,33 +506,26 @@ def assert_broker_args(
             else:
                 assert actual == expected, f"Unexpected broker persistence {setting}."
 
-    # nothing interesting in the authn
-    authns = run(f"az iot ops broker authn list -g {resource_group} -i {instance_name} -b {broker_name}")
-    assert len(authns) == 1
-
-    # listener
-    listeners = run(f"az iot ops broker listener list -g {resource_group} -i {instance_name} -b {broker_name}")
-    assert len(listeners) == (2 if add_insecure_listener else 1)
-
-    if add_insecure_listener:
-        insecure = [listener for listener in listeners if listener["name"] == "default-insecure"][0]
-        ports = insecure["properties"]["ports"]
-        assert 1883 in [p["port"] for p in ports]
-
-    secure_listener = [listener for listener in listeners if listener["name"] == "default"]
-    listener_props = secure_listener[0]["properties"]
-    assert listener_props["serviceType"].lower() == (broker_listener_type or "ClusterIp").lower()
-
 
 def assert_dataflow_profile_args(
-    instance_name: str, resource_group: str, dataflow_profile_instances: Optional[int] = None, **_
+    instance_name: str, resource_group: str, dataflow_profile_instances: Optional[int] = None,
+    check_defaults: bool = True, **_
 ):
+    if not check_defaults and dataflow_profile_instances is None:
+        return
     profile = run(f"az iot ops dataflow profile list -g {resource_group} -i {instance_name}")
     profile_props = profile[0]["properties"]
-    assert profile_props["instanceCount"] == (dataflow_profile_instances or 1)
+    assert profile_props["instanceCount"] == (
+        int(dataflow_profile_instances) if dataflow_profile_instances is not None else 1
+    )
 
 
-def assert_trust_config_args(instance_name: str, resource_group: str, trust_settings: Optional[str] = None, **_):
+def assert_trust_config_args(
+    instance_name: str, resource_group: str, trust_settings: Optional[str] = None,
+    check_defaults: bool = True, **_,
+):
+    if not check_defaults and trust_settings is None:
+        return
     listener = run(
         f"az iot ops broker listener show -b {DEFAULT_BROKER} -n {DEFAULT_BROKER_LISTENER} "
         f"-g {resource_group} -i {instance_name}"
