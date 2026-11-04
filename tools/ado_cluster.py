@@ -7,6 +7,7 @@
 """Execute one ops scenario on fresh resources; never sweep the shared resource group."""
 
 import argparse
+from datetime import datetime
 import hashlib
 import json
 import os
@@ -158,7 +159,7 @@ def cluster_paths(state):
     return directory, f"ops-k3s-{state['suffix']}"
 
 
-def wait_cluster(commands, state, directory, unit):
+def wait_cluster(commands, state, directory, unit, started):
     kubectl = ["sudo", "-n", str(directory / "k3s"), "kubectl", "--kubeconfig", str(directory / "config")]
     for attempt in range(60):
         commands.run(["sudo", "-n", "systemctl", "is-active", "--quiet", unit], timeout=10)
@@ -166,13 +167,23 @@ def wait_cluster(commands, state, directory, unit):
             commands.run([*kubectl, "wait", "--for=condition=Ready", f"node/{state['cluster']}",
                           "--timeout=5s"], timeout=20)
             commands.run([*kubectl, "get", "--raw=/readyz", "--request-timeout=5s"], timeout=10)
-            time.sleep(5)
-            commands.run(["sudo", "-n", "systemctl", "is-active", "--quiet", unit], timeout=10)
-            return
+            controller = json.loads(commands.run(
+                [*kubectl, "get", "lease/k3s-cloud-controller-manager", "--namespace=kube-system",
+                 "--output=json", "--request-timeout=5s"], capture=True, timeout=10,
+            )).get("spec", {})
+            renewed = controller.get("renewTime")
+            # Node/API readiness precedes CCM startup; a pre-restart lease is not proof of readiness.
+            if (controller.get("holderIdentity") and renewed
+                    and datetime.fromisoformat(renewed.replace("Z", "+00:00")).timestamp() >= started):
+                time.sleep(5)
+                commands.run(["sudo", "-n", "systemctl", "is-active", "--quiet", unit], timeout=10)
+                return
         except subprocess.CalledProcessError:
             if attempt == 59:
                 raise
-            time.sleep(5)
+        if attempt == 59:
+            raise TimeoutError("K3s cloud controller did not renew its leader lease after startup.")
+        time.sleep(5)
 
 
 def start_cluster(commands, state, output, issuer=None):
@@ -207,7 +218,7 @@ def start_cluster(commands, state, output, issuer=None):
         started = time.time()
         commands.run(arguments)
         try:
-            wait_cluster(commands, state, directory, unit)
+            wait_cluster(commands, state, directory, unit, started)
             break
         except subprocess.CalledProcessError:
             log = diagnostics.journal(unit, since=started)

@@ -590,12 +590,16 @@ def test_cluster_waits_for_its_registered_ready_node(monkeypatch, tmp_path, fail
     def run(arguments, **_kwargs):
         if "wait" in arguments and next(failures, None) is not None:
             raise error
+        if "lease/k3s-cloud-controller-manager" in arguments:
+            return json.dumps({"spec": {"holderIdentity": "test", "renewTime": "1970-01-01T00:16:41Z"}})
+        return None
 
     commands.run.side_effect = run
     monkeypatch.setattr(cluster.diagnostics, "journal", Mock(return_value="unclassified startup failure"))
     monkeypatch.setattr(cluster.diagnostics, "command", Mock(return_value="active"))
     sleep = Mock()
     copy_config = Mock()
+    monkeypatch.setattr(cluster.time, "time", Mock(return_value=1000))
     monkeypatch.setattr(cluster.time, "sleep", sleep)
     monkeypatch.setattr(cluster.subprocess, "run", copy_config)
     monkeypatch.setenv("KUBECONFIG", "before-start")
@@ -620,6 +624,66 @@ def test_cluster_waits_for_its_registered_ready_node(monkeypatch, tmp_path, fail
         ]
         assert call.kwargs == {"timeout": 20}
     assert pipeline.read(tmp_path / "state.json")["clusterStarted"] is True
+
+
+@pytest.mark.parametrize("renewed", [False, True])
+def test_cluster_waits_for_current_cloud_controller_not_a_pre_restart_lease(monkeypatch, renewed):
+    state = make_state()
+    directory, unit = cluster.cluster_paths(state)
+    probes = []
+
+    def run(arguments, **_kwargs):
+        if "lease/k3s-cloud-controller-manager" in arguments:
+            stamp = "1970-01-01T00:16:41Z" if renewed and probes else "1970-01-01T00:16:39Z"
+            probes.append(stamp)
+            return json.dumps({"spec": {"holderIdentity": "test", "renewTime": stamp}})
+        return None
+
+    commands = Mock()
+    commands.run.side_effect = run
+    monkeypatch.setattr(cluster.time, "sleep", Mock())
+    if renewed:
+        cluster.wait_cluster(commands, state, directory, unit, started=1000)
+        assert len(probes) == 2
+    else:
+        with pytest.raises(TimeoutError, match="cloud controller did not renew"):
+            cluster.wait_cluster(commands, state, directory, unit, started=1000)
+        assert len(probes) == 60
+
+
+def test_cluster_retries_classified_controller_exit_after_node_and_api_are_ready(monkeypatch, tmp_path):
+    state = make_state()
+    directory, _ = cluster.cluster_paths(state)
+    directory.mkdir()
+    (directory / "k3s").write_bytes(b"offline")
+    starts = []
+    probes = []
+
+    def run(arguments, **_kwargs):
+        if "systemd-run" in arguments:
+            starts.append(arguments)
+        if "lease/k3s-cloud-controller-manager" in arguments:
+            probes.append(arguments)
+            if len(starts) == 1:
+                raise subprocess.CalledProcessError(1, arguments)
+            return json.dumps({"spec": {"holderIdentity": "test", "renewTime": "1970-01-01T00:16:41Z"}})
+        if "is-active" in arguments and len(starts) == 1 and probes:
+            raise subprocess.CalledProcessError(3, arguments)
+        return None
+
+    commands = Mock()
+    commands.run.side_effect = run
+    monkeypatch.setattr(cluster.time, "time", Mock(return_value=1000))
+    monkeypatch.setattr(cluster.time, "sleep", Mock())
+    monkeypatch.setattr(cluster.subprocess, "run", Mock())
+    monkeypatch.setattr(cluster.diagnostics, "journal", Mock(
+        return_value="cloud-controller-manager exited: extension-apiserver-authentication forbidden",
+    ))
+    monkeypatch.setattr(cluster.diagnostics, "command", Mock(return_value="inactive"))
+    cluster.start_cluster(commands, state, tmp_path)
+    assert len(starts) == len(probes) == 2
+    cluster.subprocess.run.assert_called_once()
+    cluster.diagnostics.journal.assert_called_once()
 
 
 @pytest.mark.parametrize("reason,active,retries", [
