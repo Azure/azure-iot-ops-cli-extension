@@ -39,6 +39,28 @@ All k8s interaction commands include an optional `--context` param. If none is p
 
 Comprehensive documentation is available in the [Wiki](https://github.com/Azure/azure-iot-ops-cli-extension/wiki/Azure-IoT-Ops-Reference).
 
+### Management actions on existing instances
+
+Management-actions enablement selects the newest CLI-supported stable API enabled for its
+required resource types on the instance's custom location.
+Selection uses enabled resource types, not an AIO-version-to-API table.
+Missing or invalid custom-location IDs are rejected before any external writes.
+
+Capability discovery is optional and does not introduce a required permission. When
+available, it checks compatibility before Event Grid, Device Registry, or child-resource
+writes. If discovery is denied, unavailable, or empty, enablement preserves existing
+access and negotiates older CLI-supported stable APIs only after an explicit HTTP 400/404
+`MissingAzureKubernetesMapping` rejection of a JSON child PUT. It does not downgrade on
+authorization, unrelated service, or transport errors, or replay accepted operations.
+
+Show and disable retain their existing resource-provider read/delete paths. They do
+not perform custom-location capability discovery or require this additional permission.
+
+When discovery is unavailable, compatibility cannot be guaranteed before writes.
+This preflight does not make multi-resource workflows transactional: later service
+failures can still leave partial state. Other child-resource commands and explicit
+runtime API selection for deployment and upgrade workflows are unchanged.
+
 ### Azure US Government deployment configuration
 
 With `AzureUSGovernment` selected in Azure CLI, `iot ops init` uses Government-specific Cert Manager and

@@ -5,6 +5,7 @@
 # ----------------------------------------------------------------------------------------------
 
 import json
+from functools import cached_property
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple
 
 from azure.cli.core.azclierror import ValidationError
@@ -39,6 +40,7 @@ from .common import (
     MIN_INSTANCE_VERSION_MGMT_ACTIONS,
 )
 from .eg_provider_base import EgNamespaceContext, EventGridProviderBase, graceful_delete as _graceful_delete
+from .resources.instances import Instances
 from .permissions import ROLE_DEF_FORMAT_STR, PermissionManager, PrincipalType
 
 if TYPE_CHECKING:
@@ -209,6 +211,18 @@ class MgmtActions(EventGridProviderBase):
         )
         self.permission_manager = PermissionManager(**self._get_client_kwargs())
 
+    @cached_property
+    def instances(self) -> Instances:
+        return Instances(self.cmd, subscription_id=self.default_subscription_id)
+
+    def _use_child_api(self, instance: Dict) -> None:
+        resource = parse_resource_id_dict(instance["id"])
+        self.instances.use_child_api(
+            resource["name"], resource["resource_group"], ["dataflow_endpoint", "dataflow_graph", "dataflow"],
+            instance=instance,
+        )
+        self.iotops_mgmt_client = self.instances.iotops_mgmt_client
+
     def enable(
         self,
         name: str,
@@ -262,6 +276,7 @@ class MgmtActions(EventGridProviderBase):
                         f"Instance '{name}' version '{instance_version}' does not meet the minimum "
                         f"required version '{MIN_INSTANCE_VERSION_MGMT_ACTIONS}' for management actions."
                     )
+                self._use_child_api(instance)
                 display.update_step("Analyzing", "Instance & version check", StepState.COMPLETE, "done")
 
             # Validate EG namespace (format, existence, topic spaces, MQTT hostname)

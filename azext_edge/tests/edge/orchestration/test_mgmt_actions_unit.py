@@ -74,6 +74,19 @@ def suppress_workflow_display(mocker):
     mocker.patch("azext_edge.edge.providers.orchestration.mgmt_actions.console")
 
 
+@pytest.fixture(autouse=True)
+def mocked_child_api_discovery(mocker):
+    """These orchestration tests isolate discovery; transport coverage lives in test_instance_api_unit."""
+    from azext_edge.edge.providers.orchestration.resources.instances import IOTOPS_CHILD_RESOURCE_TYPES, Instances
+
+    mocker.patch.object(
+        Instances, "_read_child_api_capabilities",
+        return_value={
+            resource_type.lower(): {IOTOPS_API_VERSION} for resource_type in IOTOPS_CHILD_RESOURCE_TYPES.values()
+        },
+    )
+
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
