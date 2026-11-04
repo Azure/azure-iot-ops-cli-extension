@@ -496,6 +496,31 @@ def test_storage_verifies_content_and_never_overwrites(candidate, monkeypatch, t
     assert all(args[args.index("--overwrite") + 1] == "false" for args in uploads)
 
 
+@pytest.mark.parametrize("dependency_failure", [False, True])
+def test_unit_dependency_versions_are_logged_before_checking(monkeypatch, tmp_path, dependency_failure):
+    env = {"PIP_INDEX_URL": "authenticated-test-feed"}
+    failure = release.subprocess.CalledProcessError(1, ["pip", "check"])
+    run = Mock(side_effect=[None, failure if dependency_failure else None])
+    constraints = Mock(return_value="azure-core>=1.30\n")
+    monkeypatch.setattr(release, "feed_environment", Mock(return_value=env))
+    monkeypatch.setattr(release.subprocess, "run", run)
+    monkeypatch.setattr(release.subprocess, "check_output", constraints)
+    directory = tmp_path / "inventory"
+    if dependency_failure:
+        with pytest.raises(release.subprocess.CalledProcessError) as caught:
+            release.unit_dependencies(tmp_path / "source", directory)
+        assert caught.value is failure
+        constraints.assert_not_called()
+        assert not directory.exists()
+    else:
+        release.unit_dependencies(tmp_path / "source", directory)
+        assert (directory / "cli-constraints.txt").read_text() == "azure-core>=1.30\n"
+    assert [call.args[0][1:] for call in run.call_args_list] == [
+        ["-m", "pip", "list", "--format=json"], ["-m", "pip", "check"],
+    ]
+    assert all(call.kwargs == {"env": env, "check": True} for call in run.call_args_list)
+
+
 def test_yaml_parallel_qualification_requires_all_gates_and_no_default_publication():
     root = yaml.safe_load((ROOT / ".azure-devops/release.yml").read_text(encoding="utf-8"))
     parameters = {item["name"]: item for item in root["parameters"]}

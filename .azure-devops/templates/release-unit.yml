@@ -43,6 +43,7 @@ jobs:
           versionSpec: $(python)
       - script: python -m pip install tox
         displayName: Install tox
+        retryCountOnTaskFailure: 3
       - script: >-
           tox run --notest
           -x "testenv:python.pass_env+=PIP_*"

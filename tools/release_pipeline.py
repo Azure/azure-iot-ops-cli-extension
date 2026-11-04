@@ -235,6 +235,7 @@ def unit_dependencies(source, directory, check=False):
     python = str(venv / ("Scripts/python.exe" if os.name == "nt" else "bin/python"))
     env = feed_environment()
     if not check:
+        subprocess.run([python, "-m", "pip", "list", "--format=json"], env=env, check=True)
         subprocess.run([python, "-m", "pip", "check"], env=env, check=True)
         constraints = subprocess.check_output([
             python, "-c",
