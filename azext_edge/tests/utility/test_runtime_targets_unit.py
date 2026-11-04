@@ -7,6 +7,7 @@
 import hashlib
 from io import BytesIO
 import json
+import os
 from pathlib import Path
 from runpy import run_path
 from zipfile import ZipFile
@@ -141,7 +142,7 @@ def test_baseline_provisioning_preserves_scenario_arguments(mocker, monkeypatch,
         "--ops-version", "1.4.112", "--feature", "opcua.mode=Disabled",
     ]
     assert provision.call_args.kwargs["env"]["AZURE_EXTENSION_DIR"] == "/baseline"
-    assert provision.call_args.kwargs["env"]["PYTHONPATH"] == "/baseline/azure-iot-ops"
+    assert provision.call_args.kwargs["env"]["PYTHONPATH"] == os.path.join("/baseline", "azure-iot-ops")
     assert provision.call_args.kwargs["check"] is True
     command.assert_called_once()
     assert command.call_args.args[0].startswith("az iot ops init ")
