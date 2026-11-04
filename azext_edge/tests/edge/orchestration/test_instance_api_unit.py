@@ -248,10 +248,55 @@ def test_confirmed_unsupported_capabilities_fail_closed(instances, mocked_respon
     assert [call.request.method for call in mocked_responses.calls] == ["GET"]
 
 
-@pytest.mark.parametrize("location", ["", "not-an-id", INSTANCE_ID])
-def test_invalid_custom_location_is_actionable(instances, location):
+@pytest.fixture(params=[
+    {},
+    {"extendedLocation": None},
+    {"extendedLocation": "not-an-object"},
+    {"extendedLocation": []},
+    {"extendedLocation": {}},
+    *[
+        {"extendedLocation": {"name": location}}
+        for location in (
+            None, False, 42, {}, [], "", " ", "not-an-arm-id", INSTANCE_ID,
+            CUSTOM_LOCATION_ID + "/children/child",
+            CUSTOM_LOCATION_ID + "/children",
+            CUSTOM_LOCATION_ID.replace(OTHER_SUBSCRIPTION, ""),
+            CUSTOM_LOCATION_ID.replace("/location-rg/", "//"),
+            CUSTOM_LOCATION_ID.rsplit("/", 1)[0] + "/",
+        )
+    ],
+])
+def invalid_instance(request):
+    instance = {key: value for key, value in INSTANCE.items() if key != "extendedLocation"}
+    return {**instance, **request.param}
+
+
+def test_invalid_custom_location_is_actionable(instances, mocked_responses, invalid_instance):
+    original_client = instances.iotops_mgmt_client
     with pytest.raises(ValidationError, match="extendedLocation.name"):
-        instances._read_child_api_capabilities(location)
+        select_api(instances, instance=invalid_instance)
+    assert instances.iotops_mgmt_client is original_client
+    assert instances._child_api_target is None
+    assert instances._child_api_location is None
+    assert not instances._child_api_capabilities
+    assert not mocked_responses.calls
+
+
+def test_mgmt_actions_invalid_custom_location_fails_before_writes(
+    mocked_cmd, mocked_responses, mocker, invalid_instance,
+):
+    mocker.patch("azext_edge.edge.providers.orchestration.mgmt_actions.WorkflowDisplay")
+    mocked_responses.add(responses.GET, INSTANCE_URL, json=invalid_instance)
+
+    with pytest.raises(ValidationError, match="extendedLocation.name"):
+        MgmtActions(mocked_cmd).enable(
+            name="instance", resource_group_name="instance-rg",
+            eg_resource_id=mgmt_cases._build_eg_resource_id("namespace", "eg-rg"),
+        )
+
+    assert [(call.request.method, call.request.url) for call in mocked_responses.calls] == [
+        ("GET", INSTANCE_URL),
+    ]
 
 
 @pytest.mark.parametrize("failure", [HttpResponseError, ServiceRequestError, ServiceResponseError])
@@ -380,7 +425,7 @@ def test_mgmt_actions_enable_negotiates_without_discovery(
         eg_resource_id=fixtures["eg_rid"], wait_sec=0,
     )
     assert result["instance"]["dataflowEndpoint"]["name"] == fixtures["ep_name"]
-    assert provider.instances._child_api_capabilities == {}
+    assert not provider.instances._child_api_capabilities
     puts = [
         call.request for call in mocked_responses.calls
         if call.request.method == "PUT" and "/Microsoft.IoTOperations/instances/" in call.request.url

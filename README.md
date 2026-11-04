@@ -44,6 +44,7 @@ Comprehensive documentation is available in the [Wiki](https://github.com/Azure/
 Management-actions enablement selects the newest CLI-supported stable API enabled for its
 required resource types on the instance's custom location.
 Selection uses enabled resource types, not an AIO-version-to-API table.
+Missing or invalid custom-location IDs are rejected before any external writes.
 
 Capability discovery is optional and does not introduce a required permission. When
 available, it checks compatibility before Event Grid, Device Registry, or child-resource

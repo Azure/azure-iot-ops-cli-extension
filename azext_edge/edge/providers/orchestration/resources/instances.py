@@ -318,15 +318,6 @@ class Instances(Queryable):
 
     def _read_child_api_capabilities(self, custom_location_id: str) -> Dict[str, set]:
         resource = parse_resource_id_dict(custom_location_id)
-        if (
-            resource.get("namespace", "").lower() != "microsoft.extendedlocation"
-            or resource.get("type", "").lower() != "customlocations"
-            or resource.get("last_child_num")
-            or not all(resource.get(key) for key in ("subscription", "resource_group", "name"))
-        ):
-            raise ValidationError(
-                "Cannot determine instance API compatibility: extendedLocation.name must identify a custom location."
-            )
         client = get_extloc_mgmt_client(
             **self._get_client_kwargs(subscription_id=resource["subscription"]),
             retry_total=0, connection_timeout=5, read_timeout=5,
@@ -401,7 +392,18 @@ class Instances(Queryable):
                 instance = get_iotops_mgmt_client(
                     **self._get_client_kwargs(subscription_id=self.subscriptions[0]),
                 ).instance.get(instance_name=name, resource_group_name=resource_group_name)
-        custom_location_id = (instance.get("extendedLocation") or {}).get("name", "")
+        extended_location = instance.get("extendedLocation")
+        custom_location_id = extended_location.get("name") if isinstance(extended_location, dict) else None
+        resource = parse_resource_id_dict(custom_location_id) if isinstance(custom_location_id, str) else {}
+        if (
+            resource.get("namespace", "").lower() != "microsoft.extendedlocation"
+            or resource.get("type", "").lower() != "customlocations"
+            or resource.get("children")
+            or not all(resource.get(key) for key in ("subscription", "resource_group", "name"))
+        ):
+            raise ValidationError(
+                "Cannot determine instance API compatibility: extendedLocation.name must identify a custom location."
+            )
         if self._child_api_location != custom_location_id.lower():
             try:
                 capabilities = self._read_child_api_capabilities(custom_location_id)

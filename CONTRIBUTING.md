@@ -42,6 +42,9 @@ Management-actions enablement uses `Instances.use_child_api()` before any extern
 write. Selection intersects the custom
 location's enabled APIs for every required resource type with CLI-supported stable
 APIs. Do not infer support from the runtime version or union unrelated types' APIs.
+Validate the instance's custom-location ID before optional discovery or cache reuse.
+Missing or invalid `extendedLocation.name` must fail before any external write;
+invalid required instance state is not an optional-discovery failure.
 
 Discovery uses `Microsoft.ExtendedLocation/customLocations/enabledResourceTypes/read`
 when available, preserving the referenced subscription and active cloud endpoint.
