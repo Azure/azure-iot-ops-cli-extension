@@ -186,17 +186,19 @@ def test_title_uses_frozen_scenarios_channels_and_selected_region(monkeypatch, t
         assert (tmp_path / "plan.json").read_bytes() == original
 
 
-def test_title_compacts_large_scenario_selection_and_identifies_release_child(monkeypatch, tmp_path):
+@pytest.mark.parametrize("release_build_id", [None, "456"])
+def test_title_compacts_large_selection_without_release_label(monkeypatch, tmp_path, release_build_id):
     catalog = yaml.safe_load((ROOT / ".github/test-scenarios.yml").read_text())["scenarios"]
     selection = [scenario["name"] for scenario in catalog if not scenario.get("requires_baseline")]
     monkeypatch.setenv("OPS_SCENARIOS", ",".join(selection))
     pipeline.plan(tmp_path)
     value = pipeline.read(tmp_path / "plan.json")
-    value["releaseBuildId"] = "456"
+    if release_build_id:
+        value["releaseBuildId"] = release_build_id
     result = pipeline.run_title(value, "Integration tests")
     assert result == (
         "ops-integration-123 (westus2) "
-        "(edge,broker-diagnostics-removal,insecure-listener,rpsaas +7) (release-child 456,stable)"
+        "(edge,broker-diagnostics-removal,insecure-listener,rpsaas +7) (stable)"
     )
     assert len(result) <= 255
 

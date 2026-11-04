@@ -246,8 +246,6 @@ def run_title(value, mode):
     modes = []
     if mode == "Dry run":
         modes.append("dry-run")
-    if "releaseBuildId" in value:
-        modes.append(f"release-child {release.identifier(value['releaseBuildId'])}")
     modes.extend(channel for channel in ("stable", "preview") if channel in channels)
     title = f"ops-{kind}-{value['producer']['build']} ({region}) ({scope}) ({','.join(modes)})"
     if len(title) > 255 or not re.fullmatch(r"[A-Za-z0-9 (),+-]+", title):
