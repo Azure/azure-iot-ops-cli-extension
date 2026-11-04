@@ -186,6 +186,38 @@ def test_candidate_inventory_is_full_default_channel_matrix(candidate):
     }
 
 
+@pytest.mark.parametrize("version,already_versioned", [
+    ("2.11.1", False), ("2.0.0b1", False), ("2.0.0b1", True),
+])
+def test_candidate_creation_updates_title_from_wheel_once(
+        candidate, tmp_path, monkeypatch, capsys, version, already_versioned):
+    _, value = candidate
+    title = "ops-release-20261104.1"
+    versioned_title = f"{title} ({version})"
+    monkeypatch.setenv("BUILD_BUILDNUMBER", versioned_title if already_versioned else title)
+    source = tmp_path / "source"
+    dist = source / "dist"
+    manifest = dist / "_manifest/spdx_2.2/manifest.spdx.json"
+    manifest.parent.mkdir(parents=True)
+    manifest.write_text('{"spdxVersion":"SPDX-2.2"}', encoding="utf-8")
+    filename = f"azure_iot_ops-{version}-py3-none-any.whl"
+    with ZipFile(dist / filename, "w") as archive:
+        archive.writestr("azext_edge/__init__.py", "")
+        archive.writestr(f"azure_iot_ops-{version}.dist-info/METADATA",
+                         f"Name: azure-iot-ops\nVersion: {version}\n")
+    monkeypatch.setattr(release, "command", Mock(return_value=SOURCE))
+    monkeypatch.setattr(release.subprocess, "run", Mock())
+    monkeypatch.setattr(release, "source_cohorts", Mock(return_value=value["cohorts"]))
+    output = tmp_path / "generated"
+    generated = release.create_candidate(source, output)
+    lines = capsys.readouterr().out.splitlines()
+    assert lines[0] == f"##vso[build.updatebuildnumber]{versioned_title}"
+    assert set(json.loads(lines[-1].split("]", 1)[1])) == set(value["cohorts"])
+    assert generated["wheel"]["version"] == version
+    assert generated["producer"] == value["producer"]
+    assert release.verify_candidate(output) == generated
+
+
 @pytest.mark.parametrize("mutation", ["source", "producer", "wheel", "sbom", "cohort", "extra"])
 def test_invalid_candidate_rejected(candidate, mutation):
     directory, value = candidate
