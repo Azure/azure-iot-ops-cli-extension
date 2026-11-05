@@ -10,7 +10,9 @@ Pass the active cloud's ARM endpoint when constructing management clients throug
 the factories in `edge/util/az_client.py`. These factories derive the credential
 scope from an explicit `endpoint` when `credential_scopes` is omitted.
 Explicit scopes are preserved when the required token audience differs from the
-endpoint. Without an endpoint override, generated clients retain their public-Azure defaults.
+endpoint. Without an endpoint, the factories fall back to the active cloud's
+`resource_manager` endpoint (`az cloud set`) and its matching scope; prefer passing the
+command's cloud endpoint explicitly.
 Constructing generated SDK clients directly with only an endpoint does not derive
 the scope and can still produce an audience mismatch.
 
