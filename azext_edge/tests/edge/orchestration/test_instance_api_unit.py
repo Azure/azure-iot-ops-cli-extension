@@ -5,6 +5,7 @@
 # ----------------------------------------------------------------------------------------------
 
 import json
+from copy import deepcopy
 
 import pytest
 import responses
@@ -15,11 +16,16 @@ from azure.core.pipeline.transport import HttpRequest, RequestsTransport
 from azure.core.exceptions import ServiceResponseTimeoutError
 
 from azext_edge.edge.providers.orchestration.mgmt_actions import MgmtActions
+from azext_edge.edge.providers.orchestration.resources.connector_templates import ConnectorTemplates
+from azext_edge.edge.providers.orchestration.resources.dataflow_graphs import DataFlowGraphs
+from azext_edge.edge.providers.orchestration.resources.dataflows import DataFlowProfiles
+from azext_edge.edge.providers.orchestration.resources.registryendpoints import RegistryEndpoints
+from azext_edge.edge.providers.orchestration.runtime_catalog import get_runtime_catalog
 from azext_edge.edge.providers.orchestration.resources.instances import (
     IOTOPS_CHILD_RESOURCE_TYPES,
     SUPPORTED_CHILD_API_VERSIONS,
     Instances,
-    _ChildApiNegotiationPolicy,
+    _InstanceApiNegotiationPolicy,
 )
 from azext_edge.edge.util.az_client import DEFAULT_IOTOPS_MGMT_API_VERSION
 from . import test_mgmt_actions_unit as mgmt_cases
@@ -76,6 +82,276 @@ def enabled_types(resource_types=None, api_versions=("2026-07-01",)):
 def select_api(instances, groups=("dataflow_endpoint",), instance=INSTANCE):
     instances.use_child_api("instance", "instance-rg", groups, instance=instance)
     return instances.iotops_mgmt_client
+
+
+@pytest.fixture(params=["2026-10-01", "2026-07-01", "2026-03-01"])
+def compatible_put(request, mocked_responses):
+    def register(path, payload):
+        versions = sorted((v for v in SUPPORTED_CHILD_API_VERSIONS if v >= request.param), reverse=True)
+        urls = [f"{BASE_URL}{INSTANCE_ID}{path}?api-version={version}" for version in versions]
+        for url in urls[:-1]:
+            mocked_responses.add(
+                responses.PUT, url, status=400,
+                json={"error": {"code": "MissingAzureKubernetesMapping"}},
+            )
+        result = {**payload, "properties": {**payload["properties"], "provisioningState": "Succeeded"}}
+        mocked_responses.add(responses.PUT, urls[-1], status=200, json=result)
+        return urls, result
+    return register
+
+
+def assert_compatible_put(mocked_responses, urls, payload):
+    puts = [call.request for call in mocked_responses.calls if call.request.method == "PUT"]
+    assert [request.url for request in puts] == urls
+    for request in puts:
+        assert json.loads(request.body) == payload
+    assert all(
+        call.request.method == "PUT" or call.request.url.endswith("api-version=2026-10-01")
+        for call in mocked_responses.calls
+    )
+
+
+@pytest.mark.parametrize("description", ["compatibility check", "", None])
+def test_instance_update_negotiates_without_discovery(instances, mocked_responses, compatible_put, description):
+    record = {
+        **INSTANCE, "tags": {"keep": "tag"},
+        "properties": {
+            **INSTANCE["properties"], "description": "original description",
+            "features": {"opcua": {"mode": "Disabled"}},
+        },
+    }
+    mocked_responses.add(responses.GET, INSTANCE_URL, json=record)
+    payload = deepcopy(record)
+    if description is not None:
+        payload["properties"]["description"] = description
+    urls, expected = compatible_put("", payload)
+
+    assert instances.update("instance", "instance-rg", description=description) == expected
+
+    assert_compatible_put(mocked_responses, urls, payload)
+
+
+@pytest.mark.parametrize("operation", ["assign", "remove"])
+def test_identity_assignment_negotiates_without_discovery(
+    instances, mocked_responses, mocker, compatible_put, operation,
+):
+    identity_id = (
+        f"/subscriptions/{OTHER_SUBSCRIPTION}/resourceGroups/identity-rg"
+        "/providers/Microsoft.ManagedIdentity/userAssignedIdentities/identity"
+    )
+    existing_id = identity_id + "-existing"
+    record = {
+        **INSTANCE, "identity": {"type": "UserAssigned", "userAssignedIdentities": {existing_id: {}}},
+    }
+    if operation == "remove":
+        record["identity"]["userAssignedIdentities"][identity_id] = {}
+    mocked_responses.add(responses.GET, INSTANCE_URL, json=record)
+    mocker.patch.object(instances.resource_client.resources, "get_by_id", return_value={"properties": {}})
+    mocker.patch.object(instances, "get_resource_map")
+    mocker.patch.object(instances, "_ensure_oidc_issuer", return_value="https://issuer.example/")
+    mocker.patch.object(instances, "get_associated_cl", return_value={"properties": {"namespace": "azure-iot-ops"}})
+    federate = mocker.patch.object(instances, "federate_msi")
+    payload = deepcopy(record)
+    if operation == "assign":
+        payload["identity"]["userAssignedIdentities"][identity_id] = {}
+    else:
+        del payload["identity"]["userAssignedIdentities"][identity_id]
+    urls, expected = compatible_put("", payload)
+
+    if operation == "assign":
+        assert instances.add_mi_user_assigned("instance", "instance-rg", identity_id, "dataflow") == expected
+        federate.assert_called_once()
+    else:
+        assert instances.remove_mi_user_assigned("instance", "instance-rg", identity_id) == expected
+        federate.assert_not_called()
+    assert_compatible_put(mocked_responses, urls, payload)
+
+
+def test_registry_create_negotiates_without_discovery(mocked_cmd, mocked_responses, compatible_put):
+    mocked_responses.add(responses.GET, INSTANCE_URL, json=INSTANCE)
+    payload = {
+        "extendedLocation": INSTANCE["extendedLocation"],
+        "properties": {"host": "registry.example", "authentication": {"method": "Anonymous", "anonymousSettings": {}}},
+    }
+    urls, expected = compatible_put("/registryEndpoints/registry", payload)
+    provider = RegistryEndpoints(mocked_cmd)
+
+    assert provider.create("instance", "instance-rg", "registry", "registry.example", no_auth=True) == expected
+
+    assert_compatible_put(mocked_responses, urls, payload)
+
+
+def test_registry_update_negotiates_and_preserves_auth(mocked_cmd, mocked_responses, compatible_put):
+    path = "/registryEndpoints/registry"
+    record = {
+        "extendedLocation": INSTANCE["extendedLocation"],
+        "properties": {
+            "host": "old.example",
+            "authentication": {"method": "ArtifactPullSecret", "artifactPullSecretSettings": {"secretRef": "keep"}},
+            "codeSigningCas": [{"type": "ConfigMap", "configMapRef": "keep-cas"}],
+        },
+    }
+    mocked_responses.add(responses.GET, f"{BASE_URL}{INSTANCE_ID}{path}?api-version=2026-10-01", json=record)
+    payload = deepcopy(record)
+    payload["properties"]["host"] = "new.example"
+    urls, expected = compatible_put(path, payload)
+
+    assert RegistryEndpoints(mocked_cmd).update("instance", "instance-rg", "registry", host="new.example") == expected
+
+    assert_compatible_put(mocked_responses, urls, payload)
+
+
+def test_profile_create_negotiates_without_discovery(mocked_cmd, mocked_responses, compatible_put):
+    mocked_responses.add(responses.GET, INSTANCE_URL, json=INSTANCE)
+    payload = {
+        "extendedLocation": INSTANCE["extendedLocation"],
+        "properties": {"diagnostics": {"logs": {"level": "debug"}}, "instanceCount": 2},
+    }
+    urls, expected = compatible_put("/dataflowProfiles/profile", payload)
+    provider = DataFlowProfiles(mocked_cmd)
+
+    assert provider.create("profile", "instance", "instance-rg", profile_instances=2, log_level="debug") == expected
+
+    assert_compatible_put(mocked_responses, urls, payload)
+
+
+def test_graph_apply_negotiates_without_discovery(mocked_cmd, mocked_responses, compatible_put, tmp_path):
+    mocked_responses.add(responses.GET, INSTANCE_URL, json=INSTANCE)
+    mocked_responses.add(
+        responses.GET, f"{BASE_URL}{INSTANCE_ID}/dataflowEndpoints/mqtt?api-version=2026-10-01",
+        json={"properties": {"endpointType": "Mqtt"}},
+    )
+    config = {
+        "nodes": [
+            {"name": "source", "nodeType": "Source", "sourceSettings": {"endpointRef": "mqtt"}},
+            {"name": "sink", "nodeType": "Destination", "destinationSettings": {"endpointRef": "mqtt"}},
+        ],
+        "nodeConnections": [{"from": {"name": "source"}, "to": {"name": "sink"}}],
+    }
+    config_file = tmp_path / "graph.json"
+    config_file.write_text(json.dumps(config), encoding="utf-8")
+    payload = {"extendedLocation": INSTANCE["extendedLocation"], "properties": config}
+    urls, expected = compatible_put("/dataflowProfiles/default/dataflowGraphs/graph", payload)
+    provider = DataFlowGraphs(mocked_cmd)
+
+    assert provider.apply("graph", "default", "instance", "instance-rg", str(config_file)) == expected
+
+    assert_compatible_put(mocked_responses, urls, payload)
+
+
+def test_connector_create_negotiates_without_discovery(mocked_cmd, mocked_responses, compatible_put, mocker):
+    provider = ConnectorTemplates(mocked_cmd)
+    metadata_ref = "mcr.microsoft.com/connectors/rest-metadata:1.0.6"
+    mocker.patch.object(provider, "_fetch_connector_metadata", return_value={
+        "name": "rest", "version": "1.0.6",
+        "imageConfigurationSettings": {"imageName": "connectors/rest", "tag": "1.0.6"},
+        "inboundEndpoints": [{"endpointType": "Microsoft.Http", "version": "1.0"}],
+    })
+    mocker.patch(
+        "azext_edge.edge.providers.adr.helpers.get_extended_location",
+        return_value=deepcopy(INSTANCE["extendedLocation"]),
+    )
+    # Capture the actual serialized payload below, including all metadata-derived fields.
+    urls, expected = compatible_put("/akriConnectorTemplates/rest", {"properties": {}})
+
+    assert provider.create("rest", "instance-rg", "instance", metadata_ref, replicas=3, log_level="debug") == expected
+
+    puts = [call.request for call in mocked_responses.calls if call.request.method == "PUT"]
+    payload = json.loads(puts[0].body)
+    assert payload["extendedLocation"] == INSTANCE["extendedLocation"]
+    image_settings = payload["properties"]["runtimeConfiguration"]["managedConfigurationSettings"][
+        "imageConfigurationSettings"
+    ]
+    assert image_settings["replicas"] == 3
+    assert payload["properties"]["connectorMetadataRef"] == metadata_ref
+    assert payload["properties"]["diagnostics"]["logs"]["level"] == "debug"
+    assert_compatible_put(mocked_responses, urls, payload)
+
+
+def test_connector_update_negotiates_and_preserves_config(mocked_cmd, mocked_responses, compatible_put):
+    path = "/akriConnectorTemplates/rest"
+    record = {
+        "extendedLocation": INSTANCE["extendedLocation"],
+        "properties": {
+            "runtimeConfiguration": {
+                "runtimeConfigurationType": "ManagedConfiguration",
+                "managedConfigurationSettings": {
+                    "imageConfigurationSettings": {"replicas": 1, "imageName": "rest"},
+                    "additionalConfiguration": {"keep": "value"},
+                    "trustSettings": {"trustListSecretRef": "keep-trust"},
+                },
+            },
+            "diagnostics": {"logs": {"level": "info"}},
+        },
+    }
+    mocked_responses.add(responses.GET, f"{BASE_URL}{INSTANCE_ID}{path}?api-version=2026-10-01", json=record)
+    payload = deepcopy(record)
+    payload["properties"]["runtimeConfiguration"]["managedConfigurationSettings"]["imageConfigurationSettings"][
+        "replicas"
+    ] = 5
+    payload["properties"]["diagnostics"]["logs"]["level"] = "warning"
+    urls, expected = compatible_put(path, payload)
+
+    assert ConnectorTemplates(mocked_cmd).update(
+        "rest", "instance-rg", "instance", replicas=5, log_level="warning",
+    ) == expected
+
+    assert_compatible_put(mocked_responses, urls, payload)
+
+
+@pytest.mark.parametrize("channel", ["stable", "preview"])
+def test_explicit_runtime_profile_never_negotiates(instances, mocked_responses, channel):
+    profile = get_runtime_catalog().get(channel)
+    url = f"{BASE_URL}{INSTANCE_ID}?api-version={profile.iotops_api_version}"
+    if profile.iotops_api_version != DEFAULT_IOTOPS_MGMT_API_VERSION.value:
+        mocked_responses.add(responses.GET, url, json=INSTANCE)
+    instances.use_runtime_profile(profile, INSTANCE)
+    mocked_responses.add(
+        responses.PUT, url, status=400, json={"error": {"code": "MissingAzureKubernetesMapping"}},
+    )
+
+    with pytest.raises(HttpResponseError, match="MissingAzureKubernetesMapping"):
+        instances._update("instance", "instance-rg", instance=INSTANCE)
+
+    puts = [call.request for call in mocked_responses.calls if call.request.method == "PUT"]
+    assert [request.url for request in puts] == [url]
+
+
+def test_default_negotiation_preserves_cross_subscription_sovereign_target(
+    mocked_cmd, mocked_responses, mocked_azcli_cred_get_token,
+):
+    endpoint = "https://management.usgovcloudapi.net"
+    mocked_cmd.cli_ctx.cloud = build_mock_cmd_for_cloud("AzureUSGovernment").cli_ctx.cloud
+    mocked_azcli_cred_get_token.reset_mock()
+    instance_id = INSTANCE_ID.replace(SUBSCRIPTION, OTHER_SUBSCRIPTION)
+    record = {**INSTANCE, "id": instance_id}
+    payload = deepcopy(record)
+    payload["properties"]["description"] = "sovereign update"
+    urls = [f"{endpoint}{instance_id}?api-version={v}" for v in ("2026-10-01", "2026-07-01", "2026-03-01")]
+    for url in urls[:-1]:
+        mocked_responses.add(
+            responses.PUT, url, status=404, json={"error": {"code": "MissingAzureKubernetesMapping"}},
+        )
+    mocked_responses.add(responses.PUT, urls[-1], status=200, json=payload)
+
+    instances = Instances(mocked_cmd, subscription_id=OTHER_SUBSCRIPTION)
+    assert instances.update("instance", "instance-rg", description="sovereign update", instance=record) == payload
+
+    assert_compatible_put(mocked_responses, urls, payload)
+    assert mocked_azcli_cred_get_token.call_args_list
+    assert all(call.args == (f"{endpoint}/.default",) for call in mocked_azcli_cred_get_token.call_args_list)
+
+
+@pytest.mark.parametrize("api_version", ["2026-11-01-preview", "2030-01-01"])
+def test_negotiation_never_guesses_from_preview_or_unknown_api(mocked_responses, api_version):
+    request = HttpRequest("PUT", f"{BASE_URL}{INSTANCE_ID}?api-version={api_version}")
+    request.set_json_body({"properties": {}})
+    mocked_responses.add(
+        responses.PUT, request.url, status=400, json={"error": {"code": "MissingAzureKubernetesMapping"}},
+    )
+    with Pipeline(transport=RequestsTransport(), policies=[_InstanceApiNegotiationPolicy()]) as pipeline:
+        assert pipeline.run(request).http_response.status_code == 400
+    assert len(mocked_responses.calls) == 1
 
 
 @pytest.mark.parametrize("version", ["1.3.14", "1.4.112", "1.5.30", "2.0.0", "unknown", None])
@@ -386,16 +662,21 @@ def test_mgmt_actions_preflights_every_required_type_before_writes(mocked_cmd, m
     (200, {"value": ""}, True),
 ])
 @pytest.mark.parametrize("accepted_api", ["2026-03-01", "2026-07-01", "2026-10-01"])
+@pytest.mark.parametrize("user_assigned", [False, True])
 def test_mgmt_actions_enable_negotiates_without_discovery(
-    mocked_cmd, mocked_responses, mocker, status, payload, prior_page, accepted_api,
+    mocked_cmd, mocked_responses, mocker, status, payload, prior_page, accepted_api, user_assigned,
 ):
     mocker.patch("azext_edge.edge.providers.orchestration.mgmt_actions.WorkflowDisplay")
     mocker.patch("azext_edge.edge.providers.orchestration.mgmt_actions.render_summary")
-    mocker.patch.object(MgmtActions, "_resolve_dataflow_auth_identity", return_value="principal")
-    mocker.patch.object(MgmtActions, "_setup_role_assignments", return_value={})
+    if not user_assigned:
+        mocker.patch.object(MgmtActions, "_resolve_dataflow_auth_identity", return_value="principal")
+    assign_roles = mocker.patch.object(MgmtActions, "_setup_role_assignments", return_value={})
     helper = mgmt_cases.TestEnable()
     fixtures = helper._make_enable_fixtures()
-    helper._register_enable_mocks(mocked_responses, fixtures)
+    mi_resource = mgmt_cases._build_uami_response(
+        mgmt_cases._build_uami_resource_id("identity", fixtures["rg"]), "client-id", "tenant-id",
+    ) if user_assigned else None
+    helper._register_enable_mocks(mocked_responses, fixtures, mi_response=mi_resource)
     discovery_url = f"{BASE_URL}{fixtures['cl_id']}/enabledResourceTypes?api-version=2021-08-31-preview"
     if prior_page:
         first_page = enabled_types(["instances/dataflowEndpoints"])
@@ -422,7 +703,7 @@ def test_mgmt_actions_enable_negotiates_without_discovery(
     provider = MgmtActions(mocked_cmd)
     result = provider.enable(
         name=fixtures["instance_name"], resource_group_name=fixtures["rg"],
-        eg_resource_id=fixtures["eg_rid"], wait_sec=0,
+        eg_resource_id=fixtures["eg_rid"], mi_user_assigned=mi_resource["id"] if mi_resource else None, wait_sec=0,
     )
     assert result["instance"]["dataflowEndpoint"]["name"] == fixtures["ep_name"]
     assert not provider.instances._child_api_capabilities
@@ -435,6 +716,15 @@ def test_mgmt_actions_enable_negotiates_without_discovery(
         attempts = puts[index:index + len(versions)]
         assert [request.url.split("api-version=")[1] for request in attempts] == versions
         assert all(request.body == attempts[0].body for request in attempts)
+    if user_assigned:
+        endpoint = next(request for request in puts if "/dataflowEndpoints/" in request.url)
+        assert json.loads(endpoint.body)["properties"]["mqttSettings"]["authentication"] == {
+            "method": "UserAssignedManagedIdentity",
+            "userAssignedManagedIdentitySettings": {
+                "clientId": "client-id", "tenantId": "tenant-id", "scope": "https://eventgrid.azure.net/.default",
+            },
+        }
+        assert assign_roles.call_args.kwargs["dataflow_auth_principal_id"] == mi_resource["properties"]["principalId"]
 
 
 @pytest.mark.parametrize("operation", ["enable", "show", "disable"])
@@ -542,18 +832,18 @@ def test_negotiation_exhaustion_remains_an_error(instances, mocked_responses, st
 @pytest.mark.parametrize("method,status,path,payload", [
     ("GET", 400, "/dataflowEndpoints/child", {"error": {"code": "MissingAzureKubernetesMapping"}}),
     ("DELETE", 400, "/dataflowEndpoints/child", {"error": {"code": "MissingAzureKubernetesMapping"}}),
-    ("PUT", 400, "", {"error": {"code": "MissingAzureKubernetesMapping"}}),
+    ("PATCH", 400, "", {"error": {"code": "MissingAzureKubernetesMapping"}}),
     ("PUT", 202, "/dataflowEndpoints/child", {"status": "Accepted"}),
     ("PUT", 400, "/dataflowEndpoints/child", []),
     ("PUT", 400, "/dataflowEndpoints/child", {"error": "Malformed error"}),
 ])
-def test_negotiation_preserves_non_rejected_or_non_child_operations(mocked_responses, method, status, path, payload):
+def test_negotiation_preserves_non_rejected_or_non_put_operations(mocked_responses, method, status, path, payload):
     request = HttpRequest(
         method, f"{BASE_URL}{INSTANCE_ID}{path}?api-version={DEFAULT_IOTOPS_MGMT_API_VERSION.value}",
     )
     request.set_json_body({"properties": {}})
     mocked_responses.add(method, request.url, status=status, json=payload)
-    with Pipeline(transport=RequestsTransport(), policies=[_ChildApiNegotiationPolicy()]) as pipeline:
+    with Pipeline(transport=RequestsTransport(), policies=[_InstanceApiNegotiationPolicy()]) as pipeline:
         result = pipeline.run(request, retry_total=0)
     assert result.http_response.status_code == status
     assert len(mocked_responses.calls) == 1
@@ -580,7 +870,7 @@ def test_negotiation_adds_no_transport_retries(mocker, mocked_responses, failure
             json={"error": {"code": "MissingAzureKubernetesMapping"}},
         )
     send = mocker.patch.object(transport, "send", side_effect=send_or_fail)
-    with Pipeline(transport=transport, policies=[_ChildApiNegotiationPolicy()]) as pipeline:
+    with Pipeline(transport=transport, policies=[_InstanceApiNegotiationPolicy()]) as pipeline:
         with pytest.raises(failure) as raised:
             pipeline.run(request, retry_total=10, retry_connect=0, retry_read=0)
     assert raised.value is error
@@ -663,7 +953,7 @@ def test_negotiation_does_not_reset_elapsed_timeout(mocked_responses, mocker):
     clock = mocker.Mock()
     clock.time.side_effect = [0, 2, 2, 2]
     mocker.patch("azure.core.pipeline.policies._retry.time", clock)
-    with Pipeline(transport=RequestsTransport(), policies=[_ChildApiNegotiationPolicy()]) as pipeline:
+    with Pipeline(transport=RequestsTransport(), policies=[_InstanceApiNegotiationPolicy()]) as pipeline:
         with pytest.raises(ServiceResponseTimeoutError):
             pipeline.run(request, timeout=1, retry_total=0)
     assert len(mocked_responses.calls) == 1
@@ -679,7 +969,7 @@ def test_negotiation_does_not_replenish_consumed_status_retries(mocked_responses
         json={"error": {"code": "MissingAzureKubernetesMapping"}},
     )
     mocked_responses.add(responses.PUT, url + "2026-07-01", status=503, headers={"Retry-After": "0"})
-    with Pipeline(transport=RequestsTransport(), policies=[_ChildApiNegotiationPolicy()]) as pipeline:
+    with Pipeline(transport=RequestsTransport(), policies=[_InstanceApiNegotiationPolicy()]) as pipeline:
         result = pipeline.run(request, retry_total=10, retry_status=1)
     assert result.http_response.status_code == 503
     assert [call.request.url for call in mocked_responses.calls] == [

@@ -37,6 +37,48 @@ records = runtime_records
 ROOT = Path(__file__).resolve().parents[3]
 
 
+@pytest.mark.parametrize("override_token", [False, True])
+def test_sdk_token_info_uses_mocked_credential(mocker, mocked_azcli_cred_get_token, override_token):
+    from azure.identity import AzureCliCredential
+
+    mocker.patch(
+        "azure.identity._credentials.azure_cli._run_command",
+        side_effect=AssertionError("Unexpected CLI authentication"),
+    )
+    mocked_azcli_cred_get_token.reset_mock()
+    token_mock = (
+        mocker.patch("azure.identity._credentials.azure_cli.AzureCliCredential.get_token")
+        if override_token else mocked_azcli_cred_get_token
+    )
+    token = AzureCliCredential().get_token_info("https://management.azure.com/.default", options={"claims": "test"})
+    assert token is token_mock.return_value
+    token_mock.assert_called_once_with("https://management.azure.com/.default", claims="test")
+
+
+@pytest.mark.parametrize("description", ["", "original 'quoted' description"])
+@pytest.mark.parametrize("restored", [True, False])
+def test_runtime_channel_cleanup_checks_restored_description(mocker, description, restored):
+    from azext_edge.tests.edge.orchestration import test_runtime_channels_int as tests
+
+    runtime = SimpleNamespace(identity=("stable", "1.4.112"))
+    mocker.patch.object(tests, "read_runtime", return_value=(runtime, {"properties": {"description": description}}, []))
+    mocker.patch.object(tests, "assert_runtime", return_value=runtime)
+    mocker.patch.object(tests, "configured_baseline", return_value=None)
+    mocker.patch.object(tests, "run")
+    cleanup = mocker.patch.object(tests.subprocess, "run", return_value=SimpleNamespace(
+        stdout=json.dumps({"properties": {"description": description if restored else "channel-integration-check"}}),
+    ))
+    if restored:
+        tests.test_shared_instance_update_preserves_runtime_channel(("instance", "rg", "stable"))
+    else:
+        with pytest.raises(AssertionError):
+            tests.test_shared_instance_update_preserves_runtime_channel(("instance", "rg", "stable"))
+    cleanup.assert_called_once_with(
+        ["az", "iot", "ops", "update", "-n", "instance", "-g", "rg", "--description", description, "--output", "json"],
+        check=True, capture_output=True, text=True,
+    )
+
+
 def load_tool(name, path):
     spec = importlib.util.spec_from_file_location(name, ROOT / path)
     module = importlib.util.module_from_spec(spec)
@@ -856,6 +898,75 @@ def test_live_identity_failures_are_hard_errors(mocker, records, failure):
     ])
     with pytest.raises((ValidationError, AssertionError)):
         runtime_checks.assert_runtime("instance", "rg", "stable")
+
+
+@pytest.mark.parametrize("failure", [None, "missing-baseline", "upgraded", "auto-upgrade", "same-version"])
+def test_compatibility_requires_unchanged_older_runtime(mocker, monkeypatch, records, failure):
+    version = "1.5.45" if failure == "same-version" else "1.4.112"
+    definition = {"version": version, "train": "stable"}
+    monkeypatch.setenv("azext_edge_runtime_channel", "stable")
+    monkeypatch.setenv(
+        "azext_edge_upgrade_baseline", json.dumps(None if failure == "missing-baseline" else definition),
+    )
+    mocker.patch(
+        "azext_edge.tests.runtime_checks.get_runtime_catalog",
+        return_value=RuntimeProfileCatalog([make_profile(RuntimeChannel.STABLE, "1.5.45")]),
+    )
+    records["extensions"][0]["properties"].update(
+        currentVersion="1.5.45" if failure == "upgraded" else version,
+        version="1.5.45" if failure == "upgraded" else version,
+        autoUpgradeMinorVersion=failure == "auto-upgrade",
+    )
+    command = mocker.patch.object(runtime_checks, "run", side_effect=[
+        records["instance"], records["custom_location"], records["cluster"], {"value": records["extensions"]},
+    ])
+    if failure:
+        with pytest.raises(AssertionError):
+            runtime_checks.assert_compat_runtime("instance", "rg", "stable", runtime_checks.configured_baseline())
+    else:
+        runtime_checks.assert_compat_runtime("instance", "rg", "stable", runtime_checks.configured_baseline())
+        assert command.call_count == 4
+
+
+@pytest.mark.parametrize("enabled", [False, True])
+def test_compatibility_checks_before_and_after_suite(mocker, monkeypatch, enabled):
+    monkeypatch.setenv("azext_edge_preserve_runtime", "true" if enabled else "false")
+    monkeypatch.setenv("azext_edge_runtime_channel", "stable")
+    monkeypatch.setenv("azext_edge_instance", "instance")
+    monkeypatch.setenv("azext_edge_rg", "rg")
+    monkeypatch.setenv("azext_edge_upgrade_baseline", json.dumps(baseline() if enabled else None))
+    check = mocker.patch.object(runtime_checks, "assert_compat_runtime")
+    ordinary = mocker.patch.object(runtime_checks, "assert_runtime")
+    finalizers = []
+    item = SimpleNamespace(path=Path("test_example_int.py"), get_closest_marker=lambda _: None)
+    request = SimpleNamespace(
+        session=SimpleNamespace(items=[item]), addfinalizer=finalizers.append,
+    )
+    conftest.verify_integration_runtime.__wrapped__(request)
+    assert check.call_count == int(enabled)
+    for finalize in finalizers:
+        finalize()
+    assert check.call_count == 2 * int(enabled)
+    assert ordinary.call_count == int(not enabled)
+
+
+def test_management_compatibility_existing_state_fails_not_skips(mocker, monkeypatch):
+    from azext_edge.tests.edge.orchestration import test_mgmt_actions_int as tests
+
+    monkeypatch.setenv("azext_edge_upgrade_baseline", json.dumps(baseline()))
+    settings = SimpleNamespace(
+        add_to_config=mocker.Mock(),
+        env=SimpleNamespace(azext_edge_instance="instance", azext_edge_rg="rg"),
+    )
+    command = mocker.patch.object(tests, "run", side_effect=[
+        {"properties": {"adrNamespaceRef": {"resourceId": "/namespace"}}},
+        {"location": "eastus2"},
+        {"instance": {"requestDataflowGraph": {"exists": True}}},
+    ])
+    setup = tests.mgmt_actions_setup.__wrapped__(mocker.Mock(), settings, [])
+    with pytest.raises(pytest.fail.Exception, match="requires a clean instance"):
+        next(setup)
+    assert command.call_count == 3
 
 
 @pytest.mark.parametrize("workflow,input_name", [

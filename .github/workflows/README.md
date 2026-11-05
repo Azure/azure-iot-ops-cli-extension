@@ -23,7 +23,10 @@ Cluster name, schema registry, and instance name will be auto-populated during t
     - `resource-group`: `string` - Resource Group to test in
     - `test-scenarios`: `string` - Comma-separated list of scenarios to run (e.g., "rpsaas,upgrade"). If empty, all non-manual scenarios run.
     - `runtime-channels`: `string` - Runtime profiles to test (`stable,preview` by default), each on an independent cluster.
-    - `upgrade-baselines`: `string` - Pinned baseline definitions by channel, required for the explicit `upgrade-path` scenario.
+    - `test-current`: `bool` - Test bundled runtime profiles (default true).
+    - `test-n-1`: `bool` - Discover and test the previous published GA runtime line (default false).
+    - `test-n-2`: `bool` - Discover and test the second previous published GA runtime line (default false).
+    - `upgrade-baselines`: `string` - Explicit pinned baseline definitions by channel for `upgrade-path`.
     - `custom-locations-oid`: `string` - Custom Locations OID
     - `runtime-init-args`: `string` - Additional init arguments (beyond cluster name, resource group, schema registry)
     - `runtime-create-args`: `string` - Additional create arguments (beyond cluster name, resource group, instance name)
@@ -35,8 +38,73 @@ Cluster name, schema registry, and instance name will be auto-populated during t
     - `insecure-listener`: Tests with insecure listener deployment
     - `rpsaas`: Cloud-side (RPSaaS) tests
     - `upgrade`: Azure IoT Operations upgrade tests (runs serially)
+    - `mgmtactions`: Serial enable/show/execute/disable lifecycle.
     - `redeploy`: Tests cluster redeployment functionality
     - `trustbundle`: Workload identity federation tests (runs serially)
+
+OPC UA certificate tests check their fixed-name SecretSync directly before setup.
+An existing SecretSync is removed only if its referenced custom location no longer
+exists, and the tests wait for deletion and verify absence before proceeding.
+Resources owned by an existing custom location (including a preconfigured test
+instance) are not deleted; use a clean instance and a separate resource group for
+independent deployments. Permission and connectivity errors do not establish that
+a resource is orphaned.
+
+The certificate fixtures register ownership-checked SecretSync teardown before
+remaining setup and test execution. Teardown runs even after a failure, before
+test-created Key Vault cleanup. Teardown directly deletes only the test-owned
+SecretSync. Client-certificate teardown separately clears the extension's
+application certificate, subject name, and application URI settings after verified
+deletion. It does not invoke certificate removal or modify the shared SPC or any
+of its secret entries.
+Cleanup errors are logged as warnings rather than
+adding teardown failures or masking the original test result. Preflight errors
+still block unsafe test execution. This does not wipe the shared resource group.
+
+#### Selecting runtime generations
+
+Select any combination of **test-current**, **test-n-1**, and **test-n-2**.
+The matrix runs every eligible selected scenario independently on each selected runtime.
+Current uses `runtime-channels`; older generations are GA/stable only. Scheduled
+runs retain current-only coverage. Selecting no generation fails before provisioning.
+
+N-1/N-2 are previous distinct GA release lines relative to the candidate's bundled
+GA runtime, not previous CLI versions or patch numbers. Discovery reads the
+official CLI extension index and hash-verifies published stable CLI wheels,
+then reads their literal bundled AIO identities without executing downloaded code.
+The most recent provisioning CLI for each preceding line supplies its exact
+runtime version, URL, and SHA256. These resolved values appear in matrix logs
+and job labels. Resolution failure is an error, never a fallback to current.
+This discovers released provisioning targets, not the latest regional hotfix.
+
+The older wheel is used only for provisioning; all tests use the same hash-verified
+candidate CLI. Compatibility jobs verify the selected runtime and disabled
+auto-upgrade before tests and again after cleanup. Scenario provisioning arguments
+are preserved and checked through the candidate CLI after provisioning. Older-runtime
+checks validate explicitly requested configuration without imposing current-template
+defaults; current-runtime jobs retain their default assertions.
+Scenarios can declare `min_runtime_version` in the scenario configuration;
+discovered older targets below that minimum are omitted with a workflow warning.
+For example, `essentials-sku` requires AIO 1.5.0, so it is excluded on 1.3/1.4
+but automatically included when a selected older generation reaches 1.5 or later.
+If no eligible jobs remain, matrix creation fails. Other unsupported features or
+unavailable releases still fail explicitly.
+Passing matrix/unit tests alone does not qualify every older scenario.
+
+`upgrade` runs current reconciliation for current targets and separate
+**N-1/N-2 -> current** upgrade jobs for older selections. Those jobs intentionally
+change runtime and do not count as older-runtime compatibility coverage. Upgrade
+policy failures remain failures; the workflow does not invent intermediate paths.
+Use `upgrade-path` with an explicit `upgrade-baselines` input and current selected,
+not with discovered older generations. Explicit baselines use only their own
+`create_args` for provisioning; scenario/global create arguments and the current
+channel's `--use-preview` selector are not forwarded to the older CLI. Put any
+required source-runtime flags in the baseline's `create_args`.
+
+For local compatibility runs, set `azext_edge_runtime_channel`,
+`azext_edge_upgrade_baseline` to a resolved baseline, and
+`azext_edge_preserve_runtime=true`, plus the usual instance/resource-group settings.
+Use a dedicated instance: lifecycle suites create and remove test resources.
 
 #### Broker diagnostics removal regression
 

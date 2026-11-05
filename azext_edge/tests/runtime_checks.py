@@ -12,7 +12,9 @@ import shlex
 
 from azext_edge.edge.providers.orchestration.runtime import resolve_runtime
 from azext_edge.edge.providers.orchestration.runtime_catalog import get_runtime_catalog
-from azext_edge.edge.providers.orchestration.runtime_profiles import RuntimeChannel, resolve_runtime_identity
+from azext_edge.edge.providers.orchestration.runtime_profiles import (
+    RuntimeChannel, parse_runtime_version, resolve_runtime_identity,
+)
 from .helpers import run
 
 
@@ -54,3 +56,14 @@ def assert_runtime(instance_name, resource_group, channel, baseline=None):
 
 def configured_baseline():
     return json.loads(os.environ.get("azext_edge_upgrade_baseline", "null"))
+
+
+def assert_compat_runtime(instance_name, resource_group, channel, baseline):
+    assert baseline, "Compatibility tests require an explicit resolved baseline."
+    target = get_runtime_catalog().get(RuntimeChannel(channel)).identity
+    assert parse_runtime_version(baseline["version"]) < parse_runtime_version(target.version), (
+        "Compatibility tests require a runtime older than the candidate's bundled runtime."
+    )
+    runtime = assert_runtime(instance_name, resource_group, channel, baseline)
+    assert runtime.auto_upgrade_minor_version is False, "Disable auto-upgrade on compatibility baselines."
+    return runtime

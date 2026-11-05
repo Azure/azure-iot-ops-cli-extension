@@ -757,7 +757,7 @@ def test_tags_with_properties_uses_put_without_discovery(
 
     expected = deepcopy(record)
     expected["tags"] = {}
-    if property_changes.get("description"):
+    if "description" in property_changes:
         expected["properties"]["description"] = property_changes["description"]
     if property_changes.get("features"):
         expected["properties"]["features"] = {"opcua": {"mode": "Disabled"}}
