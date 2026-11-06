@@ -1,7 +1,7 @@
 {
   "extension": "azure-iot-ops",
-  "namePrefix": "Azure IoT Operations CLI - Monitor",
-  "tracks": ["1.5", "1.4", "1.3"],
+  "namePrefix": "AIO CLI",
+  "tracks": {"v1": "1.5", "v2": "1.4", "v3": "1.3"},
   "clouds": {
     "public": {
       "displayName": "Public",

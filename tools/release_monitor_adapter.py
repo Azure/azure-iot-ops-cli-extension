@@ -11,13 +11,21 @@ import os
 from pathlib import Path
 
 import ado_integration as native
-from release_monitor import CLOUDS, validate_manifest, verify_bundle
+from release_monitor import CLOUDS, configured_tracks, validate_manifest, verify_bundle
+
+
+def target_track():
+    tracks = configured_tracks(native.read(native.ROOT / ".azure-devops/release-monitors.json"))
+    slot = native.required("MONITOR_TRACK")
+    if slot not in tracks:
+        raise ValueError("Select a configured AIO support slot.")
+    return tracks[slot]
 
 
 def bundle_manifest(bundle):
     return verify_bundle(
         bundle, extension="azure-iot-ops", cloud=os.environ["MONITOR_CLOUD"],
-        track=os.environ["MONITOR_TRACK"], automation_commit=native.producer()["commit"],
+        slot=os.environ["MONITOR_TRACK"], track=target_track(), automation_commit=native.producer()["commit"],
     )
 
 
@@ -54,7 +62,7 @@ def validate_state(state):
         raise ValueError("Monitor execution state is missing the frozen release identity.")
     manifest = validate_manifest(
         state["monitor"], extension="azure-iot-ops", automation_commit=native.producer()["commit"],
-        cloud=os.environ["MONITOR_CLOUD"], track=os.environ["MONITOR_TRACK"],
+        cloud=os.environ["MONITOR_CLOUD"], slot=os.environ["MONITOR_TRACK"], track=target_track(),
     )
     bundle = Path(native.required("OPS_MONITOR_BUNDLE")).resolve()
     if (manifest["blockers"] or manifest["cloud"] != state["cloud"]

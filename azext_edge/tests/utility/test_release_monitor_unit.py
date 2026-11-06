@@ -67,7 +67,7 @@ def releases(monitor, mocker):
 
 @pytest.fixture
 def manifest(monitor, releases):
-    return monitor.resolve("azure-iot-ops", "public", "1.5", AUTOMATION, releases)
+    return {**monitor.resolve("azure-iot-ops", "public", "1.5", AUTOMATION, releases), "slot": "v1"}
 
 
 def test_distinct_milestones_use_latest_cli_patch_and_cloud_profile(monitor, releases):
@@ -78,8 +78,25 @@ def test_distinct_milestones_use_latest_cli_patch_and_cloud_profile(monitor, rel
     assert latest["runtime"]["version"] == "1.5.46"
     assert previous["release"]["version"] == "2.10.0"
     assert oldest["release"]["version"] == "2.7.0"
-    with pytest.raises(ValueError, match="latest three"):
+    with pytest.raises(ValueError, match="matching published release"):
         monitor.resolve("azure-iot-ops", "public", "1.2", AUTOMATION, releases)
+
+
+def test_new_release_does_not_invalidate_explicitly_supported_milestone(monitor, releases, mocker):
+    original_commit = monitor.tag_commit.side_effect
+    original_profile = monitor.runtime_profile.side_effect
+    mocker.patch.object(
+        monitor, "tag_commit",
+        side_effect=lambda repository, tag: SOURCE if tag == "v2.12.0" else original_commit(repository, tag),
+    )
+    mocker.patch.object(
+        monitor, "runtime_profile",
+        side_effect=lambda repository, source, cloud: (
+            profile("1.6.1") if source == SOURCE else original_profile(repository, source, cloud)
+        ),
+    )
+    result = monitor.resolve("azure-iot-ops", "public", "1.3", AUTOMATION, [release("2.12.0"), *releases])
+    assert result["release"]["version"] == "2.7.0"
 
 
 def test_nonstable_public_runtime_is_skipped_but_ambiguous_metadata_is_not(monitor, releases, mocker, capsys):
@@ -134,6 +151,8 @@ def test_retry_retains_selection_and_rejects_missing_or_changed_history(monitor,
     discovery = mocker.patch.object(monitor, "resolve")
     assert monitor.frozen_manifest(tmp_path, "azure-iot-ops", "public", "1.5", AUTOMATION, 2) == manifest
     discovery.assert_not_called()
+    with pytest.raises(ValueError, match="requested slot"):
+        monitor.frozen_manifest(tmp_path, "azure-iot-ops", "public", "1.5", AUTOMATION, 2, slot="v2")
     with pytest.raises(ValueError, match="cannot rediscover"):
         monitor.frozen_manifest(tmp_path / "missing", "azure-iot-ops", "public", "1.5", AUTOMATION, 2)
     changed = deepcopy(manifest)
@@ -211,10 +230,50 @@ def test_definition_binding_rejects_scope_overrides(monitor, monkeypatch):
     monkeypatch.setenv("BUILD_REPOSITORY_NAME", monitor.REPOSITORIES[config["extension"]])
     for key, value in item["variables"].items():
         monkeypatch.setenv(key.upper(), value)
-    monitor.check_definition(config, config["extension"], "public", config["tracks"][0])
+    monitor.check_definition(config, config["extension"], "public", item["variables"]["MonitorTrack"])
     monkeypatch.setenv("MONITORRESOURCEGROUP", "another-resource-group")
     with pytest.raises(ValueError, match="reviewed monitor configuration"):
-        monitor.check_definition(config, config["extension"], "public", config["tracks"][0])
+        monitor.check_definition(config, config["extension"], "public", item["variables"]["MonitorTrack"])
+
+
+def test_support_rotation_preserves_definition_names_variables_and_resource_groups(monitor):
+    config = monitor.read_json(ROOT / ".azure-devops/release-monitors.json")
+    original = monitor.configurations(config)
+    config["tracks"] = {"v1": "1.6", "v2": "1.5", "v3": "1.4"}
+    assert monitor.configurations(config) == original
+
+
+@pytest.mark.parametrize("tracks", [
+    {"v1": "1.3", "v2": "1.4", "v3": "1.5"},
+    {"v1": "1.5", "v2": "1.4", "v3": "1.4"},
+    {"v1": "1.5", "v2": "1.4"},
+])
+def test_invalid_support_roster_is_rejected(monitor, tracks):
+    config = monitor.read_json(ROOT / ".azure-devops/release-monitors.json")
+    config["tracks"] = tracks
+    with pytest.raises(ValueError, match="AIO"):
+        monitor.configurations(config)
+
+
+def test_configured_slot_resolves_its_milestone_and_labels_the_actual_versions(
+        monitor, manifest, monkeypatch, mocker, tmp_path, capsys):
+    configuration = ROOT / ".azure-devops/release-monitors.json"
+    config = monitor.read_json(configuration)
+    item = monitor.configurations(config)[0]
+    monkeypatch.setenv("BUILD_DEFINITIONNAME", item["name"])
+    monkeypatch.setenv("BUILD_REPOSITORY_NAME", monitor.REPOSITORIES[config["extension"]])
+    monkeypatch.setenv("BUILD_BUILDID", "123")
+    for key, value in item["variables"].items():
+        monkeypatch.setenv(key.upper(), value)
+    discovery = mocker.patch.object(monitor, "resolve", return_value=manifest)
+    output = tmp_path / "manifest.json"
+    monitor.main([
+        "resolve", "--configuration", str(configuration), "--extension", "azure-iot-ops",
+        "--cloud", "public", "--track", "v1", "--automation-commit", AUTOMATION, "--output", str(output),
+    ])
+    discovery.assert_called_once_with("azure-iot-ops", "public", "1.5", AUTOMATION)
+    assert monitor.read_json(output)["slot"] == "v1"
+    assert "##vso[build.updatebuildnumber]aio-health-public-v1-cli2.11.1-runtime1.5.45-b123" in capsys.readouterr().out
 
 
 def test_definition_generation_cannot_enable_runs_or_copy_secrets(monitor):
@@ -244,7 +303,7 @@ def test_definition_generation_cannot_enable_runs_or_copy_secrets(monitor):
 def state(adapter, manifest, monkeypatch, tmp_path):
     for key, value in {
         "BUILD_SOURCEVERSION": AUTOMATION, "SYSTEM_DEFINITIONID": "200", "BUILD_BUILDID": "100",
-        "MONITOR_CLOUD": "public", "MONITOR_TRACK": "1.5", "OPS_MONITOR_BUNDLE": str(tmp_path),
+        "MONITOR_CLOUD": "public", "MONITOR_TRACK": "v1", "OPS_MONITOR_BUNDLE": str(tmp_path),
         "OPS_CANDIDATE_DIGEST": manifest["wheel"]["sha256"],
     }.items():
         monkeypatch.setenv(key, value)
@@ -259,7 +318,7 @@ def test_cleanup_identity_does_not_depend_on_source_files(adapter, state, monkey
     adapter.validate_state(state)
     with pytest.raises(ValueError, match="missing the frozen release identity"):
         adapter.validate_state({key: value for key, value in state.items() if key != "monitor"})
-    monkeypatch.setenv("MONITOR_TRACK", "1.4")
+    monkeypatch.setenv("MONITOR_TRACK", "v2")
     with pytest.raises(ValueError, match="requested track"):
         adapter.validate_state(state)
 
