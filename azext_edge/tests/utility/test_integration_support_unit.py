@@ -259,28 +259,24 @@ def test_init_broker_rejects_custom_persistence_mismatch(init_broker_assertion, 
         assert_broker("instance", "rg", use_preview=use_preview, broker_config_file=str(config_file))
 
 
-def test_workload_identity_jobs_serialize_through_cleanup():
+def test_workload_identity_jobs_have_no_cross_run_lock_and_keep_cleanup():
     config = yaml.safe_load((ROOT / ".github/workflows/int_test.yml").read_text())
     assert "concurrency" not in config
     job = config["jobs"]["int-test"]
     assert "max-parallel" not in job["strategy"]
-    assert job["concurrency"] == {
-        "group": (
-            "${{ matrix.scenario.tox_env == 'python-wlif-int' && "
-            "format('iot-ops-wlif-{0}', inputs.resource-group || 'ops-cli-int-test-rg') || "
-            "format('iot-ops-int-{0}-{1}-{2}', github.run_id, github.run_attempt, matrix.scenario.name) }}"
-        ),
-        "cancel-in-progress": False,
-        "queue": "max",
-    }
+    assert "concurrency" not in job
     steps = {step.get("name"): step for step in job["steps"]}
     names = list(steps)
     assert (
-        names.index("Tox INIT Integration Tests")
+        names.index("Output variables for future steps")
+        < names.index("ARC connect cluster")
+        < names.index("Tox INIT Integration Tests")
         < names.index("${{ matrix.scenario.description }}")
         < names.index("Delete AIO resources")
         < names.index("Delete connected cluster and resources")
     )
+    assert "RESOURCE_GROUP_OWNER" not in job["env"]
+    assert not any("isolated Trust Bundle resource group" in name for name in names if name)
     for name in ("Delete AIO resources", "Delete connected cluster and resources"):
         assert steps[name]["if"] == "${{ always() }}"
 
@@ -988,6 +984,11 @@ def test_workflows_default_to_existing_test_resource_group(workflow, input_name)
     assert "centralus" not in source.lower()
 
 
+def test_whole_group_cleanup_requires_explicit_invocation():
+    config = yaml.load((ROOT / ".github/workflows/cluster_cleanup.yml").read_text(), Loader=yaml.BaseLoader)
+    assert set(config["on"]) == {"workflow_call", "workflow_dispatch"}
+
+
 def test_workflow_builds_once_and_tox_never_installs_checkout():
     config = yaml.safe_load((ROOT / ".github/workflows/int_test.yml").read_text())
     jobs = config["jobs"]
@@ -1046,13 +1047,20 @@ def _find_workflow_bash(platform_name):
     if platform_name == "nt":
         # PATH's bash.exe may be the WSL launcher, not Git for Windows' shell.
         git = shutil.which("git")
-        if git:
-            for directory in Path(git).resolve().parents:
+        candidates = ([Path(git)] if git else []) + [
+            Path(directory) / "git.exe" for directory in os.get_exec_path() if directory
+        ]
+        for executable in candidates:
+            if not executable.is_file():
+                continue
+            for directory in executable.resolve().parents:
                 for relative in ("usr/bin/bash.exe", "bin/bash.exe"):
                     candidate = directory / relative
                     if candidate.is_file():
                         return str(candidate)
-        raise RuntimeError("Workflow shell tests require Git for Windows with Bash; WSL is not used.")
+        raise RuntimeError(
+            f"Workflow shell tests require Git for Windows with Bash; WSL is not used. First Git: {git!r}."
+        )
     bash = shutil.which("bash")
     if not bash:
         raise RuntimeError("Workflow shell tests require Bash on PATH.")
@@ -1107,9 +1115,25 @@ def test_workflow_bash_selects_git_for_windows_not_wsl(mocker, tmp_path, git_rel
     which.assert_called_once_with("git")
 
 
+def test_workflow_bash_searches_past_minimal_git_on_path(mocker, tmp_path):
+    minimal = tmp_path / "agent/externals/git/cmd/git.exe"
+    full = tmp_path / "Program Files/Git/cmd/git.exe"
+    bash = full.parent.parent / "usr/bin/bash.exe"
+    wsl = tmp_path / "Windows/System32/bash.exe"
+    for executable in (minimal, full, bash, wsl):
+        executable.parent.mkdir(parents=True, exist_ok=True)
+        executable.touch()
+    mocker.patch.object(shutil, "which", return_value=str(minimal))
+    mocker.patch.object(os, "get_exec_path", return_value=[
+        str(minimal.parent), str(wsl.parent), str(full.parent),
+    ])
+    assert _find_workflow_bash("nt") == str(bash.resolve())
+
+
 @pytest.mark.parametrize("platform_name", ["nt", "posix"])
 def test_workflow_bash_missing_dependency_fails_instead_of_skipping(mocker, platform_name):
     mocker.patch.object(shutil, "which", return_value=None)
+    mocker.patch.object(os, "get_exec_path", return_value=[])
     with pytest.raises(RuntimeError, match="require.*Bash"):
         _find_workflow_bash(platform_name)
 

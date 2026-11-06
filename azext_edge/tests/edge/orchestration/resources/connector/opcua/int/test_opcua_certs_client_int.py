@@ -4,7 +4,6 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from azext_edge.edge.providers.orchestration.resources.connector.opcua.certs import OPCUA_CLIENT_CERT_SECRET_SYNC_NAME
 from .helpers import (
     assert_cluster_side_secret_exists,
     assert_cluster_side_secret_not_exists,
@@ -14,7 +13,7 @@ from .helpers import (
     assert_spc_secret_not_exists,
     assert_ssc_secret_exists,
     assert_ssc_secret_not_exists,
-    cleanup_test_resources,
+    certificate_sync_name,
     ensure_env_vars,
     ensure_key_vault,
     ensure_managed_identity,
@@ -39,9 +38,9 @@ def opcua_certs_client_test_setup(settings, tracked_resources: List[str], reques
     """Setup fixture for opcua certs client tests."""
 
     ensure_env_vars(settings)
-    kv_id, kv_name = ensure_key_vault(settings)
-    request.addfinalizer(lambda: cleanup_test_resources(settings, kv_name))
-    request.addfinalizer(prepare_opcua_secretsync(settings, OPCUA_CLIENT_CERT_SECRET_SYNC_NAME))
+    kv_id, _ = ensure_key_vault(settings, request)
+    sync_name = certificate_sync_name(settings.env.azext_edge_instance, "client")
+    request.addfinalizer(prepare_opcua_secretsync(settings, sync_name, certificate_type="client"))
     mi_id = ensure_managed_identity(settings, tracked_resources)
     instance_name = settings.env.azext_edge_instance
     resource_group = settings.env.azext_edge_rg
@@ -55,6 +54,7 @@ def opcua_certs_client_test_setup(settings, tracked_resources: List[str], reques
         "keyvaultId": kv_id,
         "userAssignedId": mi_id,
         "spcName": spc_name,
+        "secretSyncName": sync_name,
     }
 
 
@@ -62,6 +62,7 @@ def opcua_certs_client_test_setup(settings, tracked_resources: List[str], reques
 def test_opcua_cert_client(cluster_connection, opcua_certs_client_test_setup, tracked_files: List[str]):
     resource_group = opcua_certs_client_test_setup["resourceGroup"]
     instance_name = opcua_certs_client_test_setup["instanceName"]
+    sync_name = opcua_certs_client_test_setup["secretSyncName"]
     kv_id = opcua_certs_client_test_setup["keyvaultId"]
 
     instance_info = run(f"az iot ops show -g {resource_group} -n {instance_name}")
@@ -77,8 +78,11 @@ def test_opcua_cert_client(cluster_connection, opcua_certs_client_test_setup, tr
     public_key_file = generate_self_signed_der_cert_with_uri()
     # create a private key file too with same name but .pem extension, copy the public key content into it
     private_key_file = generate_self_signed_pem_cert()
-    run(f"az iot ops connector opcua client add --instance {instance_name} -g {resource_group} \
-        --public-key-file {public_key_file} --private-key-file {private_key_file} --overwrite-secret")
+    run(
+        f"az iot ops connector opcua client add --instance {instance_name} -g {resource_group} "
+        f"--secret-sync-name {sync_name} --public-key-file {public_key_file} "
+        f"--private-key-file {private_key_file} --overwrite-secret"
+    )
     secretsync_records = run(f"az iot ops secretsync list -i {instance_name} -g {resource_group}")
 
     # check kv secret has been created
@@ -99,18 +103,21 @@ def test_opcua_cert_client(cluster_connection, opcua_certs_client_test_setup, tr
             instance_name=instance_name,
             resource_group=resource_group,
             cert_file=cert_file,
-            ssc_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
+            ssc_name=sync_name,
         )
         # check cluster side secret is being synced
         assert_cluster_side_secret_exists(
             spc_name=spc_name,
-            secret_sync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
+            secret_sync_name=sync_name,
             cert_file=public_key_file,
         )
 
     # show secret sync
-    show_result = run(f"az iot ops connector opcua client show --instance {instance_name} -g {resource_group}")
-    assert show_result["name"] == OPCUA_CLIENT_CERT_SECRET_SYNC_NAME  # type: ignore[index]
+    show_result = run(
+        f"az iot ops connector opcua client show --instance {instance_name} -g {resource_group} "
+        f"--secret-sync-name {sync_name}"
+    )
+    assert show_result["name"] == sync_name  # type: ignore[index]
 
     # remove certs from client certs
     public_certificate_name = public_key_file.name
@@ -118,7 +125,7 @@ def test_opcua_cert_client(cluster_connection, opcua_certs_client_test_setup, tr
     run(
         f"az iot ops connector opcua client remove --instance {instance_name} \
           -g {resource_group} --certificate-names {public_certificate_name} {private_certificate_name} \
-          -y --include-secrets"
+          -y --include-secrets --secret-sync-name {sync_name}"
     )
     # get refreshed secretsync records after removal
     secretsync_records = run(f"az iot ops secretsync list -i {instance_name} -g {resource_group}")
@@ -138,12 +145,12 @@ def test_opcua_cert_client(cluster_connection, opcua_certs_client_test_setup, tr
             extended_location=extended_loc,
             resource_group=resource_group,
             cert_file=certificate_name,
-            ssc_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
+            ssc_name=sync_name,
         )
         # # check cluster side secret is removed
         assert_cluster_side_secret_not_exists(
             spc_name=spc_name,
-            secret_sync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
+            secret_sync_name=sync_name,
         )
 
     # clean up the cert files created
