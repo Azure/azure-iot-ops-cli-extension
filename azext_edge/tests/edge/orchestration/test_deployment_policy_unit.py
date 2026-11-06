@@ -45,8 +45,8 @@ FF_CONFIGURATION = {
     "Azure.Cluster.Cloud": "AZUREUSGOVERNMENTCLOUD",
 }
 FF_FOUNDATION = {
-    "certManager": {"version": "1.2.3", "train": "preview"},
-    "secretStore": {"version": "1.6.1", "train": "preview"},
+    "certManager": {"version": "1.2.3", "train": "stable"},
+    "secretStore": {"version": "1.6.1", "train": "stable"},
 }
 
 
