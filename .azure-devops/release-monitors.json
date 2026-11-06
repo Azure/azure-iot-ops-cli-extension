@@ -16,11 +16,11 @@
     "fairfax": {
       "displayName": "Fairfax",
       "variables": {
-        "AzureServiceConnection": "",
-        "MonitorSubscription": "",
+        "AzureServiceConnection": "sc-iot-ops-cli-fairfax-it",
+        "MonitorSubscription": "a32cd71f-10e6-4c80-944c-039bdaac7cab",
         "MonitorResourceGroup": "ops-cli-monitor-fairfax-{track}",
         "MonitorRegion": "usgovvirginia",
-        "MonitorCustomLocationsObjectId": ""
+        "MonitorCustomLocationsObjectId": "ea82e15f-28d2-47d8-9abd-d3e85d70f7b5"
       }
     }
   }
