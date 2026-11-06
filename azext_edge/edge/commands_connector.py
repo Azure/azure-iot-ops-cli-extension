@@ -121,6 +121,7 @@ def remove_connector_opcua_trust(
         confirm_yes=confirm_yes,
         force=force,
         include_secrets=include_secrets,
+        certificate_type="trust",
     )
 
 
@@ -144,6 +145,7 @@ def remove_connector_opcua_issuer(
         confirm_yes=confirm_yes,
         force=force,
         include_secrets=include_secrets,
+        certificate_type="issuer",
     )
 
 
@@ -167,7 +169,7 @@ def remove_connector_opcua_client(
         confirm_yes=confirm_yes,
         force=force,
         include_secrets=include_secrets,
-        is_client_cert=True,
+        certificate_type="client",
     )
 
 

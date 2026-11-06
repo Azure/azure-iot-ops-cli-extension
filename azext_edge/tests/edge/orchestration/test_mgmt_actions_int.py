@@ -36,6 +36,7 @@ from azext_edge.edge.util.az_client import (
 )
 
 from ...helpers import assert_role_assignment, create_file, remove_file, run
+from ...runtime_checks import configured_baseline
 
 logger = get_logger(__name__)
 
@@ -454,6 +455,10 @@ def mgmt_actions_setup(request, settings, tracked_files):
     initial_state = run(f"az iot ops mgmt-actions show -i {instance_name} -g {resource_group}")
     existing_state = _describe_existing_state(initial_state)
     if existing_state:
+        if configured_baseline():
+            pytest.fail(
+                f"Older-runtime lifecycle requires a clean instance; existing state: {', '.join(existing_state)}."
+            )
         pytest.skip(
             f"Instance '{instance_name}' already carries mgmt-actions state: {', '.join(existing_state)}. "
             "This test enables and disables mgmt-actions, which would delete resources it did not create. "

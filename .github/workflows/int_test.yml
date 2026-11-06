@@ -13,6 +13,18 @@ on:
         description: "JSON pinned baseline definitions by channel, required for explicit upgrade-path scenarios"
         type: string
         default: "{}"
+      test-current:
+        description: Test current bundled runtimes
+        type: boolean
+        default: true
+      test-n-1:
+        description: Test previous published GA runtime line with candidate CLI
+        type: boolean
+        default: false
+      test-n-2:
+        description: Test second previous published GA runtime line with candidate CLI
+        type: boolean
+        default: false
       resource-group:
         description: Resource group for cluster creation
         type: string
@@ -65,6 +77,18 @@ on:
         description: "JSON pinned baseline definitions by channel, required for upgrade-path"
         type: string
         default: "{}"
+      test-current:
+        description: Test current bundled runtimes
+        type: boolean
+        default: true
+      test-n-1:
+        description: Test previous published GA runtime line with candidate CLI
+        type: boolean
+        default: false
+      test-n-2:
+        description: Test second previous published GA runtime line with candidate CLI
+        type: boolean
+        default: false
       resource-group:
         description: Resource group for cluster creation
         type: string
@@ -140,6 +164,8 @@ jobs:
         with:
           sparse-checkout: |
             .github
+            azext_edge/edge/providers/orchestration/template.py
+          sparse-checkout-cone-mode: false
 
       - name: "Build matrix from scenarios"
         id: matrix
@@ -148,6 +174,9 @@ jobs:
           test-scenarios: ${{ env.TEST_SCENARIOS }}
           runtime-channels: ${{ inputs.runtime-channels || 'stable,preview' }}
           upgrade-baselines: ${{ inputs.upgrade-baselines || '{}' }}
+          test-current: ${{ github.event_name == 'schedule' || inputs.test-current }}
+          test-n-1: ${{ inputs.test-n-1 || false }}
+          test-n-2: ${{ inputs.test-n-2 || false }}
           runtime-init-args: ${{ env.RUNTIME_INIT_ARGS }}
           runtime-create-args: ${{ env.RUNTIME_CREATE_ARGS }}
 

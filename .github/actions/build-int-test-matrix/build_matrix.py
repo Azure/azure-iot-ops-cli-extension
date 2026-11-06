@@ -27,6 +27,7 @@ KNOWN_FIELDS = {
     "parallel",  # Controls parallel execution in pytest-xdist
     "manual_only",  # Requires explicit selection instead of scheduled/default runs
     "requires_baseline",  # Opt-in real upgrade, rather than same-version reconciliation
+    "min_runtime_version",  # Earliest GA runtime supported by this scenario
 }
 
 
@@ -76,6 +77,12 @@ def process_scenarios(scenarios: list[dict], user_selected: str) -> list[dict]:
                 f"Scenario '{name}' contains unknown fields that not be used: {fields}",
             )
 
+        minimum = scenario.get("min_runtime_version")
+        if minimum is not None and (
+            not isinstance(minimum, str) or not re.fullmatch(r"\d+\.\d+\.\d+", minimum)
+        ):
+            raise ValueError(f"Scenario '{name}' min_runtime_version must be a stable semantic version.")
+
         # Parse scenario custom environment variables
         raw_env = scenario.get("env", [])
         formatted_env = []
@@ -95,6 +102,7 @@ def process_scenarios(scenarios: list[dict], user_selected: str) -> list[dict]:
             "env": formatted_env,
             "parallel": bool(scenario.get("parallel", True)),
             "requires_baseline": bool(scenario.get("requires_baseline", False)),
+            "min_runtime_version": minimum,
         }
 
         processed_scenarios.append(normalized)
@@ -117,7 +125,10 @@ def validate_baseline(baseline: dict) -> None:
         raise ValueError("Baseline requires an explicit version and deployment train.")
 
 
-def expand_channels(scenarios, channels="stable,preview", baselines=None, init_args="", create_args=""):
+def expand_channels(
+    scenarios, channels="stable,preview", baselines=None, init_args="", create_args="",
+    include_current=True, previous_targets=None,
+):
     """Each row is an independent cluster; never convert an existing runtime's channel."""
     selected = list(dict.fromkeys(channel.strip() for channel in channels.split(",") if channel.strip()))
     if not selected or set(selected) - {"stable", "preview"}:
@@ -125,6 +136,15 @@ def expand_channels(scenarios, channels="stable,preview", baselines=None, init_a
     baselines = baselines or {}
     if not isinstance(baselines, dict) or set(baselines) - {"stable", "preview"}:
         raise ValueError("upgrade-baselines must be an object keyed by stable and/or preview.")
+    previous_targets = previous_targets or {}
+    if not include_current and not previous_targets:
+        raise ValueError("Select at least one runtime generation.")
+    for definition in previous_targets.values():
+        validate_baseline(definition)
+        if definition["train"] != "stable":
+            raise ValueError("Previous runtime targets must be GA/stable.")
+        if not re.fullmatch(r"\d+\.\d+\.\d+", definition["version"]):
+            raise ValueError("Previous runtime targets must use stable semantic versions.")
     rows = []
     for scenario in scenarios:
         # The channel matrix owns these flags. Arbitrary overrides would make a
@@ -133,7 +153,21 @@ def expand_channels(scenarios, channels="stable,preview", baselines=None, init_a
             options = {arg.split("=", 1)[0] for arg in shlex.split(arguments)}
             if options & {"--use-preview", "--ops-version", "--ops-train"}:
                 raise ValueError("Runtime selection belongs to runtime-channels / upgrade-baselines, not extra args.")
-        for channel in selected:
+        targets = [(channel, "current", None) for channel in selected] if include_current else []
+        targets.extend(("stable", generation, definition) for generation, definition in previous_targets.items())
+        if scenario["requires_baseline"] and previous_targets:
+            raise ValueError("Select upgrade (not upgrade-path) with discovered N-1/N-2 sources.")
+        for channel, generation, definition in targets:
+            minimum = scenario.get("min_runtime_version")
+            if definition and minimum and (
+                tuple(map(int, definition["version"].split("."))) < tuple(map(int, minimum.split(".")))
+            ):
+                print(
+                    "::warning file=.github/test-scenarios.yml::"
+                    f"Skipping scenario '{scenario['name']}' on {generation.upper()} AIO {definition['version']}: "
+                    f"requires AIO {minimum} or later."
+                )
+                continue
             row = deepcopy(scenario)
             row["name"] = f"{scenario['name']}-{channel}"
             row["description"] = f"{scenario['description']} [{channel}]"
@@ -144,12 +178,23 @@ def expand_channels(scenarios, channels="stable,preview", baselines=None, init_a
             # Temporary until meta-operator passes customer-managed trust settings to MCP.
             if scenario["name"] == "trustbundle" and channel == "preview":
                 row["create_args"] = f"{row['create_args']} --feature mcp.mode=Disabled"
-            row["baseline"] = None
+            row["baseline"] = deepcopy(definition)
+            if definition:
+                row["name"] += f"-{generation}"
+                row["description"] += f" {generation.upper()} AIO {definition['version']}"
+                if scenario["tox_env"] == "python-upgrade-int":
+                    row["description"] = (
+                        f"Upgrade tests [{channel}] {generation.upper()} AIO {definition['version']} -> current"
+                    )
+                else:
+                    row["env"].append({"name": "azext_edge_preserve_runtime", "value": "true"})
             if row["requires_baseline"]:
                 if channel not in baselines:
                     raise ValueError(f"Scenario {scenario['name']} requires an explicit {channel} upgrade baseline.")
                 validate_baseline(baselines[channel])
                 row["baseline"] = baselines[channel]
+                # Explicit baselines own their provisioning args, including runtime selection.
+                row["create_args"] = ""
             rows.append(row)
     return rows
 
@@ -170,6 +215,18 @@ def main() -> None:
         config = safe_load(f) or {}
     config_scenarios = config.get("scenarios", [])
 
+    generations = [
+        number for number in (1, 2) if os.getenv(f"TEST_N_{number}", "false").lower() == "true"
+    ]
+    previous_targets = {}
+    if generations:
+        from runpy import run_path
+        from pathlib import Path
+
+        resolver = run_path(str(Path(__file__).with_name("runtime_targets.py")))
+        previous_targets = resolver["discover_previous"](generations)
+        print(f"Resolved previous GA targets:\n{dumps(previous_targets, indent=2)}")
+
     # Filter based on user input
     test_scenarios = expand_channels(
         process_scenarios(config_scenarios, custom_scenarios),
@@ -177,6 +234,8 @@ def main() -> None:
         baselines=json.loads(os.getenv("UPGRADE_BASELINES", "{}")),
         init_args=os.getenv("RUNTIME_INIT_ARGS", ""),
         create_args=os.getenv("RUNTIME_CREATE_ARGS", ""),
+        include_current=os.getenv("TEST_CURRENT", "true").lower() == "true",
+        previous_targets=previous_targets,
     )
 
     # Exit if no valid scenarios

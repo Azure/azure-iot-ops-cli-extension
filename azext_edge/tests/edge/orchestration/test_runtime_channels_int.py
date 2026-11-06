@@ -14,7 +14,7 @@ import subprocess
 import pytest
 
 from ...helpers import run
-from ...runtime_checks import assert_runtime, read_runtime
+from ...runtime_checks import assert_runtime, configured_baseline, read_runtime
 
 
 pytestmark = pytest.mark.runtime_channel
@@ -31,7 +31,7 @@ def channel_target():
 @pytest.mark.parametrize("operation", ["list", "show"])
 def test_connector_commands_require_preview_runtime(channel_target, operation):
     name, group, channel = channel_target
-    assert_runtime(name, group, channel)
+    assert_runtime(name, group, channel, configured_baseline())
     reference = "mcr.microsoft.com/azureiotoperations/akri-connectors/rest-metadata:1.0.6"
     arguments = [
         "az", "iot", "ops", "connector", operation, "--instance", name, "--resource-group", group,
@@ -76,13 +76,15 @@ def test_shared_instance_update_preserves_runtime_channel(channel_target):
     description = instance["properties"].get("description") or ""
     try:
         run(f"az iot ops update -n {name} -g {group} --description channel-integration-check")
-        after = assert_runtime(name, group, channel)
+        after = assert_runtime(name, group, channel, configured_baseline())
         assert after.identity == before.identity
     finally:
         # Use argv rather than shell quoting for arbitrary existing descriptions.
-        subprocess.run(
-            ["az", "iot", "ops", "update", "-n", name, "-g", group, "--description", description], check=True,
+        restored = subprocess.run(
+            ["az", "iot", "ops", "update", "-n", name, "-g", group, "--description", description, "--output", "json"],
+            check=True, capture_output=True, text=True,
         )
+        assert (json.loads(restored.stdout)["properties"].get("description") or "") == description
 
 
 @pytest.mark.serial
@@ -107,7 +109,7 @@ def test_preview_mcp_feature_toggle(channel_target):
 @pytest.mark.serial
 def test_cross_channel_upgrade_rejected_without_mutation(channel_target):
     name, group, channel = channel_target
-    assert_runtime(name, group, channel)
+    assert_runtime(name, group, channel, configured_baseline())
     _, instance_before, extensions_before = read_runtime(name, group)
     opposite = "preview" if channel == "stable" else "stable"
     result = subprocess.run(

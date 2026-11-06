@@ -12,7 +12,11 @@ import responses
 
 from azext_edge.edge import commands_connector
 from azext_edge.edge.providers.orchestration.common import EXTENSION_TYPE_OPS
-from azext_edge.edge.providers.orchestration.resources.connector.opcua.certs import OpcUACerts
+from azext_edge.edge.providers.orchestration.resources.connector.opcua.certs import (
+    OPCUA_ISSUER_LIST_SECRET_SYNC_NAME,
+    OPCUA_TRUST_LIST_SECRET_SYNC_NAME,
+    OpcUACerts,
+)
 from azext_edge.edge.providers.orchestration.resources.instances import SECRET_SYNC_RESOURCE_TYPE
 from .conftest import (
     assemble_resource_map_mock,
@@ -100,6 +104,9 @@ def test_per_instance_names_isolate_certificate_lifecycle(
         )
         if kind == "client":
             assert settings["connectors.values.securityPki.applicationCert"] == ""
+        else:
+            default = OPCUA_TRUST_LIST_SECRET_SYNC_NAME if kind == "trust" else OPCUA_ISSUER_LIST_SECRET_SYNC_NAME
+            assert settings[f"connectors.values.securityPki.{setting}"] == default
 
     assert len(set(names)) == 2
     deleted = [call.request.url.split("?")[0].rsplit("/", 1)[-1] for call in mocked_responses.calls
@@ -107,13 +114,58 @@ def test_per_instance_names_isolate_certificate_lifecycle(
     assert deleted == names
 
 
-def test_removing_old_named_client_certificate_preserves_active_reference(
-    mocker, mocked_cmd, mocked_instance, mocked_responses,
+@pytest.mark.parametrize("kind,setting,default", [
+    ("trust", "trustedCerts", OPCUA_TRUST_LIST_SECRET_SYNC_NAME),
+    ("issuer", "issuerCerts", OPCUA_ISSUER_LIST_SECRET_SYNC_NAME),
+])
+@pytest.mark.parametrize("custom_reference", [False, True])
+def test_default_list_add_restores_custom_reference_without_redeploying_defaults(
+    kind, setting, default, custom_reference, mocked_cmd, mocked_instance, mocked_responses,
+    mocked_read_file_content, mocked_decode_certificate,
 ):
-    record = get_mock_secretsync_record("old-client", "mock-rg", objects=[
+    mocked_read_file_content.return_value = b"\x00\x01\x02\x03"
+    mocked_decode_certificate.side_effect = lambda *_args, **_kwargs: [build_mock_cert()]
+    record = get_mock_secretsync_record(default, "mock-rg")
+    spc = get_mock_spc_record("default-spc", "mock-rg")
+    settings = {"unrelated": "preserved"}
+    key = f"connectors.values.securityPki.{setting}"
+    if custom_reference:
+        settings[key] = "custom-list"
+    assemble_resource_map_mock(
+        mocked_instance.get_resource_map,
+        {EXTENSION_TYPE_OPS: {"name": "aio-ext", "properties": {"configurationSettings": settings}}},
+        [], ssc=record,
+    )
+    cluster = mocked_instance.get_resource_map().connected_cluster
+    cluster.get_cl_resources_by_type.return_value = {SECRET_SYNC_RESOURCE_TYPE: []}
+    mocked_instance.get_default_spc.return_value = spc
+    setup_mock_common_responses(
+        mocked_responses, spc, record, default, "mock-rg", "certificate-der", "default-spc",
+    )
+    mocked_responses.add(responses.PUT, get_secretsync_endpoint(default, "mock-rg"), json=record)
+    getattr(commands_connector, f"add_connector_opcua_{kind}")(
+        mocked_cmd, "instance-a", "mock-rg", file="/fake/certificate.der",
+    )
+    if custom_reference:
+        cluster.update_aio_extension.assert_called_once_with(
+            extension_name="aio-ext", properties={"configurationSettings": {key: default}},
+        )
+    else:
+        cluster.update_aio_extension.assert_not_called()
+    assert settings["unrelated"] == "preserved"
+
+
+@pytest.mark.parametrize("kind,setting", [
+    ("trust", "trustedCerts"), ("issuer", "issuerCerts"), ("client", "applicationCert"),
+])
+def test_removing_old_named_certificate_preserves_active_reference(
+    mocker, mocked_cmd, mocked_instance, mocked_responses, kind, setting,
+):
+    record = get_mock_secretsync_record("old-certificate", "mock-rg", objects=[
         {"sourcePath": "old-der", "targetKey": "old.der"},
     ])
-    settings = {"connectors.values.securityPki.applicationCert": "current-client"}
+    key = f"connectors.values.securityPki.{setting}"
+    settings = {key: "current-certificate"}
     assemble_resource_map_mock(
         mocked_instance.get_resource_map,
         {EXTENSION_TYPE_OPS: {"name": "aio-ext", "properties": {"configurationSettings": settings}}},
@@ -121,12 +173,12 @@ def test_removing_old_named_client_certificate_preserves_active_reference(
     )
     mocked_instance.get_default_spc.return_value = get_mock_spc_record("default-spc", "mock-rg")
     mocker.patch.object(OpcUACerts, "_remove_secrets_from_spc")
-    mocked_responses.add(responses.DELETE, get_secretsync_endpoint("old-client", "mock-rg"), status=204)
-    commands_connector.remove_connector_opcua_client(
-        mocked_cmd, "instance-a", "mock-rg", ["old.der"], confirm_yes=True, secret_sync_name="old-client",
+    mocked_responses.add(responses.DELETE, get_secretsync_endpoint("old-certificate", "mock-rg"), status=204)
+    getattr(commands_connector, f"remove_connector_opcua_{kind}")(
+        mocked_cmd, "instance-a", "mock-rg", ["old.der"], confirm_yes=True, secret_sync_name="old-certificate",
     )
     mocked_instance.get_resource_map().connected_cluster.update_aio_extension.assert_not_called()
-    assert settings["connectors.values.securityPki.applicationCert"] == "current-client"
+    assert settings[key] == "current-certificate"
 
 
 @pytest.mark.parametrize("kind", ["trust", "issuer", "client"])

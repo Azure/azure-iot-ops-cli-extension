@@ -36,6 +36,57 @@ China endpoint coverage verifies configuration only, not live AIO service availa
 The permission-preflight helper coverage exercises the helper directly; it is not
 currently called by the deployment workflow.
 
+## Instance and child-resource APIs
+
+Management-actions enablement uses `Instances.use_child_api()` before any external
+write. Selection intersects the custom
+location's enabled APIs for every required resource type with CLI-supported stable
+APIs. Do not infer support from the runtime version or union unrelated types' APIs.
+Validate the instance's custom-location ID before optional discovery or cache reuse.
+Missing or invalid `extendedLocation.name` must fail before any external write;
+invalid required instance state is not an optional-discovery failure.
+
+Discovery uses `Microsoft.ExtendedLocation/customLocations/enabledResourceTypes/read`
+when available, preserving the referenced subscription and active cloud endpoint.
+Denied, unavailable, malformed, or empty discovery must not add a required permission
+or block a previously authorized enablement. Never cache partial discovery results.
+Validate collection, entry, and provider-namespace shapes before accepting discovery;
+mixed valid/malformed metadata must discard the entire result, not imply missing support.
+Validate each page envelope before SDK iterator flattening, including continuation-link
+types and cycles. Cache capabilities only after all pages finish successfully.
+
+The shared `Instances` client and the enablement client use the SDK retry-policy
+seam to negotiate older supported stable APIs only for initial JSON instance or
+child PUTs rejected with HTTP 400/404
+`MissingAzureKubernetesMapping`. Do not parse error-message text, downgrade on unrelated
+errors, replay accepted operations, or alter read/delete or deployment/upgrade clients.
+Bound negotiation by the existing supported API enum, not a runtime-version table.
+Keep negotiation inside one SDK retry lifecycle: preserve caller retry limits,
+already-consumed retry budgets, and the remaining timeout across API transitions.
+Without readable capabilities, pre-write compatibility verification is not guaranteed.
+
+Show and disable preserve the baseline resource-provider reads/deletes without
+capability discovery or additional permissions. Do not impose enablement's child-write
+preflight on these paths or add speculative API-downgrade retries.
+
+Other providers using `Instances` inherit rejected-PUT negotiation without adding
+capability-discovery reads or permissions. This includes identity assignment,
+instance updates, registry endpoints, connector templates and dataflow resources.
+Management-actions enable retains its optional pre-write capability discovery.
+Explicit `use_runtime_profile()` clients for deployment and upgrade disable
+negotiation, even when the profile API matches the default. Preview and unknown
+APIs are not negotiated to stable APIs. Adding an API to
+`IoTOpsMgmtApiVersion` requires verifying generated operations and payload compatibility.
+Description updates distinguish omitted (`None`, preserve) from explicitly empty
+(`""`, clear), including restoration after runtime-channel integration checks.
+
+The request-level regressions in
+[`test_instance_api_unit.py`](./azext_edge/tests/edge/orchestration/test_instance_api_unit.py)
+exercise real discovery and management-actions orchestration with mocked transport.
+The existing management-actions payload tests mock discovery only; they do not prove
+API compatibility. Live backward-compatibility testing must pair the candidate CLI
+with an older, unupgraded AIO instance, not only a freshly deployed current runtime.
+
 
 > You can run all commands in this setup in `bash` or `cmd` environments, this documentation just shows the `powershell` flavor.
 

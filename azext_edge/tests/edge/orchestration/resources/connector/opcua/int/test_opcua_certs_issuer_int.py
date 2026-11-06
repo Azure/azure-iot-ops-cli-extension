@@ -19,6 +19,7 @@ from .helpers import (
     ensure_managed_identity,
     ensure_secretsync_enabled,
     generate_ca_cert,
+    prepare_opcua_secretsync,
 )
 import pytest
 from knack.log import get_logger
@@ -37,6 +38,8 @@ def opcua_certs_issuer_test_setup(settings, tracked_resources: List[str], reques
 
     ensure_env_vars(settings)
     kv_id, _ = ensure_key_vault(settings, request)
+    sync_name = certificate_sync_name(settings.env.azext_edge_instance, "issuer")
+    request.addfinalizer(prepare_opcua_secretsync(settings, sync_name, certificate_type="issuer"))
     mi_id = ensure_managed_identity(settings, tracked_resources)
     instance_name = settings.env.azext_edge_instance
     resource_group = settings.env.azext_edge_rg
@@ -50,7 +53,7 @@ def opcua_certs_issuer_test_setup(settings, tracked_resources: List[str], reques
         "keyvaultId": kv_id,
         "userAssignedId": mi_id,
         "spcName": spc_name,
-        "secretSyncName": certificate_sync_name(instance_name, "issuer"),
+        "secretSyncName": sync_name,
     }
 
 

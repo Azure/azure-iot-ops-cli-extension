@@ -13,6 +13,7 @@
 # - manual_only: Optional boolean requiring explicit selection (excluded from default/scheduled runs)
 # Every selected scenario is expanded across runtime-channels (stable,preview by default).
 # - requires_baseline: Explicit opt-in scenario; requires a pinned baseline per selected channel.
+# - min_runtime_version: Earliest GA version; older discovered targets are omitted with a warning.
 
 scenarios:
   - name: edge
@@ -71,6 +72,7 @@ scenarios:
 
   - name: essentials-sku
     description: "Essentials SKU tests"
+    min_runtime_version: "1.5.0"
     create_args: "--sku Essentials --feature opcua.mode=Stable"
 
   - name: trustbundle
