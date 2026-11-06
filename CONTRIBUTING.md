@@ -26,6 +26,53 @@ has passed live qualification.
 
 We also regularly utilize GitHub Codespaces, and have automated this environment setup in our [devcontainer config](./.devcontainer/devcontainer.json)
 
+## Released-version monitors
+
+`.azure-devops/release-monitor.yml` is shared by six independent definitions:
+`Azure IoT Operations CLI - Monitor - <Public|Fairfax> - <milestone>`.
+`.azure-devops/release-monitors.json` declares the three monitored milestones,
+currently `1.5`, `1.4` and `1.3`. Discovery groups published CLI releases by their
+bundled stable runtime family and selects the newest CLI patch in each family,
+not the latest three CLI tags. When a new milestone ships, review the roster and
+rotate the oldest pair of definitions; retired families fail closed rather than
+silently switching a named pipeline to a different milestone.
+
+Each run verifies GitHub's wheel SHA256, metadata, runtime profile and exact
+released source. It uses that release's scenario configuration, tests and fixtures
+with current native orchestration. The deployed AIO extension version/train must
+match the selected cloud's bundled runtime. All planned scenarios, their latest
+attempts, JUnit and cleanup must pass; monitor evidence cannot qualify a release.
+No AIO Mooncake definitions are generated. Older releases without Fairfax profiles
+are explicitly blocked, never redirected to the Public profile.
+
+Generate disabled definition payloads using an existing same-repository definition:
+
+```bash
+az pipelines build definition show --id 167 --org https://dev.azure.com/azureiotdevxp \
+  --project 9c543948-e573-4146-832a-bf16b1531204 > baseline.json
+python tools/release_monitor.py definitions \
+  --configuration .azure-devops/release-monitors.json --baseline baseline.json \
+  --branch refs/heads/<reviewed-automation-branch> --output definitions.json
+```
+
+Create each payload through the ADO build-definitions API after the reviewed branch
+exists. Existing definitions are not changed. Payloads use `\official\monitors`,
+disabled queueing, no triggers/schedules, and non-overridable variables. The runner
+also checks definition name, repository and every configured target variable.
+Never store personal account passwords or tokens in these files.
+
+Keep all definitions disabled until an owner approves automation connections,
+resource scopes/RBAC, capacity and live qualification. Provision and authorize
+the dedicated `ops-cli-monitor-<cloud>-<milestone>` groups first; historical test
+fixtures have fixed names that must not collide across milestones. The pipeline
+does not create those groups. Scenarios run serially within each monitor.
+Then enable queueing and explicitly select `runIntegration: true`. Preparation
+alone deliberately fails rather than reporting healthy monitoring. Retries reuse
+the first published release selection. No recurring schedule is supplied before
+live execution and capacity are approved; apply the same schedule policy to the
+IoT and AIO monitor sets. Fairfax needs its own ARM connection, subscription and
+tenant-specific custom-locations object ID; a source PR does not qualify older wheels.
+
 ## Cloud-aware management clients
 
 Pass the active cloud's ARM endpoint when constructing management clients through

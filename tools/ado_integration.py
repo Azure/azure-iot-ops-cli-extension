@@ -150,7 +150,7 @@ def release_build_id():
     return value
 
 
-def plan(output):
+def plan(output, scenario_source=ROOT):
     cloud = cloud_name()
     parent = release_build_id()
     if cloud == "AzureUSGovernment" and (required("OPS_CHANNELS") != "stable" or parent != "0"):
@@ -162,7 +162,7 @@ def plan(output):
         from integration_health import resolve
         health = resolve(required("OPS_HEALTH_HISTORY"))
     matrix_tools = runpy.run_path(str(ROOT / ".github/actions/build-int-test-matrix/build_matrix.py"))
-    config = yaml.safe_load((ROOT / ".github/test-scenarios.yml").read_text(encoding="utf-8"))["scenarios"]
+    config = yaml.safe_load((scenario_source / ".github/test-scenarios.yml").read_text(encoding="utf-8"))["scenarios"]
     selection = required("OPS_SCENARIOS").split(",")
     if "Default scenarios" in selection and selection != ["Default scenarios"]:
         raise ValueError("Select Default scenarios alone, or select individual scenarios.")
@@ -463,6 +463,14 @@ def report(output):
         value["locations"] = state.get("observedLocations", {})
         success = success and value["locations"] == expected_locations(state["locations"])
         value["status"] = "passed" if success else "incomplete"
+    if state.get("monitor"):
+        from release_monitor_adapter import validate_state
+        validate_state(state)
+        value["monitor"] = state["monitor"]
+        value["observedRuntime"] = state.get("observedRuntime")
+        expected = state["monitor"]["runtime"]
+        success = success and value["observedRuntime"] == {key: expected[key] for key in ("version", "train")}
+        value["status"] = "passed" if success else "incomplete"
     write(output / "receipt.json", value)
     if not success:
         raise ValueError("Scenario failed, was interrupted, or did not finish cleanup.")
@@ -474,6 +482,52 @@ def expected_locations(locations):
         "storage": locations["resourceRegion"], "registry": locations["resourceRegion"],
         "namespace": locations["namespaceRegion"],
     }
+
+
+def scenario_evidence(value, history):
+    keys = [row["key"] for row in value["rows"]]
+    if not keys or len(set(keys)) != len(keys):
+        raise ValueError("Scenario plan must contain distinct, nonempty expected rows.")
+    for row in value["rows"]:
+        receipts = []
+        for directory in history.glob(f"ops-attempt-{row['key']}-*"):
+            path = directory / "receipt.json"
+            if not path.is_file():
+                raise ValueError(f"Missing scenario receipt: {directory.name}")
+            receipt = read(path)
+            attempt = path.parent.name.removeprefix(f"ops-attempt-{row['key']}-")
+            if not attempt.isdigit() or receipt.get("attempt") != int(attempt):
+                raise ValueError("Invalid scenario attempt identity.")
+            receipts.append((int(attempt), path, receipt))
+        if not receipts:
+            raise ValueError(f"Missing scenario evidence: {row['key']}")
+        _, path, receipt = max(receipts, key=lambda entry: entry[0])
+        if (receipt.get("producer") != producer() or receipt.get("row") != row["key"]
+                or receipt.get("sha256") != required("OPS_CANDIDATE_DIGEST")
+                or receipt.get("status") != "passed" or receipt.get("cleanup") != "passed"
+                or any(receipt.get("phases", {}).get(phase) != "passed" for phase in expected_phases(row))):
+            raise ValueError(f"Unqualified latest scenario attempt: {row['key']}")
+        if value.get("cloud") == "AzureUSGovernment" and (
+                receipt.get("cloud") != value["cloud"]
+                or any(receipt.get(key) != value[key] for key in ("subscription", "resourceGroup"))
+                or receipt.get("locations") != expected_locations(value["locations"])):
+            raise ValueError("Fairfax cloud, resource scope or observed locations differ from the plan.")
+        if receipt.get("cloud", "AzureCloud") != value.get("cloud", "AzureCloud"):
+            raise ValueError("Scenario evidence belongs to a different cloud.")
+        if value.get("health") and (receipt.get("health") != value["health"]
+                                    or receipt.get("locations") != expected_locations(value["locations"])):
+            raise ValueError("Health profile or observed regional coverage differs from the plan.")
+        if receipt.get("monitor") != value.get("monitor"):
+            raise ValueError("Monitor evidence does not match the frozen release or execution kind.")
+        if value.get("monitor"):
+            runtime = value["monitor"]["runtime"]
+            if (receipt.get("observedRuntime") != {key: runtime[key] for key in ("version", "train")}
+                    or any(receipt.get(key) != value[key] for key in ("subscription", "resourceGroup"))
+                    or receipt.get("releaseQualified") is not False):
+                raise ValueError("Monitor runtime, resource scope or qualification boundary is invalid.")
+        for phase in expected_phases(row):
+            junit_results(path.parent / "junit" / f"{phase}.xml")
+        yield row, path, receipt
 
 
 def gate(output):
@@ -502,34 +556,7 @@ def gate(output):
     if not unit_coverage.is_file():
         raise ValueError("Missing unit coverage.")
     shutil.copyfile(unit_coverage, coverage / ".coverage.unit")
-    for row in value["rows"]:
-        receipts = []
-        for path in history.glob(f"ops-attempt-{row['key']}-*/receipt.json"):
-            receipt = read(path)
-            attempt = path.parent.name.removeprefix(f"ops-attempt-{row['key']}-")
-            if not attempt.isdigit() or receipt.get("attempt") != int(attempt):
-                raise ValueError("Invalid scenario attempt identity.")
-            receipts.append((int(attempt), path, receipt))
-        if not receipts:
-            raise ValueError(f"Missing scenario evidence: {row['key']}")
-        _, path, receipt = max(receipts, key=lambda entry: entry[0])
-        if (receipt.get("producer") != producer() or receipt.get("row") != row["key"]
-                or receipt.get("sha256") != required("OPS_CANDIDATE_DIGEST")
-                or receipt.get("status") != "passed" or receipt.get("cleanup") != "passed"
-                or any(receipt.get("phases", {}).get(phase) != "passed" for phase in expected_phases(row))):
-            raise ValueError(f"Unqualified latest scenario attempt: {row['key']}")
-        if value.get("cloud") == "AzureUSGovernment" and (
-                receipt.get("cloud") != value["cloud"]
-                or any(receipt.get(key) != value[key] for key in ("subscription", "resourceGroup"))
-                or receipt.get("locations") != expected_locations(value["locations"])):
-            raise ValueError("Fairfax cloud, resource scope or observed locations differ from the plan.")
-        if receipt.get("cloud", "AzureCloud") != value.get("cloud", "AzureCloud"):
-            raise ValueError("Scenario evidence belongs to a different cloud.")
-        if value.get("health") and (receipt.get("health") != value["health"]
-                                    or receipt.get("locations") != expected_locations(value["locations"])):
-            raise ValueError("Health profile or observed regional coverage differs from the plan.")
-        for phase in expected_phases(row):
-            junit_results(path.parent / "junit" / f"{phase}.xml")
+    for row, path, receipt in scenario_evidence(value, history):
         source = path.parent / "coverage.dat"
         if not source.is_file():
             raise ValueError(f"Missing scenario coverage: {row['key']}")

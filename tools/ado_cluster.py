@@ -118,6 +118,9 @@ def validate_state(state):
                    ("clusterRegion", "resourceRegion", "namespaceRegion")}
         if state["locations"] != planned:
             raise ValueError("Resource locations differ from the health profile.")
+    if state.get("monitor") or os.environ.get("OPS_MONITOR_BUNDLE"):
+        from release_monitor_adapter import validate_state as validate_monitor
+        validate_monitor(state)
 
 
 def check_account(commands, state):
@@ -377,10 +380,14 @@ def test_phase(commands, state, output, phase, marker):
     environment = test_environment(state, output)
     target = Path(required("AZURE_EXTENSION_DIR")) / "azure-iot-ops"
     junit = output / "junit" / f"{phase}.xml"
+    source = ROOT
+    if state.get("monitor"):
+        from release_monitor_adapter import test_source
+        source = test_source(state)
     args = [
         sys.executable, str(ROOT / "tools/integration_runner.py"), "--extension-dir", str(target),
-        "--tests", str(ROOT / "azext_edge/tests"), "--work-dir", str(output / "work" / phase),
-        "--junit", str(junit), "--coverage-config", str(ROOT / ".coveragerc"), "--scenario", marker,
+        "--tests", str(source / "azext_edge/tests"), "--work-dir", str(output / "work" / phase),
+        "--junit", str(junit), "--coverage-config", str(source / ".coveragerc"), "--scenario", marker,
     ]
     if phase == "scenario" and state["row"]["scenario"]["parallel"]:
         args += ["-n", "6", "--dist", "worksteal"]
@@ -483,6 +490,9 @@ def cleanup(output):
 def run(output):
     state = read(output / "state.json")
     validate_state(state)
+    if state.get("monitor"):
+        from release_monitor_adapter import test_source
+        test_source(state)
     auth = None
     collector = None
     try:
@@ -505,6 +515,9 @@ def run(output):
         connect_cluster(commands, state, output)
         create_resources(commands, state)
         test_phase(commands, state, output, "init", "init_scenario_test")
+        if state.get("monitor"):
+            from release_monitor_adapter import verify_runtime
+            verify_runtime(commands, state, output)
         verify_locations(commands, state, output)
         scenario = state["row"]["scenario"]
         if scenario["tox_env"]:
@@ -514,6 +527,8 @@ def run(output):
             commands.run(["az", "iot", "ops", "delete", "--name", state["instance"],
                           "-g", state["resourceGroup"], "--yes"], timeout=1800)
             test_phase(commands, state, output, "redeploy", "init_scenario_test")
+            if state.get("monitor"):
+                verify_runtime(commands, state, output)
         if any(state["phases"].get(phase) != "passed" for phase in expected_phases(state["row"])):
             raise ValueError("Required scenario phase is incomplete.")
         if auth.poll() is not None:
