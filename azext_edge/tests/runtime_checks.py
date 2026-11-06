@@ -10,6 +10,8 @@ import json
 import os
 import shlex
 
+from azure.cli.core import get_default_cli
+
 from azext_edge.edge.providers.orchestration.runtime import resolve_runtime
 from azext_edge.edge.providers.orchestration.runtime_catalog import get_runtime_catalog
 from azext_edge.edge.providers.orchestration.runtime_profiles import RuntimeChannel, resolve_runtime_identity
@@ -17,7 +19,7 @@ from .helpers import run
 
 
 def expected_runtime(channel, baseline=None):
-    catalog = get_runtime_catalog()
+    catalog = get_runtime_catalog(get_default_cli().cloud.name)
     channel = RuntimeChannel(channel)
     if baseline:
         identity = resolve_runtime_identity(
@@ -40,7 +42,8 @@ def read_runtime(instance_name, resource_group):
         page = run(f"az rest --method get --url {shlex.quote(url)}")
         extensions.extend(page["value"])
         url = page.get("nextLink")
-    runtime = resolve_runtime(instance, location, cluster, extensions, get_runtime_catalog().qualification_identities)
+    catalog = get_runtime_catalog(get_default_cli().cloud.name)
+    runtime = resolve_runtime(instance, location, cluster, extensions, catalog.qualification_identities)
     return runtime, instance, extensions
 
 

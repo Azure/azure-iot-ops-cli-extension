@@ -25,7 +25,7 @@ import yaml
 import ado_diagnostics as diagnostics
 from ado_integration import (
     ROOT, expected_locations, expected_phases, junit_results, producer, read, required, scenario_timeout, write,
-    validate_cluster_region,
+    cloud_name, validate_cluster_region,
 )
 
 
@@ -103,7 +103,14 @@ def validate_state(state):
     if (state["resources"] != expected or state["cluster"] != f"opado{suffix}"
             or state["instance"] != f"inst{suffix}"):
         raise ValueError("Refusing resources outside this attempt's exact ownership manifest.")
-    validate_cluster_region(state["locations"]["clusterRegion"])
+    cloud = state.get("cloud", "AzureCloud")
+    if cloud != cloud_name():
+        raise ValueError("Provisioning state does not match the approved cloud.")
+    validate_cluster_region(state["locations"]["clusterRegion"], cloud)
+    if cloud == "AzureUSGovernment" and (
+            state["locations"] != dict.fromkeys(("clusterRegion", "resourceRegion", "namespaceRegion"), "usgovvirginia")
+            or state["row"]["scenario"]["channel"] != "stable"):
+        raise ValueError("Fairfax requires stable runtime with all resources in usgovvirginia.")
     if state.get("health"):
         from integration_health import validate
         validate(state["health"]["profile"])
@@ -115,8 +122,9 @@ def validate_state(state):
 
 def check_account(commands, state):
     account = commands.az_json("account", "show")
-    if account["id"].lower() != state["subscription"] or account["environmentName"] != "AzureCloud":
-        raise ValueError("Azure CLI is not using the approved public-cloud subscription.")
+    if (account["id"].lower() != state["subscription"]
+            or account["environmentName"] != state.get("cloud", "AzureCloud")):
+        raise ValueError("Azure CLI is not using the approved cloud and subscription.")
 
 
 def resource_ids(commands, state):
@@ -302,7 +310,7 @@ def connect_cluster(commands, state, output):
 def create_resources(commands, state):
     names = {key: value.rsplit("/", 1)[-1] for key, value in state["resources"].items()}
     common = ["--resource-group", state["resourceGroup"]]
-    location = ["--location", state["locations"]["resourceRegion"]] if state.get("health") else []
+    location = ["--location", state["locations"]["resourceRegion"]] if "resourceRegion" in state["locations"] else []
     commands.run([
         "az", "storage", "account", "create", *common, "--name", names["storage"],
         "--enable-hierarchical-namespace", "--public-network-access", "Disabled",
@@ -316,7 +324,7 @@ def create_resources(commands, state):
     ])
     commands.run([
         "az", "iot", "ops", "ns", "create", *common, "--name", names["namespace"],
-        "--location", state["locations"]["namespaceRegion"] if state.get("health") else "australiaeast",
+        "--location", state["locations"].get("namespaceRegion", "australiaeast"),
         "--output", "none",
     ])
 
@@ -331,6 +339,7 @@ def test_environment(state, output):
         "azext_edge_wheel": state["wheel"], "azext_edge_wheel_sha256": state["sha256"],
         "azext_edge_rg": state["resourceGroup"], "azext_edge_cluster": state["cluster"],
         "azext_edge_instance": state["instance"], "azext_edge_runtime_channel": scenario["channel"],
+        "azext_edge_cloud": state.get("cloud", "AzureCloud"),
         "azext_edge_upgrade_baseline": json.dumps(scenario["baseline"]),
         "azext_edge_init_args": scenario["init_args"], "azext_edge_create_args": scenario["create_args"],
         "azext_edge_schema_registry_id": state["resources"]["registry"],
@@ -349,7 +358,7 @@ def test_environment(state, output):
 
 
 def verify_locations(commands, state, output):
-    if not state.get("health"):
+    if not state.get("health") and state.get("cloud") != "AzureUSGovernment":
         return
     observed = {}
     for key, expected in expected_locations(state["locations"]).items():
@@ -391,7 +400,7 @@ def smoke(commands, state, output):
         ["check", "--post"], ["check", "--as-object"],
         ["check", "--svc", "broker", "--resources", "broker", "brokerlistener"],
         ["asset", "query", "-g", state["resourceGroup"], "--location",
-         state["locations"]["namespaceRegion"] if state.get("health") else "westus"],
+         state["locations"].get("namespaceRegion", "westus")],
         ["get-versions", "--inline"],
     ]
     try:

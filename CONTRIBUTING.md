@@ -2,6 +2,28 @@
 
 This guide will assist you in setting up a local development environment for this extension.
 
+## Fairfax ADO integrations
+
+Use the existing integration pipeline with `cloud: AzureUSGovernment`,
+`clusterRegion: usgovvirginia` and `runtimeChannels: [stable]`. Supply a Fairfax
+ARM service connection, test subscription, dedicated resource group and the
+Fairfax tenant's custom-locations service-principal object ID. The public-cloud
+defaults for those inputs are not Fairfax credentials. Use an automation identity
+with the required fixture and role-assignment permissions, not an interactive
+user password stored in pipeline variables.
+
+The same native ITs run unchanged. Planning rejects preview runtime and release
+candidate qualification in Fairfax. Storage, schema registry and namespace
+fixtures are placed explicitly in `usgovvirginia`, and observed resource locations
+are required in the results. Plans, execution state and cleanup bind the cloud
+as well as the approved subscription/group and exact attempt-owned resources.
+
+Runtime and upgrade assertions use the Fairfax catalog. Local tox runs preserve
+`AZURE_CONFIG_DIR`, `KUBECONFIG`, `REQUESTS_CA_BUNDLE` and `SSL_CERT_FILE`; use a
+dedicated test cluster and isolated Azure profile. This enables execution but
+does not establish that a particular service connection or runtime deployment
+has passed live qualification.
+
 We also regularly utilize GitHub Codespaces, and have automated this environment setup in our [devcontainer config](./.devcontainer/devcontainer.json)
 
 ## Cloud-aware management clients

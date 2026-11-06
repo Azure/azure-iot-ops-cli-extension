@@ -717,6 +717,9 @@ def extension_info(command, text):
     return json.dumps({"path": str(target)})
 
 runner.subprocess = SimpleNamespace(run=execute, check_output=extension_info)
+for name in ("azure", "azure.cli", "azure.cli.core"):
+    sys.modules[name] = ModuleType(name)
+sys.modules["azure.cli.core"].get_default_cli = lambda: SimpleNamespace(cloud=SimpleNamespace(name="AzureCloud"))
 pytest = ModuleType("pytest")
 
 def collect(arguments):
@@ -832,6 +835,17 @@ def test_live_assertions_use_actual_installed_identity(mocker, records, channel)
     assert result.identity == RuntimeIdentity(channel, version, "integration")
     assert run.call_count == 4
     assert all("az rest --method get" in call.args[0] for call in run.call_args_list[1:])
+
+
+def test_live_runtime_assertions_use_fairfax_catalog(mocker):
+    from azext_edge.edge.providers.orchestration.runtime_catalog import get_runtime_catalog
+
+    mocker.patch.object(runtime_checks, "get_default_cli", return_value=SimpleNamespace(
+        cloud=SimpleNamespace(name="AzureUSGovernment"),
+    ))
+    expected = get_runtime_catalog("AzureUSGovernment").get(RuntimeChannel.STABLE).identity
+    assert runtime_checks.expected_runtime("stable") == expected
+    assert expected != get_runtime_catalog().get(RuntimeChannel.STABLE).identity
 
 
 @pytest.mark.parametrize("failure", ["wrong-channel", "missing-current-version", "pending", "requested-only"])
