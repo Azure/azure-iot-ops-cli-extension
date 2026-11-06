@@ -1,0 +1,27 @@
+{
+  "extension": "azure-iot-ops",
+  "namePrefix": "Azure IoT Operations CLI - Release Health",
+  "tracks": {"v1": "1.5", "v2": "1.4", "v3": "1.3"},
+  "clouds": {
+    "public": {
+      "displayName": "Public",
+      "variables": {
+        "AzureServiceConnection": "az-iot-ops-int-sp-ado",
+        "MonitorSubscription": "a386d5ea-ea90-441a-8263-d816368c84a1",
+        "MonitorResourceGroup": "ops-cli-monitor-public-{track}",
+        "MonitorRegion": "westus2",
+        "MonitorCustomLocationsObjectId": "51dfe1e8-70c6-4de5-a08e-e18aff23d815"
+      }
+    },
+    "fairfax": {
+      "displayName": "Fairfax",
+      "variables": {
+        "AzureServiceConnection": "sc-iot-ops-cli-fairfax-it",
+        "MonitorSubscription": "a32cd71f-10e6-4c80-944c-039bdaac7cab",
+        "MonitorResourceGroup": "ops-cli-monitor-fairfax-{track}",
+        "MonitorRegion": "usgovvirginia",
+        "MonitorCustomLocationsObjectId": "ea82e15f-28d2-47d8-9abd-d3e85d70f7b5"
+      }
+    }
+  }
+}

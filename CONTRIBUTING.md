@@ -26,6 +26,57 @@ has passed live qualification.
 
 We also regularly utilize GitHub Codespaces, and have automated this environment setup in our [devcontainer config](./.devcontainer/devcontainer.json)
 
+## Released-version monitors
+
+`.azure-devops/release-monitor.yml` is shared by six independent definitions:
+`Azure IoT Operations CLI - Release Health (<Public|Fairfax> <v1|v2|v3>)`.
+The slots mean newest, previous and third explicitly supported milestone, not CLI
+version numbers. `.azure-devops/release-monitors.json` currently maps `v1` to `1.5`,
+`v2` to `1.4` and `v3` to `1.3`. Update that reviewed mapping when support changes;
+pipeline IDs, names, dashboard references and resource-group names stay stable.
+Discovery selects the newest published CLI patch for each configured stable runtime
+family. A newer milestone does not automatically move or invalidate the selected
+support window. Run titles and manifests record the slot and actual CLI/runtime versions.
+
+Each run verifies GitHub's wheel SHA256, metadata, runtime profile and exact
+released source. It uses that release's scenario configuration, tests and fixtures
+with current native orchestration. The deployed AIO extension version/train must
+match the selected cloud's bundled runtime. All planned scenarios, their latest
+attempts, JUnit and cleanup must pass; monitor evidence cannot qualify a release.
+No AIO Mooncake definitions are generated. Older releases without Fairfax profiles
+are explicitly blocked, never redirected to the Public profile.
+
+Generate disabled definition payloads using an existing same-repository definition:
+
+```bash
+az pipelines build definition show --id 167 --org https://dev.azure.com/azureiotdevxp \
+  --project 9c543948-e573-4146-832a-bf16b1531204 > baseline.json
+python tools/release_monitor.py definitions \
+  --configuration .azure-devops/release-monitors.json --baseline baseline.json \
+  --branch refs/heads/<reviewed-automation-branch> --output definitions.json
+```
+
+Apply each payload through the ADO build-definitions API after the reviewed branch
+exists. Reuse definition **167** for Public v1; update matching definitions rather
+than creating duplicates. Integration **164** and Release **165** stay separate.
+Payloads use `\official\release-health`,
+disabled queueing, no triggers/schedules, and non-overridable variables. The runner
+also checks definition name, repository and every configured target variable.
+Never store personal account passwords or tokens in these files.
+
+Keep all definitions disabled until an owner approves automation connections,
+resource scopes/RBAC, capacity and live qualification. Provision and authorize
+the dedicated `ops-cli-monitor-<cloud>-<slot>` groups first; historical test
+fixtures have fixed names that must not collide across milestones. The pipeline
+does not create those groups. Scenarios run serially within each monitor.
+Then enable queueing and explicitly select `runIntegration: true`. Preparation
+alone deliberately fails rather than reporting healthy monitoring. Retries reuse
+the first published release selection. No recurring schedule is supplied before
+live execution and capacity are approved; apply the same schedule policy to the
+IoT and AIO monitor sets. Fairfax needs its own ARM connection, subscription and
+tenant-specific custom-locations object ID; a source PR does not qualify older wheels.
+Historical source-health runs retained on definition 167 are not released-version evidence.
+
 ## Cloud-aware management clients
 
 Pass the active cloud's ARM endpoint when constructing management clients through
