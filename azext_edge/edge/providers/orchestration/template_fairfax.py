@@ -7,7 +7,8 @@
 """Generated Fairfax blueprints selected for AzureUSGovernment deployments.
 
 The FF cloud release is independent of Public preview feature eligibility.
-These are final RC source inputs; CLI live qualification has not been rerun.
+Enablement dependency trains use the approved stable handoff; the instance
+retains its final RC source inputs. CLI live qualification has not been rerun.
 GDS Manager inputs/readers are excluded before compilation. Source location
 constraints are retained after optimization. Live FF qualification remains pending.
 """
@@ -22,7 +23,9 @@ TEMPLATE_BLUEPRINT_ENABLEMENT_FAIRFAX = TemplateBlueprint(
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "languageVersion": "2.0",
         "contentVersion": "1.0.0.0",
-        "metadata": {"_generator": {"name": "bicep", "version": "0.48.1.52935", "templateHash": "9608902776531409645"}},
+        "metadata": {
+            "_generator": {"name": "bicep", "version": "0.48.1.52935", "templateHash": "18263595553844311710"}
+        },
         "definitions": {
             "_1.AdvancedConfig": {
                 "type": "object",
@@ -663,7 +666,7 @@ TEMPLATE_BLUEPRINT_ENABLEMENT_FAIRFAX = TemplateBlueprint(
         },
         "variables": {
             "VERSIONS": {"certManager": "1.2.3", "secretStore": "1.6.1"},
-            "TRAINS": {"certManager": "preview", "secretStore": "preview"},
+            "TRAINS": {"certManager": "stable", "secretStore": "stable"},
         },
         "resources": {
             "cluster": {

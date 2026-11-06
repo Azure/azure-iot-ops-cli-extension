@@ -173,8 +173,8 @@ def test_inline_versions_select_active_government_cloud_without_network(mocker):
     mocker.patch("requests.sessions.Session.request", side_effect=AssertionError("network"))
     result = get_versions(inline=True, cmd=build_mock_cmd_for_cloud("AzureUSGovernment"))
     assert result["extensions"] == {
-        "certManager": {"version": "1.2.3", "train": "preview"},
-        "secretStore": {"version": "1.6.1", "train": "preview"},
+        "certManager": {"version": "1.2.3", "train": "stable"},
+        "secretStore": {"version": "1.6.1", "train": "stable"},
         "iotOperations": {"version": "1.5.46", "train": "stable"},
     }
     assert set(result["runtimeProfiles"]) == {"stable"}
