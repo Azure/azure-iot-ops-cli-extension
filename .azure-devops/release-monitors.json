@@ -1,6 +1,6 @@
 {
   "extension": "azure-iot-ops",
-  "namePrefix": "AIO CLI",
+  "namePrefix": "Azure IoT Operations CLI - Release Health",
   "tracks": {"v1": "1.5", "v2": "1.4", "v3": "1.3"},
   "clouds": {
     "public": {

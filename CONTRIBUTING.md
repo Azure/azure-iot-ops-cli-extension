@@ -29,7 +29,7 @@ We also regularly utilize GitHub Codespaces, and have automated this environment
 ## Released-version monitors
 
 `.azure-devops/release-monitor.yml` is shared by six independent definitions:
-`AIO CLI - <Public|Fairfax> - <v1|v2|v3>`.
+`Azure IoT Operations CLI - Release Health (<Public|Fairfax> <v1|v2|v3>)`.
 The slots mean newest, previous and third explicitly supported milestone, not CLI
 version numbers. `.azure-devops/release-monitors.json` currently maps `v1` to `1.5`,
 `v2` to `1.4` and `v3` to `1.3`. Update that reviewed mapping when support changes;
