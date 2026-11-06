@@ -226,6 +226,7 @@ def test_opcua_fixtures_register_cleanup_before_setup_failure(opcua_context, moc
     request = mocker.Mock()
     run.side_effect = [{"id": "/vault"}, None]
     cleanup = mocker.patch.object(opcua_helpers, "cleanup_test_resources")
+    prepare = mocker.patch.object(module, "prepare_opcua_secretsync")
     mocker.patch.object(module, "ensure_managed_identity", return_value="/identity")
     mocker.patch.object(module, failure, side_effect=CLIInternalError("setup failed"))
     setup = getattr(module, f"opcua_certs_{kind}_test_setup").__wrapped__(settings, [], request)
@@ -233,7 +234,12 @@ def test_opcua_fixtures_register_cleanup_before_setup_failure(opcua_context, moc
     with pytest.raises(CLIInternalError, match="setup failed"):
         next(setup)
 
-    request.addfinalizer.assert_called_once()
-    request.addfinalizer.call_args.args[0]()
+    prepare.assert_called_once_with(
+        settings, opcua_helpers.certificate_sync_name(settings.env.azext_edge_instance, kind), certificate_type=kind,
+    )
+    assert request.addfinalizer.call_count == 2
+    for call in reversed(request.addfinalizer.call_args_list):
+        call.args[0]()
+    prepare.return_value.assert_called_once_with()
     vault_name = run.call_args_list[0].args[0].split()[4]
     cleanup.assert_called_once_with(settings, vault_name)
