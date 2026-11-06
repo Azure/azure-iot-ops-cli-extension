@@ -44,6 +44,7 @@ def pipeline_environment(monkeypatch, tmp_path):
         "OPS_BASELINES": "{}", "OPS_SUBSCRIPTION": SUBSCRIPTION, "OPS_RESOURCE_GROUP": "ops-cli-int-test-rg",
         "OPS_CUSTOM_LOCATIONS_OID": UUID_VALUE, "OPS_CANDIDATE_DIGEST": "b" * 64,
         "OPS_SCENARIO_TIMEOUT_MINUTES": "360", "OPS_CLUSTER_REGION": "westus2",
+        "OPS_CLOUD": "AzureCloud",
         "AZURE_CLIENT_ID": UUID_VALUE, "AZURE_TENANT_ID": UUID_VALUE, "SYSTEM_ACCESSTOKEN": "offline-token",
         "AZURESUBSCRIPTION_SERVICE_CONNECTION_ID": UUID_VALUE, "SYSTEM_TEAMPROJECTID": UUID_VALUE,
         "SYSTEM_PLANID": UUID_VALUE, "SYSTEM_JOBID": UUID_VALUE, "AGENT_TEMPDIRECTORY": str(tmp_path),
@@ -75,6 +76,63 @@ def make_state():
         "ownershipChecked": True, "phases": {"init": "passed", "scenario": "passed", "smoke": "passed"},
         "cleanup": "passed", "status": "passed",
     }
+
+
+def test_fairfax_plan_binds_cloud_and_all_resource_locations(monkeypatch, tmp_path):
+    monkeypatch.setenv("OPS_CLOUD", "AzureUSGovernment")
+    monkeypatch.setenv("OPS_CLUSTER_REGION", "usgovvirginia")
+    pipeline.plan(tmp_path)
+    value = pipeline.read(tmp_path / "plan.json")
+    assert value["cloud"] == "AzureUSGovernment"
+    assert set(value["locations"].values()) == {"usgovvirginia"}
+    assert set(value["locations"]) == {"clusterRegion", "resourceRegion", "namespaceRegion"}
+    assert all(row["scenario"]["channel"] == "stable" for row in value["rows"])
+
+
+@pytest.mark.parametrize("setting,value", [
+    ("OPS_CHANNELS", "preview"), ("OPS_CHANNELS", "stable,preview"), ("OPS_CLUSTER_REGION", "westus2"),
+])
+def test_fairfax_rejects_unsupported_plan_before_execution(monkeypatch, tmp_path, setting, value):
+    monkeypatch.setenv("OPS_CLOUD", "AzureUSGovernment")
+    monkeypatch.setenv("OPS_CLUSTER_REGION", "usgovvirginia")
+    monkeypatch.setenv(setting, value)
+    with pytest.raises(ValueError, match="Fairfax|cluster region"):
+        pipeline.plan(tmp_path)
+    assert not (tmp_path / "plan.json").exists()
+
+
+def test_fairfax_state_and_cleanup_require_matching_cloud(monkeypatch):
+    monkeypatch.setenv("OPS_CLOUD", "AzureUSGovernment")
+    state = make_state()
+    state.update(cloud="AzureUSGovernment", locations={
+        key: "usgovvirginia" for key in ("clusterRegion", "resourceRegion", "namespaceRegion")
+    })
+    cluster.validate_state(state)
+    commands = Mock()
+    commands.az_json.return_value = {"id": SUBSCRIPTION, "environmentName": "AzureCloud"}
+    with pytest.raises(ValueError, match="approved cloud"):
+        cluster.check_account(commands, state)
+    commands.az_json.return_value["environmentName"] = "AzureUSGovernment"
+    cluster.check_account(commands, state)
+    state["locations"]["namespaceRegion"] = "australiaeast"
+    with pytest.raises(ValueError, match="all resources"):
+        cluster.validate_state(state)
+    state["cloud"] = "AzureCloud"
+    with pytest.raises(ValueError, match="approved cloud"):
+        cluster.validate_state(state)
+
+
+def test_fairfax_provisioning_never_inherits_public_resource_locations():
+    state = make_state()
+    state.update(cloud="AzureUSGovernment", locations={
+        key: "usgovvirginia" for key in ("clusterRegion", "resourceRegion", "namespaceRegion")
+    })
+    commands = Mock()
+    cluster.create_resources(commands, state)
+    assert len(commands.run.call_args_list) == 3
+    for call in commands.run.call_args_list:
+        arguments = call.args[0]
+        assert arguments[arguments.index("--location") + 1] == "usgovvirginia"
 
 
 @pytest.mark.parametrize("fixture", ["secretsync", "opcua"])
@@ -391,6 +449,26 @@ def test_gate_accepts_complete_selected_scope_not_release(tmp_path, monkeypatch)
     value = pipeline.read(tmp_path / "qualification/qualification.json")
     assert value["scope"] == "selected ops scenarios" and value["releaseQualified"] is False
     assert len(value["scenarios"]) == 1
+
+
+@pytest.mark.parametrize("changed", [None, "cloud", "subscription", "resourceGroup", "locations"])
+def test_fairfax_gate_binds_evidence_to_cloud_scope_and_locations(tmp_path, monkeypatch, changed):
+    directory = seed_gate(tmp_path, monkeypatch)
+    monkeypatch.setenv("OPS_CLOUD", "AzureUSGovernment")
+    plan = pipeline.read(tmp_path / "plan.json")
+    plan.update(cloud="AzureUSGovernment", subscription=SUBSCRIPTION, resourceGroup="ops-cli-int-test-rg",
+                locations=dict.fromkeys(("clusterRegion", "resourceRegion", "namespaceRegion"), "usgovvirginia"))
+    pipeline.write(tmp_path / "plan.json", plan)
+    receipt = pipeline.read(directory / "receipt.json")
+    receipt.update(cloud=plan["cloud"], locations=pipeline.expected_locations(plan["locations"]))
+    if changed:
+        receipt[changed] = "foreign"
+    pipeline.write(directory / "receipt.json", receipt)
+    if changed:
+        with pytest.raises(ValueError, match="Fairfax"):
+            pipeline.gate(tmp_path / "qualification")
+    else:
+        pipeline.gate(tmp_path / "qualification")
 
 
 @pytest.mark.parametrize("mutation", [
@@ -1075,7 +1153,7 @@ def test_yaml_keeps_dry_run_separate_and_reuses_existing_tests():
     assert connection["default"] == "az-iot-ops-int-sp-ado"
     assert value["extends"]["template"] == "templates/integration-pipeline.yml"
     region = next(param for param in value["parameters"] if param["name"] == "clusterRegion")
-    assert set(region["values"]) == pipeline.CLUSTER_REGIONS
+    assert set(region["values"]) == pipeline.CLUSTER_REGIONS | {"usgovvirginia"}
     value = yaml.safe_load((ROOT / ".azure-devops/templates/integration-pipeline.yml").read_text())
     template_region = next(param for param in value["parameters"] if param["name"] == "clusterRegion")
     assert template_region["default"] == region["default"] == pipeline.release.INTEGRATION_PARAMETERS["clusterRegion"]

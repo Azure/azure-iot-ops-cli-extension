@@ -68,6 +68,12 @@ parameters:
       - westeurope
       - northeurope
       - germanywestcentral
+      - usgovvirginia
+  - name: cloud
+    displayName: Azure cloud
+    type: string
+    default: AzureCloud
+    values: [AzureCloud, AzureUSGovernment]
   - name: azureServiceConnection
     displayName: Service connection
     type: string

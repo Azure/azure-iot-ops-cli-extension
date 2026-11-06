@@ -37,8 +37,16 @@ CLUSTER_REGIONS = {
 }
 
 
-def validate_cluster_region(value):
-    if not isinstance(value, str) or value not in CLUSTER_REGIONS:
+def cloud_name():
+    cloud = os.environ.get("OPS_CLOUD", "AzureCloud")
+    if cloud not in {"AzureCloud", "AzureUSGovernment"}:
+        raise ValueError("Ops integrations support AzureCloud or AzureUSGovernment.")
+    return cloud
+
+
+def validate_cluster_region(value, cloud="AzureCloud"):
+    allowed = {"usgovvirginia"} if cloud == "AzureUSGovernment" else CLUSTER_REGIONS
+    if cloud not in {"AzureCloud", "AzureUSGovernment"} or not isinstance(value, str) or value not in allowed:
         raise ValueError("Select a supported Arc/AIO cluster region.")
     return value
 
@@ -143,7 +151,10 @@ def release_build_id():
 
 
 def plan(output):
+    cloud = cloud_name()
     parent = release_build_id()
+    if cloud == "AzureUSGovernment" and (required("OPS_CHANNELS") != "stable" or parent != "0"):
+        raise ValueError("Fairfax integrations require stable runtime and standalone validation.")
     if parent != "0" and required("OPS_MODE") != "Integration tests":
         raise ValueError("A release candidate requires live integration, not a dry run.")
     health = None
@@ -186,7 +197,7 @@ def plan(output):
     if health and len(rows) > 40:
         raise ValueError("Select at most 40 combinations per run.")
     value = {
-        "schema": 1, "producer": producer(), "rows": rows,
+        "schema": 1, "producer": producer(), "rows": rows, "cloud": cloud,
         "subscription": str(UUID(required("OPS_SUBSCRIPTION"))), "resourceGroup": group,
         "customLocationsObjectId": str(UUID(required("OPS_CUSTOM_LOCATIONS_OID"))),
         "scenarioTimeoutMinutes": scenario_timeout(),
@@ -197,7 +208,10 @@ def plan(output):
         value["locations"] = {key: health["profile"][key] for key in
                               ("clusterRegion", "resourceRegion", "namespaceRegion")}
     else:
-        value["locations"] = {"clusterRegion": validate_cluster_region(required("OPS_CLUSTER_REGION"))}
+        value["locations"] = {"clusterRegion": validate_cluster_region(required("OPS_CLUSTER_REGION"), cloud)}
+        if cloud == "AzureUSGovernment":
+            value["locations"].update(resourceRegion="usgovvirginia", namespaceRegion="usgovvirginia")
+    validate_cluster_region(value["locations"]["clusterRegion"], cloud)
     if parent != "0":
         value["releaseBuildId"] = parent
     write(output / "plan.json", value)
@@ -223,7 +237,7 @@ def run_title(value, mode):
         kind = "health"
     else:
         kind = "integration"
-    region = validate_cluster_region(value["locations"]["clusterRegion"])
+    region = validate_cluster_region(value["locations"]["clusterRegion"], value.get("cloud", "AzureCloud"))
     names, channels = set(), set()
     for row in value["rows"]:
         scenario = row["scenario"]
@@ -357,6 +371,8 @@ def prepare(output):
     value = read(required("OPS_PLAN"))
     if value["producer"] != producer():
         raise ValueError("Execution plan belongs to another source or run.")
+    if value.get("cloud", "AzureCloud") != cloud_name():
+        raise ValueError("Execution plan belongs to a different cloud.")
     row = next((item for item in value["rows"] if item["key"] == required("OPS_ROW")), None)
     if row is None or row["python"] != f"{sys.version_info.major}.{sys.version_info.minor}":
         raise ValueError("Selected row or Python does not match the plan.")
@@ -375,7 +391,7 @@ def prepare(output):
     state = {
         "schema": 1, "producer": producer(), "row": row, "attempt": int(required("SYSTEM_JOBATTEMPT")),
         "subscription": value["subscription"], "resourceGroup": value["resourceGroup"],
-        "locations": value["locations"],
+        "locations": value["locations"], "cloud": value.get("cloud", "AzureCloud"),
         "customLocationsObjectId": value["customLocationsObjectId"], "suffix": suffix,
         "cluster": cluster, "instance": f"inst{suffix}", "wheel": str(wheel.resolve()), "sha256": digest(wheel),
         "resources": {
@@ -401,7 +417,9 @@ def prepare(output):
             "runpy.run_path(sys.argv[1])['validate_baseline_identity'](json.loads(sys.argv[2]), sys.argv[3])",
             str(ROOT / "tools/integration_runner.py"), json.dumps(row["scenario"]["baseline"]),
             row["scenario"]["channel"],
-        ], cwd=output, env={**os.environ, "PYTHONPATH": str(extension_root / "azure-iot-ops")}, check=True)
+        ], cwd=output, env={
+            **os.environ, "PYTHONPATH": str(extension_root / "azure-iot-ops"), "azext_edge_cloud": state["cloud"],
+        }, check=True)
 
 
 def expected_phases(row):
@@ -433,12 +451,15 @@ def report(output):
     success = success and all(state["phases"].get(phase) == "passed" for phase in phases)
     value = {
         "schema": 1, "producer": state["producer"], "row": state["row"]["key"],
+        "cloud": state.get("cloud", "AzureCloud"),
+        "subscription": state["subscription"], "resourceGroup": state["resourceGroup"],
         "attempt": state["attempt"], "sha256": state["sha256"], "phases": state["phases"],
         "cleanup": state["cleanup"], "status": "passed" if success else "incomplete",
         "createdAt": datetime.now(timezone.utc).isoformat(), "releaseQualified": False,
     }
-    if state.get("health"):
-        value["health"] = state["health"]
+    if state.get("health") or state.get("cloud") == "AzureUSGovernment":
+        if state.get("health"):
+            value["health"] = state["health"]
         value["locations"] = state.get("observedLocations", {})
         success = success and value["locations"] == expected_locations(state["locations"])
         value["status"] = "passed" if success else "incomplete"
@@ -459,6 +480,8 @@ def gate(output):
     value = read(required("OPS_PLAN"))
     if value["producer"] != producer():
         raise ValueError("Qualification plan does not match this run.")
+    if value.get("cloud", "AzureCloud") != cloud_name():
+        raise ValueError("Qualification plan belongs to a different cloud.")
     parent = release_build_id()
     release_candidate = None
     if parent != value.get("releaseBuildId", "0"):
@@ -495,6 +518,13 @@ def gate(output):
                 or receipt.get("status") != "passed" or receipt.get("cleanup") != "passed"
                 or any(receipt.get("phases", {}).get(phase) != "passed" for phase in expected_phases(row))):
             raise ValueError(f"Unqualified latest scenario attempt: {row['key']}")
+        if value.get("cloud") == "AzureUSGovernment" and (
+                receipt.get("cloud") != value["cloud"]
+                or any(receipt.get(key) != value[key] for key in ("subscription", "resourceGroup"))
+                or receipt.get("locations") != expected_locations(value["locations"])):
+            raise ValueError("Fairfax cloud, resource scope or observed locations differ from the plan.")
+        if receipt.get("cloud", "AzureCloud") != value.get("cloud", "AzureCloud"):
+            raise ValueError("Scenario evidence belongs to a different cloud.")
         if value.get("health") and (receipt.get("health") != value["health"]
                                     or receipt.get("locations") != expected_locations(value["locations"])):
             raise ValueError("Health profile or observed regional coverage differs from the plan.")

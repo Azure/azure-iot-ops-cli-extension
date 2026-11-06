@@ -64,12 +64,13 @@ def install_wheel(wheel, target):
 
 
 def validate_baseline_identity(baseline, channel):
+    from azure.cli.core import get_default_cli
     from azext_edge.edge.providers.orchestration.runtime_catalog import get_runtime_catalog
     from azext_edge.edge.providers.orchestration.runtime_profiles import (
         RuntimeChannel, parse_runtime_version, resolve_runtime_identity, validate_upgrade_boundary,
     )
 
-    catalog = get_runtime_catalog()
+    catalog = get_runtime_catalog(os.environ.get("azext_edge_cloud") or get_default_cli().cloud.name)
     target = catalog.get(RuntimeChannel(channel)).identity
     source = resolve_runtime_identity(baseline["version"], baseline["train"], catalog.qualification_identities)
     if source.channel != target.channel:
@@ -131,6 +132,14 @@ def main(argv=None):
         return 0
     if not all((args.tests, args.work_dir, args.junit, args.coverage_config, args.scenario)):
         parser.error("Test execution requires --tests, --work-dir, --junit, --coverage-config and --scenario.")
+    from azure.cli.core import get_default_cli
+    cloud = get_default_cli().cloud.name
+    if cloud not in {"AzureCloud", "AzureUSGovernment"}:
+        raise ValueError("Ops integration tests require public Azure or Fairfax.")
+    if os.environ.get("azext_edge_cloud", cloud) != cloud:
+        raise ValueError("Active Azure CLI cloud differs from the integration target.")
+    if cloud == "AzureUSGovernment" and os.environ.get("azext_edge_runtime_channel", "stable") != "stable":
+        raise ValueError("Fairfax integration tests require stable runtime.")
     tests = Path(args.tests).resolve()
     work_dir = Path(args.work_dir).resolve()
     work_dir.mkdir(parents=True, exist_ok=True)
