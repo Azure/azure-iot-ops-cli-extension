@@ -141,10 +141,10 @@ def bundle(monitor, manifest, tmp_path):
     manifest["wheel"]["sha256"] = hashlib.sha256(path.read_bytes()).hexdigest()
     source = tmp_path / "source"
     (source / "azext_edge").mkdir(parents=True)
-    (source / "azext_edge/__init__.py").write_text(package, encoding="utf-8")
+    (source / "azext_edge/__init__.py").write_bytes(package.encode("utf-8"))
     runtime = source / manifest["runtime"]["template"]
     runtime.parent.mkdir(parents=True)
-    runtime.write_text(template, encoding="utf-8")
+    runtime.write_bytes(template.encode("utf-8"))
     (source / "azext_edge/tests").mkdir()
     (source / "azext_edge/tests/test_case_int.py").write_text("def test_case():\n    assert True\n", encoding="utf-8")
     monitor.write_json(tmp_path / "source.json", {
