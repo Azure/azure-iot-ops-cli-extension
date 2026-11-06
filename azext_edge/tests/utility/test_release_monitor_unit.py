@@ -82,6 +82,29 @@ def test_distinct_milestones_use_latest_cli_patch_and_cloud_profile(monitor, rel
         monitor.resolve("azure-iot-ops", "public", "1.2", AUTOMATION, releases)
 
 
+def test_nonstable_public_runtime_is_skipped_but_ambiguous_metadata_is_not(monitor, releases, mocker, capsys):
+    original_commit = monitor.tag_commit.side_effect
+    original_profile = monitor.runtime_profile.side_effect
+    mocker.patch.object(
+        monitor, "tag_commit",
+        side_effect=lambda repository, tag: SOURCE if tag == "v2.12.0" else original_commit(repository, tag),
+    )
+
+    def runtime(repository, source, cloud):
+        if source == SOURCE:
+            raise monitor.NonStableRuntime("Bundled runtime uses the preview train.")
+        return original_profile(repository, source, cloud)
+
+    mocker.patch.object(monitor, "runtime_profile", side_effect=runtime)
+    values = [release("2.12.0"), *releases]
+    result = monitor.resolve("azure-iot-ops", "public", "1.5", AUTOMATION, values)
+    assert result["release"]["version"] == "2.11.1"
+    assert "Skipping published CLI v2.12.0" in capsys.readouterr().err
+    mocker.patch.object(monitor, "runtime_profile", side_effect=ValueError("ambiguous profile"))
+    with pytest.raises(ValueError, match="ambiguous"):
+        monitor.resolve("azure-iot-ops", "public", "1.5", AUTOMATION, values)
+
+
 def test_missing_fairfax_profile_stays_blocked_and_mooncake_is_rejected(monitor, releases, mocker):
     public = monitor.runtime_profile.side_effect
     mocker.patch.object(
@@ -234,6 +257,8 @@ def state(adapter, manifest, monkeypatch, tmp_path):
 
 def test_cleanup_identity_does_not_depend_on_source_files(adapter, state, monkeypatch):
     adapter.validate_state(state)
+    with pytest.raises(ValueError, match="missing the frozen release identity"):
+        adapter.validate_state({key: value for key, value in state.items() if key != "monitor"})
     monkeypatch.setenv("MONITOR_TRACK", "1.4")
     with pytest.raises(ValueError, match="requested track"):
         adapter.validate_state(state)
@@ -288,3 +313,5 @@ def test_monitor_aggregate_rejects_missing_latest_or_wrong_kind_evidence(adapter
     (tmp_path / "ops-attempt-edge-2").mkdir()
     with pytest.raises(ValueError, match="Missing scenario receipt"):
         list(native.scenario_evidence(value, tmp_path))
+    native.write(directory / "receipt.json", {key: item for key, item in receipt.items() if key != "monitor"})
+    assert len(list(native.scenario_evidence(ordinary, tmp_path))) == 1

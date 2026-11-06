@@ -490,10 +490,11 @@ def scenario_evidence(value, history):
         raise ValueError("Scenario plan must contain distinct, nonempty expected rows.")
     for row in value["rows"]:
         receipts = []
-        for directory in history.glob(f"ops-attempt-{row['key']}-*"):
-            path = directory / "receipt.json"
-            if not path.is_file():
-                raise ValueError(f"Missing scenario receipt: {directory.name}")
+        if value.get("monitor"):
+            for directory in history.glob(f"ops-attempt-{row['key']}-*"):
+                if not (directory / "receipt.json").is_file():
+                    raise ValueError(f"Missing scenario receipt: {directory.name}")
+        for path in history.glob(f"ops-attempt-{row['key']}-*/receipt.json"):
             receipt = read(path)
             attempt = path.parent.name.removeprefix(f"ops-attempt-{row['key']}-")
             if not attempt.isdigit() or receipt.get("attempt") != int(attempt):

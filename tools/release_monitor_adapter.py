@@ -50,6 +50,8 @@ def prepare(output):
 
 
 def validate_state(state):
+    if not isinstance(state.get("monitor"), dict):
+        raise ValueError("Monitor execution state is missing the frozen release identity.")
     manifest = validate_manifest(
         state["monitor"], extension="azure-iot-ops", automation_commit=native.producer()["commit"],
         cloud=os.environ["MONITOR_CLOUD"], track=os.environ["MONITOR_TRACK"],
