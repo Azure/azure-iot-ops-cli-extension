@@ -305,12 +305,15 @@ def state(adapter, manifest, monkeypatch, tmp_path):
         "BUILD_SOURCEVERSION": AUTOMATION, "SYSTEM_DEFINITIONID": "200", "BUILD_BUILDID": "100",
         "MONITOR_CLOUD": "public", "MONITOR_TRACK": "v1", "OPS_MONITOR_BUNDLE": str(tmp_path),
         "OPS_CANDIDATE_DIGEST": manifest["wheel"]["sha256"],
+        "OPS_RESOURCE_GROUP": "group",
     }.items():
         monkeypatch.setenv(key, value)
     return {
         "monitor": manifest, "cloud": "AzureCloud", "sha256": manifest["wheel"]["sha256"],
         "wheel": str(tmp_path / manifest["wheel"]["name"]), "resources": {"cluster": "/cluster"},
         "row": {"key": "edge", "scenario": {"channel": "stable", "tox_env": "", "test_redeploy": False}},
+        "producer": adapter.native.producer(), "suffix": "a" * 11,
+        "baseResourceGroup": "group", "resourceGroup": "group-100-" + "a" * 11,
     }
 
 
@@ -356,7 +359,8 @@ def test_monitor_aggregate_rejects_missing_latest_or_wrong_kind_evidence(adapter
         "cloud": "AzureCloud", "status": "passed", "cleanup": "passed",
         "phases": {"init": "passed", "smoke": "passed"}, "monitor": state["monitor"],
         "observedRuntime": {"version": "1.5.45", "train": "stable"},
-        "subscription": "subscription", "resourceGroup": "group", "releaseQualified": False,
+        "subscription": "subscription", "resourceGroup": state["resourceGroup"], "releaseQualified": False,
+        "resourceSuffix": state["suffix"],
     }
     directory = tmp_path / "ops-attempt-edge-1"
     native.write(directory / "receipt.json", receipt)
@@ -374,3 +378,48 @@ def test_monitor_aggregate_rejects_missing_latest_or_wrong_kind_evidence(adapter
         list(native.scenario_evidence(value, tmp_path))
     native.write(directory / "receipt.json", {key: item for key, item in receipt.items() if key != "monitor"})
     assert len(list(native.scenario_evidence(ordinary, tmp_path))) == 1
+
+
+@pytest.mark.parametrize("slot", ["v2", "v3"])
+def test_unsupported_fairfax_slots_cannot_reach_release_acquisition(monitor, monkeypatch, slot):
+    config = monitor.read_json(ROOT / ".azure-devops/release-monitors.json")
+    item = next(item for item in monitor.configurations(config)
+                if item["variables"]["MonitorCloud"] == "fairfax" and item["variables"]["MonitorTrack"] == slot)
+    monkeypatch.setenv("BUILD_DEFINITIONNAME", item["name"])
+    with pytest.raises(ValueError, match="unsupported"):
+        monitor.check_definition(config, "azure-iot-ops", "fairfax", slot)
+
+
+def test_parallel_monitor_groups_are_distinct_and_cleanup_requires_ownership(adapter, state, tmp_path):
+    assert adapter.resource_group("group", "b" * 11) != state["resourceGroup"]
+    state["locations"] = {"clusterRegion": "westus2"}
+    commands = Mock()
+    commands.az_json.side_effect = [False, {"tags": adapter.group_tags(state)}]
+    adapter.prepare_group(commands, state, tmp_path)
+    assert adapter.native.read(tmp_path / "state.json")["groupCreationAttempted"]
+    commands.az_json.side_effect = [True, {"tags": {"cliHealthAttempt": "another-run"}}]
+    with pytest.raises(ValueError, match="ownership tags"):
+        adapter.cleanup_group(commands, state)
+    commands.run.assert_not_called()
+    commands.az_json.side_effect = [True, {"tags": adapter.group_tags(state)}, False]
+    adapter.cleanup_group(commands, state)
+    commands.run.assert_called_once_with(
+        ["az", "group", "delete", "--name", state["resourceGroup"], "--yes"], timeout=900,
+    )
+    commands.reset_mock()
+    commands.az_json.side_effect = [False]
+    adapter.cleanup_group(commands, state)
+    commands.run.assert_not_called()
+
+
+def test_fairfax_released_test_catalog_is_bound_without_changing_product(adapter, monkeypatch, mocker):
+    plugin = importlib.import_module("release_monitor_pytest")
+    catalog = Mock(return_value="fairfax-profile")
+    checks = Mock(get_runtime_catalog=catalog)
+    mocker.patch.object(plugin.importlib, "import_module", return_value=checks)
+    monkeypatch.setenv("azext_edge_cloud", "AzureUSGovernment")
+    plugin.pytest_configure()
+    assert checks.get_runtime_catalog() == "fairfax-profile"
+    catalog.assert_called_once_with("AzureUSGovernment")
+    with pytest.raises(ValueError, match="different cloud"):
+        checks.get_runtime_catalog("AzureCloud")

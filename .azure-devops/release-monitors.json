@@ -15,6 +15,7 @@
     },
     "fairfax": {
       "displayName": "Fairfax",
+      "supportedTracks": ["v1"],
       "variables": {
         "AzureServiceConnection": "sc-iot-ops-cli-fairfax-it",
         "MonitorSubscription": "a32cd71f-10e6-4c80-944c-039bdaac7cab",

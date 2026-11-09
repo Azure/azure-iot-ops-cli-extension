@@ -90,7 +90,8 @@ def validate_state(state):
         raise ValueError("Invalid attempt resource suffix.")
     if not re.fullmatch(r"[A-Za-z0-9_().-]{1,90}", state["resourceGroup"]):
         raise ValueError("Invalid resource group.")
-    if state["resourceGroup"] != required("OPS_RESOURCE_GROUP"):
+    approved_group = state.get("baseResourceGroup") if state.get("monitor") else state["resourceGroup"]
+    if approved_group != required("OPS_RESOURCE_GROUP"):
         raise ValueError("Provisioning state does not match the approved resource group.")
     prefix = f"/subscriptions/{state['subscription']}/resourceGroups/{state['resourceGroup']}/providers"
     expected = {
@@ -389,6 +390,8 @@ def test_phase(commands, state, output, phase, marker):
         "--tests", str(source / "azext_edge/tests"), "--work-dir", str(output / "work" / phase),
         "--junit", str(junit), "--coverage-config", str(source / ".coveragerc"), "--scenario", marker,
     ]
+    if state.get("monitor"):
+        args.append("--monitor")
     if phase == "scenario" and state["row"]["scenario"]["parallel"]:
         args += ["-n", "6", "--dist", "worksteal"]
     commands.run(args, env=environment, cwd=output, timeout=18000)
@@ -441,7 +444,11 @@ def cleanup(output):
     write(output / "state.json", state)
     errors = []
     try:
-        if state["ownershipChecked"]:
+        if state.get("monitor"):
+            from release_monitor_adapter import cleanup_group
+            check_account(commands, state)
+            cleanup_group(commands, state)
+        elif state["ownershipChecked"]:
             check_account(commands, state)
             present = resource_ids(commands, state)
             if state["resources"]["instance"].lower() in present:
@@ -499,7 +506,11 @@ def run(output):
         auth = start_auth(output)
         commands = Commands(auth, budget=scenario_timeout() * 60)
         check_account(commands, state)
-        commands.az_json("group", "show", "--name", state["resourceGroup"])
+        if state.get("monitor"):
+            from release_monitor_adapter import prepare_group
+            prepare_group(commands, state, output)
+        else:
+            commands.az_json("group", "show", "--name", state["resourceGroup"])
         if resource_ids(commands, state) & {value.lower() for value in state["resources"].values()}:
             raise ValueError("Attempt resource names already exist; refusing reuse.")
         state["ownershipChecked"] = True

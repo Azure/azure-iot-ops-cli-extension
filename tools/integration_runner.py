@@ -124,6 +124,7 @@ def main(argv=None):
     parser.add_argument("--junit")
     parser.add_argument("--coverage-config")
     parser.add_argument("--scenario")
+    parser.add_argument("--monitor", action="store_true")
     args, pytest_args = parser.parse_known_args(argv)
     wheel = verify_wheel(os.environ.get("azext_edge_wheel", ""), os.environ.get("azext_edge_wheel_sha256", ""))
     target = Path(args.extension_dir).resolve()
@@ -145,6 +146,12 @@ def main(argv=None):
     work_dir.mkdir(parents=True, exist_ok=True)
     install_wheel(wheel, target)
     shutil.copytree(tests, target / "azext_edge" / "tests", ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
+    if args.monitor:
+        shutil.copyfile(
+            Path(__file__).with_name("release_monitor_pytest.py"),
+            target / "azext_edge/tests/_release_monitor.py",
+        )
+        pytest_args += ["-p", "azext_edge.tests._release_monitor"]
     # The script path is tools/, not the checkout root; cwd and PYTHONPATH cannot
     # point at the source package when pytest imports or az subprocesses start.
     os.chdir(work_dir)

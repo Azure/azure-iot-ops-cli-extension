@@ -467,6 +467,7 @@ def report(output):
         from release_monitor_adapter import validate_state
         validate_state(state)
         value["monitor"] = state["monitor"]
+        value["resourceSuffix"] = state["suffix"]
         value["observedRuntime"] = state.get("observedRuntime")
         expected = state["monitor"]["runtime"]
         success = success and value["observedRuntime"] == {key: expected[key] for key in ("version", "train")}
@@ -503,6 +504,10 @@ def scenario_evidence(value, history):
         if not receipts:
             raise ValueError(f"Missing scenario evidence: {row['key']}")
         _, path, receipt = max(receipts, key=lambda entry: entry[0])
+        expected_group = value.get("resourceGroup")
+        if value.get("monitor"):
+            from release_monitor_adapter import resource_group
+            expected_group = resource_group(expected_group, receipt.get("resourceSuffix", ""))
         if (receipt.get("producer") != producer() or receipt.get("row") != row["key"]
                 or receipt.get("sha256") != required("OPS_CANDIDATE_DIGEST")
                 or receipt.get("status") != "passed" or receipt.get("cleanup") != "passed"
@@ -510,7 +515,8 @@ def scenario_evidence(value, history):
             raise ValueError(f"Unqualified latest scenario attempt: {row['key']}")
         if value.get("cloud") == "AzureUSGovernment" and (
                 receipt.get("cloud") != value["cloud"]
-                or any(receipt.get(key) != value[key] for key in ("subscription", "resourceGroup"))
+                or receipt.get("subscription") != value["subscription"]
+                or receipt.get("resourceGroup") != expected_group
                 or receipt.get("locations") != expected_locations(value["locations"])):
             raise ValueError("Fairfax cloud, resource scope or observed locations differ from the plan.")
         if receipt.get("cloud", "AzureCloud") != value.get("cloud", "AzureCloud"):
@@ -523,7 +529,8 @@ def scenario_evidence(value, history):
         if value.get("monitor"):
             runtime = value["monitor"]["runtime"]
             if (receipt.get("observedRuntime") != {key: runtime[key] for key in ("version", "train")}
-                    or any(receipt.get(key) != value[key] for key in ("subscription", "resourceGroup"))
+                    or receipt.get("subscription") != value["subscription"]
+                    or receipt.get("resourceGroup") != expected_group
                     or receipt.get("releaseQualified") is not False):
                 raise ValueError("Monitor runtime, resource scope or qualification boundary is invalid.")
         for phase in expected_phases(row):

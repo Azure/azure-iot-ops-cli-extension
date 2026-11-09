@@ -109,7 +109,7 @@ stages:
           - template: templates/integration-scenario.yml
             parameters:
               monitor: true
-              maxParallel: 1
+              maxParallel: 0
               configuration:
                 health: false
                 releaseBuildId: 0
@@ -121,10 +121,9 @@ stages:
               matrix: $[ stageDependencies.Prepare.Acquire.outputs['plan.parallelMatrix'] ]
       - stage: TrustBundle
         displayName: Test released trust bundle scenario
-        dependsOn: [Prepare, Integration]
+        dependsOn: Prepare
         condition: >-
           and(not(canceled()), eq(dependencies.Prepare.result, 'Succeeded'),
-              in(dependencies.Integration.result, 'Succeeded', 'Skipped'),
               eq(dependencies.Prepare.outputs['Acquire.plan.hasTrustBundle'], 'true'))
         variables:
           candidateArtifact: $[ stageDependencies.Prepare.Acquire.outputs['bundle.artifact'] ]
@@ -133,7 +132,7 @@ stages:
           - template: templates/integration-scenario.yml
             parameters:
               monitor: true
-              maxParallel: 1
+              maxParallel: 0
               configuration:
                 health: false
                 releaseBuildId: 0

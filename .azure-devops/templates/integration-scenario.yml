@@ -68,6 +68,7 @@ jobs:
         env:
           OPS_RELEASE_BUILD_ID: ${{ parameters.configuration.releaseBuildId }}
           OPS_CLOUD: ${{ parameters.configuration.cloud }}
+          OPS_RESOURCE_GROUP: ${{ parameters.configuration.resourceGroup }}
           ${{ if parameters.monitor }}:
             PREPARE_SCRIPT: tools/release_monitor_adapter.py
             OPS_PLAN: $(Pipeline.Workspace)/candidate/plan.json
@@ -139,6 +140,7 @@ jobs:
         condition: always()
         displayName: Record results
         env:
+          OPS_RESOURCE_GROUP: ${{ parameters.configuration.resourceGroup }}
           ${{ if parameters.monitor }}:
             OPS_MONITOR_BUNDLE: $(Pipeline.Workspace)/candidate
             MONITOR_CLOUD: $(MonitorCloud)

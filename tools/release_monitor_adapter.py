@@ -9,6 +9,7 @@
 import argparse
 import os
 from pathlib import Path
+import re
 
 import ado_integration as native
 from release_monitor import CLOUDS, configured_tracks, validate_manifest, verify_bundle
@@ -53,6 +54,11 @@ def prepare(output):
     native.prepare(output)
     state = native.read(output / "state.json")
     state["monitor"] = manifest
+    state["baseResourceGroup"] = state["resourceGroup"]
+    state["resourceGroup"] = resource_group(state["baseResourceGroup"], state["suffix"])
+    old_scope = f"/resourceGroups/{state['baseResourceGroup']}/"
+    new_scope = f"/resourceGroups/{state['resourceGroup']}/"
+    state["resources"] = {key: value.replace(old_scope, new_scope) for key, value in state["resources"].items()}
     validate_state(state)
     native.write(output / "state.json", state)
 
@@ -68,8 +74,53 @@ def validate_state(state):
     if (manifest["blockers"] or manifest["cloud"] != state["cloud"]
             or state["sha256"] != manifest["wheel"]["sha256"]
             or Path(state["wheel"]).resolve() != bundle / manifest["wheel"]["name"]
-            or state["row"]["scenario"]["channel"] != "stable"):
+            or state["row"]["scenario"]["channel"] != "stable"
+            or state.get("baseResourceGroup") != native.required("OPS_RESOURCE_GROUP")
+            or state["resourceGroup"] != resource_group(state["baseResourceGroup"], state["suffix"])):
         raise ValueError("Monitor execution state differs from its released artifact or cloud.")
+
+
+def resource_group(base, suffix):
+    if not re.fullmatch(r"[0-9a-f]{11}", suffix):
+        raise ValueError("A released scenario needs its own valid resource suffix.")
+    group = f"{base}-{native.producer()['build']}-{suffix}"
+    if not re.fullmatch(r"[A-Za-z0-9_().-]{1,90}", group):
+        raise ValueError("The isolated monitor resource group exceeds Azure naming limits.")
+    return group
+
+
+def group_tags(state):
+    return {
+        "cliHealthBuild": state["producer"]["build"],
+        "cliHealthDefinition": state["producer"]["pipeline"],
+        "cliHealthAttempt": state["suffix"],
+    }
+
+
+def prepare_group(commands, state, output):
+    if commands.az_json("group", "exists", "--name", state["resourceGroup"]):
+        raise ValueError("The isolated monitor resource group already exists; refusing reuse.")
+    state["groupCreationAttempted"] = True
+    native.write(output / "state.json", state)
+    group = commands.az_json(
+        "group", "create", "--name", state["resourceGroup"], "--location", state["locations"]["clusterRegion"],
+        "--tags", *(f"{key}={value}" for key, value in group_tags(state).items()),
+    )
+    if any(group.get("tags", {}).get(key) != value for key, value in group_tags(state).items()):
+        raise ValueError("The created monitor group does not have this attempt's ownership tags.")
+
+
+def cleanup_group(commands, state):
+    if not state.get("groupCreationAttempted"):
+        return
+    if not commands.az_json("group", "exists", "--name", state["resourceGroup"]):
+        return
+    group = commands.az_json("group", "show", "--name", state["resourceGroup"])
+    if any(group.get("tags", {}).get(key) != value for key, value in group_tags(state).items()):
+        raise ValueError("Refusing to delete a monitor group without matching attempt ownership tags.")
+    commands.run(["az", "group", "delete", "--name", state["resourceGroup"], "--yes"], timeout=900)
+    if commands.az_json("group", "exists", "--name", state["resourceGroup"]):
+        raise ValueError("The owned monitor resource group remains after cleanup.")
 
 
 def test_source(state):

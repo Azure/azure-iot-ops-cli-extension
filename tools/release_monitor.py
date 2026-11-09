@@ -433,6 +433,9 @@ def configurations(config):
         raise ValueError("Monitor clouds do not match the product's supported cloud matrix.")
     result = []
     for cloud, profile in config["clouds"].items():
+        supported = profile.get("supportedTracks", list(tracks))
+        if not isinstance(supported, list) or not set(supported) <= set(tracks):
+            raise ValueError("Cloud support must name configured health slots.")
         for track in tracks:
             label = {"ga": "GA", "preview": "Preview"}.get(track, track)
             result.append({
@@ -454,6 +457,8 @@ def check_definition(config, extension, cloud, track):
     ]
     if len(matches) != 1 or os.environ.get("BUILD_DEFINITIONNAME") != matches[0]["name"]:
         raise ValueError("This pipeline definition is not the selected version/cloud monitor.")
+    if track not in config["clouds"][cloud].get("supportedTracks", configured_tracks(config)):
+        raise ValueError(f"{cloud} {track} is unsupported; keep this health pipeline disabled.")
     if os.environ.get("BUILD_REPOSITORY_NAME", "").lower() != REPOSITORIES[extension].lower():
         raise ValueError("Monitor automation belongs to a different repository.")
     for name, expected in matches[0]["variables"].items():
