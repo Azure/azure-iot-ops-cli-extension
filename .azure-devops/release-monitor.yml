@@ -3,7 +3,7 @@
 trigger: none
 pr: none
 schedules: []
-name: aio-fixed-rg-probe-$(MonitorCloud)-$(Build.BuildId)
+name: aio-owned-resource-smoke-$(MonitorCloud)-$(Build.BuildId)
 appendCommitMessageToRunName: false
 pool:
   vmImage: ubuntu-24.04
@@ -17,14 +17,20 @@ stages:
           - bash: |
               echo "##vso[build.addbuildtag]access-smoke"
               echo "##vso[build.addbuildtag]nonqualifying"
-              echo "Read-only existing-group and permission discovery. No resources are created or deleted."
+              echo "Bounded smoke in pre-existing groups; no clusters, whole-group writes or service-identity grants."
   - stage: Access
     dependsOn: Prepare
     jobs:
       - job: AIO
         pool:
           name: iotupx-ops-integration
-        timeoutInMinutes: 10
+        timeoutInMinutes: 25
+        cancelTimeoutInMinutes: 10
+        variables:
+          SMOKE_OUTPUT: $(Agent.TempDirectory)/fixed-rg-mutation
+          MONITOR_AZURE_CLOUD: $(MonitorAzureCloud)
+          MONITOR_SUBSCRIPTION: $(MonitorSubscription)
+          MONITOR_REGION: $(MonitorRegion)
         steps:
           - checkout: self
             clean: true
@@ -32,20 +38,19 @@ stages:
           - task: UsePythonVersion@0
             inputs:
               versionSpec: '3.13'
+          - bash: python tools/fixed_rg_mutation_smoke.py prepare
+            displayName: Publish attempt identities before credentials or Azure mutations
+          - publish: $(Agent.TempDirectory)/fixed-rg-mutation
+            artifact: fixed-rg-original-contexts
           - task: AzureCLI@2
-            displayName: Read existing fixed groups and effective scoped permissions
+            displayName: Exercise exact-owner creation and cleanup
             inputs:
               azureSubscription: $(AzureServiceConnection)
               scriptType: bash
               scriptLocation: inlineScript
-              inlineScript: python tools/fixed_rg_access_probe.py
-            env:
-              SMOKE_OUTPUT: $(Agent.TempDirectory)/fixed-rg-access
-              MONITOR_AZURE_CLOUD: $(MonitorAzureCloud)
-              MONITOR_SUBSCRIPTION: $(MonitorSubscription)
-              MONITOR_RESOURCE_GROUP: $(MonitorResourceGroup)
-          - publish: $(Agent.TempDirectory)/fixed-rg-access
-            artifact: fixed-rg-access-AIO
+              inlineScript: python tools/fixed_rg_mutation_smoke.py run
+          - publish: $(Agent.TempDirectory)/fixed-rg-mutation
+            artifact: fixed-rg-mutation-AIO
             condition: always()
   - stage: NotQualified
     dependsOn: [Prepare, Access]
@@ -55,5 +60,5 @@ stages:
         steps:
           - checkout: none
           - bash: |
-              echo "##vso[task.logissue type=error]Read-only access probe, not release-health qualification."
+              echo "##vso[task.logissue type=error]Bounded ownership smoke, not release-health qualification."
               exit 1
