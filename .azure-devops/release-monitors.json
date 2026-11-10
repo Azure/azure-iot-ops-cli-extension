@@ -8,7 +8,7 @@
       "variables": {
         "AzureServiceConnection": "az-iot-ops-int-sp-ado",
         "MonitorSubscription": "a386d5ea-ea90-441a-8263-d816368c84a1",
-        "MonitorResourceGroup": "ops-cli-monitor-public-{track}",
+        "MonitorResourceGroup": "ops-cli-int-test-rg",
         "MonitorRegion": "westus2",
         "MonitorCustomLocationsObjectId": "51dfe1e8-70c6-4de5-a08e-e18aff23d815"
       }

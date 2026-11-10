@@ -384,7 +384,7 @@ def prepare(output):
         if (value.get("releaseBuildId") != release_build_id()
                 or value["rows"] != [release_candidate["cohorts"][handoff["cohort"]]["row"]]):
             raise ValueError("Execution plan does not match the exact release cohort.")
-    suffix = uuid4().hex[:11]
+    suffix = uuid4().hex[:15]
     prefix = f"/subscriptions/{value['subscription']}/resourceGroups/{value['resourceGroup']}/providers"
     cluster, storage = f"opado{suffix}", f"initstore{suffix}"
     registry, namespace = f"init-registry{suffix}", f"init-adr-{suffix}"
@@ -405,6 +405,8 @@ def prepare(output):
     }
     if value.get("health"):
         state["health"] = value["health"]
+    import owned_resources
+    state["ownership"] = owned_resources.new_context(**ownership_identity(state))
     write(output / "state.json", state)
     extension_root = Path(required("AZURE_EXTENSION_DIR")).resolve()
     subprocess.run(["az", "extension", "add", "--source", str(wheel), "--yes"], check=True)
@@ -420,6 +422,15 @@ def prepare(output):
         ], cwd=output, env={
             **os.environ, "PYTHONPATH": str(extension_root / "azure-iot-ops"), "azext_edge_cloud": state["cloud"],
         }, check=True)
+
+
+def ownership_identity(state):
+    return {
+        "product": "azure-iot-ops", "producer": state["producer"], "scenario": state["row"]["key"],
+        "attempt": state["attempt"], "wheel": state["sha256"], "locations": state["locations"],
+        "resourceSuffix": state["suffix"], "cloud": state.get("cloud", "AzureCloud"),
+        "subscription": state["subscription"], "resourceGroup": state["resourceGroup"],
+    }
 
 
 def expected_phases(row):
@@ -505,9 +516,6 @@ def scenario_evidence(value, history):
             raise ValueError(f"Missing scenario evidence: {row['key']}")
         _, path, receipt = max(receipts, key=lambda entry: entry[0])
         expected_group = value.get("resourceGroup")
-        if value.get("monitor"):
-            from release_monitor_adapter import resource_group
-            expected_group = resource_group(expected_group, receipt.get("resourceSuffix", ""))
         if (receipt.get("producer") != producer() or receipt.get("row") != row["key"]
                 or receipt.get("sha256") != required("OPS_CANDIDATE_DIGEST")
                 or receipt.get("status") != "passed" or receipt.get("cleanup") != "passed"

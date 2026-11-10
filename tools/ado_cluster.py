@@ -23,9 +23,10 @@ from xml.etree import ElementTree
 import yaml
 
 import ado_diagnostics as diagnostics
+import owned_resources
 from ado_integration import (
     ROOT, expected_locations, expected_phases, junit_results, producer, read, required, scenario_timeout, write,
-    cloud_name, validate_cluster_region,
+    cloud_name, validate_cluster_region, ownership_identity,
 )
 
 
@@ -86,12 +87,11 @@ def validate_state(state):
     if state["producer"] != producer() or state["subscription"] != str(UUID(required("OPS_SUBSCRIPTION"))):
         raise ValueError("Provisioning state does not match this run and approved subscription.")
     suffix = state["suffix"]
-    if not re.fullmatch(r"[0-9a-f]{11}", suffix):
+    if not re.fullmatch(r"[0-9a-f]{15}", suffix):
         raise ValueError("Invalid attempt resource suffix.")
     if not re.fullmatch(r"[A-Za-z0-9_().-]{1,90}", state["resourceGroup"]):
         raise ValueError("Invalid resource group.")
-    approved_group = state.get("baseResourceGroup") if state.get("monitor") else state["resourceGroup"]
-    if approved_group != required("OPS_RESOURCE_GROUP"):
+    if state["resourceGroup"] != required("OPS_RESOURCE_GROUP"):
         raise ValueError("Provisioning state does not match the approved resource group.")
     prefix = f"/subscriptions/{state['subscription']}/resourceGroups/{state['resourceGroup']}/providers"
     expected = {
@@ -122,6 +122,9 @@ def validate_state(state):
     if state.get("monitor") or os.environ.get("OPS_MONITOR_BUNDLE"):
         from release_monitor_adapter import validate_state as validate_monitor
         validate_monitor(state)
+    owned_resources.validate_context(state.get("ownership", {}))
+    if any(state["ownership"].get(key) != value for key, value in ownership_identity(state).items()):
+        raise ValueError("Resource ownership context differs from the scenario identity.")
 
 
 def check_account(commands, state):
@@ -351,6 +354,7 @@ def test_environment(state, output):
         "azext_edge_sp_object_id": required("AZURE_CLIENT_ID"),
         "AZURE_EXTENSION_USE_DYNAMIC_INSTALL": "no", "AZURE_TEST_RUN_LIVE": "True",
         "COVERAGE_FILE": str(output / "coverage.dat"),
+        owned_resources.ENV: str((output / "state.json").resolve()),
     })
     protected = {"azext_edge_aio_cleanup", "azext_edge_init_continue_on_error", "azext_edge_skip_init"}
     for item in scenario["env"]:
@@ -439,17 +443,15 @@ def cleanup(output):
         return
     state = read(output / "state.json")
     validate_state(state)
-    commands = Commands()
+    deadline = time.monotonic() + 1050
+    commands = Commands(budget=1050)
     state["cleanup"] = "incomplete"
     write(output / "state.json", state)
     errors = []
     try:
-        if state.get("monitor"):
-            from release_monitor_adapter import cleanup_group
+        if state["ownershipChecked"]:
             check_account(commands, state)
-            cleanup_group(commands, state)
-        elif state["ownershipChecked"]:
-            check_account(commands, state)
+            owned_resources.activate(output / "state.json")
             present = resource_ids(commands, state)
             if state["resources"]["instance"].lower() in present:
                 try:
@@ -458,36 +460,17 @@ def cleanup(output):
                 except (subprocess.CalledProcessError, TimeoutError) as error:
                     print(f"##vso[task.logissue type=error]Instance cleanup failed ({type(error).__name__}).")
                     errors.append("instance")
-            present = resource_ids(commands, state)
-            for key in ("instance", "cluster", "registry", "namespace", "storage"):
-                resource = state["resources"][key]
-                if resource.lower() in present:
-                    args = ["az", "resource", "delete", "--ids", resource]
-                    if key in {"registry", "namespace"}:
-                        args += ["--api-version", "2026-04-01"]
-                    try:
-                        commands.run(args, timeout=180)
-                    except (subprocess.CalledProcessError, TimeoutError) as error:
-                        print(f"##vso[task.logissue type=error]{key} cleanup failed ({type(error).__name__}).")
-                        errors.append(key)
-            for attempt in range(20):
-                remaining = resource_ids(commands, state) & {value.lower() for value in state["resources"].values()}
-                if not remaining:
-                    break
-                if attempt == 19:
-                    raise RuntimeError("Attempt resources remain after cleanup.")
-                print(f"Waiting for {len(remaining)} deleted attempt resources to disappear.", flush=True)
-                time.sleep(15)
+            owned_resources.cleanup(output / "state.json", timeout=min(600, max(0, deadline - time.monotonic())))
     finally:
         if state.get("clusterStarted"):
             _, unit = cluster_paths(state)
             result = subprocess.run(
                 ["sudo", "-n", "systemctl", "show", unit, "--property=LoadState", "--value"],
-                capture_output=True, text=True, check=False,
+                capture_output=True, text=True, check=False, timeout=30,
             )
             if result.stdout.strip() != "not-found":
                 result.check_returncode()
-                commands.run(["sudo", "-n", "systemctl", "stop", unit])
+                Commands().run(["sudo", "-n", "systemctl", "stop", unit], timeout=60)
     if errors:
         raise RuntimeError(f"Cleanup had failures: {', '.join(errors)}. Inspect retained state and retry cleanup.")
     state["cleanup"] = "passed"
@@ -506,15 +489,12 @@ def run(output):
         auth = start_auth(output)
         commands = Commands(auth, budget=scenario_timeout() * 60)
         check_account(commands, state)
-        if state.get("monitor"):
-            from release_monitor_adapter import prepare_group
-            prepare_group(commands, state, output)
-        else:
-            commands.az_json("group", "show", "--name", state["resourceGroup"])
+        commands.az_json("group", "show", "--name", state["resourceGroup"])
         if resource_ids(commands, state) & {value.lower() for value in state["resources"].values()}:
             raise ValueError("Attempt resource names already exist; refusing reuse.")
         state["ownershipChecked"] = True
         write(output / "state.json", state)
+        owned_resources.activate(output / "state.json")
         directory, unit = cluster_paths(state)
         collector = diagnostics.HookCollector(
             output, directory, unit, f"ops-diagnostics-{state['row']['key']}-{state['attempt']}",

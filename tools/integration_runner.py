@@ -146,6 +146,10 @@ def main(argv=None):
     work_dir.mkdir(parents=True, exist_ok=True)
     install_wheel(wheel, target)
     shutil.copytree(tests, target / "azext_edge" / "tests", ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
+    if os.environ.get("AZEXT_TEST_OWNERSHIP"):
+        for name in ("owned_resources", "owned_resources_pytest"):
+            shutil.copyfile(Path(__file__).with_name(name + ".py"), target / f"azext_edge/tests/_{name}.py")
+        pytest_args += ["-p", "azext_edge.tests._owned_resources_pytest"]
     if args.monitor:
         shutil.copyfile(
             Path(__file__).with_name("release_monitor_pytest.py"),

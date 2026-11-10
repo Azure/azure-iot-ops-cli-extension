@@ -38,6 +38,8 @@ UUID_VALUE = "11111111-1111-4111-8111-111111111111"
 
 @pytest.fixture(autouse=True)
 def pipeline_environment(monkeypatch, tmp_path):
+    monkeypatch.setattr(cluster.owned_resources, "activate", Mock())
+    monkeypatch.setattr(cluster.owned_resources, "cleanup", Mock())
     for name, value in {
         "SYSTEM_DEFINITIONID": "164", "BUILD_BUILDID": "123", "BUILD_SOURCEVERSION": "a" * 40,
         "SYSTEM_JOBATTEMPT": "1", "OPS_SCENARIOS": "edge", "OPS_CHANNELS": "stable", "OPS_PYTHONS": "3.13",
@@ -54,9 +56,9 @@ def pipeline_environment(monkeypatch, tmp_path):
 
 
 def make_state():
-    suffix = "a" * 11
+    suffix = "a" * 15
     prefix = f"/subscriptions/{SUBSCRIPTION}/resourceGroups/ops-cli-int-test-rg/providers"
-    return {
+    state = {
         "schema": 1, "producer": pipeline.producer(), "attempt": 1, "suffix": suffix,
         "subscription": SUBSCRIPTION, "resourceGroup": "ops-cli-int-test-rg", "customLocationsObjectId": UUID_VALUE,
         "locations": {"clusterRegion": "westus2"},
@@ -76,6 +78,8 @@ def make_state():
         "ownershipChecked": True, "phases": {"init": "passed", "scenario": "passed", "smoke": "passed"},
         "cleanup": "passed", "status": "passed",
     }
+    state["ownership"] = cluster.owned_resources.new_context(**pipeline.ownership_identity(state))
+    return state
 
 
 def test_fairfax_plan_binds_cloud_and_all_resource_locations(monkeypatch, tmp_path):
@@ -107,6 +111,7 @@ def test_fairfax_state_and_cleanup_require_matching_cloud(monkeypatch):
     state.update(cloud="AzureUSGovernment", locations={
         key: "usgovvirginia" for key in ("clusterRegion", "resourceRegion", "namespaceRegion")
     })
+    state["ownership"] = cluster.owned_resources.new_context(**pipeline.ownership_identity(state))
     cluster.validate_state(state)
     commands = Mock()
     commands.az_json.return_value = {"id": SUBSCRIPTION, "environmentName": "AzureCloud"}
@@ -518,64 +523,54 @@ def test_cleanup_rejects_foreign_state_before_commands(tmp_path, monkeypatch, fi
     commands.assert_not_called()
 
 
-def test_cleanup_deletes_only_manifest_resources_and_pins_adr_api(tmp_path, monkeypatch):
+def test_cleanup_uses_owned_resource_journal_after_instance_teardown(tmp_path, monkeypatch):
     state = make_state()
     pipeline.write(tmp_path / "state.json", state)
     commands = Mock()
+    clock = [0]
+    monkeypatch.setattr(cluster.time, "monotonic", lambda: clock[0])
+    commands.run.side_effect = lambda *args, **kwargs: clock.__setitem__(0, clock[0] + 900)
     commands.az_json.side_effect = [
         {"id": SUBSCRIPTION, "environmentName": "AzureCloud"},
         [{"id": value} for value in state["resources"].values()],
-        [{"id": value} for key, value in state["resources"].items() if key != "instance"],
-        [{"id": "/unrelated/resource"}],
     ]
     monkeypatch.setattr(cluster, "Commands", Mock(return_value=commands))
     cluster.cleanup(tmp_path)
-    calls = [call.args[0] for call in commands.run.call_args_list]
-    deletes = [args for args in calls if args[:3] == ["az", "resource", "delete"]]
-    assert len(deletes) == 4
-    assert all(args[4] in state["resources"].values() for args in deletes)
-    assert all("--api-version" in args for args in deletes if "Microsoft.DeviceRegistry" in args[4])
+    commands.run.assert_called_once_with(
+        ["az", "iot", "ops", "delete", "--name", state["instance"],
+         "-g", state["resourceGroup"], "--yes", "--force"], timeout=900,
+    )
+    cluster.owned_resources.cleanup.assert_called_once_with(tmp_path / "state.json", timeout=150)
     assert pipeline.read(tmp_path / "state.json")["cleanup"] == "passed"
 
 
-def test_cleanup_does_not_stop_after_one_delete_failure(tmp_path, monkeypatch):
+def test_cleanup_retains_instance_failure_and_attempts_other_owned_resources(tmp_path, monkeypatch):
     state = make_state()
     pipeline.write(tmp_path / "state.json", state)
     commands = Mock()
-    resources = [{"id": value} for key, value in state["resources"].items() if key != "instance"]
-    commands.az_json.side_effect = [{"id": SUBSCRIPTION, "environmentName": "AzureCloud"}, resources, resources, []]
-    commands.run.side_effect = [subprocess.CalledProcessError(1, ["az"]), None, None, None]
+    resources = [{"id": value} for value in state["resources"].values()]
+    commands.az_json.side_effect = [{"id": SUBSCRIPTION, "environmentName": "AzureCloud"}, resources]
+    commands.run.side_effect = subprocess.CalledProcessError(1, ["az"])
     monkeypatch.setattr(cluster, "Commands", Mock(return_value=commands))
     with pytest.raises(RuntimeError, match="Cleanup had failures"):
         cluster.cleanup(tmp_path)
-    assert commands.run.call_count == 4
+    cluster.owned_resources.cleanup.assert_called_once_with(tmp_path / "state.json", timeout=600)
     assert pipeline.read(tmp_path / "state.json")["cleanup"] == "incomplete"
 
 
-@pytest.mark.parametrize("stale_reads", [0, 2, 20])
-def test_cleanup_waits_boundedly_for_deleted_resources(tmp_path, monkeypatch, stale_reads):
+def test_incomplete_owned_cleanup_cannot_qualify_the_attempt(tmp_path, monkeypatch):
     state = make_state()
     pipeline.write(tmp_path / "state.json", state)
     resources = [{"id": state["resources"]["storage"]}]
     commands = Mock()
     commands.az_json.side_effect = [
-        {"id": SUBSCRIPTION, "environmentName": "AzureCloud"}, resources, resources,
-        *([resources] * stale_reads), [],
+        {"id": SUBSCRIPTION, "environmentName": "AzureCloud"}, resources,
     ]
-    sleep = Mock()
     monkeypatch.setattr(cluster, "Commands", Mock(return_value=commands))
-    monkeypatch.setattr(cluster.time, "sleep", sleep)
-    if stale_reads == 20:
-        with pytest.raises(RuntimeError, match="resources remain"):
-            cluster.cleanup(tmp_path)
-        assert pipeline.read(tmp_path / "state.json")["cleanup"] == "incomplete"
-    else:
+    cluster.owned_resources.cleanup.side_effect = RuntimeError("Owned-resource cleanup is incomplete")
+    with pytest.raises(RuntimeError, match="incomplete"):
         cluster.cleanup(tmp_path)
-        assert pipeline.read(tmp_path / "state.json")["cleanup"] == "passed"
-    assert sleep.call_count == min(stale_reads, 19)
-    commands.run.assert_called_once_with(
-        ["az", "resource", "delete", "--ids", state["resources"]["storage"]], timeout=180,
-    )
+    assert pipeline.read(tmp_path / "state.json")["cleanup"] == "incomplete"
 
 
 def test_environment_drops_control_tokens_and_truthy_false_cleanup(monkeypatch, tmp_path):

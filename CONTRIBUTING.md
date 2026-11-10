@@ -33,7 +33,7 @@ We also regularly utilize GitHub Codespaces, and have automated this environment
 The slots mean newest, previous and third explicitly supported milestone, not CLI
 version numbers. `.azure-devops/release-monitors.json` currently maps `v1` to `1.5`,
 `v2` to `1.4` and `v3` to `1.3`. Update that reviewed mapping when support changes;
-pipeline IDs, names, dashboard references and resource-group prefixes stay stable.
+pipeline IDs, names, dashboard references and configured resource groups stay stable.
 Discovery selects the newest published CLI patch for each configured stable runtime
 family. A newer milestone does not automatically move or invalidate the selected
 support window. Run titles and manifests record the slot and actual CLI/runtime versions.
@@ -68,14 +68,13 @@ also checks definition name, repository and every configured target variable.
 Never store personal account passwords or tokens in these files.
 
 Keep all definitions disabled until an owner approves automation connections,
-resource scopes/RBAC, capacity and live qualification. Each scenario attempt creates
-an isolated group under `ops-cli-monitor-<cloud>-<slot>-<build>-<suffix>` because old
-released fixtures may use fixed names. All scenarios, including Trust Bundle, can
-run concurrently without a cross-run lock. Cleanup deletes only that exact group
-after verifying its build/definition/attempt ownership tags.
-The service identity therefore needs permission to provision these groups and the
-scenario resources. Existing permissions on a few fixed groups are insufficient:
-an administrator must arrange restricted provisioning/delegation before activation;
+resource scopes/RBAC, capacity and live qualification. Each scenario attempt uses
+the configured, pre-created resource group and distinct resources. All scenarios,
+including Trust Bundle, can run concurrently without a cross-run lock. The runner
+never creates or deletes a resource group. Cleanup must target only the attempt's
+owned resources, including resources created by its test fixtures.
+An administrator must provision the configured groups once and grant the service
+identity the resource-specific deployment and RBAC operations needed within them;
 do not grant subscription-wide Owner merely to make the pipeline pass.
 Then enable queueing and explicitly select `runIntegration: true`. Preparation
 alone deliberately fails rather than reporting healthy monitoring. Retries reuse
@@ -84,6 +83,41 @@ live execution and capacity are approved; apply the same schedule policy to the
 IoT and AIO monitor sets. Fairfax needs its own ARM connection, subscription and
 tenant-specific custom-locations object ID; a source PR does not qualify older wheels.
 Historical source-health runs retained on definition 167 are not released-version evidence.
+
+### Fixed-group isolation and recovery
+
+Current ADO native, release-triggered and release-health attempts share only the
+pre-created group, not their resource names. Main fixtures use a fresh 15-hex suffix;
+released test helpers retain deterministic xdist collection but generate independent
+runtime names. The pre-provisioning state artifact binds ownership to the cloud,
+subscription, group, build, source/wheel, scenario, locations and retry attempt.
+Legacy GitHub workflows and local tox execution are unchanged.
+
+The test harness records creation intents before ARM writes and adds reserved
+`cliTestOwner` metadata: tags on tracked roots, descriptions on role assignments,
+and a parameter on ARM deployments. Only this metadata is hidden from test-visible
+responses, preserving the selected tests' user-tag assertions and installed product
+bytes. Ownership failures cannot qualify as expected-negative test successes.
+Inline incremental deployments undergo ownership checks using ARM what-if.
+That check is not atomic with the deployment; unique names minimize the remaining
+collision window, and a pre-existing foreign owner is never adopted.
+
+Cleanup rechecks each exact owner before deletion, waits for dependency ordering and
+absence, and fails explicitly for unfinished creation or cleanup. It does not delete
+the group or sweep unrelated resources. This cannot guarantee immediate deletion
+after agent loss or an Azure outage. After the original attempt has stopped, retain
+its state and event artifacts and retry exact-owner recovery with the approved
+cloud profile and RG-scoped permissions:
+
+```bash
+python tools/owned_resources.py cleanup --manifest <original-state.json> \
+  --cloud <AzureCloud-or-AzureUSGovernment> --subscription <original-subscription> \
+  --resource-group <original-fixed-group>
+```
+
+Server-side ownership markers permit recovery of fixture resources even if the final
+journal upload was lost. Recheck after outstanding Azure operations settle; recovery
+is not release qualification. Never substitute a different attempt's manifest.
 
 ## Cloud-aware management clients
 

@@ -313,7 +313,7 @@ def state(adapter, manifest, monkeypatch, tmp_path):
         "wheel": str(tmp_path / manifest["wheel"]["name"]), "resources": {"cluster": "/cluster"},
         "row": {"key": "edge", "scenario": {"channel": "stable", "tox_env": "", "test_redeploy": False}},
         "producer": adapter.native.producer(), "suffix": "a" * 11,
-        "baseResourceGroup": "group", "resourceGroup": "group-100-" + "a" * 11,
+        "resourceGroup": "group",
     }
 
 
@@ -390,26 +390,11 @@ def test_unsupported_fairfax_slots_cannot_reach_release_acquisition(monitor, mon
         monitor.check_definition(config, "azure-iot-ops", "fairfax", slot)
 
 
-def test_parallel_monitor_groups_are_distinct_and_cleanup_requires_ownership(adapter, state, tmp_path):
-    assert adapter.resource_group("group", "b" * 11) != state["resourceGroup"]
-    state["locations"] = {"clusterRegion": "westus2"}
-    commands = Mock()
-    commands.az_json.side_effect = [False, {"tags": adapter.group_tags(state)}]
-    adapter.prepare_group(commands, state, tmp_path)
-    assert adapter.native.read(tmp_path / "state.json")["groupCreationAttempted"]
-    commands.az_json.side_effect = [True, {"tags": {"cliHealthAttempt": "another-run"}}]
-    with pytest.raises(ValueError, match="ownership tags"):
-        adapter.cleanup_group(commands, state)
-    commands.run.assert_not_called()
-    commands.az_json.side_effect = [True, {"tags": adapter.group_tags(state)}, False]
-    adapter.cleanup_group(commands, state)
-    commands.run.assert_called_once_with(
-        ["az", "group", "delete", "--name", state["resourceGroup"], "--yes"], timeout=900,
-    )
-    commands.reset_mock()
-    commands.az_json.side_effect = [False]
-    adapter.cleanup_group(commands, state)
-    commands.run.assert_not_called()
+def test_monitor_rejects_dynamic_or_foreign_resource_groups(adapter, state):
+    adapter.validate_state(state)
+    for group in ("group-100-" + state["suffix"], "foreign-group"):
+        with pytest.raises(ValueError, match="execution state differs"):
+            adapter.validate_state({**state, "resourceGroup": group})
 
 
 def test_fairfax_released_test_catalog_is_bound_without_changing_product(adapter, monkeypatch, mocker):
