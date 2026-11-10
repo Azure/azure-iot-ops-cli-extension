@@ -3,7 +3,7 @@
 trigger: none
 pr: none
 schedules: []
-name: aio-access-smoke-$(MonitorCloud)-$(MonitorTrack)-$(Build.BuildId)
+name: aio-fixed-rg-probe-$(MonitorCloud)-$(Build.BuildId)
 appendCommitMessageToRunName: false
 pool:
   vmImage: ubuntu-24.04
@@ -11,37 +11,20 @@ pool:
 stages:
   - stage: Prepare
     jobs:
-      - job: Candidate
-        timeoutInMinutes: 25
+      - job: Explain
         steps:
-          - checkout: self
-            clean: true
-            persistCredentials: false
-          - task: UsePythonVersion@0
-            inputs:
-              versionSpec: '3.13'
+          - checkout: none
           - bash: |
-              set -euo pipefail
-              python -m pip install packaging PyYAML
-              python tools/release_monitor.py resolve \
-                --configuration .azure-devops/release-monitors.json --extension azure-iot-ops \
-                --cloud "$MONITORCLOUD" --track "$MONITORTRACK" \
-                --automation-commit "$BUILD_SOURCEVERSION" --attempt "$SYSTEM_JOBATTEMPT" --output manifest.json
-              echo "##vso[build.updatebuildnumber]aio-access-smoke-$MONITORCLOUD-$MONITORTRACK-b$BUILD_BUILDID"
-              python tools/release_monitor.py acquire --manifest manifest.json --output "$BUNDLE"
-            displayName: Acquire the frozen published release for access-only smoke
-            env:
-              BUNDLE: $(Pipeline.Workspace)/smoke-bundle
-          - publish: $(Pipeline.Workspace)/smoke-bundle
-            artifact: access-smoke-bundle
+              echo "##vso[build.addbuildtag]access-smoke"
+              echo "##vso[build.addbuildtag]nonqualifying"
+              echo "Read-only existing-group and permission discovery. No resources are created or deleted."
   - stage: Access
     dependsOn: Prepare
     jobs:
       - job: AIO
         pool:
           name: iotupx-ops-integration
-        timeoutInMinutes: 30
-        cancelTimeoutInMinutes: 10
+        timeoutInMinutes: 10
         steps:
           - checkout: self
             clean: true
@@ -49,29 +32,21 @@ stages:
           - task: UsePythonVersion@0
             inputs:
               versionSpec: '3.13'
-          - download: current
-            artifact: access-smoke-bundle
-          - bash: python -m pip install packaging PyYAML
           - task: AzureCLI@2
-            displayName: Check released CLI access and isolated-group provisioning
+            displayName: Read existing fixed groups and effective scoped permissions
             inputs:
               azureSubscription: $(AzureServiceConnection)
               scriptType: bash
               scriptLocation: inlineScript
-              inlineScript: python tools/health_access_smoke.py
+              inlineScript: python tools/fixed_rg_access_probe.py
             env:
-              SMOKE_BUNDLE: $(Pipeline.Workspace)/access-smoke-bundle
-              SMOKE_OUTPUT: $(Agent.TempDirectory)/access-smoke
-              MONITOR_CLOUD: $(MonitorCloud)
-              MONITOR_TRACK: $(MonitorTrack)
+              SMOKE_OUTPUT: $(Agent.TempDirectory)/fixed-rg-access
+              MONITOR_AZURE_CLOUD: $(MonitorAzureCloud)
               MONITOR_SUBSCRIPTION: $(MonitorSubscription)
               MONITOR_RESOURCE_GROUP: $(MonitorResourceGroup)
-              MONITOR_REGION: $(MonitorRegion)
-              AZURE_EXTENSION_DIR: $(Agent.TempDirectory)/smoke-extensions
-              AZURE_EXTENSION_USE_DYNAMIC_INSTALL: 'no'
-          - publish: $(Agent.TempDirectory)/access-smoke
-            artifact: access-smoke-AIO
-            condition: succeededOrFailed()
+          - publish: $(Agent.TempDirectory)/fixed-rg-access
+            artifact: fixed-rg-access-AIO
+            condition: always()
   - stage: NotQualified
     dependsOn: [Prepare, Access]
     condition: always()
@@ -80,5 +55,5 @@ stages:
         steps:
           - checkout: none
           - bash: |
-              echo "##vso[task.logissue type=error]Access-only smoke, not full release-health qualification. No clusters or integration suites were run."
+              echo "##vso[task.logissue type=error]Read-only access probe, not release-health qualification."
               exit 1
