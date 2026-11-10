@@ -38,6 +38,8 @@ stages:
           - task: UsePythonVersion@0
             inputs:
               versionSpec: '3.13'
+          - bash: python -m pip install azure-cli
+            displayName: Install CLI dependencies in the smoke interpreter
           - bash: python tools/fixed_rg_mutation_smoke.py prepare
             displayName: Publish attempt identities before credentials or Azure mutations
           - publish: $(Agent.TempDirectory)/fixed-rg-mutation

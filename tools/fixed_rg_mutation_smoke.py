@@ -47,7 +47,7 @@ def main():
             result = operation()
             evidence["checks"].append({"name": name, "status": "passed"})
             return result
-        except (OSError, RuntimeError, ValueError, subprocess.SubprocessError) as error:
+        except (ImportError, OSError, RuntimeError, ValueError, subprocess.SubprocessError) as error:
             evidence["checks"].append({"name": name, "status": "failed", "errorType": type(error).__name__})
             print(getattr(error, "stderr", None) or f"{name}: {error}", file=sys.stderr)
             return None
