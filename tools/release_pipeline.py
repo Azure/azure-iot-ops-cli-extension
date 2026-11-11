@@ -38,6 +38,17 @@ INTEGRATION_PARAMETERS = {
     "resourceGroup": "ops-cli-int-test-rg", "clusterRegion": "westus2",
     "customLocationsObjectId": "51dfe1e8-70c6-4de5-a08e-e18aff23d815",
 }
+CLUSTER_REGIONS = {
+    "eastus", "eastus2", "westus", "westus2", "westus3", "southcentralus",
+    "westeurope", "northeurope", "germanywestcentral",
+}
+
+
+def validate_cluster_region(value, cloud="AzureCloud"):
+    allowed = {"usgovvirginia"} if cloud == "AzureUSGovernment" else CLUSTER_REGIONS
+    if cloud not in {"AzureCloud", "AzureUSGovernment"} or not isinstance(value, str) or value not in allowed:
+        raise ValueError("Select a supported Arc/AIO cluster region.")
+    return value
 
 
 class NoRedirect(HTTPRedirectHandler):
@@ -354,7 +365,8 @@ def verify_runtime_inventory(source, inventory):
 def integration_parameters(candidate, cohort=None):
     key = cohort or environment("RELEASE_COHORT")
     selection = candidate["cohorts"][key]
-    return dict(INTEGRATION_PARAMETERS, releaseBuildId=candidate["producer"]["build"],
+    return dict(INTEGRATION_PARAMETERS, clusterRegion=candidate["region"],
+                releaseBuildId=candidate["producer"]["build"],
                 testScenarios=[selection["selection"]], runtimeChannels=[selection["row"]["scenario"]["channel"]])
 
 
@@ -380,6 +392,7 @@ def create_candidate(source, directory):
         "schema": 1, "repository": REPOSITORY,
         "sourceBranch": branch(environment("RELEASE_SOURCE_BRANCH")), "sourceCommit": source_commit,
         "producer": producer(),
+        "region": environment("RELEASE_REGION"),
         "wheel": {"file": wheel.name, "sha256": digest(wheel), "version": wheel_metadata(wheel)},
         "sbom": {"file": "SBOM.zip", "sha256": digest(directory / "SBOM.zip")},
         "skipIntegrationTests": skip_integration_tests(),
@@ -407,6 +420,9 @@ def verify_candidate(directory, *, expected_producer=None, source_branch=None, s
     expected_skip = False if expected_producer is not None or consumer is not None else skip_integration_tests()
     if type(skipped) is not bool or skipped != expected_skip:
         raise ValueError("Candidate integration waiver does not match this release run or consumer.")
+    validate_cluster_region(value["region"])
+    if expected_producer is None and consumer is None and value["region"] != environment("RELEASE_REGION"):
+        raise ValueError("Candidate region differs from this release run.")
     cohorts = value["cohorts"]
     if not isinstance(cohorts, dict) or (bool(cohorts) == skipped):
         raise ValueError("Missing full release cohort inventory.")

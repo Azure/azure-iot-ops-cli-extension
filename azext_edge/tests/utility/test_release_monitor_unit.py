@@ -21,7 +21,9 @@ SOURCE = "b" * 40
 
 
 def test_health_pipeline_always_plans_and_requires_live_scenarios():
-    pipeline = yaml.safe_load((ROOT / ".azure-devops/release-monitor.yml").read_text(encoding="utf-8"))
+    pipeline = yaml.safe_load(
+        (ROOT / ".azure-devops/templates/release-monitor-stages.yml").read_text(encoding="utf-8")
+    )
     assert "parameters" not in pipeline
     stages = {stage["stage"]: stage for stage in pipeline["stages"]}
     assert set(stages) == {"Prepare", "Integration", "TrustBundle", "Results"}
@@ -80,6 +82,40 @@ def releases(monitor, mocker):
 @pytest.fixture
 def manifest(monitor, releases):
     return {**monitor.resolve("azure-iot-ops", "public", "1.5", AUTOMATION, releases), "slot": "v1"}
+
+
+@pytest.mark.parametrize("override", [None, "region", "services", "cloud", "version"])
+def test_health_overrides_cannot_qualify_the_scheduled_profile(
+        monitor, releases, monkeypatch, mocker, tmp_path, override):
+    config = monitor.read_json(ROOT / ".azure-devops/release-monitors.json")
+    cloud = "fairfax" if override == "cloud" else "public"
+    slot = "v2" if override == "version" else "v1"
+    manifest = {
+        **monitor.resolve("azure-iot-ops", cloud, config["tracks"][slot], AUTOMATION, releases), "slot": slot,
+    }
+    selected = next(item["variables"] for item in monitor.configurations(config)
+                    if item["variables"]["MonitorCloud"] == cloud and item["variables"]["MonitorTrack"] == slot)
+    monkeypatch.setenv("MONITORCLOUD", "public")
+    monkeypatch.setenv("MONITORTRACK", "v1")
+    for key, value in selected.items():
+        monkeypatch.setenv("HEALTH" + key.removeprefix("Monitor").upper(), value)
+    monkeypatch.setenv("HEALTHSERVICES", "edge" if override == "services" else "Default scenarios")
+    if override == "region":
+        monkeypatch.setenv("HEALTHREGION", "eastus")
+    monitor.bind_profile(manifest, config)
+    mocker.patch.object(monitor, "verify_bundle", return_value=manifest)
+    if override:
+        with pytest.raises(ValueError, match="does not qualify"):
+            monitor.qualify_profile(tmp_path)
+        assert monitor.run_title(manifest, "123").endswith("-manual")
+    else:
+        monitor.qualify_profile(tmp_path)
+    monkeypatch.setenv("HEALTHREGION", "westus3")
+    with pytest.raises(ValueError, match="changed between attempts"):
+        monitor.bind_profile(manifest, config)
+    monkeypatch.setenv("HEALTHAZURESERVICECONNECTION", "unreviewed-connection")
+    with pytest.raises(ValueError, match="reviewed cloud profile"):
+        monitor.bind_profile(manifest, config)
 
 
 def test_distinct_milestones_use_latest_cli_patch_and_cloud_profile(monitor, releases):
@@ -277,6 +313,8 @@ def test_configured_slot_resolves_its_milestone_and_labels_the_actual_versions(
     monkeypatch.setenv("BUILD_BUILDID", "123")
     for key, value in item["variables"].items():
         monkeypatch.setenv(key.upper(), value)
+        monkeypatch.setenv("HEALTH" + key.removeprefix("Monitor").upper(), value)
+    monkeypatch.setenv("HEALTHSERVICES", "Default scenarios")
     discovery = mocker.patch.object(monitor, "resolve", return_value=manifest)
     output = tmp_path / "manifest.json"
     monitor.main([
@@ -307,6 +345,13 @@ def test_definition_generation_cannot_enable_runs_or_copy_secrets(monitor):
         assert "Secret" not in item["variables"]
         assert item["repository"]["properties"] == {"connectedServiceId": "github-connection"}
         assert all(not value["allowOverride"] for value in item["variables"].values())
+        pipeline = yaml.safe_load((ROOT / item["process"]["yamlFilename"]).read_text(encoding="utf-8"))
+        parameters = {parameter["name"]: parameter for parameter in pipeline["parameters"]}
+        assert set(parameters) == {"cloud", "version", "region", "services"}
+        assert parameters["cloud"]["default"] == item["variables"]["MonitorCloud"]["value"]
+        assert parameters["version"]["default"] == item["variables"]["MonitorTrack"]["value"]
+        assert parameters["region"]["default"] == item["variables"]["MonitorRegion"]["value"]
+        assert parameters["services"]["default"] == ["Default scenarios"]
     with pytest.raises(ValueError, match="GitHub definition"):
         monitor.definitions(config, baseline, "refs/heads/../other")
 

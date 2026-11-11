@@ -1,0 +1,57 @@
+# Copyright (c) Microsoft Corporation. All rights reserved.
+
+trigger: none
+pr: none
+schedules: []
+name: aio-health-$(HealthCloud)-$(HealthTrack)-$(Date:yyyyMMdd).$(Rev:r)
+appendCommitMessageToRunName: false
+parameters:
+- name: cloud
+  displayName: Cloud
+  type: string
+  default: public
+  values:
+  - public
+  - fairfax
+- name: version
+  displayName: Version (runtime track)
+  type: string
+  default: v3
+  values:
+  - v1
+  - v2
+  - v3
+- name: region
+  displayName: Region
+  type: string
+  default: westus2
+- name: services
+  displayName: Services (AIO scenarios)
+  type: stringList
+  default:
+  - Default scenarios
+  values:
+  - Default scenarios
+  - edge
+  - broker-diagnostics-removal
+  - insecure-listener
+  - rpsaas
+  - runtime-channel
+  - upgrade
+  - upgrade-path
+  - mgmtactions
+  - livedata
+  - redeploy
+  - essentials-sku
+  - trustbundle
+pool:
+  vmImage: ubuntu-24.04
+variables:
+- template: templates/release-monitor-profile.yml
+  parameters:
+    cloud: ${{ parameters.cloud }}
+    version: ${{ parameters.version }}
+    region: ${{ parameters.region }}
+    services: ${{ parameters.services }}
+stages:
+- template: templates/release-monitor-stages.yml

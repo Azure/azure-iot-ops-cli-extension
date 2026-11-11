@@ -11,6 +11,7 @@ from datetime import datetime, timezone
 import importlib
 import json
 from pathlib import Path
+import subprocess
 import sys
 from unittest.mock import Mock
 from urllib.parse import parse_qs, urlsplit
@@ -45,7 +46,7 @@ def candidate(tmp_path, monkeypatch):
         "RELEASE_SOURCE_COMMIT": SOURCE, "RELEASE_COHORT": COHORT, "RELEASE_MODE": "Release",
         "RELEASE_CREATE_INDEX_PR": "false", "RELEASE_SKIP_INTEGRATION_TESTS": "false",
         "RELEASE_GITHUB_TOKEN": "offline-placeholder", "RELEASE_CHILD_BUILD_ID": "901",
-        "OPS_RELEASE_BUILD_ID": "0",
+        "OPS_RELEASE_BUILD_ID": "0", "RELEASE_REGION": "westus2",
     }.items():
         monkeypatch.setenv(name, value)
     monkeypatch.setattr(release, "ado", Mock(side_effect=AssertionError("Unexpected ADO request")))
@@ -60,7 +61,7 @@ def candidate(tmp_path, monkeypatch):
         archive.writestr("_manifest/manifest.spdx.json", '{"spdxVersion":"SPDX-2.2"}')
     value = {
         "schema": 1, "repository": release.REPOSITORY, "sourceBranch": "refs/heads/dev",
-        "sourceCommit": SOURCE, "producer": release.producer(),
+        "sourceCommit": SOURCE, "producer": release.producer(), "region": "westus2",
         "wheel": {"file": wheel.name, "sha256": release.digest(wheel), "version": "2.0.0b1"},
         "sbom": {"file": "SBOM.zip", "sha256": release.digest(directory / "SBOM.zip")},
         "cohorts": release.source_cohorts(ROOT),
@@ -87,6 +88,32 @@ def child(value, cohort=COHORT):
             for key, item in release.integration_parameters(value, cohort).items()
         },
     }
+
+
+def test_release_region_is_frozen_and_child_drift_is_rejected(candidate, monkeypatch):
+    directory, value = candidate
+    monkeypatch.setenv("RELEASE_REGION", "eastus")
+    with pytest.raises(ValueError, match="Candidate region"):
+        release.verify_candidate(directory)
+    value["region"] = "eastus"
+    release.write(directory / "candidate.json", value)
+    assert release.verify_candidate(directory)["region"] == "eastus"
+    build = child(value)
+    assert build["templateParameters"]["clusterRegion"] == "eastus"
+    release.validate_integration(build, value)
+    build["templateParameters"]["clusterRegion"] = "westus2"
+    with pytest.raises(ValueError, match="exact release"):
+        release.validate_integration(build, value)
+
+
+def test_candidate_verifier_remains_standalone_for_publication(candidate, tmp_path):
+    directory, _ = candidate
+    script = tmp_path / "release_pipeline.py"
+    script.write_bytes((ROOT / "tools/release_pipeline.py").read_bytes())
+    subprocess.run(
+        [sys.executable, "-I", "-S", str(script), "verify", "--directory", str(directory)],
+        check=True, capture_output=True, text=True,
+    )
 
 
 def parent():

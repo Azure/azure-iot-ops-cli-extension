@@ -15,7 +15,8 @@ import re
 from urllib.error import HTTPError
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 
-from ado_integration import producer, read, required, validate_cluster_region
+from ado_integration import producer, read, required
+from release_pipeline import validate_cluster_region
 
 
 DAYS = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")

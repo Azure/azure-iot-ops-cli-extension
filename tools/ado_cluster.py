@@ -26,8 +26,9 @@ import ado_diagnostics as diagnostics
 import owned_resources
 from ado_integration import (
     ROOT, expected_locations, expected_phases, junit_results, producer, read, required, scenario_timeout, write,
-    cloud_name, validate_cluster_region, ownership_identity,
+    cloud_name, ownership_identity,
 )
+from release_pipeline import validate_cluster_region
 
 
 K3S_VERSION = "v1.31.1+k3s1"

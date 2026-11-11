@@ -28,7 +28,7 @@ We also regularly utilize GitHub Codespaces, and have automated this environment
 
 ## Released-version monitors
 
-`.azure-devops/release-monitor.yml` is shared by six independent definitions:
+Thin cloud/track `release-monitor*.yml` entry points share health stages for six definitions:
 `Azure IoT Operations CLI - Release Health (<Public|Fairfax> <v1|v2|v3>)`.
 The slots mean newest, previous and third explicitly supported milestone, not CLI
 version numbers. `.azure-devops/release-monitors.json` currently maps `v1` to `1.5`,
@@ -37,6 +37,15 @@ pipeline IDs, names, dashboard references and configured resource groups stay st
 Discovery selects the newest published CLI patch for each configured stable runtime
 family. A newer milestone does not automatically move or invalidate the selected
 support window. Run titles and manifests record the slot and actual CLI/runtime versions.
+
+**Cloud**, **Version (runtime track)**, **Region** and **Services (AIO scenarios)**
+have explicit defaults for each definition. Manual overrides use the selected
+cloud's reviewed connection and resource group, subject to pipeline authorization.
+They retain published-wheel testing, are frozen with the release selection, and
+are marked `-manual`; they cannot pass the configured scheduled-profile gate.
+Release **Region** controls the integration cluster region and is bound into the
+candidate and child-run validation. Resource and namespace locations remain
+separately controlled by the scenario/cloud configuration.
 
 Each run verifies GitHub's wheel SHA256, metadata, runtime profile and exact
 released source. It uses that release's scenario configuration, tests and fixtures

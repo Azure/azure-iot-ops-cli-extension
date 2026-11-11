@@ -31,10 +31,6 @@ import release_pipeline as release
 
 ROOT = Path(__file__).resolve().parents[1]
 PYTHONS = {"3.10", "3.11", "3.12", "3.13"}
-CLUSTER_REGIONS = {
-    "eastus", "eastus2", "westus", "westus2", "westus3", "southcentralus",
-    "westeurope", "northeurope", "germanywestcentral",
-}
 
 
 def cloud_name():
@@ -42,13 +38,6 @@ def cloud_name():
     if cloud not in {"AzureCloud", "AzureUSGovernment"}:
         raise ValueError("Ops integrations support AzureCloud or AzureUSGovernment.")
     return cloud
-
-
-def validate_cluster_region(value, cloud="AzureCloud"):
-    allowed = {"usgovvirginia"} if cloud == "AzureUSGovernment" else CLUSTER_REGIONS
-    if cloud not in {"AzureCloud", "AzureUSGovernment"} or not isinstance(value, str) or value not in allowed:
-        raise ValueError("Select a supported Arc/AIO cluster region.")
-    return value
 
 
 def required(name):
@@ -208,10 +197,10 @@ def plan(output, scenario_source=ROOT):
         value["locations"] = {key: health["profile"][key] for key in
                               ("clusterRegion", "resourceRegion", "namespaceRegion")}
     else:
-        value["locations"] = {"clusterRegion": validate_cluster_region(required("OPS_CLUSTER_REGION"), cloud)}
+        value["locations"] = {"clusterRegion": release.validate_cluster_region(required("OPS_CLUSTER_REGION"), cloud)}
         if cloud == "AzureUSGovernment":
             value["locations"].update(resourceRegion="usgovvirginia", namespaceRegion="usgovvirginia")
-    validate_cluster_region(value["locations"]["clusterRegion"], cloud)
+    release.validate_cluster_region(value["locations"]["clusterRegion"], cloud)
     if parent != "0":
         value["releaseBuildId"] = parent
     write(output / "plan.json", value)
@@ -237,7 +226,7 @@ def run_title(value, mode):
         kind = "health"
     else:
         kind = "integration"
-    region = validate_cluster_region(value["locations"]["clusterRegion"], value.get("cloud", "AzureCloud"))
+    region = release.validate_cluster_region(value["locations"]["clusterRegion"], value.get("cloud", "AzureCloud"))
     names, channels = set(), set()
     for row in value["rows"]:
         scenario = row["scenario"]

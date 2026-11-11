@@ -466,6 +466,67 @@ def check_definition(config, extension, cloud, track):
             raise ValueError(f"{name} differs from the reviewed monitor configuration.")
 
 
+def health_yaml(extension, cloud, track):
+    suffix = "" if cloud == "public" else "-" + cloud
+    if extension == "azure-iot":
+        suffix += "-preview" if track == "preview" else ""
+    elif track != "v1":
+        suffix += "-" + track
+    return f".azure-devops/release-monitor{suffix}.yml"
+
+
+def bind_profile(manifest, config):
+    configured_cloud = os.environ["MONITORCLOUD"]
+    configured_track = os.environ["MONITORTRACK"]
+    profiles = {
+        (item["variables"]["MonitorCloud"], item["variables"]["MonitorTrack"]): item["variables"]
+        for item in configurations(config)
+    }
+    configured = profiles[(configured_cloud, configured_track)]
+    cloud, track = manifest["cloudKey"], manifest["slot"]
+    selected = profiles[(cloud, track)]
+    if track not in config["clouds"][cloud].get("supportedTracks", configured_tracks(config)):
+        raise ValueError(f"{cloud} {track} has no supported health profile.")
+    for key, expected in selected.items():
+        if key in {"MonitorRegion", "MonitorServices"}:
+            continue
+        name = "HEALTH" + key.removeprefix("Monitor").upper()
+        if os.environ.get(name) != expected:
+            raise ValueError(f"{name} differs from the selected reviewed cloud profile.")
+    region = os.environ.get("HEALTHREGION", "")
+    services = os.environ.get("HEALTHSERVICES", "").split(",")
+    if (not re.fullmatch(r"[a-z][a-z0-9]+", region) or not all(services)
+            or len(services) != len(set(services))):
+        raise ValueError("Select one valid region and distinct services/scenarios.")
+    if config["extension"] == "azure-iot" and not set(services).issubset(selected["MonitorServices"].split(",")):
+        raise ValueError("Selected services are unsupported in the selected cloud.")
+    expected = {
+        "cloud": configured_cloud, "version": configured_track, "region": configured["MonitorRegion"],
+        "services": sorted(configured.get("MonitorServices", "Default scenarios").split(",")),
+    }
+    actual = {"cloud": cloud, "version": track, "region": region, "services": sorted(services)}
+    if manifest.get("kind") == "source":
+        expected["branch"] = "refs/heads/" + (
+            "dev" if configured_track == "ga" else "release/1.2.0-preview"
+        )
+        actual["branch"] = manifest["source"]["branch"]
+    profile = {"configured": expected, "selected": actual}
+    if "profile" in manifest and manifest["profile"] != profile:
+        raise ValueError("Health profile changed between attempts; start a new run.")
+    manifest["profile"] = profile
+    return manifest
+
+
+def qualify_profile(directory):
+    manifest = verify_bundle(Path(directory))
+    profile = manifest.get("profile")
+    if not isinstance(profile, dict) or set(profile) != {"configured", "selected"}:
+        raise ValueError("Health evidence is missing its configured and selected profiles.")
+    bind_profile(manifest, read_json(Path(__file__).resolve().parents[1] / ".azure-devops/release-monitors.json"))
+    if profile["configured"] != profile["selected"]:
+        raise ValueError("Manual profile completed; it does not qualify this pipeline's scheduled profile.")
+
+
 def definitions(config, baseline, branch):
     repository = baseline["repository"]
     if (repository["name"].lower() != REPOSITORIES[config["extension"]].lower()
@@ -481,7 +542,9 @@ def definitions(config, baseline, branch):
         "name": item["name"], "path": "\\official\\release-health", "type": "build",
         "queueStatus": "disabled", "triggers": [], "repository": source,
         "queue": {"id": baseline["queue"]["id"]},
-        "process": {"type": 2, "yamlFilename": ".azure-devops/release-monitor.yml"},
+        "process": {"type": 2, "yamlFilename": health_yaml(
+            config["extension"], item["variables"]["MonitorCloud"], item["variables"]["MonitorTrack"],
+        )},
         "variables": {
             name: {"value": value, "isSecret": False, "allowOverride": False}
             for name, value in item["variables"].items()
@@ -499,6 +562,8 @@ def run_title(manifest, build):
         runtime = manifest["runtime"]["version"] if manifest["runtime"] else "unavailable"
         title += f"-runtime{runtime}"
     title += f"-b{build}"
+    if "profile" in manifest and manifest["profile"]["configured"] != manifest["profile"]["selected"]:
+        title += "-manual"
     if len(title) > 255:
         raise ValueError("The resolved release-health run title exceeds the ADO name limit.")
     return title
@@ -524,22 +589,28 @@ def main(argv=None):
     setup.add_argument("--baseline", required=True)
     setup.add_argument("--branch", required=True)
     setup.add_argument("--output", required=True)
+    qualify = commands.add_parser("qualify-profile")
+    qualify.add_argument("--bundle", required=True)
     args = parser.parse_args(argv)
     if args.command == "resolve":
         target, slot = args.track, None
         if args.configuration:
             config = read_json(args.configuration)
-            check_definition(config, args.extension, args.cloud, args.track)
+            check_definition(config, args.extension, os.environ["MONITORCLOUD"], os.environ["MONITORTRACK"])
             target, slot = configured_tracks(config)[args.track], args.track
         value = frozen_manifest(
             args.history, args.extension, args.cloud, target, args.automation_commit, args.attempt, slot=slot,
         )
+        if args.configuration:
+            bind_profile(value, config)
         write_json(args.output, value)
         print(json.dumps(value, indent=2))
         if args.configuration:
             print(f"##vso[build.updatebuildnumber]{run_title(value, os.environ['BUILD_BUILDID'])}")
     elif args.command == "acquire":
         acquire(read_json(args.manifest), args.output)
+    elif args.command == "qualify-profile":
+        qualify_profile(args.bundle)
     else:
         write_json(args.output, definitions(read_json(args.configuration), read_json(args.baseline), args.branch))
 

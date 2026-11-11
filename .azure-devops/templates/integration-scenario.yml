@@ -73,8 +73,8 @@ jobs:
             PREPARE_SCRIPT: tools/release_monitor_adapter.py
             OPS_PLAN: $(Pipeline.Workspace)/candidate/plan.json
             OPS_MONITOR_BUNDLE: $(Pipeline.Workspace)/candidate
-            MONITOR_CLOUD: $(MonitorCloud)
-            MONITOR_TRACK: $(MonitorTrack)
+            MONITOR_CLOUD: $(HealthCloud)
+            MONITOR_TRACK: $(HealthTrack)
           ${{ else }}:
             PREPARE_SCRIPT: tools/ado_integration.py
             OPS_PLAN: $(Pipeline.Workspace)/plan/plan.json
@@ -107,8 +107,8 @@ jobs:
           PYTHONUNBUFFERED: '1'
           ${{ if parameters.monitor }}:
             OPS_MONITOR_BUNDLE: $(Pipeline.Workspace)/candidate
-            MONITOR_CLOUD: $(MonitorCloud)
-            MONITOR_TRACK: $(MonitorTrack)
+            MONITOR_CLOUD: $(HealthCloud)
+            MONITOR_TRACK: $(HealthTrack)
       - task: AzureCLI@2
         condition: always()
         displayName: Clean up
@@ -125,8 +125,8 @@ jobs:
           AZURE_EXTENSION_DIR: $(Agent.TempDirectory)/azure-cli-extensions
           ${{ if parameters.monitor }}:
             OPS_MONITOR_BUNDLE: $(Pipeline.Workspace)/candidate
-            MONITOR_CLOUD: $(MonitorCloud)
-            MONITOR_TRACK: $(MonitorTrack)
+            MONITOR_CLOUD: $(HealthCloud)
+            MONITOR_TRACK: $(HealthTrack)
       - bash: >-
           python tools/ado_integration.py inventory
           --output "$(Build.SourcesDirectory)/dependency-inventory/scenario"
@@ -143,8 +143,8 @@ jobs:
           OPS_RESOURCE_GROUP: ${{ parameters.configuration.resourceGroup }}
           ${{ if parameters.monitor }}:
             OPS_MONITOR_BUNDLE: $(Pipeline.Workspace)/candidate
-            MONITOR_CLOUD: $(MonitorCloud)
-            MONITOR_TRACK: $(MonitorTrack)
+            MONITOR_CLOUD: $(HealthCloud)
+            MONITOR_TRACK: $(HealthTrack)
       - task: PublishTestResults@2
         displayName: Publish results
         condition: always()

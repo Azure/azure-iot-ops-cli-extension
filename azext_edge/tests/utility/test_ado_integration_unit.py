@@ -1148,7 +1148,7 @@ def test_yaml_keeps_dry_run_separate_and_reuses_existing_tests():
     assert connection["default"] == "az-iot-ops-int-sp-ado"
     assert value["extends"]["template"] == "templates/integration-pipeline.yml"
     region = next(param for param in value["parameters"] if param["name"] == "clusterRegion")
-    assert set(region["values"]) == pipeline.CLUSTER_REGIONS | {"usgovvirginia"}
+    assert set(region["values"]) == pipeline.release.CLUSTER_REGIONS | {"usgovvirginia"}
     value = yaml.safe_load((ROOT / ".azure-devops/templates/integration-pipeline.yml").read_text())
     template_region = next(param for param in value["parameters"] if param["name"] == "clusterRegion")
     assert template_region["default"] == region["default"] == pipeline.release.INTEGRATION_PARAMETERS["clusterRegion"]

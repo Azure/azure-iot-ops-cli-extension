@@ -55,7 +55,7 @@ parameters:
     default: 360
     values: [90, 180, 360]
   - name: clusterRegion
-    displayName: Cluster region
+    displayName: Region
     type: string
     default: westus2
     values:

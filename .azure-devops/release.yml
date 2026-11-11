@@ -22,8 +22,14 @@ parameters:
     displayName: Skip integration tests
     type: boolean
     default: false
+  - name: clusterRegion
+    displayName: Region
+    type: string
+    default: westus2
+    values: [eastus, eastus2, westus, westus2, westus3, southcentralus, westeurope, northeurope, germanywestcentral]
 
 variables:
+  RELEASE_REGION: ${{ parameters.clusterRegion }}
   RELEASE_SKIP_INTEGRATION_TESTS: ${{ parameters.skipIntegrationTests }}
 
 resources:
@@ -47,4 +53,8 @@ extends:
         os: windows
     stages:
       - template: templates/release-stages.yml
-        parameters: ${{ parameters }}
+        parameters:
+          mode: ${{ parameters.mode }}
+          sourceBranch: ${{ parameters.sourceBranch }}
+          createIndexPr: ${{ parameters.createIndexPr }}
+          skipIntegrationTests: ${{ parameters.skipIntegrationTests }}

@@ -1,0 +1,158 @@
+# Copyright (c) Microsoft Corporation. All rights reserved.
+
+stages:
+  - stage: Prepare
+    displayName: Prepare released version
+    jobs:
+      - job: Acquire
+        timeoutInMinutes: 30
+        steps:
+          - checkout: self
+            clean: true
+            persistCredentials: false
+          - task: UsePythonVersion@0
+            inputs:
+              versionSpec: '3.13'
+          - bash: python -m pip install packaging PyYAML
+            displayName: Install resolver dependencies
+          - task: DownloadPipelineArtifact@2
+            displayName: Restore frozen release on retry
+            condition: gt(variables['System.JobAttempt'], 1)
+            inputs:
+              buildType: current
+              itemPattern: release-selection-*/manifest.json
+              targetPath: $(Pipeline.Workspace)/release-history
+          - bash: |
+              set -euo pipefail
+              python tools/release_monitor.py resolve \
+                --configuration .azure-devops/release-monitors.json \
+                --extension azure-iot-ops --cloud "$CLOUD" --track "$TRACK" \
+                --automation-commit "$BUILD_SOURCEVERSION" --attempt "$SYSTEM_JOBATTEMPT" \
+                --history "$HISTORY" --output manifest.json
+            displayName: Resolve or restore the immutable release selection
+            env:
+              CLOUD: $(HealthCloud)
+              TRACK: $(HealthTrack)
+              HISTORY: $(Pipeline.Workspace)/release-history
+          - publish: manifest.json
+            artifact: release-selection-$(System.JobAttempt)
+            displayName: Freeze selection before acquisition
+          - bash: |
+              set -euo pipefail
+              python tools/release_monitor.py acquire --manifest manifest.json --output "$BUNDLE"
+              echo "##vso[task.setvariable variable=artifact;isOutput=true]release-bundle-$SYSTEM_JOBATTEMPT"
+            name: bundle
+            displayName: Acquire immutable published wheel and tests
+            env:
+              BUNDLE: $(Pipeline.Workspace)/release-bundle
+          - bash: python tools/release_monitor_adapter.py plan --output "$BUNDLE"
+            name: plan
+            displayName: Validate released integration scenarios
+            env:
+              BUNDLE: $(Pipeline.Workspace)/release-bundle
+              MONITOR_CLOUD: $(HealthCloud)
+              MONITOR_TRACK: $(HealthTrack)
+              OPS_RELEASE_BUILD_ID: '0'
+              OPS_MODE: Integration tests
+              OPS_SCENARIOS: $(HealthServices)
+              OPS_CHANNELS: stable
+              OPS_PYTHONS: '3.13'
+              OPS_BASELINES: '{}'
+              OPS_CLOUD: $(HealthAzureCloud)
+              OPS_SUBSCRIPTION: $(HealthSubscription)
+              OPS_RESOURCE_GROUP: $(HealthResourceGroup)
+              OPS_CLUSTER_REGION: $(HealthRegion)
+              OPS_CUSTOM_LOCATIONS_OID: $(HealthCustomLocationsObjectId)
+              OPS_SCENARIO_TIMEOUT_MINUTES: '360'
+          - publish: $(Pipeline.Workspace)/release-bundle
+            artifact: release-bundle-$(System.JobAttempt)
+            displayName: Publish frozen release bundle
+
+  - stage: Integration
+    displayName: Test released version
+    dependsOn: Prepare
+    condition: and(succeeded(), eq(dependencies.Prepare.outputs['Acquire.plan.hasParallel'], 'true'))
+    variables:
+      candidateArtifact: $[ stageDependencies.Prepare.Acquire.outputs['bundle.artifact'] ]
+      candidateDigest: $[ stageDependencies.Prepare.Acquire.outputs['plan.digest'] ]
+    jobs:
+      - template: integration-scenario.yml
+        parameters:
+          monitor: true
+          maxParallel: 0
+          configuration:
+            health: false
+            releaseBuildId: 0
+            scenarioTimeoutMinutes: 360
+            cloud: $(HealthAzureCloud)
+            azureServiceConnection: $(HealthAzureServiceConnection)
+            subscriptionId: $(HealthSubscription)
+            resourceGroup: $(HealthResourceGroup)
+          matrix: $[ stageDependencies.Prepare.Acquire.outputs['plan.parallelMatrix'] ]
+  - stage: TrustBundle
+    displayName: Test released trust bundle scenario
+    dependsOn: Prepare
+    condition: >-
+      and(not(canceled()), eq(dependencies.Prepare.result, 'Succeeded'),
+          eq(dependencies.Prepare.outputs['Acquire.plan.hasTrustBundle'], 'true'))
+    variables:
+      candidateArtifact: $[ stageDependencies.Prepare.Acquire.outputs['bundle.artifact'] ]
+      candidateDigest: $[ stageDependencies.Prepare.Acquire.outputs['plan.digest'] ]
+    jobs:
+      - template: integration-scenario.yml
+        parameters:
+          monitor: true
+          maxParallel: 0
+          configuration:
+            health: false
+            releaseBuildId: 0
+            scenarioTimeoutMinutes: 360
+            cloud: $(HealthAzureCloud)
+            azureServiceConnection: $(HealthAzureServiceConnection)
+            subscriptionId: $(HealthSubscription)
+            resourceGroup: $(HealthResourceGroup)
+          matrix: $[ stageDependencies.Prepare.Acquire.outputs['plan.trustBundleMatrix'] ]
+  - stage: Results
+    displayName: Verify released-version monitoring evidence
+    dependsOn: [Prepare, Integration, TrustBundle]
+    condition: always()
+    variables:
+      candidateArtifact: $[ stageDependencies.Prepare.Acquire.outputs['bundle.artifact'] ]
+      candidateDigest: $[ stageDependencies.Prepare.Acquire.outputs['plan.digest'] ]
+    jobs:
+      - job: Verify
+        steps:
+          - task: UsePythonVersion@0
+            inputs:
+              versionSpec: '3.13'
+          - bash: python -m pip install packaging PyYAML
+            displayName: Install evidence dependencies
+          - task: DownloadPipelineArtifact@2
+            inputs:
+              buildType: current
+              artifactName: $(candidateArtifact)
+              targetPath: $(Pipeline.Workspace)/candidate
+            displayName: Download frozen release bundle
+          - task: DownloadPipelineArtifact@2
+            inputs:
+              buildType: current
+              itemPattern: ops-attempt-*/**
+              targetPath: $(Pipeline.Workspace)/history
+            displayName: Download scenario evidence
+          - bash: python tools/release_monitor_adapter.py gate --output monitor-results
+            displayName: Require every planned scenario and exact deployed runtime
+            env:
+              OPS_MONITOR_BUNDLE: $(Pipeline.Workspace)/candidate
+              OPS_CANDIDATE_DIGEST: $(candidateDigest)
+              OPS_RELEASE_BUILD_ID: '0'
+              OPS_HISTORY: $(Pipeline.Workspace)/history
+              MONITOR_CLOUD: $(HealthCloud)
+              MONITOR_TRACK: $(HealthTrack)
+          - bash: python tools/release_monitor.py qualify-profile --bundle "$BUNDLE"
+            displayName: Require the complete configured health profile
+            env:
+              BUNDLE: $(Pipeline.Workspace)/candidate
+          - publish: monitor-results
+            condition: succeededOrFailed()
+            artifact: monitor-results-$(System.JobAttempt)
+            displayName: Publish non-release-qualifying monitor results
