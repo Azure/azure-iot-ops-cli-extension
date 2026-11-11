@@ -73,7 +73,7 @@ parameters:
       - stable
       - preview
   - name: upgradeBaselines
-    displayName: Upgrade baselines
+    displayName: Upgrade source (only for upgrade-path test)
     type: string
     default: '{}'
   - name: scenarioTimeoutMinutes

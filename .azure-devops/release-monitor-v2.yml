@@ -3,7 +3,7 @@
 trigger: none
 pr: none
 schedules: []
-name: aio-health-$(TestCloud)-$(TestTrack)-$(Date:yyyyMMdd).$(Rev:r)
+name: aio-health-$(TestCloud)-$(Date:yyyyMMdd).$(Rev:r)
 appendCommitMessageToRunName: false
 parameters:
   - name: mode
@@ -72,7 +72,7 @@ parameters:
       - stable
       - preview
   - name: upgradeBaselines
-    displayName: Upgrade baselines
+    displayName: Upgrade source (only for upgrade-path test)
     type: string
     default: '{}'
   - name: scenarioTimeoutMinutes
@@ -83,21 +83,13 @@ parameters:
       - 90
       - 180
       - 360
-  - name: version
-    displayName: Version (runtime track)
-    type: string
-    default: v2
-    values:
-      - v1
-      - v2
-      - v3
 pool:
   vmImage: ubuntu-24.04
 variables:
   - template: templates/integration-profile.yml
     parameters:
       cloud: ${{ lower(parameters.cloud) }}
-      version: ${{ parameters.version }}
+      version: v2
       region: ${{ parameters.clusterRegion }}
       services: ${{ parameters.testScenarios }}
   - name: TestMode

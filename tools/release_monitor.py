@@ -593,7 +593,7 @@ def run_title(manifest, build):
     if not re.fullmatch(r"[1-9][0-9]*", build):
         raise ValueError("A positive ADO build ID is required for the release-health run title.")
     prefix = "iot" if manifest["extension"] == "azure-iot" else "aio"
-    title = f"{prefix}-health-{manifest['cloudKey']}-{manifest['slot']}-cli{manifest['release']['version']}"
+    title = f"{prefix}-health-{manifest['cloudKey']}-{manifest['track']}-cli{manifest['release']['version']}"
     if manifest["extension"] == "azure-iot-ops":
         runtime = manifest["runtime"]["version"] if manifest["runtime"] else "unavailable"
         title += f"-runtime{runtime}"

@@ -35,12 +35,18 @@ version numbers. `.azure-devops/release-monitors.json` currently maps `v1` to `1
 pipeline IDs, names, dashboard references and configured resource groups stay stable.
 Discovery selects the newest published CLI patch for each configured stable runtime
 family. A newer milestone does not automatically move or invalidate the selected
-support window. Run titles and manifests record the slot and actual CLI/runtime versions.
+support window. Manifests retain the internal slot; run titles show the configured
+runtime family and actual CLI/runtime versions instead of `v1`/`v2`/`v3`.
+Updating the JSON support mapping changes the resolved run titles without editing
+pipeline YAML. The pre-run form cannot display a JSON-derived version label.
 
 Integration and health share **Mode**, **Cloud**, **Public region**, **Scenarios**,
-**Python**, **Channels**, **Upgrade baselines** and **Timeout (min)**, in that order.
-Health additionally selects **Version (runtime track)** and defaults to integration
-mode. **Dry run** resolves the plan without deploying resources.
+**Python**, **Channels**, **Upgrade source (only for upgrade-path test)** and
+**Timeout (min)**, in that order. Health keeps its assigned support slot internally,
+with no Version selector, and defaults to integration mode. **Dry run** resolves
+the plan without deploying resources.
+**Upgrade source** supplies the pinned older runtime and matching CLI wheel for
+`upgrade-path`; leave `{}` for other scenarios, including same-version `upgrade`.
 Manual overrides use the selected
 cloud's reviewed connection and resource group, subject to pipeline authorization.
 They retain published-wheel testing, are frozen with the release selection, and

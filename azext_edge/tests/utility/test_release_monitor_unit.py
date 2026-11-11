@@ -306,10 +306,17 @@ def test_invalid_support_roster_is_rejected(monitor, tracks):
         monitor.configurations(config)
 
 
+@pytest.mark.parametrize("milestone", ["1.5", "1.6"])
 def test_configured_slot_resolves_its_milestone_and_labels_the_actual_versions(
-        monitor, manifest, monkeypatch, mocker, tmp_path, capsys):
-    configuration = ROOT / ".azure-devops/release-monitors.json"
-    config = monitor.read_json(configuration)
+        monitor, manifest, monkeypatch, mocker, tmp_path, capsys, milestone):
+    config = monitor.read_json(ROOT / ".azure-devops/release-monitors.json")
+    if milestone == "1.6":
+        config["tracks"] = {"v1": "1.6", "v2": "1.5", "v3": "1.4"}
+    configuration = tmp_path / "release-monitors.json"
+    monitor.write_json(configuration, config)
+    manifest["track"] = milestone
+    manifest["runtime"] = profile(f"{milestone}.45")
+    manifest["runtimes"]["stable"] = manifest["runtime"]
     item = monitor.configurations(config)[0]
     monkeypatch.setenv("BUILD_DEFINITIONNAME", item["name"])
     monkeypatch.setenv("BUILD_REPOSITORY_NAME", monitor.REPOSITORIES[config["extension"]])
@@ -324,9 +331,10 @@ def test_configured_slot_resolves_its_milestone_and_labels_the_actual_versions(
         "resolve", "--configuration", str(configuration), "--extension", "azure-iot-ops",
         "--cloud", "public", "--track", "v1", "--automation-commit", AUTOMATION, "--output", str(output),
     ])
-    discovery.assert_called_once_with("azure-iot-ops", "public", "1.5", AUTOMATION)
+    discovery.assert_called_once_with("azure-iot-ops", "public", milestone, AUTOMATION)
     assert monitor.read_json(output)["slot"] == "v1"
-    assert "##vso[build.updatebuildnumber]aio-health-public-v1-cli2.11.1-runtime1.5.45-b123" in capsys.readouterr().out
+    title = f"aio-health-public-{milestone}-cli2.11.1-runtime{milestone}.45-b123"
+    assert f"##vso[build.updatebuildnumber]{title}" in capsys.readouterr().out
 
 
 def test_definition_generation_cannot_enable_runs_or_copy_secrets(monitor):
@@ -351,14 +359,15 @@ def test_definition_generation_cannot_enable_runs_or_copy_secrets(monitor):
         pipeline = yaml.safe_load((ROOT / item["process"]["yamlFilename"]).read_text(encoding="utf-8"))
         parameters = {parameter["name"]: parameter for parameter in pipeline["parameters"]}
         common = yaml.safe_load((ROOT / ".azure-devops/integration.yml").read_text())["parameters"]
-        assert list(parameters) == [p["name"] for p in common] + ["version"]
+        assert list(parameters) == [p["name"] for p in common]
         for expected in common:
             actual = parameters[expected["name"]]
             assert {k: v for k, v in actual.items() if k != "default"} == {
                 k: v for k, v in expected.items() if k != "default"
             }
         assert parameters["cloud"]["default"] == item["variables"]["MonitorCloud"]["value"].capitalize()
-        assert parameters["version"]["default"] == item["variables"]["MonitorTrack"]["value"]
+        profile = next(value for value in pipeline["variables"] if "template" in value)
+        assert profile["parameters"]["version"] == item["variables"]["MonitorTrack"]["value"]
         assert parameters["clusterRegion"]["default"] == "West US 2"
         assert parameters["testScenarios"]["default"] == ["Default scenarios"]
     with pytest.raises(ValueError, match="GitHub definition"):
