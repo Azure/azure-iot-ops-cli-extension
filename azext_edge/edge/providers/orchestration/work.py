@@ -7,12 +7,13 @@
 import re
 from enum import IntEnum
 from json import dumps
-from time import sleep
+from shlex import quote
+from time import monotonic, sleep
 from typing import TYPE_CHECKING, Dict, Iterable, List, Optional, Tuple, Union
 from uuid import uuid4
 
 from azure.cli.core.azclierror import AzureResponseError, ValidationError
-from azure.core.exceptions import HttpResponseError
+from azure.core.exceptions import AzureError, HttpResponseError
 from knack.log import get_logger
 from rich import print
 from rich.console import NewLine
@@ -28,6 +29,7 @@ from azext_edge.edge.providers.orchestration.base import verify_arc_cluster_conf
 
 from ...util.az_client import (
     DEFAULT_DEVICEREGISTRY_MGMT_API_VERSION,
+    OperationTimeoutError,
     get_api_error_str,
     get_resource_client,
     parse_resource_id,
@@ -333,6 +335,57 @@ class WorkManager:
             headers=self._headers,
         )
 
+    def _wait_for_deployment(self, poller: "LROPoller", deployment_name: str):
+        try:
+            return wait_for_terminal_state(poller)
+        except OperationTimeoutError as error:
+            resource_group = self._targets.resource_group_name
+            lines = [str(error), f"Deployment: {deployment_name} (resource group: {resource_group})."]
+            pending = []
+            deadline = monotonic() + 30
+            try:
+                operations = self.resource_client.deployment_operations.list(
+                    resource_group_name=resource_group,
+                    deployment_name=deployment_name,
+                    top=100,
+                    retry_total=0,
+                    connection_timeout=5,
+                    read_timeout=5,
+                )
+                pages = operations.by_page()
+                for page in pages:
+                    for operation in page:
+                        properties = operation.get("properties") or {}
+                        state = properties.get("provisioningState") or "Unknown"
+                        target = properties.get("targetResource") or {}
+                        if target and state.lower() not in {"succeeded", "failed", "canceled", "cancelled"}:
+                            resource = target.get("id") or (
+                                f"{target.get('resourceType', 'Unknown')}/{target.get('resourceName', 'Unknown')}"
+                            )
+                            pending.append(f"  - {resource}: {state}")
+                    if monotonic() >= deadline and pages.continuation_token is not None:
+                        lines.append(
+                            "Deployment diagnostics reached their time limit; resource details may be incomplete."
+                        )
+                        break
+            except AzureError as diagnostic_error:
+                lines.append(f"Unable to retrieve deployment operations: {get_api_error_str(diagnostic_error)}")
+            if pending:
+                lines.extend(["Pending resource operations:", *pending])
+            else:
+                lines.append("No pending resource operations were found in the retrieved deployment operations.")
+            arguments = (
+                f"--name {quote(deployment_name)} --resource-group {quote(resource_group)} "
+                f"--subscription {quote(self.subscription_id)}"
+            )
+            lines.extend([
+                "Inspect deployment status and resource operations before retrying:",
+                f"  az deployment group show {arguments}",
+                f"  az deployment operation group list {arguments}",
+                "The deployment has not been canceled. Do not delete resources solely to unblock the CLI.",
+            ])
+            raise OperationTimeoutError("\n".join(lines)) from error
+
     def execute_ops_init(
         self,
         apply_foundation: bool = True,
@@ -465,7 +518,7 @@ class WorkManager:
                     f"{self._display.categories[WorkCategoryKey.ENABLE_IOT_OPS][0].title}[/link]"
                 )
                 self._render_display(category=WorkCategoryKey.ENABLE_IOT_OPS)
-                _ = wait_for_terminal_state(enablement_poller)
+                self._wait_for_deployment(enablement_poller, enablement_work_name)
 
                 self._complete_step(
                     category=WorkCategoryKey.ENABLE_IOT_OPS, completed_step=WorkStepKey.DEPLOY_ENABLEMENT
@@ -494,12 +547,13 @@ class WorkManager:
                     phase=InstancePhase.EXT,
                 )
                 instance_work_name = self._work_format_str.format(op="extension")
-                wait_for_terminal_state(
+                self._wait_for_deployment(
                     self._deploy_template(
                         content=instance_content,
                         parameters=instance_parameters,
                         deployment_name=instance_work_name,
-                    )
+                    ),
+                    instance_work_name,
                 )
                 self._create_or_update_custom_location(extension_ids=dependency_ext_ids + [self.ops_extension["id"]])
                 sleep(CATCH_UP_SEC)
@@ -508,12 +562,13 @@ class WorkManager:
                     cl_extension_ids=dependency_ext_ids,
                     phase=InstancePhase.INSTANCE,
                 )
-                wait_for_terminal_state(
+                self._wait_for_deployment(
                     self._deploy_template(
                         content=instance_content,
                         parameters=instance_parameters,
                         deployment_name=instance_work_name,
-                    )
+                    ),
+                    instance_work_name,
                 )
                 sleep(CATCH_UP_SEC)
                 self._complete_step(
@@ -536,7 +591,7 @@ class WorkManager:
                     f"{self._display.categories[WorkCategoryKey.DEPLOY_IOT_OPS][0].title}[/link]"
                 )
                 self._render_display(category=WorkCategoryKey.DEPLOY_IOT_OPS)
-                wait_for_terminal_state(instance_poller)
+                self._wait_for_deployment(instance_poller, instance_work_name)
                 if not self._skip_sr_ra:
                     self._apply_sr_role_assignment()
 

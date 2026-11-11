@@ -10,7 +10,7 @@ from enum import Enum
 from time import sleep
 from typing import TYPE_CHECKING, Any, NamedTuple, Optional, Tuple, Union
 
-from azure.cli.core.azclierror import ValidationError
+from azure.cli.core.azclierror import AzureResponseError, ValidationError
 from knack.log import get_logger
 
 from ...constants import USER_AGENT
@@ -318,6 +318,10 @@ def get_keyvault_client(subscription_id: str, keyvault_scope: Optional[str] = No
     return client
 
 
+class OperationTimeoutError(AzureResponseError):
+    """The client stopped waiting for a long-running operation."""
+
+
 def wait_for_terminal_state(poller: "LROPoller", wait_sec: int = POLL_WAIT_SEC, **_) -> JSON:
     from azure.core.exceptions import HttpResponseError
 
@@ -328,6 +332,11 @@ def wait_for_terminal_state(poller: "LROPoller", wait_sec: int = POLL_WAIT_SEC, 
             break
         sleep(wait_sec)
         counter = counter + 1
+    if not poller.done():
+        raise OperationTimeoutError(
+            f"Timed out waiting for the operation after {POLL_RETRIES * wait_sec} seconds of polling. "
+            "The operation may still be running in Azure; this timeout does not cancel it."
+        )
     try:
         return poller.result()
     except HttpResponseError as e:
