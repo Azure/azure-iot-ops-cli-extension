@@ -9,7 +9,7 @@ parameters:
     displayName: Mode
     type: string
     default: Plan
-    values: [Plan, Validate, Release]
+    values: [Plan, Validate, StageDraft, Release]
   - name: sourceBranch
     displayName: Source branch
     type: string
@@ -18,10 +18,13 @@ parameters:
     displayName: Create index PR
     type: boolean
     default: false
-  - name: uploadWheel
-    displayName: Upload wheel
+  - name: skipIntegrationTests
+    displayName: Skip all integration tests (release waiver)
     type: boolean
     default: false
+
+variables:
+  RELEASE_SKIP_INTEGRATION_TESTS: ${{ parameters.skipIntegrationTests }}
 
 resources:
   repositories:

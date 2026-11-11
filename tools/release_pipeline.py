@@ -52,6 +52,13 @@ def environment(name):
     return value
 
 
+def skip_integration_tests():
+    value = os.environ.get("RELEASE_SKIP_INTEGRATION_TESTS", "false").lower()
+    if value not in {"true", "false"}:
+        raise ValueError("skipIntegrationTests must be an explicit boolean.")
+    return value == "true"
+
+
 def identifier(value):
     if not re.fullmatch(r"[1-9][0-9]*", str(value)):
         raise ValueError("Expected a positive build or pipeline ID.")
@@ -140,7 +147,7 @@ def check_access():
 
 def checkout(destination, resolving=False):
     if resolving:
-        if environment("RELEASE_MODE") == "Release":
+        if environment("RELEASE_MODE") in {"StageDraft", "Release"}:
             automation_allowed()
             if branch(environment("RELEASE_SOURCE_BRANCH")) != "refs/heads/dev":
                 raise ValueError("Ops publication requires the protected dev source branch.")
@@ -159,17 +166,19 @@ def checkout(destination, resolving=False):
     if command(["git", "rev-parse", "HEAD"], destination) != selected:
         raise ValueError("Source checkout did not match the resolved commit.")
     if resolving:
-        for relative in (
+        prerequisites = () if skip_integration_tests() else (
             ".azure-devops/templates/integration-pipeline.yml", "tools/ado_integration.py",
             "tools/release_pipeline.py", ".github/test-scenarios.yml",
-        ):
+        )
+        for relative in prerequisites:
             if not (destination / relative).is_file():
                 raise ValueError(f"Source branch needs the migration/index-check prerequisites: {relative}")
-        integration = (destination / ".azure-devops/integration.yml").read_text(encoding="utf-8")
-        if "releaseBuildId" not in integration:
-            raise ValueError("The selected source does not support pipeline 164's release-candidate handoff.")
-        if "clusterRegion" not in integration:
-            raise ValueError("The selected source does not support explicit integration cluster regions.")
+        if not skip_integration_tests():
+            integration = (destination / ".azure-devops/integration.yml").read_text(encoding="utf-8")
+            if "releaseBuildId" not in integration:
+                raise ValueError("The selected source does not support pipeline 164's release-candidate handoff.")
+            if "clusterRegion" not in integration:
+                raise ValueError("The selected source does not support explicit integration cluster regions.")
         print(f"##vso[task.setvariable variable=commit;isOutput=true]{selected}", flush=True)
     return selected
 
@@ -373,7 +382,8 @@ def create_candidate(source, directory):
         "producer": producer(),
         "wheel": {"file": wheel.name, "sha256": digest(wheel), "version": wheel_metadata(wheel)},
         "sbom": {"file": "SBOM.zip", "sha256": digest(directory / "SBOM.zip")},
-        "cohorts": source_cohorts(source),
+        "skipIntegrationTests": skip_integration_tests(),
+        "cohorts": {} if skip_integration_tests() else source_cohorts(source),
     }
     write(directory / "candidate.json", value)
     verify_candidate(directory)
@@ -393,8 +403,12 @@ def verify_candidate(directory, *, expected_producer=None, source_branch=None, s
             or value["sourceBranch"] != branch(source_branch or environment("RELEASE_SOURCE_BRANCH"))
             or value["sourceCommit"] != commit(source_commit or environment("RELEASE_SOURCE_COMMIT"))):
         raise ValueError("Candidate provenance does not match this release run and source.")
+    skipped = value.get("skipIntegrationTests", False)
+    expected_skip = False if expected_producer is not None or consumer is not None else skip_integration_tests()
+    if type(skipped) is not bool or skipped != expected_skip:
+        raise ValueError("Candidate integration waiver does not match this release run or consumer.")
     cohorts = value["cohorts"]
-    if not isinstance(cohorts, dict) or not cohorts:
+    if not isinstance(cohorts, dict) or (bool(cohorts) == skipped):
         raise ValueError("Missing full release cohort inventory.")
     selections = set()
     for key, cohort in cohorts.items():
@@ -513,6 +527,8 @@ def cancel_integration(record, directory):
 
 
 def integrate(directory, record, timeout=25200):
+    if skip_integration_tests():
+        raise ValueError("Integration tests were waived; no child may be queued or qualified.")
     candidate = verify_candidate(directory)
     payload = {
         "definition": {"id": 164}, "sourceBranch": candidate["sourceBranch"],
@@ -608,19 +624,17 @@ def automation_allowed():
 def release_options():
     mode = environment("RELEASE_MODE")
     index = os.environ.get("RELEASE_CREATE_INDEX_PR", "false").lower()
-    if mode not in {"Plan", "Validate", "Release"} or index not in {"true", "false"}:
+    skip_integration_tests()
+    if mode not in {"Plan", "Validate", "StageDraft", "Release"} or index not in {"true", "false"}:
         raise ValueError("Invalid release mode or createIndexPr option.")
     if index == "true" and mode != "Release":
         raise ValueError("createIndexPr requires Release mode and a public GitHub release.")
-    upload = os.environ.get("RELEASE_UPLOAD_WHEEL", "false").lower()
-    if upload not in {"true", "false"} or upload == "true" and mode != "Release":
-        raise ValueError("uploadWheel requires Release mode and an explicit boolean option.")
     return mode, index == "true"
 
 
-def publication_allowed():
-    if release_options()[0] != "Release":
-        raise ValueError("Publication requires explicit Release mode.")
+def publication_allowed(*, draft=False):
+    if release_options()[0] != ("StageDraft" if draft else "Release"):
+        raise ValueError("Publication requires explicit Release mode; staging requires StageDraft.")
     automation_allowed()
     if branch(environment("RELEASE_SOURCE_BRANCH")) != "refs/heads/dev":
         raise ValueError("Ops publication requires the protected dev source branch.")
@@ -661,6 +675,10 @@ def find_release(tag):
 def verify_public_assets(release, candidate):
     if release["draft"]:
         raise ValueError("The qualified release is not public.")
+    verify_assets(release, candidate)
+
+
+def verify_assets(release, candidate):
     for asset in (candidate["wheel"], candidate["sbom"]):
         matches = [item for item in release["assets"] if item["name"] == asset["file"]]
         if len(matches) != 1 or matches[0].get("digest") != "sha256:" + asset["sha256"]:
@@ -749,8 +767,10 @@ def verify_publication_inputs(directory, prepared):
 
 
 def publish(directory, receipt, prepared):
-    publication_allowed()
+    draft_only = release_options()[0] == "StageDraft"
+    publication_allowed(draft=draft_only)
     candidate, preparation = verify_publication_inputs(directory, prepared)
+    waiver = "Integration tests skipped by release waiver." if candidate.get("skipIntegrationTests") else ""
     version = candidate["wheel"]["version"]
     tag = f"v{version}"
     existing_tag = tag_commit(tag)
@@ -761,8 +781,10 @@ def publish(directory, receipt, prepared):
         release = github(f"repos/{REPOSITORY}/releases", method="POST", data={
             "tag_name": tag, "target_commitish": candidate["sourceCommit"],
             "name": f"azure-iot-ops {version}", "draft": True,
-            "prerelease": preparation["prerelease"], "generate_release_notes": True,
+            "prerelease": preparation["prerelease"], "generate_release_notes": True, "body": waiver,
         })
+    if draft_only and not release["draft"]:
+        raise ValueError("StageDraft cannot reuse or modify an already published release.")
     if (release["target_commitish"] != candidate["sourceCommit"] and existing_tag != candidate["sourceCommit"]
             or release["prerelease"] != preparation["prerelease"]):
         raise ValueError("Existing release has different source or prerelease metadata.")
@@ -784,6 +806,23 @@ def publish(directory, receipt, prepared):
             )
             if uploaded.get("digest") != "sha256:" + asset["sha256"]:
                 raise ValueError("Uploaded release asset digest mismatch; release remains a draft.")
+    if waiver and waiver not in (release.get("body") or ""):
+        if not release["draft"]:
+            raise ValueError("Published release does not record the integration waiver; refusing to edit it.")
+        github(f"repos/{REPOSITORY}/releases/{release['id']}", method="PATCH",
+               data={"body": waiver + "\n\n" + (release.get("body") or "")})
+    if draft_only:
+        staged = github(f"repos/{REPOSITORY}/releases/{release['id']}")
+        if (not staged["draft"] or staged["target_commitish"] != candidate["sourceCommit"]
+                or staged["prerelease"] != preparation["prerelease"]
+                or waiver and waiver not in (staged.get("body") or "")
+                or tag_commit(tag) not in (None, candidate["sourceCommit"])):
+            raise ValueError("Staged release identity or integration waiver changed.")
+        verify_assets(staged, candidate)
+        result = {"release": release["id"], "tag": tag, "draft": True, "candidate": candidate}
+        write(receipt, result)
+        print(f"Staged draft {release['id']} for {tag}; no tag creation, publication or index PR.", flush=True)
+        return result
     if release["draft"]:
         current_tag = tag_commit(tag)
         if current_tag is None:
@@ -792,11 +831,14 @@ def publish(directory, receipt, prepared):
         elif current_tag != candidate["sourceCommit"]:
             raise ValueError("Tag changed during staging; release remains a draft.")
         github(f"repos/{REPOSITORY}/releases/{release['id']}", method="PATCH", data={"draft": False})
-    verify_public_assets(github(f"repos/{REPOSITORY}/releases/{release['id']}"), candidate)
+    published = github(f"repos/{REPOSITORY}/releases/{release['id']}")
+    verify_public_assets(published, candidate)
+    if waiver and waiver not in (published.get("body") or ""):
+        raise ValueError("Published release is missing its integration waiver.")
     if tag_commit(tag) != candidate["sourceCommit"]:
         raise ValueError("Published tag no longer matches the qualified commit.")
     wheel_url = f"https://github.com/{REPOSITORY}/releases/download/{tag}/{candidate['wheel']['file']}"
-    result = {"release": release["id"], "tag": tag, "wheelUrl": wheel_url, "candidate": candidate}
+    result = {"release": release["id"], "tag": tag, "wheelUrl": wheel_url, "draft": False, "candidate": candidate}
     write(receipt, result)
     print(f"Published https://github.com/{REPOSITORY}/releases/tag/{tag}", flush=True)
     return result
@@ -875,49 +917,20 @@ def index_pull_request(directory, receipt, work_dir, prepared):
         "title": f"[azure-iot-ops] Update to {candidate['wheel']['version']}", "head": head, "base": "main",
         "body": (f"Release: https://github.com/{REPOSITORY}/releases/tag/{publication['tag']}\n\n"
                  f"Source: `{candidate['sourceCommit']}`\n\nWheel SHA-256: `{candidate['wheel']['sha256']}`\n\n"
-                 "Qualified by the Azure IoT Operations CLI ADO release pipeline. Index-team review is required; "
+                 + ("Integration tests skipped by release waiver. " if candidate.get("skipIntegrationTests")
+                    else "Qualified by the Azure IoT Operations CLI ADO release pipeline. ")
+                 + "Index-team review is required; "
                  "this automation does not merge the PR."),
     })
     print(f"Index review required: {result['html_url']}", flush=True)
     return {"status": "review-required", "url": result["html_url"]}
 
 
-def upload_wheel(directory, work_dir):
-    if release_options()[0] != "Release" or os.environ.get("RELEASE_UPLOAD_WHEEL", "").lower() != "true":
-        raise ValueError("Storage upload requires explicit Release mode and uploadWheel opt-in.")
-    automation_allowed()
-    if branch(environment("RELEASE_SOURCE_BRANCH")) != "refs/heads/dev":
-        raise ValueError("Ops publication requires the protected dev source branch.")
-    candidate = verify_candidate(directory)
-    url = urlsplit(environment("RELEASE_STORAGE_CONTAINER_URL"))
-    if (url.scheme != "https" or not re.fullmatch(r"[a-z0-9]{3,24}\.blob\.core\.windows\.net", url.netloc)
-            or not re.fullmatch(r"/[a-z0-9][a-z0-9-]{1,61}[a-z0-9]", url.path)
-            or url.query or url.fragment):
-        raise ValueError("Configure an approved public-Azure container URL without embedded credentials.")
-    account = url.hostname.split(".")[0]
-    wheel = candidate["wheel"]
-    common = ["--auth-mode", "login", "--account-name", account, "--container-name", url.path[1:],
-              "--name", wheel["file"], "--only-show-errors"]
-    exists = json.loads(command(["az", "storage", "blob", "exists", *common, "--output", "json"]))["exists"]
-    if type(exists) is not bool:
-        raise ValueError("Storage did not return a boolean existence result.")
-    work_dir.mkdir(parents=True, exist_ok=False)
-    if not exists:
-        subprocess.run(["az", "storage", "blob", "upload", *common, "--file", str(directory / wheel["file"]),
-                        "--overwrite", "false", "--output", "none"], check=True)
-    downloaded = work_dir / wheel["file"]
-    subprocess.run(["az", "storage", "blob", "download", *common, "--file", str(downloaded),
-                    "--output", "none"], check=True)
-    if digest(downloaded) != wheel["sha256"]:
-        raise ValueError("Stored wheel differs from the qualified candidate; no overwrite was attempted.")
-    print(f"Verified storage wheel {wheel['file']} with SHA-256 {wheel['sha256']}.", flush=True)
-
-
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("operation", choices=[
         "access", "options", "plan", "resolve", "checkout", "build", "candidate", "verify", "integrate", "cancel",
-        "verify-integration", "feed-environment", "prepare-publication", "publish", "index", "upload",
+        "verify-integration", "feed-environment", "prepare-publication", "publish", "index",
         "unit-constraints", "unit-inventory",
         "verify-runtime",
     ])
@@ -932,12 +945,16 @@ def main():
         check_access()
     elif args.operation == "options":
         mode, create_index_pr = release_options()
-        print(json.dumps({"mode": mode, "createIndexPr": create_index_pr}))
+        skipped = skip_integration_tests()
+        if skipped:
+            print("##vso[task.logissue type=warning]Integration tests skipped by release waiver.")
+        print(json.dumps({"mode": mode, "createIndexPr": create_index_pr, "skipIntegrationTests": skipped}))
     elif args.operation == "plan":
         print(json.dumps({
             "sourceBranch": branch(environment("RELEASE_SOURCE_BRANCH")),
             "mode": "Plan only; governed onboarding; no qualification, release, tag, or index PR.",
             "integrationPipeline": 164, "unitMatrix": "Python 3.10-3.13 on Ubuntu, Windows and macOS",
+            "skipIntegrationTests": skip_integration_tests(),
         }, indent=2))
     elif args.operation in ("resolve", "checkout"):
         checkout(args.source, resolving=args.operation == "resolve")
@@ -963,8 +980,6 @@ def main():
         verify_integration_artifacts(args.directory, args.work_dir)
     elif args.operation == "publish":
         publish(args.directory, args.record, args.prepared)
-    elif args.operation == "upload":
-        upload_wheel(args.directory, args.work_dir)
     elif args.operation == "index":
         result = index_pull_request(args.directory, args.record, args.work_dir, args.prepared)
         write(args.work_dir / "index-pr.json", result)
