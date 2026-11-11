@@ -1147,6 +1147,10 @@ def test_yaml_keeps_dry_run_separate_and_reuses_existing_tests():
     assert not {"releaseBuildId", "azureServiceConnection", "subscriptionId", "resourceGroup",
                 "customLocationsObjectId"} & {param["name"] for param in value["parameters"]}
     assert value["extends"]["parameters"]["azureServiceConnection"] == "${{ variables.TestAzureServiceConnection }}"
+    assert list(value).index("variables") < list(value).index("extends")
+    assert "variables" not in yaml.safe_load(
+        (ROOT / ".azure-devops/templates/integration-pipeline.yml").read_text(encoding="utf-8")
+    )
     assert value["extends"]["template"] == "templates/integration-pipeline.yml"
     region = next(param for param in value["parameters"] if param["name"] == "clusterRegion")
     assert set(region["values"]) == pipeline.release.CLUSTER_REGIONS | {"usgovvirginia"}

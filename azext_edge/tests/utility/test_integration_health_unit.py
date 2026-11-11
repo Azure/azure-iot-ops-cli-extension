@@ -133,4 +133,5 @@ def test_health_has_no_dry_run_or_repository_cron():
     entry = yaml.safe_load((ROOT / ".azure-devops/integration-health.yml").read_text())
     assert entry["trigger"] == entry["pr"] == "none" and "schedules" not in entry
     assert entry["extends"]["parameters"] == {"health": True, "mode": "Integration tests"}
+    assert entry["variables"] == [{"group": "iot-ops-cli-integration-health"}]
     assert entry["appendCommitMessageToRunName"] is False

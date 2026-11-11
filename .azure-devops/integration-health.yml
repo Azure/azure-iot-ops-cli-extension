@@ -7,6 +7,9 @@ appendCommitMessageToRunName: false
 pool:
   vmImage: ubuntu-24.04
 
+variables:
+  - group: iot-ops-cli-integration-health
+
 extends:
   template: templates/integration-pipeline.yml
   parameters:

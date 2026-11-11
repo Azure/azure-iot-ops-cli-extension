@@ -85,6 +85,13 @@ parameters:
       - 90
       - 180
       - 360
+variables:
+  - template: templates/integration-profile.yml
+    parameters:
+      cloud: ${{ parameters.cloud }}
+      version: v1
+      region: ${{ parameters.clusterRegion }}
+      services: ${{ parameters.testScenarios }}
 extends:
   template: templates/integration-pipeline.yml
   parameters:
@@ -101,10 +108,3 @@ extends:
     resourceGroup: $(TestResourceGroup)
     customLocationsObjectId: $(TestCustomLocationsObjectId)
     releaseBuildId: $(ReleaseCandidateBuildId)
-variables:
-  - template: templates/integration-profile.yml
-    parameters:
-      cloud: ${{ parameters.cloud }}
-      version: v1
-      region: ${{ parameters.clusterRegion }}
-      services: ${{ parameters.testScenarios }}
