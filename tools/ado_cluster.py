@@ -23,9 +23,10 @@ from xml.etree import ElementTree
 import yaml
 
 import ado_diagnostics as diagnostics
+import owned_resources
 from ado_integration import (
     ROOT, expected_locations, expected_phases, junit_results, producer, read, required, scenario_timeout, write,
-    validate_cluster_region,
+    cloud_name, validate_cluster_region, ownership_identity,
 )
 
 
@@ -86,7 +87,7 @@ def validate_state(state):
     if state["producer"] != producer() or state["subscription"] != str(UUID(required("OPS_SUBSCRIPTION"))):
         raise ValueError("Provisioning state does not match this run and approved subscription.")
     suffix = state["suffix"]
-    if not re.fullmatch(r"[0-9a-f]{11}", suffix):
+    if not re.fullmatch(r"[0-9a-f]{15}", suffix):
         raise ValueError("Invalid attempt resource suffix.")
     if not re.fullmatch(r"[A-Za-z0-9_().-]{1,90}", state["resourceGroup"]):
         raise ValueError("Invalid resource group.")
@@ -103,7 +104,14 @@ def validate_state(state):
     if (state["resources"] != expected or state["cluster"] != f"opado{suffix}"
             or state["instance"] != f"inst{suffix}"):
         raise ValueError("Refusing resources outside this attempt's exact ownership manifest.")
-    validate_cluster_region(state["locations"]["clusterRegion"])
+    cloud = state.get("cloud", "AzureCloud")
+    if cloud != cloud_name():
+        raise ValueError("Provisioning state does not match the approved cloud.")
+    validate_cluster_region(state["locations"]["clusterRegion"], cloud)
+    if cloud == "AzureUSGovernment" and (
+            state["locations"] != dict.fromkeys(("clusterRegion", "resourceRegion", "namespaceRegion"), "usgovvirginia")
+            or state["row"]["scenario"]["channel"] != "stable"):
+        raise ValueError("Fairfax requires stable runtime with all resources in usgovvirginia.")
     if state.get("health"):
         from integration_health import validate
         validate(state["health"]["profile"])
@@ -111,12 +119,19 @@ def validate_state(state):
                    ("clusterRegion", "resourceRegion", "namespaceRegion")}
         if state["locations"] != planned:
             raise ValueError("Resource locations differ from the health profile.")
+    if state.get("monitor") or os.environ.get("OPS_MONITOR_BUNDLE"):
+        from release_monitor_adapter import validate_state as validate_monitor
+        validate_monitor(state)
+    owned_resources.validate_context(state.get("ownership", {}))
+    if any(state["ownership"].get(key) != value for key, value in ownership_identity(state).items()):
+        raise ValueError("Resource ownership context differs from the scenario identity.")
 
 
 def check_account(commands, state):
     account = commands.az_json("account", "show")
-    if account["id"].lower() != state["subscription"] or account["environmentName"] != "AzureCloud":
-        raise ValueError("Azure CLI is not using the approved public-cloud subscription.")
+    if (account["id"].lower() != state["subscription"]
+            or account["environmentName"] != state.get("cloud", "AzureCloud")):
+        raise ValueError("Azure CLI is not using the approved cloud and subscription.")
 
 
 def resource_ids(commands, state):
@@ -302,7 +317,7 @@ def connect_cluster(commands, state, output):
 def create_resources(commands, state):
     names = {key: value.rsplit("/", 1)[-1] for key, value in state["resources"].items()}
     common = ["--resource-group", state["resourceGroup"]]
-    location = ["--location", state["locations"]["resourceRegion"]] if state.get("health") else []
+    location = ["--location", state["locations"]["resourceRegion"]] if "resourceRegion" in state["locations"] else []
     commands.run([
         "az", "storage", "account", "create", *common, "--name", names["storage"],
         "--enable-hierarchical-namespace", "--public-network-access", "Disabled",
@@ -316,7 +331,7 @@ def create_resources(commands, state):
     ])
     commands.run([
         "az", "iot", "ops", "ns", "create", *common, "--name", names["namespace"],
-        "--location", state["locations"]["namespaceRegion"] if state.get("health") else "australiaeast",
+        "--location", state["locations"].get("namespaceRegion", "australiaeast"),
         "--output", "none",
     ])
 
@@ -331,6 +346,7 @@ def test_environment(state, output):
         "azext_edge_wheel": state["wheel"], "azext_edge_wheel_sha256": state["sha256"],
         "azext_edge_rg": state["resourceGroup"], "azext_edge_cluster": state["cluster"],
         "azext_edge_instance": state["instance"], "azext_edge_runtime_channel": scenario["channel"],
+        "azext_edge_cloud": state.get("cloud", "AzureCloud"),
         "azext_edge_upgrade_baseline": json.dumps(scenario["baseline"]),
         "azext_edge_init_args": scenario["init_args"], "azext_edge_create_args": scenario["create_args"],
         "azext_edge_schema_registry_id": state["resources"]["registry"],
@@ -338,6 +354,7 @@ def test_environment(state, output):
         "azext_edge_sp_object_id": required("AZURE_CLIENT_ID"),
         "AZURE_EXTENSION_USE_DYNAMIC_INSTALL": "no", "AZURE_TEST_RUN_LIVE": "True",
         "COVERAGE_FILE": str(output / "coverage.dat"),
+        owned_resources.ENV: str((output / "state.json").resolve()),
     })
     protected = {"azext_edge_aio_cleanup", "azext_edge_init_continue_on_error", "azext_edge_skip_init"}
     for item in scenario["env"]:
@@ -349,7 +366,7 @@ def test_environment(state, output):
 
 
 def verify_locations(commands, state, output):
-    if not state.get("health"):
+    if not state.get("health") and state.get("cloud") != "AzureUSGovernment":
         return
     observed = {}
     for key, expected in expected_locations(state["locations"]).items():
@@ -368,11 +385,17 @@ def test_phase(commands, state, output, phase, marker):
     environment = test_environment(state, output)
     target = Path(required("AZURE_EXTENSION_DIR")) / "azure-iot-ops"
     junit = output / "junit" / f"{phase}.xml"
+    source = ROOT
+    if state.get("monitor"):
+        from release_monitor_adapter import test_source
+        source = test_source(state)
     args = [
         sys.executable, str(ROOT / "tools/integration_runner.py"), "--extension-dir", str(target),
-        "--tests", str(ROOT / "azext_edge/tests"), "--work-dir", str(output / "work" / phase),
-        "--junit", str(junit), "--coverage-config", str(ROOT / ".coveragerc"), "--scenario", marker,
+        "--tests", str(source / "azext_edge/tests"), "--work-dir", str(output / "work" / phase),
+        "--junit", str(junit), "--coverage-config", str(source / ".coveragerc"), "--scenario", marker,
     ]
+    if state.get("monitor"):
+        args.append("--monitor")
     if phase == "scenario" and state["row"]["scenario"]["parallel"]:
         args += ["-n", "6", "--dist", "worksteal"]
     commands.run(args, env=environment, cwd=output, timeout=18000)
@@ -391,7 +414,7 @@ def smoke(commands, state, output):
         ["check", "--post"], ["check", "--as-object"],
         ["check", "--svc", "broker", "--resources", "broker", "brokerlistener"],
         ["asset", "query", "-g", state["resourceGroup"], "--location",
-         state["locations"]["namespaceRegion"] if state.get("health") else "westus"],
+         state["locations"].get("namespaceRegion", "westus")],
         ["get-versions", "--inline"],
     ]
     try:
@@ -420,13 +443,15 @@ def cleanup(output):
         return
     state = read(output / "state.json")
     validate_state(state)
-    commands = Commands()
+    deadline = time.monotonic() + 1050
+    commands = Commands(budget=1050)
     state["cleanup"] = "incomplete"
     write(output / "state.json", state)
     errors = []
     try:
         if state["ownershipChecked"]:
             check_account(commands, state)
+            owned_resources.activate(output / "state.json")
             present = resource_ids(commands, state)
             if state["resources"]["instance"].lower() in present:
                 try:
@@ -435,36 +460,17 @@ def cleanup(output):
                 except (subprocess.CalledProcessError, TimeoutError) as error:
                     print(f"##vso[task.logissue type=error]Instance cleanup failed ({type(error).__name__}).")
                     errors.append("instance")
-            present = resource_ids(commands, state)
-            for key in ("instance", "cluster", "registry", "namespace", "storage"):
-                resource = state["resources"][key]
-                if resource.lower() in present:
-                    args = ["az", "resource", "delete", "--ids", resource]
-                    if key in {"registry", "namespace"}:
-                        args += ["--api-version", "2026-04-01"]
-                    try:
-                        commands.run(args, timeout=180)
-                    except (subprocess.CalledProcessError, TimeoutError) as error:
-                        print(f"##vso[task.logissue type=error]{key} cleanup failed ({type(error).__name__}).")
-                        errors.append(key)
-            for attempt in range(20):
-                remaining = resource_ids(commands, state) & {value.lower() for value in state["resources"].values()}
-                if not remaining:
-                    break
-                if attempt == 19:
-                    raise RuntimeError("Attempt resources remain after cleanup.")
-                print(f"Waiting for {len(remaining)} deleted attempt resources to disappear.", flush=True)
-                time.sleep(15)
+            owned_resources.cleanup(output / "state.json", timeout=min(600, max(0, deadline - time.monotonic())))
     finally:
         if state.get("clusterStarted"):
             _, unit = cluster_paths(state)
             result = subprocess.run(
                 ["sudo", "-n", "systemctl", "show", unit, "--property=LoadState", "--value"],
-                capture_output=True, text=True, check=False,
+                capture_output=True, text=True, check=False, timeout=30,
             )
             if result.stdout.strip() != "not-found":
                 result.check_returncode()
-                commands.run(["sudo", "-n", "systemctl", "stop", unit])
+                Commands().run(["sudo", "-n", "systemctl", "stop", unit], timeout=60)
     if errors:
         raise RuntimeError(f"Cleanup had failures: {', '.join(errors)}. Inspect retained state and retry cleanup.")
     state["cleanup"] = "passed"
@@ -474,6 +480,9 @@ def cleanup(output):
 def run(output):
     state = read(output / "state.json")
     validate_state(state)
+    if state.get("monitor"):
+        from release_monitor_adapter import test_source
+        test_source(state)
     auth = None
     collector = None
     try:
@@ -485,6 +494,7 @@ def run(output):
             raise ValueError("Attempt resource names already exist; refusing reuse.")
         state["ownershipChecked"] = True
         write(output / "state.json", state)
+        owned_resources.activate(output / "state.json")
         directory, unit = cluster_paths(state)
         collector = diagnostics.HookCollector(
             output, directory, unit, f"ops-diagnostics-{state['row']['key']}-{state['attempt']}",
@@ -496,6 +506,9 @@ def run(output):
         connect_cluster(commands, state, output)
         create_resources(commands, state)
         test_phase(commands, state, output, "init", "init_scenario_test")
+        if state.get("monitor"):
+            from release_monitor_adapter import verify_runtime
+            verify_runtime(commands, state, output)
         verify_locations(commands, state, output)
         scenario = state["row"]["scenario"]
         if scenario["tox_env"]:
@@ -505,6 +518,8 @@ def run(output):
             commands.run(["az", "iot", "ops", "delete", "--name", state["instance"],
                           "-g", state["resourceGroup"], "--yes"], timeout=1800)
             test_phase(commands, state, output, "redeploy", "init_scenario_test")
+            if state.get("monitor"):
+                verify_runtime(commands, state, output)
         if any(state["phases"].get(phase) != "passed" for phase in expected_phases(state["row"])):
             raise ValueError("Required scenario phase is incomplete.")
         if auth.poll() is not None:

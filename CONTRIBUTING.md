@@ -2,7 +2,122 @@
 
 This guide will assist you in setting up a local development environment for this extension.
 
+## Fairfax ADO integrations
+
+Use the existing integration pipeline with `cloud: AzureUSGovernment`,
+`clusterRegion: usgovvirginia` and `runtimeChannels: [stable]`. Supply a Fairfax
+ARM service connection, test subscription, dedicated resource group and the
+Fairfax tenant's custom-locations service-principal object ID. The public-cloud
+defaults for those inputs are not Fairfax credentials. Use an automation identity
+with the required fixture and role-assignment permissions, not an interactive
+user password stored in pipeline variables.
+
+The same native ITs run unchanged. Planning rejects preview runtime and release
+candidate qualification in Fairfax. Storage, schema registry and namespace
+fixtures are placed explicitly in `usgovvirginia`, and observed resource locations
+are required in the results. Plans, execution state and cleanup bind the cloud
+as well as the approved subscription/group and exact attempt-owned resources.
+
+Runtime and upgrade assertions use the Fairfax catalog. Local tox runs preserve
+`AZURE_CONFIG_DIR`, `KUBECONFIG`, `REQUESTS_CA_BUNDLE` and `SSL_CERT_FILE`; use a
+dedicated test cluster and isolated Azure profile. This enables execution but
+does not establish that a particular service connection or runtime deployment
+has passed live qualification.
+
 We also regularly utilize GitHub Codespaces, and have automated this environment setup in our [devcontainer config](./.devcontainer/devcontainer.json)
+
+## Released-version monitors
+
+`.azure-devops/release-monitor.yml` is shared by six independent definitions:
+`Azure IoT Operations CLI - Release Health (<Public|Fairfax> <v1|v2|v3>)`.
+The slots mean newest, previous and third explicitly supported milestone, not CLI
+version numbers. `.azure-devops/release-monitors.json` currently maps `v1` to `1.5`,
+`v2` to `1.4` and `v3` to `1.3`. Update that reviewed mapping when support changes;
+pipeline IDs, names, dashboard references and configured resource groups stay stable.
+Discovery selects the newest published CLI patch for each configured stable runtime
+family. A newer milestone does not automatically move or invalidate the selected
+support window. Run titles and manifests record the slot and actual CLI/runtime versions.
+
+Each run verifies GitHub's wheel SHA256, metadata, runtime profile and exact
+released source. It uses that release's scenario configuration, tests and fixtures
+with current native orchestration. The deployed AIO extension version/train must
+match the selected cloud's bundled runtime. All planned scenarios, their latest
+attempts, JUnit and cleanup must pass; monitor evidence cannot qualify a release.
+No AIO Mooncake definitions are generated. Older releases without Fairfax profiles
+are explicitly blocked, never redirected to the Public profile. Fairfax currently
+supports only `v1`; `v2` and `v3` stay disabled and are rejected before acquisition.
+The released Fairfax test-helper catalog is bound to the active cloud in every
+pytest worker, without modifying product files or weakening runtime assertions.
+
+Generate disabled definition payloads using an existing same-repository definition:
+
+```bash
+az pipelines build definition show --id 167 --org https://dev.azure.com/azureiotdevxp \
+  --project 9c543948-e573-4146-832a-bf16b1531204 > baseline.json
+python tools/release_monitor.py definitions \
+  --configuration .azure-devops/release-monitors.json --baseline baseline.json \
+  --branch refs/heads/<reviewed-automation-branch> --output definitions.json
+```
+
+Apply each payload through the ADO build-definitions API after the reviewed branch
+exists. Reuse definition **167** for Public v1; update matching definitions rather
+than creating duplicates. Integration **164** and Release **165** stay separate.
+Payloads use `\official\release-health`,
+disabled queueing, no triggers/schedules, and non-overridable variables. The runner
+also checks definition name, repository and every configured target variable.
+Never store personal account passwords or tokens in these files.
+
+Keep all definitions disabled until an owner approves automation connections,
+resource scopes/RBAC, capacity and live qualification. Each scenario attempt uses
+the configured, pre-created resource group and distinct resources. All scenarios,
+including Trust Bundle, can run concurrently without a cross-run lock. The runner
+never creates or deletes a resource group. Cleanup must target only the attempt's
+owned resources, including resources created by its test fixtures.
+An administrator must provision the configured groups once and grant the service
+identity the resource-specific deployment and RBAC operations needed within them;
+do not grant subscription-wide Owner merely to make the pipeline pass.
+Then enable queueing and explicitly select `runIntegration: true`. Preparation
+alone deliberately fails rather than reporting healthy monitoring. Retries reuse
+the first published release selection. No recurring schedule is supplied before
+live execution and capacity are approved; apply the same schedule policy to the
+IoT and AIO monitor sets. Fairfax needs its own ARM connection, subscription and
+tenant-specific custom-locations object ID; a source PR does not qualify older wheels.
+Historical source-health runs retained on definition 167 are not released-version evidence.
+
+### Fixed-group isolation and recovery
+
+Current ADO native, release-triggered and release-health attempts share only the
+pre-created group, not their resource names. Main fixtures use a fresh 15-hex suffix;
+released test helpers retain deterministic xdist collection but generate independent
+runtime names. The pre-provisioning state artifact binds ownership to the cloud,
+subscription, group, build, source/wheel, scenario, locations and retry attempt.
+Legacy GitHub workflows and local tox execution are unchanged.
+
+The test harness records creation intents before ARM writes and adds reserved
+`cliTestOwner` metadata: tags on tracked roots, descriptions on role assignments,
+and a parameter on ARM deployments. Only this metadata is hidden from test-visible
+responses, preserving the selected tests' user-tag assertions and installed product
+bytes. Ownership failures cannot qualify as expected-negative test successes.
+Inline incremental deployments undergo ownership checks using ARM what-if.
+That check is not atomic with the deployment; unique names minimize the remaining
+collision window, and a pre-existing foreign owner is never adopted.
+
+Cleanup rechecks each exact owner before deletion, waits for dependency ordering and
+absence, and fails explicitly for unfinished creation or cleanup. It does not delete
+the group or sweep unrelated resources. This cannot guarantee immediate deletion
+after agent loss or an Azure outage. After the original attempt has stopped, retain
+its state and event artifacts and retry exact-owner recovery with the approved
+cloud profile and RG-scoped permissions:
+
+```bash
+python tools/owned_resources.py cleanup --manifest <original-state.json> \
+  --cloud <AzureCloud-or-AzureUSGovernment> --subscription <original-subscription> \
+  --resource-group <original-fixed-group>
+```
+
+Server-side ownership markers permit recovery of fixture resources even if the final
+journal upload was lost. Recheck after outstanding Azure operations settle; recovery
+is not release qualification. Never substitute a different attempt's manifest.
 
 ## Cloud-aware management clients
 

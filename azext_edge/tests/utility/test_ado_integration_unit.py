@@ -38,12 +38,15 @@ UUID_VALUE = "11111111-1111-4111-8111-111111111111"
 
 @pytest.fixture(autouse=True)
 def pipeline_environment(monkeypatch, tmp_path):
+    monkeypatch.setattr(cluster.owned_resources, "activate", Mock())
+    monkeypatch.setattr(cluster.owned_resources, "cleanup", Mock())
     for name, value in {
         "SYSTEM_DEFINITIONID": "164", "BUILD_BUILDID": "123", "BUILD_SOURCEVERSION": "a" * 40,
         "SYSTEM_JOBATTEMPT": "1", "OPS_SCENARIOS": "edge", "OPS_CHANNELS": "stable", "OPS_PYTHONS": "3.13",
         "OPS_BASELINES": "{}", "OPS_SUBSCRIPTION": SUBSCRIPTION, "OPS_RESOURCE_GROUP": "ops-cli-int-test-rg",
         "OPS_CUSTOM_LOCATIONS_OID": UUID_VALUE, "OPS_CANDIDATE_DIGEST": "b" * 64,
         "OPS_SCENARIO_TIMEOUT_MINUTES": "360", "OPS_CLUSTER_REGION": "westus2",
+        "OPS_CLOUD": "AzureCloud",
         "AZURE_CLIENT_ID": UUID_VALUE, "AZURE_TENANT_ID": UUID_VALUE, "SYSTEM_ACCESSTOKEN": "offline-token",
         "AZURESUBSCRIPTION_SERVICE_CONNECTION_ID": UUID_VALUE, "SYSTEM_TEAMPROJECTID": UUID_VALUE,
         "SYSTEM_PLANID": UUID_VALUE, "SYSTEM_JOBID": UUID_VALUE, "AGENT_TEMPDIRECTORY": str(tmp_path),
@@ -53,9 +56,9 @@ def pipeline_environment(monkeypatch, tmp_path):
 
 
 def make_state():
-    suffix = "a" * 11
+    suffix = "a" * 15
     prefix = f"/subscriptions/{SUBSCRIPTION}/resourceGroups/ops-cli-int-test-rg/providers"
-    return {
+    state = {
         "schema": 1, "producer": pipeline.producer(), "attempt": 1, "suffix": suffix,
         "subscription": SUBSCRIPTION, "resourceGroup": "ops-cli-int-test-rg", "customLocationsObjectId": UUID_VALUE,
         "locations": {"clusterRegion": "westus2"},
@@ -75,6 +78,66 @@ def make_state():
         "ownershipChecked": True, "phases": {"init": "passed", "scenario": "passed", "smoke": "passed"},
         "cleanup": "passed", "status": "passed",
     }
+    state["ownership"] = cluster.owned_resources.new_context(**pipeline.ownership_identity(state))
+    return state
+
+
+def test_fairfax_plan_binds_cloud_and_all_resource_locations(monkeypatch, tmp_path):
+    monkeypatch.setenv("OPS_CLOUD", "AzureUSGovernment")
+    monkeypatch.setenv("OPS_CLUSTER_REGION", "usgovvirginia")
+    pipeline.plan(tmp_path)
+    value = pipeline.read(tmp_path / "plan.json")
+    assert value["cloud"] == "AzureUSGovernment"
+    assert set(value["locations"].values()) == {"usgovvirginia"}
+    assert set(value["locations"]) == {"clusterRegion", "resourceRegion", "namespaceRegion"}
+    assert all(row["scenario"]["channel"] == "stable" for row in value["rows"])
+
+
+@pytest.mark.parametrize("setting,value", [
+    ("OPS_CHANNELS", "preview"), ("OPS_CHANNELS", "stable,preview"), ("OPS_CLUSTER_REGION", "westus2"),
+])
+def test_fairfax_rejects_unsupported_plan_before_execution(monkeypatch, tmp_path, setting, value):
+    monkeypatch.setenv("OPS_CLOUD", "AzureUSGovernment")
+    monkeypatch.setenv("OPS_CLUSTER_REGION", "usgovvirginia")
+    monkeypatch.setenv(setting, value)
+    with pytest.raises(ValueError, match="Fairfax|cluster region"):
+        pipeline.plan(tmp_path)
+    assert not (tmp_path / "plan.json").exists()
+
+
+def test_fairfax_state_and_cleanup_require_matching_cloud(monkeypatch):
+    monkeypatch.setenv("OPS_CLOUD", "AzureUSGovernment")
+    state = make_state()
+    state.update(cloud="AzureUSGovernment", locations={
+        key: "usgovvirginia" for key in ("clusterRegion", "resourceRegion", "namespaceRegion")
+    })
+    state["ownership"] = cluster.owned_resources.new_context(**pipeline.ownership_identity(state))
+    cluster.validate_state(state)
+    commands = Mock()
+    commands.az_json.return_value = {"id": SUBSCRIPTION, "environmentName": "AzureCloud"}
+    with pytest.raises(ValueError, match="approved cloud"):
+        cluster.check_account(commands, state)
+    commands.az_json.return_value["environmentName"] = "AzureUSGovernment"
+    cluster.check_account(commands, state)
+    state["locations"]["namespaceRegion"] = "australiaeast"
+    with pytest.raises(ValueError, match="all resources"):
+        cluster.validate_state(state)
+    state["cloud"] = "AzureCloud"
+    with pytest.raises(ValueError, match="approved cloud"):
+        cluster.validate_state(state)
+
+
+def test_fairfax_provisioning_never_inherits_public_resource_locations():
+    state = make_state()
+    state.update(cloud="AzureUSGovernment", locations={
+        key: "usgovvirginia" for key in ("clusterRegion", "resourceRegion", "namespaceRegion")
+    })
+    commands = Mock()
+    cluster.create_resources(commands, state)
+    assert len(commands.run.call_args_list) == 3
+    for call in commands.run.call_args_list:
+        arguments = call.args[0]
+        assert arguments[arguments.index("--location") + 1] == "usgovvirginia"
 
 
 @pytest.mark.parametrize("fixture", ["secretsync", "opcua"])
@@ -393,6 +456,26 @@ def test_gate_accepts_complete_selected_scope_not_release(tmp_path, monkeypatch)
     assert len(value["scenarios"]) == 1
 
 
+@pytest.mark.parametrize("changed", [None, "cloud", "subscription", "resourceGroup", "locations"])
+def test_fairfax_gate_binds_evidence_to_cloud_scope_and_locations(tmp_path, monkeypatch, changed):
+    directory = seed_gate(tmp_path, monkeypatch)
+    monkeypatch.setenv("OPS_CLOUD", "AzureUSGovernment")
+    plan = pipeline.read(tmp_path / "plan.json")
+    plan.update(cloud="AzureUSGovernment", subscription=SUBSCRIPTION, resourceGroup="ops-cli-int-test-rg",
+                locations=dict.fromkeys(("clusterRegion", "resourceRegion", "namespaceRegion"), "usgovvirginia"))
+    pipeline.write(tmp_path / "plan.json", plan)
+    receipt = pipeline.read(directory / "receipt.json")
+    receipt.update(cloud=plan["cloud"], locations=pipeline.expected_locations(plan["locations"]))
+    if changed:
+        receipt[changed] = "foreign"
+    pipeline.write(directory / "receipt.json", receipt)
+    if changed:
+        with pytest.raises(ValueError, match="Fairfax"):
+            pipeline.gate(tmp_path / "qualification")
+    else:
+        pipeline.gate(tmp_path / "qualification")
+
+
 @pytest.mark.parametrize("mutation", [
     "missing", "digest", "producer", "cleanup", "phase", "junit", "coverage", "newer",
 ])
@@ -440,64 +523,54 @@ def test_cleanup_rejects_foreign_state_before_commands(tmp_path, monkeypatch, fi
     commands.assert_not_called()
 
 
-def test_cleanup_deletes_only_manifest_resources_and_pins_adr_api(tmp_path, monkeypatch):
+def test_cleanup_uses_owned_resource_journal_after_instance_teardown(tmp_path, monkeypatch):
     state = make_state()
     pipeline.write(tmp_path / "state.json", state)
     commands = Mock()
+    clock = [0]
+    monkeypatch.setattr(cluster.time, "monotonic", lambda: clock[0])
+    commands.run.side_effect = lambda *args, **kwargs: clock.__setitem__(0, clock[0] + 900)
     commands.az_json.side_effect = [
         {"id": SUBSCRIPTION, "environmentName": "AzureCloud"},
         [{"id": value} for value in state["resources"].values()],
-        [{"id": value} for key, value in state["resources"].items() if key != "instance"],
-        [{"id": "/unrelated/resource"}],
     ]
     monkeypatch.setattr(cluster, "Commands", Mock(return_value=commands))
     cluster.cleanup(tmp_path)
-    calls = [call.args[0] for call in commands.run.call_args_list]
-    deletes = [args for args in calls if args[:3] == ["az", "resource", "delete"]]
-    assert len(deletes) == 4
-    assert all(args[4] in state["resources"].values() for args in deletes)
-    assert all("--api-version" in args for args in deletes if "Microsoft.DeviceRegistry" in args[4])
+    commands.run.assert_called_once_with(
+        ["az", "iot", "ops", "delete", "--name", state["instance"],
+         "-g", state["resourceGroup"], "--yes", "--force"], timeout=900,
+    )
+    cluster.owned_resources.cleanup.assert_called_once_with(tmp_path / "state.json", timeout=150)
     assert pipeline.read(tmp_path / "state.json")["cleanup"] == "passed"
 
 
-def test_cleanup_does_not_stop_after_one_delete_failure(tmp_path, monkeypatch):
+def test_cleanup_retains_instance_failure_and_attempts_other_owned_resources(tmp_path, monkeypatch):
     state = make_state()
     pipeline.write(tmp_path / "state.json", state)
     commands = Mock()
-    resources = [{"id": value} for key, value in state["resources"].items() if key != "instance"]
-    commands.az_json.side_effect = [{"id": SUBSCRIPTION, "environmentName": "AzureCloud"}, resources, resources, []]
-    commands.run.side_effect = [subprocess.CalledProcessError(1, ["az"]), None, None, None]
+    resources = [{"id": value} for value in state["resources"].values()]
+    commands.az_json.side_effect = [{"id": SUBSCRIPTION, "environmentName": "AzureCloud"}, resources]
+    commands.run.side_effect = subprocess.CalledProcessError(1, ["az"])
     monkeypatch.setattr(cluster, "Commands", Mock(return_value=commands))
     with pytest.raises(RuntimeError, match="Cleanup had failures"):
         cluster.cleanup(tmp_path)
-    assert commands.run.call_count == 4
+    cluster.owned_resources.cleanup.assert_called_once_with(tmp_path / "state.json", timeout=600)
     assert pipeline.read(tmp_path / "state.json")["cleanup"] == "incomplete"
 
 
-@pytest.mark.parametrize("stale_reads", [0, 2, 20])
-def test_cleanup_waits_boundedly_for_deleted_resources(tmp_path, monkeypatch, stale_reads):
+def test_incomplete_owned_cleanup_cannot_qualify_the_attempt(tmp_path, monkeypatch):
     state = make_state()
     pipeline.write(tmp_path / "state.json", state)
     resources = [{"id": state["resources"]["storage"]}]
     commands = Mock()
     commands.az_json.side_effect = [
-        {"id": SUBSCRIPTION, "environmentName": "AzureCloud"}, resources, resources,
-        *([resources] * stale_reads), [],
+        {"id": SUBSCRIPTION, "environmentName": "AzureCloud"}, resources,
     ]
-    sleep = Mock()
     monkeypatch.setattr(cluster, "Commands", Mock(return_value=commands))
-    monkeypatch.setattr(cluster.time, "sleep", sleep)
-    if stale_reads == 20:
-        with pytest.raises(RuntimeError, match="resources remain"):
-            cluster.cleanup(tmp_path)
-        assert pipeline.read(tmp_path / "state.json")["cleanup"] == "incomplete"
-    else:
+    cluster.owned_resources.cleanup.side_effect = RuntimeError("Owned-resource cleanup is incomplete")
+    with pytest.raises(RuntimeError, match="incomplete"):
         cluster.cleanup(tmp_path)
-        assert pipeline.read(tmp_path / "state.json")["cleanup"] == "passed"
-    assert sleep.call_count == min(stale_reads, 19)
-    commands.run.assert_called_once_with(
-        ["az", "resource", "delete", "--ids", state["resources"]["storage"]], timeout=180,
-    )
+    assert pipeline.read(tmp_path / "state.json")["cleanup"] == "incomplete"
 
 
 def test_environment_drops_control_tokens_and_truthy_false_cleanup(monkeypatch, tmp_path):
@@ -1075,7 +1148,7 @@ def test_yaml_keeps_dry_run_separate_and_reuses_existing_tests():
     assert connection["default"] == "az-iot-ops-int-sp-ado"
     assert value["extends"]["template"] == "templates/integration-pipeline.yml"
     region = next(param for param in value["parameters"] if param["name"] == "clusterRegion")
-    assert set(region["values"]) == pipeline.CLUSTER_REGIONS
+    assert set(region["values"]) == pipeline.CLUSTER_REGIONS | {"usgovvirginia"}
     value = yaml.safe_load((ROOT / ".azure-devops/templates/integration-pipeline.yml").read_text())
     template_region = next(param for param in value["parameters"] if param["name"] == "clusterRegion")
     assert template_region["default"] == region["default"] == pipeline.release.INTEGRATION_PARAMETERS["clusterRegion"]
