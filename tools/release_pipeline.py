@@ -33,11 +33,12 @@ PERMISSIONS = "https://dev.azure.com/azureiotdevxp/_apis/permissions"
 FEED = "https://pkgs.dev.azure.com/azureiotdevxp/aziotcli/_packaging/pip/pypi/simple/"
 INTEGRATION_PARAMETERS = {
     "mode": "Integration tests", "pythonVersions": ["3.13"], "upgradeBaselines": "{}",
-    "scenarioTimeoutMinutes": 360, "cloud": "public",
+    "scenarioTimeoutMinutes": 360, "cloud": "Public",
 }
 CLUSTER_REGIONS = {
-    "eastus", "eastus2", "westus", "westus2", "westus3", "southcentralus",
-    "westeurope", "northeurope", "germanywestcentral",
+    "eastus": "East US", "eastus2": "East US 2", "westus": "West US", "westus2": "West US 2",
+    "westus3": "West US 3", "southcentralus": "South Central US", "westeurope": "West Europe",
+    "northeurope": "North Europe", "germanywestcentral": "Germany West Central",
 }
 
 
@@ -362,7 +363,7 @@ def verify_runtime_inventory(source, inventory):
 def integration_parameters(candidate, cohort=None):
     key = cohort or environment("RELEASE_COHORT")
     selection = candidate["cohorts"][key]
-    return dict(INTEGRATION_PARAMETERS, clusterRegion=candidate["region"],
+    return dict(INTEGRATION_PARAMETERS, clusterRegion=CLUSTER_REGIONS[candidate["region"]],
                 releaseBuildId=candidate["producer"]["build"],
                 testScenarios=[selection["selection"]], runtimeChannels=[selection["row"]["scenario"]["channel"]])
 

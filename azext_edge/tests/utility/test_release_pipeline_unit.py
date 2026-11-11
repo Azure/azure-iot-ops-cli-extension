@@ -100,9 +100,10 @@ def test_release_region_is_frozen_and_child_drift_is_rejected(candidate, monkeyp
     release.write(directory / "candidate.json", value)
     assert release.verify_candidate(directory)["region"] == "eastus"
     build = child(value)
-    assert build["templateParameters"]["clusterRegion"] == "eastus"
+    assert build["templateParameters"]["clusterRegion"] == "East US"
+    assert build["templateParameters"]["cloud"] == "Public"
     release.validate_integration(build, value)
-    build["templateParameters"]["clusterRegion"] = "westus2"
+    build["templateParameters"]["clusterRegion"] = "West US 2"
     with pytest.raises(ValueError, match="exact release"):
         release.validate_integration(build, value)
 

@@ -4,11 +4,10 @@ This guide will assist you in setting up a local development environment for thi
 
 ## Fairfax ADO integrations
 
-Use the existing integration pipeline with `cloud: AzureUSGovernment`,
-`clusterRegion: usgovvirginia` and `runtimeChannels: [stable]`. Supply a Fairfax
-ARM service connection, test subscription, dedicated resource group and the
-Fairfax tenant's custom-locations service-principal object ID. The public-cloud
-defaults for those inputs are not Fairfax credentials. Use an automation identity
+Use the existing integration pipeline with **Cloud: Fairfax** and
+`runtimeChannels: [stable]`. The reviewed profile supplies the Fairfax ARM service
+connection, subscription, resource group and custom-locations service-principal
+object ID, and fixes the region to `usgovvirginia`. Use an automation identity
 with the required fixture and role-assignment permissions, not an interactive
 user password stored in pipeline variables.
 
@@ -38,7 +37,7 @@ Discovery selects the newest published CLI patch for each configured stable runt
 family. A newer milestone does not automatically move or invalidate the selected
 support window. Run titles and manifests record the slot and actual CLI/runtime versions.
 
-Integration and health share **Mode**, **Cloud**, **Region**, **Scenarios**,
+Integration and health share **Mode**, **Cloud**, **Public region**, **Scenarios**,
 **Python**, **Channels**, **Upgrade baselines** and **Timeout (min)**, in that order.
 Health additionally selects **Version (runtime track)** and defaults to integration
 mode. **Dry run** resolves the plan without deploying resources.
@@ -48,9 +47,13 @@ They retain published-wheel testing, are frozen with the release selection, and
 are marked `-manual`; their result follows the selected tests and required evidence,
 not whether the selections match scheduled defaults. Each selected runtime channel
 is frozen from the published release and verified against the deployed runtime.
-Release **Region** controls the integration cluster region and is bound into the
+Release **Public region** controls the integration cluster region and is bound into the
 candidate and child-run validation. Resource and namespace locations remain
 separately controlled by the scenario/cloud configuration.
+All three pipelines use named dropdowns for the supported Arc/AIO public cluster
+regions, retaining **West US 2** as the default. **Cloud** choices are **Public**
+and **Fairfax**. Fairfax always uses **US Gov Virginia**; the **Public region**
+dropdown remains visible but is ignored because ADO cannot dynamically hide it.
 
 `templates/integration-profile.yml` supplies reviewed infrastructure settings;
 connection, subscription, resource group and custom-locations identity are not

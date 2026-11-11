@@ -17,25 +17,24 @@ parameters:
   - name: cloud
     displayName: Cloud
     type: string
-    default: public
+    default: Public
     values:
-      - public
-      - fairfax
+      - Public
+      - Fairfax
   - name: clusterRegion
-    displayName: Region
+    displayName: Public region
     type: string
-    default: westus2
+    default: West US 2
     values:
-      - eastus
-      - eastus2
-      - westus
-      - westus2
-      - westus3
-      - southcentralus
-      - westeurope
-      - northeurope
-      - germanywestcentral
-      - usgovvirginia
+      - East US
+      - East US 2
+      - West US
+      - West US 2
+      - West US 3
+      - South Central US
+      - West Europe
+      - North Europe
+      - Germany West Central
   - name: testScenarios
     displayName: Scenarios
     type: stringList
@@ -88,7 +87,7 @@ parameters:
 variables:
   - template: templates/integration-profile.yml
     parameters:
-      cloud: ${{ parameters.cloud }}
+      cloud: ${{ lower(parameters.cloud) }}
       version: v1
       region: ${{ parameters.clusterRegion }}
       services: ${{ parameters.testScenarios }}
@@ -96,7 +95,7 @@ extends:
   template: templates/integration-pipeline.yml
   parameters:
     mode: ${{ parameters.mode }}
-    clusterRegion: ${{ parameters.clusterRegion }}
+    clusterRegion: ${{ variables.TestRegion }}
     testScenarios: ${{ parameters.testScenarios }}
     pythonVersions: ${{ join(',', parameters.pythonVersions) }}
     runtimeChannels: ${{ parameters.runtimeChannels }}

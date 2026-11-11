@@ -23,13 +23,22 @@ parameters:
     type: boolean
     default: false
   - name: clusterRegion
-    displayName: Region
+    displayName: Public region
     type: string
-    default: westus2
-    values: [eastus, eastus2, westus, westus2, westus3, southcentralus, westeurope, northeurope, germanywestcentral]
+    default: West US 2
+    values:
+      - East US
+      - East US 2
+      - West US
+      - West US 2
+      - West US 3
+      - South Central US
+      - West Europe
+      - North Europe
+      - Germany West Central
 
 variables:
-  RELEASE_REGION: ${{ parameters.clusterRegion }}
+  RELEASE_REGION: ${{ lower(replace(parameters.clusterRegion, ' ', '')) }}
   RELEASE_SKIP_INTEGRATION_TESTS: ${{ parameters.skipIntegrationTests }}
 
 resources:

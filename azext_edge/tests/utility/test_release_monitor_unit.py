@@ -357,9 +357,9 @@ def test_definition_generation_cannot_enable_runs_or_copy_secrets(monitor):
             assert {k: v for k, v in actual.items() if k != "default"} == {
                 k: v for k, v in expected.items() if k != "default"
             }
-        assert parameters["cloud"]["default"] == item["variables"]["MonitorCloud"]["value"]
+        assert parameters["cloud"]["default"] == item["variables"]["MonitorCloud"]["value"].capitalize()
         assert parameters["version"]["default"] == item["variables"]["MonitorTrack"]["value"]
-        assert parameters["clusterRegion"]["default"] == item["variables"]["MonitorRegion"]["value"]
+        assert parameters["clusterRegion"]["default"] == "West US 2"
         assert parameters["testScenarios"]["default"] == ["Default scenarios"]
     with pytest.raises(ValueError, match="GitHub definition"):
         monitor.definitions(config, baseline, "refs/heads/../other")

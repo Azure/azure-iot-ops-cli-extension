@@ -1151,12 +1151,21 @@ def test_yaml_keeps_dry_run_separate_and_reuses_existing_tests():
     assert value["extends"]["parameters"]["pythonVersions"] == "${{ join(',', parameters.pythonVersions) }}"
     assert value["extends"]["template"] == "templates/integration-pipeline.yml"
     region = next(param for param in value["parameters"] if param["name"] == "clusterRegion")
-    assert set(region["values"]) == pipeline.release.CLUSTER_REGIONS | {"usgovvirginia"}
+    assert set(region["values"]) == set(pipeline.release.CLUSTER_REGIONS.values())
+    assert value["extends"]["parameters"]["clusterRegion"] == "${{ variables.TestRegion }}"
+    profile = value["variables"][0]["parameters"]
+    assert profile["cloud"] == "${{ lower(parameters.cloud) }}"
+    assert profile["region"] == "${{ parameters.clusterRegion }}"
+    settings = yaml.safe_load((ROOT / ".azure-devops/templates/integration-profile.yml").read_text())["variables"]
+    fairfax = next(value["${{ if eq(parameters.cloud, 'fairfax') }}"]
+                   for value in settings if "${{ if eq(parameters.cloud, 'fairfax') }}" in value)
+    assert next(value["value"] for value in fairfax if value["name"] == "TestRegion") == "usgovvirginia"
     value = yaml.safe_load((ROOT / ".azure-devops/templates/integration-pipeline.yml").read_text())
     assert "variables" not in value
     assert next(item for item in value["parameters"] if item["name"] == "pythonVersions")["type"] == "string"
     template_region = next(param for param in value["parameters"] if param["name"] == "clusterRegion")
-    assert template_region["default"] == region["default"] == "westus2"
+    assert template_region["default"] == "westus2"
+    assert region["default"] == "West US 2"
     assert value["stages"][0]["stage"] == "Plan"
     plan_step = next(step for step in value["stages"][0]["jobs"][0]["steps"] if step.get("name") == "plan")
     assert plan_step["env"]["OPS_CLUSTER_REGION"] == "${{ parameters.clusterRegion }}"
