@@ -106,7 +106,7 @@ def public_release(value, draft=False):
     }
 
 
-@pytest.mark.parametrize("mode", ["Plan", "Validate", "StageDraft"])
+@pytest.mark.parametrize("mode", ["Plan", "Validate", "Draft"])
 def test_nonrelease_modes_cannot_request_index_submission(candidate, monkeypatch, mode):
     monkeypatch.setenv("RELEASE_MODE", mode)
     monkeypatch.setenv("RELEASE_CREATE_INDEX_PR", "True")
@@ -152,7 +152,7 @@ def test_waiver_is_bound_to_candidate_and_prevents_child_execution(candidate, mo
 @pytest.mark.parametrize("skipped", [False, True])
 def test_waived_source_does_not_require_integration_protocol(candidate, tmp_path, monkeypatch, skipped):
     monkeypatch.setenv("RELEASE_SKIP_INTEGRATION_TESTS", str(skipped))
-    monkeypatch.setenv("RELEASE_MODE", "StageDraft")
+    monkeypatch.setenv("RELEASE_MODE", "Draft")
     monkeypatch.setattr(release.subprocess, "run", Mock())
     monkeypatch.setattr(release, "command", Mock(return_value=SOURCE))
     if skipped:
@@ -379,7 +379,7 @@ def consumer_environment(candidate, monkeypatch):
         monkeypatch.setenv(name, value)
 
 
-@pytest.mark.parametrize("mode", ["Validate", "StageDraft", "Release"])
+@pytest.mark.parametrize("mode", ["Validate", "Draft", "Release"])
 def test_consumer_acquires_identical_candidate_without_rebuilding(candidate, monkeypatch, tmp_path, mode):
     directory, value = candidate
     consumer_environment(candidate, monkeypatch)
@@ -475,7 +475,7 @@ def test_publication_without_index_credentials_reuses_exact_release(candidate, m
     assert all("method" not in call.kwargs for call in network.call_args_list)
 
 
-@pytest.mark.parametrize("mode", ["StageDraft", "Release"])
+@pytest.mark.parametrize("mode", ["Draft", "Release"])
 @pytest.mark.parametrize("skipped", [False, True])
 def test_draft_is_promoted_only_after_verified_uploads(candidate, monkeypatch, tmp_path, mode, skipped):
     directory, value = candidate
@@ -513,7 +513,7 @@ def test_draft_is_promoted_only_after_verified_uploads(candidate, monkeypatch, t
     monkeypatch.setattr(release, "api", upload)
     result = release.publish(directory, tmp_path / "release.json", tmp_path / "publication.json")
     assert ("Integration tests skipped" in draft["body"]) is skipped
-    if mode == "StageDraft":
+    if mode == "Draft":
         assert [event[0] for event in events] == ["POST", "GET"]
         assert result["draft"] is True
         assert draft["draft"] is True
@@ -530,7 +530,7 @@ def test_draft_is_promoted_only_after_verified_uploads(candidate, monkeypatch, t
         assert result["draft"] is False
 
 
-@pytest.mark.parametrize("mode", ["StageDraft", "Release"])
+@pytest.mark.parametrize("mode", ["Draft", "Release"])
 def test_bad_upload_never_promotes_draft(candidate, tmp_path, monkeypatch, mode):
     monkeypatch.setenv("RELEASE_MODE", mode)
     draft = public_release(candidate[1], draft=True)
@@ -544,7 +544,7 @@ def test_bad_upload_never_promotes_draft(candidate, tmp_path, monkeypatch, mode)
 
 
 def test_draft_mode_rejects_already_public_release(candidate, tmp_path, monkeypatch):
-    monkeypatch.setenv("RELEASE_MODE", "StageDraft")
+    monkeypatch.setenv("RELEASE_MODE", "Draft")
     monkeypatch.setattr(release, "find_release", Mock(return_value=public_release(candidate[1])))
     monkeypatch.setattr(release, "tag_commit", Mock(return_value=SOURCE))
     with pytest.raises(ValueError, match="already published"):
@@ -555,7 +555,7 @@ def test_draft_mode_rejects_already_public_release(candidate, tmp_path, monkeypa
 @pytest.mark.parametrize("draft", [False, True])
 def test_waiver_updates_existing_draft_notes_but_never_public_notes(candidate, tmp_path, monkeypatch, draft):
     directory, value = candidate
-    monkeypatch.setenv("RELEASE_MODE", "StageDraft" if draft else "Release")
+    monkeypatch.setenv("RELEASE_MODE", "Draft" if draft else "Release")
     monkeypatch.setenv("RELEASE_SKIP_INTEGRATION_TESTS", "true")
     value.update(skipIntegrationTests=True, cohorts={})
     release.write(directory / "candidate.json", value)
@@ -588,7 +588,7 @@ def test_waiver_updates_existing_draft_notes_but_never_public_notes(candidate, t
 
 @pytest.mark.parametrize("change", [{"draft": False}, {"target_commitish": "f" * 40}, {"assets": []}])
 def test_draft_requires_fresh_identity_and_asset_verification(candidate, tmp_path, monkeypatch, change):
-    monkeypatch.setenv("RELEASE_MODE", "StageDraft")
+    monkeypatch.setenv("RELEASE_MODE", "Draft")
     staged = public_release(candidate[1], draft=True)
     monkeypatch.setattr(release, "find_release", Mock(return_value=staged))
     monkeypatch.setattr(release, "tag_commit", Mock(return_value=None))
@@ -673,7 +673,7 @@ def test_yaml_parallel_qualification_requires_all_gates_and_no_default_publicati
     assert parameters["createIndexPr"]["default"] is False
     assert "uploadWheel" not in parameters
     assert parameters["skipIntegrationTests"]["default"] is False
-    assert parameters["mode"]["values"] == ["Plan", "Validate", "StageDraft", "Release"]
+    assert parameters["mode"]["values"] == ["Plan", "Validate", "Draft", "Release"]
     assert root["variables"]["RELEASE_SKIP_INTEGRATION_TESTS"] == "${{ parameters.skipIntegrationTests }}"
     template = yaml.safe_load((ROOT / ".azure-devops/templates/release-stages.yml").read_text(encoding="utf-8"))
     stages = {"Resolve": template["stages"][0]}
@@ -697,7 +697,7 @@ def test_yaml_parallel_qualification_requires_all_gates_and_no_default_publicati
     assert list(template["stages"][-2]) == [
         "${{ if and(ne(parameters.mode, 'Plan'), not(parameters.skipIntegrationTests)) }}"
     ]
-    assert list(template["stages"][-1]) == ["${{ if in(parameters.mode, 'StageDraft', 'Release') }}"]
+    assert list(template["stages"][-1]) == ["${{ if in(parameters.mode, 'Draft', 'Release') }}"]
     assert "or(${{ parameters.skipIntegrationTests }}, eq(dependencies.Integration.result, 'Succeeded'))" in (
         stages["Publish"]["condition"]
     )

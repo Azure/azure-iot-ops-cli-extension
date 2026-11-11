@@ -5,7 +5,7 @@ parameters:
     displayName: Mode
     type: string
     default: Plan
-    values: [Plan, Validate, StageDraft, Release]
+    values: [Plan, Validate, Draft, Release]
   - name: sourceBranch
     type: string
     default: dev
@@ -435,7 +435,7 @@ stages:
                   RELEASE_SOURCE_COMMIT: $(sourceCommit)
                   RELEASE_COHORT: $(cohort)
 
-  - ${{ if in(parameters.mode, 'StageDraft', 'Release') }}:
+  - ${{ if in(parameters.mode, 'Draft', 'Release') }}:
       - stage: Publish
         displayName: Stage draft or publish
         dependsOn:

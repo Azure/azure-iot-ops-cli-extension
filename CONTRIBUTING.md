@@ -76,8 +76,8 @@ owned resources, including resources created by its test fixtures.
 An administrator must provision the configured groups once and grant the service
 identity the resource-specific deployment and RBAC operations needed within them;
 do not grant subscription-wide Owner merely to make the pipeline pass.
-Then enable queueing and explicitly select `runIntegration: true`. Preparation
-alone deliberately fails rather than reporting healthy monitoring. Retries reuse
+Then enable queueing. Every health run executes the selected integration scenarios
+and requires their results and cleanup evidence. Retries reuse
 the first published release selection. No recurring schedule is supplied before
 live execution and capacity are approved; apply the same schedule policy to the
 IoT and AIO monitor sets. Fairfax needs its own ARM connection, subscription and

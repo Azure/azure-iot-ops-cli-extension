@@ -12,11 +12,23 @@ from unittest.mock import Mock
 from zipfile import ZipFile
 
 import pytest
+import yaml
 
 
 ROOT = Path(__file__).resolve().parents[3]
 AUTOMATION = "a" * 40
 SOURCE = "b" * 40
+
+
+def test_health_pipeline_always_plans_and_requires_live_scenarios():
+    pipeline = yaml.safe_load((ROOT / ".azure-devops/release-monitor.yml").read_text(encoding="utf-8"))
+    assert "parameters" not in pipeline
+    stages = {stage["stage"]: stage for stage in pipeline["stages"]}
+    assert set(stages) == {"Prepare", "Integration", "TrustBundle", "Results"}
+    steps = stages["Prepare"]["jobs"][0]["steps"]
+    assert any("release_monitor_adapter.py plan" in step.get("bash", "") for step in steps)
+    assert stages["Results"]["dependsOn"] == ["Prepare", "Integration", "TrustBundle"]
+    assert "runIntegration" not in str(pipeline)
 
 
 @pytest.fixture
