@@ -68,7 +68,7 @@ def validate_state(state):
     if (manifest["blockers"] or manifest["cloud"] != state["cloud"]
             or state["sha256"] != manifest["wheel"]["sha256"]
             or Path(state["wheel"]).resolve() != bundle / manifest["wheel"]["name"]
-            or state["row"]["scenario"]["channel"] != "stable"
+            or state["row"]["scenario"]["channel"] not in manifest["runtimes"]
             or state["resourceGroup"] != native.required("OPS_RESOURCE_GROUP")):
         raise ValueError("Monitor execution state differs from its released artifact or cloud.")
 
@@ -82,7 +82,7 @@ def test_source(state):
 
 
 def verify_runtime(commands, state, output):
-    expected = state["monitor"]["runtime"]
+    expected = state["monitor"]["runtimes"][state["row"]["scenario"]["channel"]]
     cloud = commands.az_json("cloud", "show")
     if cloud["name"] != CLOUDS[state["monitor"]["cloudKey"]]:
         raise ValueError("Runtime verification is using a different Azure cloud.")

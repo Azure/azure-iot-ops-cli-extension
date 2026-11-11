@@ -20,12 +20,15 @@ AUTOMATION = "a" * 40
 SOURCE = "b" * 40
 
 
-def test_health_pipeline_always_plans_and_requires_live_scenarios():
+def test_health_pipeline_runs_only_the_selected_mode():
     pipeline = yaml.safe_load(
         (ROOT / ".azure-devops/templates/release-monitor-stages.yml").read_text(encoding="utf-8")
     )
-    assert "parameters" not in pipeline
-    stages = {stage["stage"]: stage for stage in pipeline["stages"]}
+    stages = {
+        stage["stage"]: stage for stage in [
+            pipeline["stages"][0], *pipeline["stages"][1]["${{ if eq(parameters.mode, 'Integration tests') }}"],
+        ]
+    }
     assert set(stages) == {"Prepare", "Integration", "TrustBundle", "Results"}
     steps = stages["Prepare"]["jobs"][0]["steps"]
     assert any("release_monitor_adapter.py plan" in step.get("bash", "") for step in steps)
@@ -35,6 +38,11 @@ def test_health_pipeline_always_plans_and_requires_live_scenarios():
 
 @pytest.fixture
 def monitor(monkeypatch):
+    for key, value in {
+        "TESTPYTHONS": "3.13", "TESTMODE": "Integration tests",
+        "TESTCHANNELS": "stable", "TESTBASELINES": "{}", "TESTTIMEOUT": "360",
+    }.items():
+        monkeypatch.setenv(key, value)
     monkeypatch.syspath_prepend(str(ROOT / "tools"))
     return importlib.import_module("release_monitor")
 
@@ -85,8 +93,8 @@ def manifest(monitor, releases):
 
 
 @pytest.mark.parametrize("override", [None, "region", "services", "cloud", "version"])
-def test_health_overrides_cannot_qualify_the_scheduled_profile(
-        monitor, releases, monkeypatch, mocker, tmp_path, override):
+def test_health_overrides_preserve_selection_and_retry_identity(
+        monitor, releases, monkeypatch, override):
     config = monitor.read_json(ROOT / ".azure-devops/release-monitors.json")
     cloud = "fairfax" if override == "cloud" else "public"
     slot = "v2" if override == "version" else "v1"
@@ -98,22 +106,17 @@ def test_health_overrides_cannot_qualify_the_scheduled_profile(
     monkeypatch.setenv("MONITORCLOUD", "public")
     monkeypatch.setenv("MONITORTRACK", "v1")
     for key, value in selected.items():
-        monkeypatch.setenv("HEALTH" + key.removeprefix("Monitor").upper(), value)
-    monkeypatch.setenv("HEALTHSERVICES", "edge" if override == "services" else "Default scenarios")
+        monkeypatch.setenv("TEST" + key.removeprefix("Monitor").upper(), value)
+    monkeypatch.setenv("TESTSERVICES", "edge" if override == "services" else "Default scenarios")
     if override == "region":
-        monkeypatch.setenv("HEALTHREGION", "eastus")
+        monkeypatch.setenv("TESTREGION", "eastus")
     monitor.bind_profile(manifest, config)
-    mocker.patch.object(monitor, "verify_bundle", return_value=manifest)
     if override:
-        with pytest.raises(ValueError, match="does not qualify"):
-            monitor.qualify_profile(tmp_path)
         assert monitor.run_title(manifest, "123").endswith("-manual")
-    else:
-        monitor.qualify_profile(tmp_path)
-    monkeypatch.setenv("HEALTHREGION", "westus3")
+    monkeypatch.setenv("TESTREGION", "westus3")
     with pytest.raises(ValueError, match="changed between attempts"):
         monitor.bind_profile(manifest, config)
-    monkeypatch.setenv("HEALTHAZURESERVICECONNECTION", "unreviewed-connection")
+    monkeypatch.setenv("TESTAZURESERVICECONNECTION", "unreviewed-connection")
     with pytest.raises(ValueError, match="reviewed cloud profile"):
         monitor.bind_profile(manifest, config)
 
@@ -313,8 +316,8 @@ def test_configured_slot_resolves_its_milestone_and_labels_the_actual_versions(
     monkeypatch.setenv("BUILD_BUILDID", "123")
     for key, value in item["variables"].items():
         monkeypatch.setenv(key.upper(), value)
-        monkeypatch.setenv("HEALTH" + key.removeprefix("Monitor").upper(), value)
-    monkeypatch.setenv("HEALTHSERVICES", "Default scenarios")
+        monkeypatch.setenv("TEST" + key.removeprefix("Monitor").upper(), value)
+    monkeypatch.setenv("TESTSERVICES", "Default scenarios")
     discovery = mocker.patch.object(monitor, "resolve", return_value=manifest)
     output = tmp_path / "manifest.json"
     monitor.main([
@@ -347,11 +350,17 @@ def test_definition_generation_cannot_enable_runs_or_copy_secrets(monitor):
         assert all(not value["allowOverride"] for value in item["variables"].values())
         pipeline = yaml.safe_load((ROOT / item["process"]["yamlFilename"]).read_text(encoding="utf-8"))
         parameters = {parameter["name"]: parameter for parameter in pipeline["parameters"]}
-        assert set(parameters) == {"cloud", "version", "region", "services"}
+        common = yaml.safe_load((ROOT / ".azure-devops/integration.yml").read_text())["parameters"]
+        assert list(parameters) == [p["name"] for p in common] + ["version"]
+        for expected in common:
+            actual = parameters[expected["name"]]
+            assert {k: v for k, v in actual.items() if k != "default"} == {
+                k: v for k, v in expected.items() if k != "default"
+            }
         assert parameters["cloud"]["default"] == item["variables"]["MonitorCloud"]["value"]
         assert parameters["version"]["default"] == item["variables"]["MonitorTrack"]["value"]
-        assert parameters["region"]["default"] == item["variables"]["MonitorRegion"]["value"]
-        assert parameters["services"]["default"] == ["Default scenarios"]
+        assert parameters["clusterRegion"]["default"] == item["variables"]["MonitorRegion"]["value"]
+        assert parameters["testScenarios"]["default"] == ["Default scenarios"]
     with pytest.raises(ValueError, match="GitHub definition"):
         monitor.definitions(config, baseline, "refs/heads/../other")
 
@@ -381,6 +390,38 @@ def test_cleanup_identity_does_not_depend_on_source_files(adapter, state, monkey
     monkeypatch.setenv("MONITOR_TRACK", "v2")
     with pytest.raises(ValueError, match="requested track"):
         adapter.validate_state(state)
+
+
+def test_preview_channel_freezes_its_exact_deployment_version(monitor, adapter, state, monkeypatch, mocker, tmp_path):
+    preview = monitor.parse_runtime_profile(
+        "{'VERSIONS': {'iotOperations': '1.6.0-preview.60'}, 'TRAINS': {'iotOperations': 'preview'}}",
+        "public", "preview",
+    )
+    config = monitor.read_json(ROOT / ".azure-devops/release-monitors.json")
+    selected = monitor.configurations(config)[0]["variables"]
+    for key, value in selected.items():
+        monkeypatch.setenv(key.upper(), value)
+        monkeypatch.setenv("TEST" + key.removeprefix("Monitor").upper(), value)
+    monkeypatch.setenv("TESTSERVICES", "edge")
+    monkeypatch.setenv("TESTCHANNELS", "preview")
+    resolve = mocker.patch.object(monitor, "runtime_profile", return_value=preview)
+    monitor.bind_profile(state["monitor"], config)
+    assert state["monitor"]["runtimes"]["preview"]["version"] == "1.6.0-preview.60"
+    monitor.bind_profile(state["monitor"], config)
+    resolve.assert_called_once_with(
+        state["monitor"]["repository"], state["monitor"]["testSourceCommit"], "public", "preview",
+    )
+    state["row"]["scenario"]["channel"] = "preview"
+    adapter.validate_state(state)
+    commands = Mock()
+    commands.az_json.side_effect = [
+        {"name": "AzureCloud", "endpoints": {"resourceManager": "https://management.azure.com/"}},
+        {"value": [{"properties": {
+            "extensionType": "microsoft.iotoperations", "version": "1.6.0-preview.60", "releaseTrain": "preview",
+        }}]},
+    ]
+    adapter.verify_runtime(commands, state, tmp_path)
+    assert state["observedRuntime"] == {"version": "1.6.0-preview.60", "train": "preview"}
 
 
 @pytest.mark.parametrize("version,cloud", [

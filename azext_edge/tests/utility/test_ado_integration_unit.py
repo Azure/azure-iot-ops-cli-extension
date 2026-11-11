@@ -1144,14 +1144,15 @@ def test_yaml_keeps_dry_run_separate_and_reuses_existing_tests():
     assert value["trigger"] == "none" and value["pr"] == "none" and "schedules" not in value
     assert value["appendCommitMessageToRunName"] is False
     assert next(param for param in value["parameters"] if param["name"] == "mode")["default"] == "Dry run"
-    connection = next(param for param in value["parameters"] if param["name"] == "azureServiceConnection")
-    assert connection["default"] == "az-iot-ops-int-sp-ado"
+    assert not {"releaseBuildId", "azureServiceConnection", "subscriptionId", "resourceGroup",
+                "customLocationsObjectId"} & {param["name"] for param in value["parameters"]}
+    assert value["extends"]["parameters"]["azureServiceConnection"] == "${{ variables.TestAzureServiceConnection }}"
     assert value["extends"]["template"] == "templates/integration-pipeline.yml"
     region = next(param for param in value["parameters"] if param["name"] == "clusterRegion")
     assert set(region["values"]) == pipeline.release.CLUSTER_REGIONS | {"usgovvirginia"}
     value = yaml.safe_load((ROOT / ".azure-devops/templates/integration-pipeline.yml").read_text())
     template_region = next(param for param in value["parameters"] if param["name"] == "clusterRegion")
-    assert template_region["default"] == region["default"] == pipeline.release.INTEGRATION_PARAMETERS["clusterRegion"]
+    assert template_region["default"] == region["default"] == "westus2"
     assert value["stages"][0]["stage"] == "Plan"
     plan_step = next(step for step in value["stages"][0]["jobs"][0]["steps"] if step.get("name") == "plan")
     assert plan_step["env"]["OPS_CLUSTER_REGION"] == "${{ parameters.clusterRegion }}"

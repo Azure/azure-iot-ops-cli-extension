@@ -83,9 +83,10 @@ def child(value, cohort=COHORT):
         "repository": {"id": release.REPOSITORY, "type": "GitHub"},
         "sourceBranch": value["sourceBranch"], "sourceVersion": SOURCE,
         "status": "completed", "result": "succeeded",
+        "parameters": json.dumps({"ReleaseCandidateBuildId": value["producer"]["build"]}),
         "templateParameters": {
             key: item if isinstance(item, str) else json.dumps(item)
-            for key, item in release.integration_parameters(value, cohort).items()
+            for key, item in release.integration_parameters(value, cohort).items() if key != "releaseBuildId"
         },
     }
 
@@ -318,6 +319,7 @@ def test_queue_uses_exact_parameters_without_waiting_for_cleanup(candidate, monk
     assert request.args == ("build/builds",)
     assert request.kwargs["data"] == {
         "definition": {"id": 164}, "sourceBranch": "refs/heads/dev", "sourceVersion": SOURCE,
+        "parameters": json.dumps({"ReleaseCandidateBuildId": "900"}),
         "templateParameters": child(value)["templateParameters"],
     }
     assert release.read(tmp_path / "record")["cohort"] == COHORT
@@ -393,17 +395,30 @@ def test_cancel_cannot_target_another_cohort(candidate, tmp_path):
 
 def consumer_environment(candidate, monkeypatch):
     directory, _ = candidate
+    profile = release.read(ROOT / ".azure-devops/release-monitors.json")["clouds"]["public"]["variables"]
     for name, value in {
         "SYSTEM_DEFINITIONID": "164", "BUILD_BUILDID": "901", "BUILD_SOURCEVERSION": SOURCE,
         "OPS_RELEASE_BUILD_ID": "900", "OPS_RELEASE_INPUT": str(directory), "OPS_MODE": "Integration tests",
         "OPS_SCENARIOS": "edge", "OPS_CHANNELS": "stable", "OPS_PYTHONS": "3.13", "OPS_BASELINES": "{}",
-        "OPS_SUBSCRIPTION": release.INTEGRATION_PARAMETERS["subscriptionId"],
-        "OPS_RESOURCE_GROUP": release.INTEGRATION_PARAMETERS["resourceGroup"],
-        "OPS_CLUSTER_REGION": release.INTEGRATION_PARAMETERS["clusterRegion"],
-        "OPS_CUSTOM_LOCATIONS_OID": release.INTEGRATION_PARAMETERS["customLocationsObjectId"],
+        "OPS_SUBSCRIPTION": profile["MonitorSubscription"],
+        "OPS_RESOURCE_GROUP": profile["MonitorResourceGroup"],
+        "OPS_CLUSTER_REGION": profile["MonitorRegion"],
+        "OPS_CUSTOM_LOCATIONS_OID": profile["MonitorCustomLocationsObjectId"],
         "OPS_SCENARIO_TIMEOUT_MINUTES": "360",
     }.items():
         monkeypatch.setenv(name, value)
+
+
+@pytest.mark.parametrize("variables", [
+    None, "[]", "invalid-json", {}, {"ReleaseCandidateBuildId": "899"},
+    {"ReleaseCandidateBuildId": "0900"}, {"ReleaseCandidateBuildId": True},
+])
+def test_internal_candidate_identity_fails_closed(candidate, variables):
+    _, value = candidate
+    build = child(value)
+    build["parameters"] = variables
+    with pytest.raises(ValueError):
+        release.validate_integration(build, value)
 
 
 @pytest.mark.parametrize("mode", ["Validate", "Draft", "Release"])
@@ -782,12 +797,15 @@ def test_manual_and_health_do_not_rebuild_a_release_candidate():
     live = template["stages"][1]["${{ if eq(parameters.mode, 'Integration tests') }}"]
     build = next(stage for stage in live if stage["stage"] == "Build")
     steps = build["jobs"][0]["steps"]
-    own = next(step["${{ if eq(parameters.releaseBuildId, 0) }}"]
-               for step in steps if "${{ if eq(parameters.releaseBuildId, 0) }}" in step)
-    acquired = next(step["${{ if ne(parameters.releaseBuildId, 0) }}"]
-                    for step in steps if "${{ if ne(parameters.releaseBuildId, 0) }}" in step)
+    own = [step for step in steps if "eq(variables['releaseBuildId'], '0')" in str(step)]
+    acquired = [step for step in steps if "ne(variables['releaseBuildId'], '0')" in str(step)]
     assert "python -m build --wheel" in json.dumps(own)
     assert "python -m build" not in json.dumps(acquired)
     assert acquired[0]["inputs"]["pipelineId"] == "${{ parameters.releaseBuildId }}"
+    prepare = next(step for step in steps if step.get("name") == "candidate")
+    assert "candidate --output dist" in prepare["bash"]
+    assert "ado_integration.py acquire --output dist" in prepare["bash"]
+    names = [step["name"] for step in steps if "name" in step]
+    assert len(names) == len(set(names))
     health = yaml.safe_load((ROOT / ".azure-devops/integration-health.yml").read_text(encoding="utf-8"))
     assert "releaseBuildId" not in health.get("parameters", {})

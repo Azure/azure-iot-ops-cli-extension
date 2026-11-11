@@ -469,7 +469,7 @@ def report(output):
         value["monitor"] = state["monitor"]
         value["resourceSuffix"] = state["suffix"]
         value["observedRuntime"] = state.get("observedRuntime")
-        expected = state["monitor"]["runtime"]
+        expected = state["monitor"]["runtimes"][state["row"]["scenario"]["channel"]]
         success = success and value["observedRuntime"] == {key: expected[key] for key in ("version", "train")}
         value["status"] = "passed" if success else "incomplete"
     write(output / "receipt.json", value)
@@ -524,7 +524,7 @@ def scenario_evidence(value, history):
         if receipt.get("monitor") != value.get("monitor"):
             raise ValueError("Monitor evidence does not match the frozen release or execution kind.")
         if value.get("monitor"):
-            runtime = value["monitor"]["runtime"]
+            runtime = value["monitor"]["runtimes"][row["scenario"]["channel"]]
             if (receipt.get("observedRuntime") != {key: runtime[key] for key in ("version", "train")}
                     or receipt.get("subscription") != value["subscription"]
                     or receipt.get("resourceGroup") != expected_group

@@ -33,10 +33,7 @@ PERMISSIONS = "https://dev.azure.com/azureiotdevxp/_apis/permissions"
 FEED = "https://pkgs.dev.azure.com/azureiotdevxp/aziotcli/_packaging/pip/pypi/simple/"
 INTEGRATION_PARAMETERS = {
     "mode": "Integration tests", "pythonVersions": ["3.13"], "upgradeBaselines": "{}",
-    "scenarioTimeoutMinutes": 360, "azureServiceConnection": "az-iot-ops-int-sp-ado",
-    "subscriptionId": "a386d5ea-ea90-441a-8263-d816368c84a1",
-    "resourceGroup": "ops-cli-int-test-rg", "clusterRegion": "westus2",
-    "customLocationsObjectId": "51dfe1e8-70c6-4de5-a08e-e18aff23d815",
+    "scenarioTimeoutMinutes": 360, "cloud": "public",
 }
 CLUSTER_REGIONS = {
     "eastus", "eastus2", "westus", "westus2", "westus3", "southcentralus",
@@ -186,7 +183,7 @@ def checkout(destination, resolving=False):
                 raise ValueError(f"Source branch needs the migration/index-check prerequisites: {relative}")
         if not skip_integration_tests():
             integration = (destination / ".azure-devops/integration.yml").read_text(encoding="utf-8")
-            if "releaseBuildId" not in integration:
+            if "ReleaseCandidateBuildId" not in integration:
                 raise ValueError("The selected source does not support pipeline 164's release-candidate handoff.")
             if "clusterRegion" not in integration:
                 raise ValueError("The selected source does not support explicit integration cluster regions.")
@@ -468,15 +465,31 @@ def verify_candidate(directory, *, expected_producer=None, source_branch=None, s
     return value
 
 
+def queued_release_build_id(build):
+    variables = build.get("parameters")
+    if variables is None:
+        return "0"
+    if isinstance(variables, str):
+        variables = json.loads(variables)
+    if not isinstance(variables, dict):
+        raise ValueError("Invalid queued integration variables.")
+    value = str(variables.get("ReleaseCandidateBuildId", "0"))
+    if not re.fullmatch(r"0|[1-9][0-9]*", value):
+        raise ValueError("Invalid queued release candidate ID.")
+    return value
+
+
 def validate_integration(build, candidate, cohort=None):
     parameters = build.get("templateParameters")
     if isinstance(parameters, str):
         parameters = json.loads(parameters)
     parameters = dict(parameters)
+    if "releaseBuildId" in parameters:
+        raise ValueError("Release candidate identity must come from the internal queue variable.")
     for key in ("testScenarios", "runtimeChannels", "pythonVersions"):
         if isinstance(parameters.get(key), str):
             parameters[key] = json.loads(parameters[key])
-    parameters["releaseBuildId"] = identifier(parameters.get("releaseBuildId"))
+    parameters["releaseBuildId"] = identifier(queued_release_build_id(build))
     parameters["scenarioTimeoutMinutes"] = int(parameters["scenarioTimeoutMinutes"])
     expected = integration_parameters(candidate, cohort)
     repository = build["repository"]
@@ -502,10 +515,7 @@ def existing_integration(candidate) -> dict | None:
         raise ValueError("Too many child builds to prove unique ownership; inspect pipeline 164 before retrying.")
     matches = []
     for build in builds:
-        parameters = build.get("templateParameters", {})
-        if isinstance(parameters, str):
-            parameters = json.loads(parameters)
-        if str(parameters.get("releaseBuildId", "")) == candidate["producer"]["build"]:
+        if queued_release_build_id(build) == candidate["producer"]["build"]:
             scopes = []
             for key in candidate["cohorts"]:
                 try:
@@ -549,9 +559,10 @@ def integrate(directory, record, timeout=25200):
     payload = {
         "definition": {"id": 164}, "sourceBranch": candidate["sourceBranch"],
         "sourceVersion": candidate["sourceCommit"],
+        "parameters": json.dumps({"ReleaseCandidateBuildId": candidate["producer"]["build"]}),
         "templateParameters": {
             key: value if isinstance(value, str) else json.dumps(value)
-            for key, value in integration_parameters(candidate).items()
+            for key, value in integration_parameters(candidate).items() if key != "releaseBuildId"
         },
     }
     run = existing_integration(candidate)

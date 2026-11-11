@@ -2,8 +2,8 @@
 
 parameters:
   - name: releaseBuildId
-    type: number
-    default: 0
+    type: string
+    default: '0'
   - name: health
     type: boolean
     default: false
@@ -105,7 +105,6 @@ stages:
             displayName: Set run title
             env:
               OPS_MODE: ${{ parameters.mode }}
-
   - ${{ if eq(parameters.mode, 'Integration tests') }}:
       - stage: Build
         displayName: Build
@@ -118,35 +117,37 @@ stages:
                 displayName: Select Python
                 inputs:
                   versionSpec: '3.13'
-              - ${{ if eq(parameters.releaseBuildId, 0) }}:
-                  - bash: |
-                      set -euo pipefail
-                      python -m pip install build PyYAML
-                      python -m build --wheel
-                      python tools/ado_integration.py candidate --output dist
-                    name: candidate
-                    displayName: Build wheel
-              - ${{ if ne(parameters.releaseBuildId, 0) }}:
-                  - task: DownloadPipelineArtifact@2
-                    displayName: Download artifacts
-                    inputs:
-                      buildType: specific
-                      project: $(System.TeamProjectId)
-                      definition: "165"
-                      buildVersionToDownload: specific
-                      pipelineId: ${{ parameters.releaseBuildId }}
-                      artifactName: release-candidate
-                      targetPath: $(Pipeline.Workspace)/release-input
-                  - bash: |
-                      set -euo pipefail
-                      python -m pip install PyYAML
-                      python tools/ado_integration.py acquire --output dist
-                    name: candidate
-                    displayName: Check candidate
-                    env:
-                      SYSTEM_ACCESSTOKEN: $(System.AccessToken)
-                      OPS_RELEASE_BUILD_ID: ${{ parameters.releaseBuildId }}
-                      OPS_RELEASE_INPUT: $(Pipeline.Workspace)/release-input
+              - bash: |
+                  set -euo pipefail
+                  python -m pip install build
+                  python -m build --wheel
+                displayName: Build wheel
+                condition: and(succeeded(), eq(variables['releaseBuildId'], '0'))
+              - task: DownloadPipelineArtifact@2
+                displayName: Download artifacts
+                inputs:
+                  buildType: specific
+                  project: $(System.TeamProjectId)
+                  definition: '165'
+                  buildVersionToDownload: specific
+                  pipelineId: ${{ parameters.releaseBuildId }}
+                  artifactName: release-candidate
+                  targetPath: $(Pipeline.Workspace)/release-input
+                condition: and(succeeded(), ne(variables['releaseBuildId'], '0'))
+              - bash: |
+                  set -euo pipefail
+                  python -m pip install PyYAML
+                  if [ "$OPS_RELEASE_BUILD_ID" = "0" ]; then
+                    python tools/ado_integration.py candidate --output dist
+                  else
+                    python tools/ado_integration.py acquire --output dist
+                  fi
+                name: candidate
+                displayName: Prepare candidate
+                env:
+                  SYSTEM_ACCESSTOKEN: $(System.AccessToken)
+                  OPS_RELEASE_BUILD_ID: ${{ parameters.releaseBuildId }}
+                  OPS_RELEASE_INPUT: $(Pipeline.Workspace)/release-input
               - bash: >-
                   python tools/ado_integration.py inventory
                   --output "$(Build.SourcesDirectory)/dependency-inventory/build"
@@ -158,7 +159,8 @@ stages:
               - publish: dist
                 displayName: Publish wheel
                 artifact: ops-wheel-$(System.JobAttempt)
-
+            variables:
+              releaseBuildId: ${{ parameters.releaseBuildId }}
       - stage: Lint
         dependsOn: Plan
         jobs:
@@ -190,7 +192,6 @@ stages:
               - template: release-feed.yml
                 parameters:
                   condition: succeededOrFailed()
-
       - stage: Unit
         displayName: Unit
         dependsOn: Plan
@@ -233,7 +234,6 @@ stages:
                 displayName: Publish coverage
                 condition: succeeded()
                 artifact: ops-unit-coverage-$(System.JobAttempt)
-
       - stage: Integration
         displayName: Integration
         dependsOn: [Plan, Build, Lint]
@@ -247,7 +247,6 @@ stages:
             parameters:
               configuration: ${{ parameters }}
               matrix: $[ stageDependencies.Plan.Plan.outputs['plan.parallelMatrix'] ]
-
       - stage: TrustBundle
         displayName: Trust Bundle
         dependsOn: [Plan, Build, Lint]
@@ -261,7 +260,6 @@ stages:
             parameters:
               configuration: ${{ parameters }}
               matrix: $[ stageDependencies.Plan.Plan.outputs['plan.trustBundleMatrix'] ]
-
       - stage: Qualify
         displayName: Results
         dependsOn: [Plan, Build, Lint, Unit, Integration, TrustBundle]

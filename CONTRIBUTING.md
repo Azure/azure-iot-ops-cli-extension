@@ -38,14 +38,25 @@ Discovery selects the newest published CLI patch for each configured stable runt
 family. A newer milestone does not automatically move or invalidate the selected
 support window. Run titles and manifests record the slot and actual CLI/runtime versions.
 
-**Cloud**, **Version (runtime track)**, **Region** and **Services (AIO scenarios)**
-have explicit defaults for each definition. Manual overrides use the selected
+Integration and health share **Mode**, **Cloud**, **Region**, **Scenarios**,
+**Python**, **Channels**, **Upgrade baselines** and **Timeout (min)**, in that order.
+Health additionally selects **Version (runtime track)** and defaults to integration
+mode. **Dry run** resolves the plan without deploying resources.
+Manual overrides use the selected
 cloud's reviewed connection and resource group, subject to pipeline authorization.
 They retain published-wheel testing, are frozen with the release selection, and
-are marked `-manual`; they cannot pass the configured scheduled-profile gate.
+are marked `-manual`; their result follows the selected tests and required evidence,
+not whether the selections match scheduled defaults. Each selected runtime channel
+is frozen from the published release and verified against the deployed runtime.
 Release **Region** controls the integration cluster region and is bound into the
 candidate and child-run validation. Resource and namespace locations remain
 separately controlled by the scenario/cloud configuration.
+
+`templates/integration-profile.yml` supplies reviewed infrastructure settings;
+connection, subscription, resource group and custom-locations identity are not
+manual inputs. Pipeline 164 defines the queue-time variable `ReleaseCandidateBuildId=0`.
+Release automation overrides it to select its exact candidate; ordinary users do
+not enter a release build ID.
 
 Each run verifies GitHub's wheel SHA256, metadata, runtime profile and exact
 released source. It uses that release's scenario configuration, tests and fixtures

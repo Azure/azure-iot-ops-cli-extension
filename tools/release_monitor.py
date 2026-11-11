@@ -126,7 +126,10 @@ def release_version(release):
     return version
 
 
-def parse_runtime_profile(source, cloud):
+def parse_runtime_profile(source, cloud, channel="stable"):
+    if channel not in {"stable", "preview"} or cloud != "public" and channel != "stable":
+        raise ValueError("The selected cloud has no supported runtime channel.")
+    suffix = "_preview" if channel == "preview" else "_fairfax" if cloud == "fairfax" else ""
     profiles = []
     for node in ast.walk(ast.parse(source)):
         if not isinstance(node, ast.Dict):
@@ -143,19 +146,21 @@ def parse_runtime_profile(source, cloud):
         if not isinstance(train, str) or not train:
             raise ValueError("The bundled runtime is missing its release train.")
         profiles.append({
-            "milestone": f"{version.major}.{version.minor}", "version": str(version),
-            "train": train, "template": TEMPLATE.format("_fairfax" if cloud == "fairfax" else ""),
+            "milestone": f"{version.major}.{version.minor}", "version": versions["iotOperations"],
+            "train": train, "template": TEMPLATE.format(suffix),
         })
     if len(profiles) != 1:
-        raise ValueError("The release does not contain one unambiguous stable runtime profile.")
+        raise ValueError("The release does not contain one unambiguous runtime profile.")
     version = Version(profiles[0]["version"])
-    if version.is_prerelease or version.is_devrelease or profiles[0]["train"] != "stable":
+    if channel == "stable" and (version.is_prerelease or version.is_devrelease or profiles[0]["train"] != "stable"):
         raise NonStableRuntime("A monitored milestone must have a stable bundled runtime.")
+    if channel == "preview" and profiles[0]["train"] != "preview":
+        raise ValueError("The preview runtime must declare its preview release train.")
     return profiles[0]
 
 
-def runtime_profile(repository, source_commit, cloud):
-    suffix = "_fairfax" if cloud == "fairfax" else ""
+def runtime_profile(repository, source_commit, cloud, channel="stable"):
+    suffix = "_preview" if channel == "preview" else "_fairfax" if cloud == "fairfax" else ""
     url = f"https://raw.githubusercontent.com/{repository}/{commit(source_commit)}/{TEMPLATE.format(suffix)}"
     try:
         source = download(url).decode("utf-8")
@@ -163,7 +168,7 @@ def runtime_profile(repository, source_commit, cloud):
         if error.code == 404:
             return None
         raise
-    return parse_runtime_profile(source, cloud)
+    return parse_runtime_profile(source, cloud, channel)
 
 
 def wheel_asset(release, extension, version):
@@ -232,7 +237,7 @@ def resolve(extension, cloud, track, automation_commit, releases=None):
         "release": {
             "id": release["id"], "tag": release["tag_name"], "version": str(version), "commit": source_commit,
         },
-        "wheel": wheel_asset(release, extension, version), "runtime": runtime,
+        "wheel": wheel_asset(release, extension, version), "runtime": runtime, "runtimes": {"stable": runtime},
         "testSourceCommit": source_commit, "blockers": blockers,
         "releaseQualified": False,
     }
@@ -281,6 +286,17 @@ def validate_manifest(manifest, *, extension=None, cloud=None, track=None, slot=
                     runtime["milestone"] != manifest["track"] or runtime["train"] != "stable"
                     or runtime["template"] != TEMPLATE.format("_fairfax" if cloud_key == "fairfax" else ""))):
             raise ValueError("Invalid AIO milestone profile.")
+        runtimes = manifest.get("runtimes")
+        if (not isinstance(runtimes, dict) or set(runtimes) - {"stable", "preview"}
+                or "stable" not in runtimes or runtimes["stable"] != runtime):
+            raise ValueError("Invalid frozen runtime channel profiles.")
+        if "preview" in runtimes:
+            preview = runtimes["preview"]
+            parsed = Version(preview["version"])
+            if (cloud_key != "public" or preview["train"] != "preview"
+                    or preview["template"] != TEMPLATE.format("_preview")
+                    or preview["milestone"] != f"{parsed.major}.{parsed.minor}"):
+                raise ValueError("Invalid frozen preview runtime profile.")
     expected_blockers = (
         ["This release has no reviewed bundled runtime profile for the selected cloud."]
         if config["extension"] == "azure-iot-ops" and manifest["runtime"] is None else []
@@ -305,11 +321,13 @@ def verify_wheel(path, manifest):
                 or headers["Name"].replace("_", "-") != manifest["extension"]
                 or Version(headers["Version"]) != Version(manifest["release"]["version"])):
             raise ValueError("Wheel metadata does not match the selected release.")
-        if manifest["runtime"]:
+        for channel, runtime in manifest["runtimes"].items():
+            if runtime is None:
+                continue
             profile = parse_runtime_profile(
-                archive.read(manifest["runtime"]["template"]).decode("utf-8"), manifest["cloudKey"],
+                archive.read(runtime["template"]).decode("utf-8"), manifest["cloudKey"], channel,
             )
-            if profile != manifest["runtime"]:
+            if profile != runtime:
                 raise ValueError("Wheel runtime differs from the resolved release source.")
 
 
@@ -490,21 +508,41 @@ def bind_profile(manifest, config):
     for key, expected in selected.items():
         if key in {"MonitorRegion", "MonitorServices"}:
             continue
-        name = "HEALTH" + key.removeprefix("Monitor").upper()
+        name = "TEST" + key.removeprefix("Monitor").upper()
         if os.environ.get(name) != expected:
             raise ValueError(f"{name} differs from the selected reviewed cloud profile.")
-    region = os.environ.get("HEALTHREGION", "")
-    services = os.environ.get("HEALTHSERVICES", "").split(",")
-    if (not re.fullmatch(r"[a-z][a-z0-9]+", region) or not all(services)
+    region = os.environ["TESTREGION"]
+    services = os.environ["TESTSERVICES"].split(",")
+    regions = region.split(",")
+    pythons = os.environ["TESTPYTHONS"].split(",")
+    mode = os.environ["TESTMODE"]
+    if (any(not re.fullmatch(r"[a-z][a-z0-9]+", value) for value in regions)
+            or len(regions) != len(set(regions)) or not all(services)
             or len(services) != len(set(services))):
-        raise ValueError("Select one valid region and distinct services/scenarios.")
+        raise ValueError("Select distinct valid regions and services/scenarios.")
+    if (not pythons or set(pythons) - {"3.10", "3.11", "3.12", "3.13"}
+            or len(pythons) != len(set(pythons)) or mode not in {"Dry run", "Integration tests"}):
+        raise ValueError("Select supported Python versions and a test mode.")
     if config["extension"] == "azure-iot" and not set(services).issubset(selected["MonitorServices"].split(",")):
         raise ValueError("Selected services are unsupported in the selected cloud.")
     expected = {
         "cloud": configured_cloud, "version": configured_track, "region": configured["MonitorRegion"],
         "services": sorted(configured.get("MonitorServices", "Default scenarios").split(",")),
+        "python": ["3.13"], "mode": "Integration tests",
     }
-    actual = {"cloud": cloud, "version": track, "region": region, "services": sorted(services)}
+    actual = {
+        "cloud": cloud, "version": track, "region": region, "services": sorted(services),
+        "python": sorted(pythons), "mode": mode,
+    }
+    channels = os.environ["TESTCHANNELS"].split(",")
+    baselines = json.loads(os.environ["TESTBASELINES"])
+    timeout = int(os.environ["TESTTIMEOUT"])
+    if (len(regions) != 1 or not channels or set(channels) - {"stable", "preview"}
+            or len(channels) != len(set(channels)) or not isinstance(baselines, dict)
+            or timeout not in {90, 180, 360} or cloud != "public" and channels != ["stable"]):
+        raise ValueError("Select supported regions, runtime channels, upgrade baselines and timeout.")
+    expected.update(channels=["stable"], baselines={}, timeout=360)
+    actual.update(channels=sorted(channels), baselines=baselines, timeout=timeout)
     if manifest.get("kind") == "source":
         expected["branch"] = "refs/heads/" + (
             "dev" if configured_track == "ga" else "release/1.2.0-preview"
@@ -513,18 +551,16 @@ def bind_profile(manifest, config):
     profile = {"configured": expected, "selected": actual}
     if "profile" in manifest and manifest["profile"] != profile:
         raise ValueError("Health profile changed between attempts; start a new run.")
+    for channel in channels:
+        if channel not in manifest["runtimes"]:
+            if "profile" in manifest:
+                raise ValueError("A retry cannot rediscover a missing runtime profile.")
+            runtime = runtime_profile(manifest["repository"], manifest["testSourceCommit"], cloud, channel)
+            if runtime is None:
+                raise ValueError(f"The published release has no {channel} runtime profile.")
+            manifest["runtimes"][channel] = runtime
     manifest["profile"] = profile
     return manifest
-
-
-def qualify_profile(directory):
-    manifest = verify_bundle(Path(directory))
-    profile = manifest.get("profile")
-    if not isinstance(profile, dict) or set(profile) != {"configured", "selected"}:
-        raise ValueError("Health evidence is missing its configured and selected profiles.")
-    bind_profile(manifest, read_json(Path(__file__).resolve().parents[1] / ".azure-devops/release-monitors.json"))
-    if profile["configured"] != profile["selected"]:
-        raise ValueError("Manual profile completed; it does not qualify this pipeline's scheduled profile.")
 
 
 def definitions(config, baseline, branch):
@@ -564,6 +600,8 @@ def run_title(manifest, build):
     title += f"-b{build}"
     if "profile" in manifest and manifest["profile"]["configured"] != manifest["profile"]["selected"]:
         title += "-manual"
+    if manifest.get("profile", {}).get("selected", {}).get("mode") == "Dry run":
+        title += "-dryrun"
     if len(title) > 255:
         raise ValueError("The resolved release-health run title exceeds the ADO name limit.")
     return title
@@ -589,8 +627,6 @@ def main(argv=None):
     setup.add_argument("--baseline", required=True)
     setup.add_argument("--branch", required=True)
     setup.add_argument("--output", required=True)
-    qualify = commands.add_parser("qualify-profile")
-    qualify.add_argument("--bundle", required=True)
     args = parser.parse_args(argv)
     if args.command == "resolve":
         target, slot = args.track, None
@@ -609,8 +645,6 @@ def main(argv=None):
             print(f"##vso[build.updatebuildnumber]{run_title(value, os.environ['BUILD_BUILDID'])}")
     elif args.command == "acquire":
         acquire(read_json(args.manifest), args.output)
-    elif args.command == "qualify-profile":
-        qualify_profile(args.bundle)
     else:
         write_json(args.output, definitions(read_json(args.configuration), read_json(args.baseline), args.branch))
 

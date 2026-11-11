@@ -3,55 +3,115 @@
 trigger: none
 pr: none
 schedules: []
-name: aio-health-$(HealthCloud)-$(HealthTrack)-$(Date:yyyyMMdd).$(Rev:r)
+name: aio-health-$(TestCloud)-$(TestTrack)-$(Date:yyyyMMdd).$(Rev:r)
 appendCommitMessageToRunName: false
 parameters:
-- name: cloud
-  displayName: Cloud
-  type: string
-  default: fairfax
-  values:
-  - public
-  - fairfax
-- name: version
-  displayName: Version (runtime track)
-  type: string
-  default: v1
-  values:
-  - v1
-  - v2
-  - v3
-- name: region
-  displayName: Region
-  type: string
-  default: usgovvirginia
-- name: services
-  displayName: Services (AIO scenarios)
-  type: stringList
-  default:
-  - Default scenarios
-  values:
-  - Default scenarios
-  - edge
-  - broker-diagnostics-removal
-  - insecure-listener
-  - rpsaas
-  - runtime-channel
-  - upgrade
-  - upgrade-path
-  - mgmtactions
-  - livedata
-  - redeploy
-  - essentials-sku
-  - trustbundle
+  - name: mode
+    displayName: Mode
+    type: string
+    default: Integration tests
+    values:
+      - Dry run
+      - Integration tests
+  - name: cloud
+    displayName: Cloud
+    type: string
+    default: fairfax
+    values:
+      - public
+      - fairfax
+  - name: clusterRegion
+    displayName: Region
+    type: string
+    default: usgovvirginia
+    values:
+      - eastus
+      - eastus2
+      - westus
+      - westus2
+      - westus3
+      - southcentralus
+      - westeurope
+      - northeurope
+      - germanywestcentral
+      - usgovvirginia
+  - name: testScenarios
+    displayName: Scenarios
+    type: stringList
+    default:
+      - Default scenarios
+    values:
+      - Default scenarios
+      - edge
+      - broker-diagnostics-removal
+      - insecure-listener
+      - rpsaas
+      - runtime-channel
+      - upgrade
+      - upgrade-path
+      - mgmtactions
+      - livedata
+      - redeploy
+      - essentials-sku
+      - trustbundle
+  - name: pythonVersions
+    displayName: Python
+    type: stringList
+    default:
+      - '3.13'
+    values:
+      - '3.10'
+      - '3.11'
+      - '3.12'
+      - '3.13'
+  - name: runtimeChannels
+    displayName: Channels
+    type: stringList
+    default:
+      - stable
+    values:
+      - stable
+      - preview
+  - name: upgradeBaselines
+    displayName: Upgrade baselines
+    type: string
+    default: '{}'
+  - name: scenarioTimeoutMinutes
+    displayName: Timeout (min)
+    type: number
+    default: 360
+    values:
+      - 90
+      - 180
+      - 360
+  - name: version
+    displayName: Version (runtime track)
+    type: string
+    default: v1
+    values:
+      - v1
+      - v2
+      - v3
 pool:
   vmImage: ubuntu-24.04
 variables:
-- template: templates/release-monitor-profile.yml
-  parameters:
-    cloud: ${{ parameters.cloud }}
-    version: ${{ parameters.version }}
-    region: ${{ parameters.region }}
-    services: ${{ parameters.services }}
+  - template: templates/integration-profile.yml
+    parameters:
+      cloud: ${{ parameters.cloud }}
+      version: ${{ parameters.version }}
+      region: ${{ parameters.clusterRegion }}
+      services: ${{ parameters.testScenarios }}
+  - name: TestMode
+    value: ${{ parameters.mode }}
+  - name: TestPythons
+    value: ${{ join(',', parameters.pythonVersions) }}
+  - name: TestChannels
+    value: ${{ join(',', parameters.runtimeChannels) }}
+  - name: TestBaselines
+    value: ${{ parameters.upgradeBaselines }}
+  - name: TestTimeout
+    value: ${{ parameters.scenarioTimeoutMinutes }}
 stages:
-- template: templates/release-monitor-stages.yml
+  - template: templates/release-monitor-stages.yml
+    parameters:
+      mode: ${{ parameters.mode }}
