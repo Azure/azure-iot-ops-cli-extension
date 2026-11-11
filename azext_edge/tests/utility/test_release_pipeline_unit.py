@@ -379,10 +379,13 @@ def consumer_environment(candidate, monkeypatch):
         monkeypatch.setenv(name, value)
 
 
-def test_consumer_acquires_identical_candidate_without_rebuilding(candidate, monkeypatch, tmp_path):
+@pytest.mark.parametrize("mode", ["Validate", "StageDraft", "Release"])
+def test_consumer_acquires_identical_candidate_without_rebuilding(candidate, monkeypatch, tmp_path, mode):
     directory, value = candidate
     consumer_environment(candidate, monkeypatch)
-    monkeypatch.setattr(release, "ado", Mock(side_effect=[parent(), child(value)]))
+    producer = parent()
+    producer["templateParameters"]["mode"] = mode
+    monkeypatch.setattr(release, "ado", Mock(side_effect=[producer, child(value)]))
     run = Mock(side_effect=AssertionError("Handoff must not rebuild or execute packages"))
     monkeypatch.setattr(integration.subprocess, "run", run)
     output = tmp_path / "consumer"

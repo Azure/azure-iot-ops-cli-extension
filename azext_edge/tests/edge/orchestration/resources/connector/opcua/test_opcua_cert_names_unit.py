@@ -121,7 +121,7 @@ def test_per_instance_names_isolate_certificate_lifecycle(
 @pytest.mark.parametrize("custom_reference", [False, True])
 def test_default_list_add_restores_custom_reference_without_redeploying_defaults(
     kind, setting, default, custom_reference, mocked_cmd, mocked_instance, mocked_responses,
-    mocked_read_file_content, mocked_decode_certificate,
+    mocked_read_file_content, mocked_decode_certificate, mocked_logger,
 ):
     mocked_read_file_content.return_value = b"\x00\x01\x02\x03"
     mocked_decode_certificate.side_effect = lambda *_args, **_kwargs: [build_mock_cert()]
@@ -152,6 +152,9 @@ def test_default_list_add_restores_custom_reference_without_redeploying_defaults
         )
     else:
         cluster.update_aio_extension.assert_not_called()
+    assert "No changes detected in IoT Operations extension. Skipping update..." not in [
+        call.args[0] for call in mocked_logger.warning.call_args_list
+    ]
     assert settings["unrelated"] == "preserved"
 
 

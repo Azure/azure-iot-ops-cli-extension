@@ -896,9 +896,9 @@ class OpcUACerts(Queryable):
                         "configurationSettings": delta,
                     },
                 )
-        else:
+        if "connectors.values.securityPki.applicationCert" in settings:
             logger.warning("No changes detected in IoT Operations extension. Skipping update...")
-            return {}
+        return {}
 
     def _reset_certificate_reference(self, name: str, certificate_type: str) -> dict:
         if certificate_type == "client":

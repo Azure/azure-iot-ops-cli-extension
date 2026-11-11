@@ -306,7 +306,7 @@ def acquire(output):
     if (parent["definition"]["id"] != 165 or parent["repository"]["id"] != release.REPOSITORY
             or parent["repository"]["type"] != "GitHub"
             or parent["project"]["id"].lower() != required("SYSTEM_TEAMPROJECTID").lower()
-            or parameters.get("mode") not in {"Validate", "Release"}
+            or parameters.get("mode") not in {"Validate", "StageDraft", "Release"}
             or release.branch(parameters["sourceBranch"]) != required("BUILD_SOURCEBRANCH")
             or parent.get("result") not in (None, "succeeded")):
         raise ValueError("Untrusted, failed, or nonqualifying release producer.")
