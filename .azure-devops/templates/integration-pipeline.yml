@@ -22,8 +22,8 @@ parameters:
     default: [stable]
   - name: pythonVersions
     displayName: Python versions
-    type: object
-    default: ['3.13']
+    type: string
+    default: '3.13'
   - name: upgradeBaselines
     displayName: Upgrade baselines (JSON)
     type: string
@@ -82,7 +82,7 @@ stages:
               OPS_MODE: ${{ parameters.mode }}
               OPS_SCENARIOS: ${{ join(',', parameters.testScenarios) }}
               OPS_CHANNELS: ${{ join(',', parameters.runtimeChannels) }}
-              OPS_PYTHONS: ${{ join(',', parameters.pythonVersions) }}
+              OPS_PYTHONS: ${{ parameters.pythonVersions }}
               OPS_BASELINES: ${{ parameters.upgradeBaselines }}
               OPS_SUBSCRIPTION: ${{ parameters.subscriptionId }}
               OPS_RESOURCE_GROUP: ${{ parameters.resourceGroup }}

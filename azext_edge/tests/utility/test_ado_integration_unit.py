@@ -1148,13 +1148,13 @@ def test_yaml_keeps_dry_run_separate_and_reuses_existing_tests():
                 "customLocationsObjectId"} & {param["name"] for param in value["parameters"]}
     assert value["extends"]["parameters"]["azureServiceConnection"] == "${{ variables.TestAzureServiceConnection }}"
     assert list(value).index("variables") < list(value).index("extends")
-    assert "variables" not in yaml.safe_load(
-        (ROOT / ".azure-devops/templates/integration-pipeline.yml").read_text(encoding="utf-8")
-    )
+    assert value["extends"]["parameters"]["pythonVersions"] == "${{ join(',', parameters.pythonVersions) }}"
     assert value["extends"]["template"] == "templates/integration-pipeline.yml"
     region = next(param for param in value["parameters"] if param["name"] == "clusterRegion")
     assert set(region["values"]) == pipeline.release.CLUSTER_REGIONS | {"usgovvirginia"}
     value = yaml.safe_load((ROOT / ".azure-devops/templates/integration-pipeline.yml").read_text())
+    assert "variables" not in value
+    assert next(item for item in value["parameters"] if item["name"] == "pythonVersions")["type"] == "string"
     template_region = next(param for param in value["parameters"] if param["name"] == "clusterRegion")
     assert template_region["default"] == region["default"] == "westus2"
     assert value["stages"][0]["stage"] == "Plan"

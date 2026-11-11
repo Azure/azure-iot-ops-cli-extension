@@ -98,7 +98,7 @@ extends:
     mode: ${{ parameters.mode }}
     clusterRegion: ${{ parameters.clusterRegion }}
     testScenarios: ${{ parameters.testScenarios }}
-    pythonVersions: ${{ parameters.pythonVersions }}
+    pythonVersions: ${{ join(',', parameters.pythonVersions) }}
     runtimeChannels: ${{ parameters.runtimeChannels }}
     upgradeBaselines: ${{ parameters.upgradeBaselines }}
     scenarioTimeoutMinutes: ${{ parameters.scenarioTimeoutMinutes }}
