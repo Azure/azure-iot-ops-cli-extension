@@ -37,6 +37,46 @@ def resource(location=LOCATION):
     return {"extendedLocation": {"name": location}}
 
 
+@pytest.mark.parametrize("remaining", [[], [{"sourcePath": "another-secret"}]])
+def test_certificate_removal_waits_for_resource_graph(mocker, remaining):
+    stale = {
+        "name": NAME, "resourceGroup": "test-rg", "extendedLocation": {"name": LOCATION},
+        "properties": {"objectSecretMapping": [{"sourcePath": "trusttest-der"}]},
+    }
+    fresh = {**stale, "properties": {"objectSecretMapping": remaining}}
+    command = mocker.patch.object(helpers, "run", return_value=[fresh])
+    sleep = mocker.patch.object(helpers, "sleep")
+    helpers.assert_ssc_secret_not_exists([stale], LOCATION, "test-rg", "trusttest.der", NAME, "test-instance")
+    command.assert_called_once_with("az iot ops secretsync list -i test-instance -g test-rg")
+    sleep.assert_called_once_with(helpers.SECRETSYNC_RETRY_INTERVAL)
+
+
+@pytest.mark.parametrize("response", ["stale", "foreign", "absent", None, CLIInternalError("read failed")])
+def test_certificate_removal_never_masks_persistent_or_invalid_results(mocker, response):
+    stale = {
+        "name": NAME, "resourceGroup": "test-rg", "extendedLocation": {"name": LOCATION},
+        "properties": {"objectSecretMapping": [{"sourcePath": "trusttest-der"}]},
+    }
+    mocker.patch.object(helpers, "SECRETSYNC_MAX_RETRIES", 2)
+    sleep = mocker.patch.object(helpers, "sleep")
+    command = mocker.patch.object(helpers, "run")
+    if isinstance(response, Exception):
+        command.side_effect = response
+    else:
+        command.return_value = {
+            "stale": [stale], "foreign": [{**stale, "extendedLocation": {"name": OLD_LOCATION}}],
+            "absent": [], None: None,
+        }[response]
+    if response == "absent":
+        helpers.assert_ssc_secret_not_exists([stale], LOCATION, "test-rg", "trusttest.der", NAME, "test-instance")
+    else:
+        with pytest.raises(CLIInternalError if isinstance(response, Exception) else AssertionError):
+            helpers.assert_ssc_secret_not_exists(
+                [stale], LOCATION, "test-rg", "trusttest.der", NAME, "test-instance",
+            )
+    assert command.call_count == sleep.call_count == (2 if response == "stale" else 1)
+
+
 @pytest.fixture
 def cleanup_context(mocker):
     settings = SimpleNamespace(env=SimpleNamespace(azext_edge_rg="test-rg", azext_edge_instance="test-instance"))

@@ -584,6 +584,7 @@ def test_reviewed_test_compatibility_is_explicit_and_never_changes_product(
     product.write_bytes(b"published product\n")
     monkeypatch.setattr(compat, "ROOT", automation)
     monkeypatch.setattr(compat, "BASE_FILES", {name: hashlib.sha256(original).hexdigest()})
+    monkeypatch.setattr(compat, "REMOVAL_FILES", {})
     manifest = {
         "extension": "azure-iot-ops", "cloud": "AzureUSGovernment",
         "testSourceCommit": compat.FAIRFAX_TEST_SOURCE, "automationCommit": AUTOMATION,
@@ -605,6 +606,57 @@ def test_reviewed_test_compatibility_is_explicit_and_never_changes_product(
         assert staged.read_bytes() == corrected
         assert json.loads(receipt.read_text()) == manifest["testCompatibility"]
     assert product.read_bytes() == b"published product\n"
+
+
+@pytest.mark.parametrize("tamper", [None, "baseline", "function"])
+def test_frozen_certificate_tests_get_only_the_reviewed_read_wait(adapter, monkeypatch, tmp_path, tamper):
+    compat = importlib.import_module("release_test_compatibility")
+    target = tmp_path / "installed"
+    originals = {
+        compat.OPCUA_PREFIX + "helpers.py":
+            "def assert_ssc_secret_not_exists(*args):\n    pass\n",
+        compat.OPCUA_PREFIX + "test_opcua_certs_trust_int.py":
+            "def test_trust():\n    assert_ssc_secret_not_exists(\n        ssc_name=NAME,\n    )\n",
+        compat.OPCUA_PREFIX + "test_opcua_certs_client_int.py":
+            "def test_client():\n    for certificate in certificates:\n        assert_ssc_secret_not_exists(\n"
+            "            ssc_name=NAME,\n        )\n",
+    }
+    for name, content in originals.items():
+        path = target / compat.PREFIX / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(content)
+    monkeypatch.setattr(compat, "REMOVAL_FILES", {
+        name: hashlib.sha256(content.encode()).hexdigest() for name, content in originals.items()
+    })
+    manifest = {
+        "extension": "azure-iot-ops", "cloud": "AzureCloud",
+        "testSourceCommit": compat.FAIRFAX_TEST_SOURCE, "automationCommit": AUTOMATION,
+    }
+    manifest["testCompatibility"] = compat.compatibility(manifest)
+    assert manifest["testCompatibility"]["files"] == []
+    assert manifest["testCompatibility"]["exclusions"] == {}
+    product = target / "azext_edge/__init__.py"
+    product.write_text("unchanged product\n")
+    receipt = tmp_path / "receipt.json"
+    if tamper == "baseline":
+        (target / compat.PREFIX / next(iter(originals))).write_text("unexpected source\n")
+    elif tamper == "function":
+        manifest["testCompatibility"]["secretSyncRemoval"]["functionSha256"] = "0" * 64
+    if tamper:
+        with pytest.raises(ValueError, match="baseline|manifest"):
+            compat.stage_tests(target, manifest, receipt)
+        assert not receipt.exists()
+    else:
+        compat.stage_tests(target, manifest, receipt)
+        for name, content in originals.items():
+            staged = (target / compat.PREFIX / name).read_text()
+            if name.endswith("/helpers.py"):
+                assert staged == compat.removal_function() + "\n"
+            else:
+                assert staged.replace(" " * (12 if "client" in name else 8)
+                                      + "instance_name=instance_name,\n", "") == content
+        assert json.loads(receipt.read_text()) == manifest["testCompatibility"]
+    assert product.read_text() == "unchanged product\n"
 
 
 @pytest.mark.parametrize("cloud,source,excluded", [

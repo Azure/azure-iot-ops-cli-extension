@@ -128,6 +128,7 @@ def test_opcua_cert_trust(cluster_connection, opcua_certs_trust_test_setup, trac
     )
     # check secret entry removed from secretsync
     assert_ssc_secret_not_exists(
+        instance_name=instance_name,
         secretsync_records=secretsync_records,
         extended_location=extended_loc,
         resource_group=resource_group,

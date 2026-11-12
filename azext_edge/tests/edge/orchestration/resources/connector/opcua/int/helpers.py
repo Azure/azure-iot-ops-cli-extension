@@ -407,21 +407,30 @@ def assert_ssc_secret_not_exists(
     resource_group: str,
     cert_file: str,
     ssc_name: Optional[str],
+    instance_name: str,
 ):
     p = Path(cert_file)
     file_name_info = (p.stem, p.suffix)
     cert_extension = file_name_info[1].replace(".", "")
     secret_name = f"{file_name_info[0]}-{cert_extension}"
-    result = next((rec for rec in secretsync_records if rec["name"] == ssc_name), None)
-    if not result:
-        # when there is only one secret in secretsync resource, and it is removed, the resource itself is removed
-        return
-    else:
+    for attempt in range(SECRETSYNC_MAX_RETRIES + 1):
+        assert isinstance(secretsync_records, list), "Expected a SecretSync resource list."
+        result = next((rec for rec in secretsync_records if rec["name"] == ssc_name), None)
+        if not result:
+            return
         assert result["extendedLocation"]["name"] == extended_location
         assert result["resourceGroup"] == resource_group
         assert result["name"] == ssc_name
         secret_mappings = result["properties"].get("objectSecretMapping", [])
-        assert not any(mapping.get("sourcePath", "") == secret_name for mapping in secret_mappings)
+        if not any(mapping.get("sourcePath", "") == secret_name for mapping in secret_mappings):
+            return
+        assert attempt < SECRETSYNC_MAX_RETRIES, f"Secret {secret_name} still appears in SecretSync {ssc_name}."
+        # SecretSync list uses Resource Graph, which can lag successful ARM deletion.
+        logger.info("Waiting for Resource Graph to remove %s from %s.", secret_name, ssc_name)
+        sleep(SECRETSYNC_RETRY_INTERVAL)
+        secretsync_records = run(
+            f"az iot ops secretsync list -i {quote(instance_name)} -g {quote(resource_group)}"
+        )
 
 
 def assert_cluster_side_secret_not_exists(
