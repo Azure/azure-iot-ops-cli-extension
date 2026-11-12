@@ -2,7 +2,7 @@
 
 trigger: none
 pr: none
-name: ops-release-$(Date:yyyyMMdd).$(Rev:r)
+name: aio-release-$(Date:yyyyMMdd).$(Rev:r)
 
 parameters:
   - name: mode

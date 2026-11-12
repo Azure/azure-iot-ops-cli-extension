@@ -2,7 +2,7 @@
 
 trigger: none
 pr: none
-name: ops-integration-$(Date:yyyyMMdd).$(Rev:r)
+name: aio-integration-$(Date:yyyyMMdd).$(Rev:r)
 appendCommitMessageToRunName: false
 pool:
   vmImage: ubuntu-24.04

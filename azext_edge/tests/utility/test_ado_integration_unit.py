@@ -239,11 +239,11 @@ def test_title_uses_frozen_scenarios_channels_and_selected_region(monkeypatch, t
     monkeypatch.setenv("OPS_SCENARIOS", "trustbundle")
     monkeypatch.setenv("OPS_CHANNELS", "stable")
     monkeypatch.setenv("OPS_CLUSTER_REGION", "westeurope")
-    for current in ("ops-integration-20261031.1", "already renamed"):
+    for current in ("aio-integration-20261031.1", "already renamed"):
         monkeypatch.setenv("BUILD_BUILDNUMBER", current)
         pipeline.title(tmp_path)
         assert capsys.readouterr().out.splitlines()[0] == (
-            f"##vso[build.updatebuildnumber]ops-integration-123 ({region}) "
+            f"##vso[build.updatebuildnumber]aio-integration-123 ({region}) "
             "(edge,runtime-channel) (dry-run,stable,preview)"
         )
         assert (tmp_path / "plan.json").read_bytes() == original
@@ -260,7 +260,7 @@ def test_title_compacts_large_selection_without_release_label(monkeypatch, tmp_p
         value["releaseBuildId"] = release_build_id
     result = pipeline.run_title(value, "Integration tests")
     assert result == (
-        "ops-integration-123 (westus2) "
+        "aio-integration-123 (westus2) "
         "(edge,broker-diagnostics-removal,insecure-listener,rpsaas +7) (stable)"
     )
     assert len(result) <= 255
@@ -1157,6 +1157,7 @@ def test_yaml_exposes_installed_dependencies_even_after_test_failure():
 
 def test_yaml_keeps_dry_run_separate_and_reuses_existing_tests():
     value = yaml.safe_load((ROOT / ".azure-devops/integration.yml").read_text())
+    assert value["name"] == "aio-integration-$(Date:yyyyMMdd).$(Rev:r)"
     assert value["trigger"] == "none" and value["pr"] == "none" and "schedules" not in value
     assert value["appendCommitMessageToRunName"] is False
     assert next(param for param in value["parameters"] if param["name"] == "mode")["default"] == "Dry run"

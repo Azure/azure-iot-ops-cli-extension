@@ -250,7 +250,8 @@ def run_title(value, mode):
     if mode == "Dry run":
         modes.append("dry-run")
     modes.extend(channel for channel in ("stable", "preview") if channel in channels)
-    title = f"ops-{kind}-{value['producer']['build']} ({region}) ({scope}) ({','.join(modes)})"
+    prefix = "aio" if kind == "integration" else "ops"
+    title = f"{prefix}-{kind}-{value['producer']['build']} ({region}) ({scope}) ({','.join(modes)})"
     if len(title) > 255 or not re.fullmatch(r"[A-Za-z0-9 (),+-]+", title):
         raise ValueError("Run title exceeds Azure Pipelines length or character limits.")
     return title

@@ -267,7 +267,7 @@ def test_candidate_creation_updates_title_from_wheel_once(
         candidate, tmp_path, monkeypatch, capsys, version, already_versioned, skipped):
     _, value = candidate
     monkeypatch.setenv("RELEASE_SKIP_INTEGRATION_TESTS", str(skipped))
-    title = "ops-release-20261104.1"
+    title = "aio-release-20261104.1"
     versioned_title = f"{title} ({version})"
     monkeypatch.setenv("BUILD_BUILDNUMBER", versioned_title if already_versioned else title)
     source = tmp_path / "source"
@@ -721,6 +721,7 @@ def test_unit_dependency_versions_are_logged_before_checking(monkeypatch, tmp_pa
 
 def test_yaml_parallel_qualification_requires_all_gates_and_no_default_publication():
     root = yaml.safe_load((ROOT / ".azure-devops/release.yml").read_text(encoding="utf-8"))
+    assert root["name"] == "aio-release-$(Date:yyyyMMdd).$(Rev:r)"
     parameters = {item["name"]: item for item in root["parameters"]}
     assert parameters["mode"]["default"] == "Plan"
     assert parameters["createIndexPr"]["default"] is False
