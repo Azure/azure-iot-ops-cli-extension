@@ -69,6 +69,7 @@ def validate_state(state):
             or state["sha256"] != manifest["wheel"]["sha256"]
             or Path(state["wheel"]).resolve() != bundle / manifest["wheel"]["name"]
             or state["row"]["scenario"]["channel"] not in manifest["runtimes"]
+            or manifest.get("slot") == "preview" and state["row"]["scenario"]["channel"] != "preview"
             or state["resourceGroup"] != native.required("OPS_RESOURCE_GROUP")):
         raise ValueError("Monitor execution state differs from its released artifact or cloud.")
 

@@ -27,8 +27,8 @@ We also regularly utilize GitHub Codespaces, and have automated this environment
 
 ## Released-version monitors
 
-Thin cloud/track `release-monitor*.yml` entry points share health stages for six definitions:
-`Azure IoT Operations CLI - Release Health (<Public|Fairfax> <v1|v2|v3>)`.
+Thin cloud/track `release-monitor*.yml` entry points share health stages for eight definitions:
+`Azure IoT Operations CLI - Release Health (<Public|Fairfax> <v1|v2|v3|Preview>)`.
 The slots mean newest, previous and third explicitly supported milestone, not CLI
 version numbers. `.azure-devops/release-monitors.json` currently maps `v1` to `1.5`,
 `v2` to `1.4` and `v3` to `1.3`. Update that reviewed mapping when support changes;
@@ -39,6 +39,13 @@ support window. Manifests retain the internal slot; run titles show the configur
 runtime family and actual CLI/runtime versions instead of `v1`/`v2`/`v3`.
 Updating the JSON support mapping changes the resolved run titles without editing
 pipeline YAML. The pre-run form cannot display a JSON-derived version label.
+
+The dedicated `Preview` slot follows the `v1` released CLI selection, but tests
+only that wheel's bundled Preview runtime. It is not a separate preview CLI package.
+`release-monitor-preview.yml` and `release-monitor-fairfax-preview.yml` default to
+**Integration tests**, **Default scenarios**, **Python 3.13** and **Runtime: Preview**;
+Stable is not selectable in these definitions. Their run titles show `preview`
+and the actual frozen Preview runtime version, not the wheel's Stable runtime.
 
 Integration and health share **Mode**, **Cloud**, **Public region**, **Scenarios**,
 **Python**, **Channels**, **Upgrade source (only for upgrade-path test)** and
@@ -74,7 +81,11 @@ match the selected cloud's bundled runtime. All planned scenarios, their latest
 attempts, JUnit and cleanup must pass; monitor evidence cannot qualify a release.
 No AIO Mooncake definitions are generated. Older releases without Fairfax profiles
 are explicitly blocked, never redirected to the Public profile. Fairfax currently
-supports only `v1`; `v2` and `v3` stay disabled and are rejected before acquisition.
+supports only `v1`; `v2`, `v3` and `Preview` stay disabled and are rejected before acquisition.
+CLI 2.11.2 bundles Public Preview 1.6.0-preview.60, but its Fairfax profile supports
+only Stable 1.5.46 and explicitly rejects Preview deployment. Do not enable Fairfax
+Preview, authorize additional infrastructure, or substitute a Public/Stable profile
+until the published CLI and service support a reviewed Fairfax Preview runtime.
 The released Fairfax test-helper catalog is bound to the active cloud in every
 pytest worker, without modifying product files or weakening runtime assertions.
 
@@ -98,8 +109,11 @@ Never store personal account passwords or tokens in these files.
 
 Keep all definitions disabled until an owner approves automation connections,
 resource scopes/RBAC, capacity and live qualification. Each scenario attempt uses
-the configured, pre-created resource group and distinct resources. All scenarios,
-including Trust Bundle, can run concurrently without a cross-run lock. The runner
+the configured, pre-created resource group. Released Trust Bundle tests reuse
+fixed SecretSync names: do not overlap Trust Bundle jobs or runs in the same group,
+including Public Stable/Preview health and GitHub integration runs. Use one Python
+version and one runtime channel per Trust Bundle invocation until serialization
+or resource-group isolation is implemented. No cross-run lock is supplied. The runner
 never creates or deletes a resource group. Cleanup must target only the attempt's
 owned resources, including resources created by its test fixtures.
 An administrator must provision the configured groups once and grant the service

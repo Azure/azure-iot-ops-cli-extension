@@ -351,6 +351,83 @@ def test_configured_slot_resolves_its_milestone_and_labels_the_actual_versions(
     assert f"##vso[build.updatebuildnumber]{title}" in capsys.readouterr().out
 
 
+def test_dedicated_preview_uses_v1_cli_and_freezes_preview_on_retry(
+        monitor, manifest, monkeypatch, mocker, tmp_path, capsys):
+    config = monitor.read_json(ROOT / ".azure-devops/release-monitors.json")
+    item = next(item for item in monitor.configurations(config)
+                if item["variables"]["MonitorCloud"] == "public" and item["variables"]["MonitorTrack"] == "preview")
+    monkeypatch.setenv("BUILD_DEFINITIONNAME", item["name"])
+    monkeypatch.setenv("BUILD_REPOSITORY_NAME", monitor.REPOSITORIES[config["extension"]])
+    monkeypatch.setenv("BUILD_BUILDID", "123")
+    for key, value in item["variables"].items():
+        monkeypatch.setenv(key.upper(), value)
+        monkeypatch.setenv("TEST" + key.removeprefix("Monitor").upper(), value)
+    monkeypatch.setenv("TESTSERVICES", "Default scenarios")
+    monkeypatch.setenv("TESTCHANNELS", "preview")
+    preview = monitor.parse_runtime_profile(
+        "{'VERSIONS': {'iotOperations': '1.6.0-preview.60'}, 'TRAINS': {'iotOperations': 'preview'}}",
+        "public", "preview",
+    )
+    discovery = mocker.patch.object(monitor, "resolve", return_value=manifest)
+    runtime = mocker.patch.object(monitor, "runtime_profile", return_value=preview)
+    output = tmp_path / "manifest.json"
+    arguments = [
+        "resolve", "--configuration", str(ROOT / ".azure-devops/release-monitors.json"),
+        "--extension", "azure-iot-ops", "--cloud", "public", "--track", "preview",
+        "--automation-commit", AUTOMATION, "--output", str(output),
+    ]
+    monitor.main(arguments)
+    frozen = monitor.read_json(output)
+    assert frozen["slot"] == "preview"
+    assert frozen["profile"]["configured"] == frozen["profile"]["selected"]
+    assert frozen["profile"]["selected"]["channels"] == ["preview"]
+    assert frozen["runtimes"]["preview"] == preview
+    title = "aio-health-public-preview-cli2.11.1-runtime1.6.0-preview.60-b123"
+    assert f"##vso[build.updatebuildnumber]{title}" in capsys.readouterr().out
+    monitor.write_json(tmp_path / "release-selection-1/manifest.json", frozen)
+    monitor.main([*arguments, "--history", str(tmp_path), "--attempt", "2"])
+    assert monitor.read_json(output) == frozen
+    discovery.assert_called_once_with("azure-iot-ops", "public", config["tracks"]["v1"], AUTOMATION)
+    runtime.assert_called_once_with(frozen["repository"], frozen["testSourceCommit"], "public", "preview")
+
+
+@pytest.mark.parametrize("channels", ["stable", "stable,preview", ""])
+def test_dedicated_preview_rejects_nonpreview_selection(monitor, manifest, monkeypatch, mocker, channels):
+    config = monitor.read_json(ROOT / ".azure-devops/release-monitors.json")
+    manifest["slot"] = "preview"
+    selected = next(item["variables"] for item in monitor.configurations(config)
+                    if item["variables"]["MonitorCloud"] == "public"
+                    and item["variables"]["MonitorTrack"] == "preview")
+    for key, value in selected.items():
+        monkeypatch.setenv(key.upper(), value)
+        monkeypatch.setenv("TEST" + key.removeprefix("Monitor").upper(), value)
+    monkeypatch.setenv("TESTSERVICES", "Default scenarios")
+    monkeypatch.setenv("TESTCHANNELS", channels)
+    runtime = mocker.patch.object(monitor, "runtime_profile")
+    with pytest.raises(ValueError, match="requires only the preview runtime channel"):
+        monitor.bind_profile(manifest, config)
+    runtime.assert_not_called()
+    with pytest.raises(ValueError, match="no frozen preview runtime"):
+        monitor.run_title(manifest, "123")
+
+
+def test_fairfax_preview_definition_is_blocked_before_discovery(monitor, monkeypatch, mocker, tmp_path):
+    config = monitor.read_json(ROOT / ".azure-devops/release-monitors.json")
+    item = next(item for item in monitor.configurations(config)
+                if item["variables"]["MonitorCloud"] == "fairfax" and item["variables"]["MonitorTrack"] == "preview")
+    monkeypatch.setenv("BUILD_DEFINITIONNAME", item["name"])
+    for key, value in item["variables"].items():
+        monkeypatch.setenv(key.upper(), value)
+    discovery = mocker.patch.object(monitor, "resolve")
+    with pytest.raises(ValueError, match="fairfax preview is unsupported"):
+        monitor.main([
+            "resolve", "--configuration", str(ROOT / ".azure-devops/release-monitors.json"),
+            "--extension", "azure-iot-ops", "--cloud", "fairfax", "--track", "preview",
+            "--automation-commit", AUTOMATION, "--output", str(tmp_path / "manifest.json"),
+        ])
+    discovery.assert_not_called()
+
+
 def test_definition_generation_cannot_enable_runs_or_copy_secrets(monitor):
     config = monitor.read_json(ROOT / ".azure-devops/release-monitors.json")
     repository = monitor.REPOSITORIES[config["extension"]]
@@ -364,8 +441,9 @@ def test_definition_generation_cannot_enable_runs_or_copy_secrets(monitor):
         "triggers": [{"triggerType": "schedule"}],
     }
     definitions = monitor.definitions(config, baseline, "refs/heads/monitor-test")
-    assert len(definitions) == 6
+    assert len(definitions) == 8
     for item in definitions:
+        preview = item["variables"]["MonitorTrack"]["value"] == "preview"
         assert item["queueStatus"] == "disabled" and item["triggers"] == []
         assert "Secret" not in item["variables"]
         assert item["repository"]["properties"] == {"connectedServiceId": "github-connection"}
@@ -375,6 +453,8 @@ def test_definition_generation_cannot_enable_runs_or_copy_secrets(monitor):
         common = yaml.safe_load((ROOT / ".azure-devops/integration.yml").read_text())["parameters"]
         assert list(parameters) == [p["name"] for p in common]
         for expected in common:
+            if preview and expected["name"] == "runtimeChannels":
+                expected = {**expected, "values": ["Preview"]}
             actual = parameters[expected["name"]]
             assert {k: v for k, v in actual.items() if k != "default"} == {
                 k: v for k, v in expected.items() if k != "default"
@@ -384,7 +464,7 @@ def test_definition_generation_cannot_enable_runs_or_copy_secrets(monitor):
         assert profile["parameters"]["version"] == item["variables"]["MonitorTrack"]["value"]
         assert parameters["clusterRegion"]["default"] == "West US 2"
         assert parameters["testScenarios"]["default"] == ["Default scenarios"]
-        assert parameters["runtimeChannels"]["default"] == ["Stable"]
+        assert parameters["runtimeChannels"]["default"] == ["Preview" if preview else "Stable"]
         channels = next(value for value in pipeline["variables"] if value.get("name") == "TestChannels")
         assert channels["value"] == "${{ lower(join(',', parameters.runtimeChannels)) }}"
     with pytest.raises(ValueError, match="GitHub definition"):
@@ -418,13 +498,18 @@ def test_cleanup_identity_does_not_depend_on_source_files(adapter, state, monkey
         adapter.validate_state(state)
 
 
-def test_preview_channel_freezes_its_exact_deployment_version(monitor, adapter, state, monkeypatch, mocker, tmp_path):
+@pytest.mark.parametrize("slot", ["v1", "preview"])
+def test_preview_channel_freezes_its_exact_deployment_version(
+        monitor, adapter, state, monkeypatch, mocker, tmp_path, slot):
     preview = monitor.parse_runtime_profile(
         "{'VERSIONS': {'iotOperations': '1.6.0-preview.60'}, 'TRAINS': {'iotOperations': 'preview'}}",
         "public", "preview",
     )
     config = monitor.read_json(ROOT / ".azure-devops/release-monitors.json")
-    selected = monitor.configurations(config)[0]["variables"]
+    state["monitor"]["slot"] = slot
+    monkeypatch.setenv("MONITOR_TRACK", slot)
+    selected = next(item["variables"] for item in monitor.configurations(config)
+                    if item["variables"]["MonitorCloud"] == "public" and item["variables"]["MonitorTrack"] == slot)
     for key, value in selected.items():
         monkeypatch.setenv(key.upper(), value)
         monkeypatch.setenv("TEST" + key.removeprefix("Monitor").upper(), value)
@@ -437,6 +522,9 @@ def test_preview_channel_freezes_its_exact_deployment_version(monitor, adapter, 
     resolve.assert_called_once_with(
         state["monitor"]["repository"], state["monitor"]["testSourceCommit"], "public", "preview",
     )
+    if slot == "preview":
+        with pytest.raises(ValueError, match="execution state differs"):
+            adapter.validate_state(state)
     state["row"]["scenario"]["channel"] = "preview"
     adapter.validate_state(state)
     commands = Mock()

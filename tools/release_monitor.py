@@ -264,7 +264,7 @@ def validate_manifest(manifest, *, extension=None, cloud=None, track=None, slot=
         if expected is not None and manifest.get(key) != expected:
             raise ValueError(f"Release manifest differs from the requested {key}.")
     if "slot" in manifest:
-        allowed = {"ga", "preview"} if config["extension"] == "azure-iot" else {"v1", "v2", "v3"}
+        allowed = {"ga", "preview"} if config["extension"] == "azure-iot" else {"v1", "v2", "v3", "preview"}
         if (manifest["slot"] not in allowed
                 or config["extension"] == "azure-iot" and manifest["slot"] != manifest["track"]):
             raise ValueError("Invalid release-health support slot.")
@@ -453,6 +453,7 @@ def configured_tracks(config):
         versions = [Version(tracks[key]) for key in ("v1", "v2", "v3")]
         if len(set(versions)) != 3 or versions != sorted(versions, reverse=True):
             raise ValueError("AIO support slots must select distinct milestones, newest first.")
+        return {**tracks, "preview": tracks["v1"]}
     return tracks
 
 
@@ -548,13 +549,19 @@ def bind_profile(manifest, config):
         "python": sorted(pythons), "mode": mode,
     }
     channels = os.environ["TESTCHANNELS"].split(",")
+    preview_health = config["extension"] == "azure-iot-ops" and "preview" in {configured_track, track}
+    if preview_health and channels != ["preview"]:
+        raise ValueError("Dedicated Preview health requires only the preview runtime channel.")
     baselines = json.loads(os.environ["TESTBASELINES"])
     timeout = int(os.environ["TESTTIMEOUT"])
     if (len(regions) != 1 or not channels or set(channels) - {"stable", "preview"}
             or len(channels) != len(set(channels)) or not isinstance(baselines, dict)
             or timeout not in {90, 180, 360} or cloud != "public" and channels != ["stable"]):
         raise ValueError("Select supported regions, runtime channels, upgrade baselines and timeout.")
-    expected.update(channels=["stable"], baselines={}, timeout=360)
+    expected.update(
+        channels=["preview" if config["extension"] == "azure-iot-ops" and configured_track == "preview" else "stable"],
+        baselines={}, timeout=360,
+    )
     actual.update(channels=sorted(channels), baselines=baselines, timeout=timeout)
     if manifest.get("kind") == "source":
         expected["branch"] = "refs/heads/" + (
@@ -606,9 +613,14 @@ def run_title(manifest, build):
     if not re.fullmatch(r"[1-9][0-9]*", build):
         raise ValueError("A positive ADO build ID is required for the release-health run title.")
     prefix = "iot" if manifest["extension"] == "azure-iot" else "aio"
-    title = f"{prefix}-health-{manifest['cloudKey']}-{manifest['track']}-cli{manifest['release']['version']}"
+    preview_health = manifest["extension"] == "azure-iot-ops" and manifest.get("slot") == "preview"
+    track = "preview" if preview_health else manifest["track"]
+    title = f"{prefix}-health-{manifest['cloudKey']}-{track}-cli{manifest['release']['version']}"
     if manifest["extension"] == "azure-iot-ops":
-        runtime = manifest["runtime"]["version"] if manifest["runtime"] else "unavailable"
+        selected_runtime = manifest["runtimes"].get("preview") if preview_health else manifest["runtime"]
+        if preview_health and selected_runtime is None:
+            raise ValueError("Dedicated Preview health has no frozen preview runtime.")
+        runtime = selected_runtime["version"] if selected_runtime else "unavailable"
         title += f"-runtime{runtime}"
     title += f"-b{build}"
     if "profile" in manifest and manifest["profile"]["configured"] != manifest["profile"]["selected"]:
