@@ -370,6 +370,9 @@ def test_definition_generation_cannot_enable_runs_or_copy_secrets(monitor):
         assert profile["parameters"]["version"] == item["variables"]["MonitorTrack"]["value"]
         assert parameters["clusterRegion"]["default"] == "West US 2"
         assert parameters["testScenarios"]["default"] == ["Default scenarios"]
+        assert parameters["runtimeChannels"]["default"] == ["Stable"]
+        channels = next(value for value in pipeline["variables"] if value.get("name") == "TestChannels")
+        assert channels["value"] == "${{ lower(join(',', parameters.runtimeChannels)) }}"
     with pytest.raises(ValueError, match="GitHub definition"):
         monitor.definitions(config, baseline, "refs/heads/../other")
 

@@ -21,7 +21,7 @@ parameters:
       - Public
       - Fairfax
   - name: clusterRegion
-    displayName: Public region
+    displayName: Region (Public cloud only)
     type: string
     default: West US 2
     values:
@@ -64,13 +64,13 @@ parameters:
       - '3.12'
       - '3.13'
   - name: runtimeChannels
-    displayName: Channels
+    displayName: Runtime
     type: stringList
     default:
-      - stable
+      - Stable
     values:
-      - stable
-      - preview
+      - Stable
+      - Preview
   - name: upgradeBaselines
     displayName: Upgrade source (only for upgrade-path test)
     type: string
@@ -97,7 +97,7 @@ variables:
   - name: TestPythons
     value: ${{ join(',', parameters.pythonVersions) }}
   - name: TestChannels
-    value: ${{ join(',', parameters.runtimeChannels) }}
+    value: ${{ lower(join(',', parameters.runtimeChannels)) }}
   - name: TestBaselines
     value: ${{ parameters.upgradeBaselines }}
   - name: TestTimeout

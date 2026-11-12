@@ -108,6 +108,16 @@ def test_release_region_is_frozen_and_child_drift_is_rejected(candidate, monkeyp
         release.validate_integration(build, value)
 
 
+@pytest.mark.parametrize("channel", ["stable", "preview"])
+def test_release_runtime_selection_uses_display_values_and_validates(candidate, channel):
+    _, value = candidate
+    cohort = next(key for key, selected in value["cohorts"].items()
+                  if selected["row"]["scenario"]["channel"] == channel)
+    build = child(value, cohort)
+    assert json.loads(build["templateParameters"]["runtimeChannels"]) == [channel.capitalize()]
+    release.validate_integration(build, value, cohort)
+
+
 def test_candidate_verifier_remains_standalone_for_publication(candidate, tmp_path):
     directory, _ = candidate
     script = tmp_path / "release_pipeline.py"

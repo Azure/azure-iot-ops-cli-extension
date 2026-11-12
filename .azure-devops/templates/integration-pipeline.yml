@@ -17,7 +17,7 @@ parameters:
     type: object
     default: [edge]
   - name: runtimeChannels
-    displayName: Runtime channels
+    displayName: Runtime
     type: object
     default: [stable]
   - name: pythonVersions
@@ -81,7 +81,7 @@ stages:
               OPS_RELEASE_BUILD_ID: ${{ parameters.releaseBuildId }}
               OPS_MODE: ${{ parameters.mode }}
               OPS_SCENARIOS: ${{ join(',', parameters.testScenarios) }}
-              OPS_CHANNELS: ${{ join(',', parameters.runtimeChannels) }}
+              OPS_CHANNELS: ${{ lower(join(',', parameters.runtimeChannels)) }}
               OPS_PYTHONS: ${{ parameters.pythonVersions }}
               OPS_BASELINES: ${{ parameters.upgradeBaselines }}
               OPS_SUBSCRIPTION: ${{ parameters.subscriptionId }}

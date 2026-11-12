@@ -23,7 +23,7 @@ parameters:
     type: boolean
     default: false
   - name: clusterRegion
-    displayName: Public region
+    displayName: Region (Public cloud only)
     type: string
     default: West US 2
     values:

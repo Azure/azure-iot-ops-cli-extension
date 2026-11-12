@@ -1149,6 +1149,10 @@ def test_yaml_keeps_dry_run_separate_and_reuses_existing_tests():
     assert value["extends"]["parameters"]["azureServiceConnection"] == "${{ variables.TestAzureServiceConnection }}"
     assert list(value).index("variables") < list(value).index("extends")
     assert value["extends"]["parameters"]["pythonVersions"] == "${{ join(',', parameters.pythonVersions) }}"
+    runtime = next(param for param in value["parameters"] if param["name"] == "runtimeChannels")
+    assert runtime["displayName"] == "Runtime"
+    assert runtime["default"] == ["Stable"]
+    assert runtime["values"] == ["Stable", "Preview"]
     assert value["extends"]["template"] == "templates/integration-pipeline.yml"
     region = next(param for param in value["parameters"] if param["name"] == "clusterRegion")
     assert set(region["values"]) == set(pipeline.release.CLUSTER_REGIONS.values())
@@ -1169,6 +1173,7 @@ def test_yaml_keeps_dry_run_separate_and_reuses_existing_tests():
     assert value["stages"][0]["stage"] == "Plan"
     plan_step = next(step for step in value["stages"][0]["jobs"][0]["steps"] if step.get("name") == "plan")
     assert plan_step["env"]["OPS_CLUSTER_REGION"] == "${{ parameters.clusterRegion }}"
+    assert plan_step["env"]["OPS_CHANNELS"] == "${{ lower(join(',', parameters.runtimeChannels)) }}"
     title_step = value["stages"][0]["jobs"][0]["steps"][-1]
     assert title_step["bash"] == "python tools/ado_integration.py title --output plan"
     assert title_step["env"] == {"OPS_MODE": "${{ parameters.mode }}"}

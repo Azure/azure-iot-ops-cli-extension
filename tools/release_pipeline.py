@@ -365,7 +365,8 @@ def integration_parameters(candidate, cohort=None):
     selection = candidate["cohorts"][key]
     return dict(INTEGRATION_PARAMETERS, clusterRegion=CLUSTER_REGIONS[candidate["region"]],
                 releaseBuildId=candidate["producer"]["build"],
-                testScenarios=[selection["selection"]], runtimeChannels=[selection["row"]["scenario"]["channel"]])
+                testScenarios=[selection["selection"]],
+                runtimeChannels=[selection["row"]["scenario"]["channel"].capitalize()])
 
 
 def create_candidate(source, directory):
