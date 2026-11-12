@@ -1211,7 +1211,7 @@ def test_yaml_keeps_dry_run_separate_and_reuses_existing_tests():
     scenario_template = yaml.safe_load((ROOT / ".azure-devops/templates/integration-scenario.yml").read_text())
     assert next(item for item in scenario_template["parameters"] if item["name"] == "maxParallel")["default"] == 0
     job = scenario_template["jobs"][0]
-    assert job["displayName"] == ""
+    assert job["displayName"] == " "
     assert all("scenario" not in step.get("displayName", "").lower() for step in job["steps"])
     assert job["pool"] == {
         "name": "iotupx-ops-integration",

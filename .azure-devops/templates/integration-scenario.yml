@@ -14,7 +14,8 @@ parameters:
 
 jobs:
   - job: Scenario
-    displayName: ''
+    # An empty string falls back to the job ID; a space displays only the matrix row.
+    displayName: ' '
     pool:
       name: iotupx-ops-integration
       demands:
