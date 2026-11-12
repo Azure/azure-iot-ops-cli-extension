@@ -458,6 +458,39 @@ def test_runtime_observation_is_exact_and_cloud_bound(adapter, state, version, c
         }
 
 
+@pytest.mark.parametrize("failure", [None, "identity", "scenario"])
+def test_monitor_gate_retains_failure_evidence_without_masking_rejection(
+        adapter, state, tmp_path, mocker, monkeypatch, failure):
+    native = adapter.native
+    mocker.patch.object(adapter, "bundle_manifest", return_value=state["monitor"])
+    monkeypatch.setenv("OPS_RELEASE_BUILD_ID", "0")
+    monkeypatch.setenv("OPS_HISTORY", str(tmp_path / "history"))
+    value = {
+        "rows": [state["row"]], "cloud": state["cloud"], "monitor": state["monitor"],
+        "producer": native.producer(),
+    }
+    if failure == "identity":
+        value["monitor"] = {}
+    native.write(tmp_path / "plan.json", value)
+    evidence = mocker.patch.object(native, "scenario_evidence", return_value=[(None, None, {"status": "passed"})])
+    if failure == "scenario":
+        evidence.side_effect = ValueError("Unqualified latest scenario attempt")
+    output = tmp_path / "results"
+    native.write(output / "monitor-results.json", {"status": "passed", "scenarios": ["stale"]})
+    if failure:
+        with pytest.raises(ValueError, match="standalone|Unqualified"):
+            adapter.gate(output)
+    else:
+        adapter.gate(output)
+    result = native.read(output / "monitor-results.json")
+    assert result["releaseQualified"] is False
+    if failure:
+        assert result["status"] == "incomplete" and "scenarios" not in result
+        assert result["phase"] == ("release-identity" if failure == "identity" else "scenario-evidence")
+    else:
+        assert result["status"] == "passed" and result["scenarios"] == [{"status": "passed"}]
+
+
 def test_monitor_aggregate_rejects_missing_latest_or_wrong_kind_evidence(adapter, state, tmp_path):
     native = adapter.native
     value = {

@@ -119,6 +119,30 @@ def test_foreign_resource_is_rejected_without_recording_ownership(journal):
     assert journal.records() == {}
 
 
+@pytest.mark.parametrize("reason", [
+    "unexpected-read-status", "invalid-resource-response", "resource-id-mismatch", "ownership-marker-mismatch",
+])
+def test_guard_evidence_identifies_exact_rejection_without_service_content(http_arm, journal, monkeypatch, reason):
+    status = 200
+    value = {"id": RESOURCE, "tags": {owned.TAG: journal.owner}, "private": "secret-service-content"}
+    if reason == "unexpected-read-status":
+        status = 202
+    elif reason == "invalid-resource-response":
+        value["id"] = None
+    elif reason == "resource-id-mismatch":
+        value["id"] += "other"
+    else:
+        value["tags"] = {}
+    monkeypatch.setattr(http_arm, "request", Mock(return_value=(status, value, {})))
+    with pytest.raises(owned.OwnershipRejected) as rejected:
+        http_arm.verify(RESOURCE, "2023-05-01")
+    journal.violation("DELETE", RESOURCE, rejected.value)
+    evidence, = journal.path.with_suffix(".violations").glob("*.json")
+    assert json.loads(evidence.read_text())["reason"] == reason
+    assert "secret-service-content" not in evidence.read_text()
+    assert not journal.records()
+
+
 def test_parallel_journal_writers_never_publish_partial_records(journal):
     resources = [RESOURCE + str(index) for index in range(80)]
     with ThreadPoolExecutor(max_workers=8) as pool:
@@ -286,7 +310,7 @@ def test_expected_negative_test_cannot_hide_ownership_violation(journal, monkeyp
         observer.uninstall()
     arm.pages.side_effect = [[], [], []]
     monkeypatch.setattr(owned, "Arm", Mock(return_value=arm))
-    with pytest.raises(RuntimeError, match="cannot qualify"):
+    with pytest.raises(owned.OwnershipViolationError, match="cannot qualify"):
         owned.cleanup(journal.path)
     arm.request.assert_not_called()
 
@@ -628,6 +652,27 @@ def test_cleanup_waits_for_dependencies_before_deleting_roots(journal, monkeypat
     assert [call.args[:2] for call in arm.request.call_args_list] == [
         ("DELETE", role), ("GET", role), ("DELETE", RESOURCE), ("GET", RESOURCE),
     ]
+
+
+def test_secret_sync_cleanup_finishes_before_custom_location_and_cluster(journal, monkeypatch):
+    resources = [
+        GROUP + "/providers/microsoft.secretsynccontroller/secretsyncs/sync",
+        GROUP + "/providers/microsoft.secretsynccontroller/azurekeyvaultsecretproviderclasses/provider",
+        GROUP + "/providers/microsoft.extendedlocation/customlocations/location",
+        GROUP + "/providers/microsoft.kubernetes/connectedclusters/cluster",
+    ]
+    for resource in reversed(resources):
+        journal.record(resource, "2023-05-01", kind="root")
+    arm = Mock()
+    arm.pages.side_effect = [[], [], []]
+    arm.verify.side_effect = lambda resource, _: {"id": resource, "tags": {owned.TAG: journal.owner}}
+    arm.request.side_effect = lambda method, *_args, **_kwargs: (202 if method == "DELETE" else 404, None, {})
+    monkeypatch.setattr(owned, "Arm", Mock(return_value=arm))
+    owned.cleanup(journal.path)
+    assert [call.args[:2] for call in arm.request.call_args_list] == [
+        (method, resource) for resource in resources for method in ("DELETE", "GET")
+    ]
+    assert all(record["cleanup"] == "absent" for record in journal.records().values())
 
 
 def test_inventory_failure_still_attempts_journaled_cleanup(journal, monkeypatch):

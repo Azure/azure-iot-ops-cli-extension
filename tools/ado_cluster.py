@@ -447,6 +447,8 @@ def cleanup(output):
     deadline = time.monotonic() + 1050
     commands = Commands(budget=1050)
     state["cleanup"] = "incomplete"
+    state["resourceCleanup"] = "incomplete"
+    state["ownershipGuard"] = "not-checked"
     write(output / "state.json", state)
     errors = []
     try:
@@ -461,7 +463,16 @@ def cleanup(output):
                 except (subprocess.CalledProcessError, TimeoutError) as error:
                     print(f"##vso[task.logissue type=error]Instance cleanup failed ({type(error).__name__}).")
                     errors.append("instance")
-            owned_resources.cleanup(output / "state.json", timeout=min(600, max(0, deadline - time.monotonic())))
+            try:
+                owned_resources.cleanup(output / "state.json", timeout=min(600, max(0, deadline - time.monotonic())))
+            except owned_resources.OwnershipViolationError:
+                state["resourceCleanup"] = "passed"
+                state["ownershipGuard"] = "rejected"
+                write(output / "state.json", state)
+                raise
+            state["resourceCleanup"] = "passed"
+            state["ownershipGuard"] = "passed"
+            write(output / "state.json", state)
     finally:
         if state.get("clusterStarted"):
             _, unit = cluster_paths(state)

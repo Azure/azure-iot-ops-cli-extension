@@ -477,7 +477,7 @@ def test_fairfax_gate_binds_evidence_to_cloud_scope_and_locations(tmp_path, monk
 
 
 @pytest.mark.parametrize("mutation", [
-    "missing", "digest", "producer", "cleanup", "phase", "junit", "coverage", "newer",
+    "missing", "digest", "producer", "cleanup", "ownershipGuard", "phase", "junit", "coverage", "newer",
 ])
 def test_gate_rejects_missing_stale_or_failed_evidence(tmp_path, monkeypatch, mutation):
     directory = seed_gate(tmp_path, monkeypatch)
@@ -495,6 +495,8 @@ def test_gate_rejects_missing_stale_or_failed_evidence(tmp_path, monkeypatch, mu
             receipt["producer"]["commit"] = "c" * 40
         elif mutation == "cleanup":
             receipt["cleanup"] = "incomplete"
+        elif mutation == "ownershipGuard":
+            receipt["ownershipGuard"] = "rejected"
         elif mutation == "phase":
             receipt["phases"].pop("init")
         elif mutation == "newer":
@@ -558,7 +560,8 @@ def test_cleanup_retains_instance_failure_and_attempts_other_owned_resources(tmp
     assert pipeline.read(tmp_path / "state.json")["cleanup"] == "incomplete"
 
 
-def test_incomplete_owned_cleanup_cannot_qualify_the_attempt(tmp_path, monkeypatch):
+@pytest.mark.parametrize("guard_rejected", [False, True])
+def test_incomplete_owned_cleanup_cannot_qualify_the_attempt(tmp_path, monkeypatch, guard_rejected):
     state = make_state()
     pipeline.write(tmp_path / "state.json", state)
     resources = [{"id": state["resources"]["storage"]}]
@@ -567,10 +570,23 @@ def test_incomplete_owned_cleanup_cannot_qualify_the_attempt(tmp_path, monkeypat
         {"id": SUBSCRIPTION, "environmentName": "AzureCloud"}, resources,
     ]
     monkeypatch.setattr(cluster, "Commands", Mock(return_value=commands))
-    cluster.owned_resources.cleanup.side_effect = RuntimeError("Owned-resource cleanup is incomplete")
+    error = cluster.owned_resources.OwnershipViolationError if guard_rejected else RuntimeError
+    cluster.owned_resources.cleanup.side_effect = error("Owned-resource cleanup is incomplete")
     with pytest.raises(RuntimeError, match="incomplete"):
         cluster.cleanup(tmp_path)
-    assert pipeline.read(tmp_path / "state.json")["cleanup"] == "incomplete"
+    retained = pipeline.read(tmp_path / "state.json")
+    assert retained["cleanup"] == "incomplete"
+    assert retained["resourceCleanup"] == ("passed" if guard_rejected else "incomplete")
+    assert retained["ownershipGuard"] == ("rejected" if guard_rejected else "not-checked")
+    if guard_rejected:
+        retained["cleanup"] = "passed"
+        pipeline.write(tmp_path / "state.json", retained)
+    with pytest.raises(ValueError, match="failed"):
+        pipeline.report(tmp_path)
+    receipt = pipeline.read(tmp_path / "receipt.json")
+    assert receipt["status"] == "incomplete"
+    assert receipt["resourceCleanup"] == retained["resourceCleanup"]
+    assert receipt["ownershipGuard"] == retained["ownershipGuard"]
 
 
 def test_environment_drops_control_tokens_and_truthy_false_cleanup(monkeypatch, tmp_path):

@@ -448,6 +448,7 @@ def report(output):
     state = read(output / "state.json")
     phases = expected_phases(state["row"])
     success = state["status"] == "passed" and state["cleanup"] == "passed"
+    success = success and state.get("ownershipGuard") != "rejected"
     success = success and all(state["phases"].get(phase) == "passed" for phase in phases)
     value = {
         "schema": 1, "producer": state["producer"], "row": state["row"]["key"],
@@ -457,6 +458,9 @@ def report(output):
         "cleanup": state["cleanup"], "status": "passed" if success else "incomplete",
         "createdAt": datetime.now(timezone.utc).isoformat(), "releaseQualified": False,
     }
+    for key in ("resourceCleanup", "ownershipGuard"):
+        if key in state:
+            value[key] = state[key]
     if state.get("health") or state.get("cloud") == "AzureUSGovernment":
         if state.get("health"):
             value["health"] = state["health"]
@@ -508,6 +512,7 @@ def scenario_evidence(value, history):
         if (receipt.get("producer") != producer() or receipt.get("row") != row["key"]
                 or receipt.get("sha256") != required("OPS_CANDIDATE_DIGEST")
                 or receipt.get("status") != "passed" or receipt.get("cleanup") != "passed"
+                or receipt.get("ownershipGuard") == "rejected"
                 or any(receipt.get("phases", {}).get(phase) != "passed" for phase in expected_phases(row))):
             raise ValueError(f"Unqualified latest scenario attempt: {row['key']}")
         if value.get("cloud") == "AzureUSGovernment" and (

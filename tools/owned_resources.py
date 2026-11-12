@@ -35,6 +35,18 @@ TERMINAL_STATES = {"succeeded", "failed", "canceled", "cancelled"}
 NULL_USER_TAGS = {"microsoft.deviceupdate/accounts", "microsoft.deviceregistry/schemaregistries"}
 
 
+class OwnershipRejected(ValueError):
+    """A guard rejection with a safe reason code, never a service response body."""
+
+    def __init__(self, reason, message):
+        super().__init__(message)
+        self.reason = reason
+
+
+class OwnershipViolationError(RuntimeError):
+    """Resources are absent, but permanent guard violations still disqualify the attempt."""
+
+
 def cloud_endpoints(cloud):
     result = {CLOUDS[cloud]}
     if cloud == "AzureCloud":
@@ -167,6 +179,7 @@ class Journal:
     def violation(self, method, resource, error):
         write_new(self.path.with_suffix(".violations") / f"{uuid4().hex}.json", {
             "owner": self.owner, "method": method, "resource": resource, "errorType": type(error).__name__,
+            "reason": error.reason if isinstance(error, OwnershipRejected) else "unclassified",
         })
 
     def has_violations(self):
@@ -354,9 +367,18 @@ class Arm:
         status, value, _ = self.request("GET", resource, api)
         if status == 404:
             return None
-        if (status != 200 or not isinstance(value, dict)
-                or value.get("id", "").lower() != resource.lower() or not self.journal.owns(value)):
-            raise ValueError("Refusing to mutate a resource without matching attempt ownership.")
+        if status != 200:
+            reason = "unexpected-read-status"
+        elif not isinstance(value, dict) or not isinstance(value.get("id"), str):
+            reason = "invalid-resource-response"
+        elif value["id"].lower() != resource.lower():
+            reason = "resource-id-mismatch"
+        elif not self.journal.owns(value):
+            reason = "ownership-marker-mismatch"
+        else:
+            reason = None
+        if reason:
+            raise OwnershipRejected(reason, "Refusing to mutate a resource without matching attempt ownership.")
         self.journal.record(
             resource, api, confirmed=True, **({"settled": True} if creation_settled(value) else {}),
         )
@@ -374,7 +396,9 @@ class Observer:
         if previous is None and method == "DELETE" and record.get("confirmed"):
             return {"If-Match": record["etag"]} if record.get("etag") else {}
         if previous is None and method != "PUT":
-            raise ValueError("A mutation requires an existing owned resource or an initial PUT.")
+            raise OwnershipRejected(
+                "unconfirmed-absent-resource", "A mutation requires an existing owned resource or an initial PUT.",
+            )
         if method == "DELETE":
             self.journal.record(resource, api, confirmed=True, etag=previous.get("etag"))
             return {"If-Match": previous["etag"]} if previous.get("etag") else {}
@@ -741,8 +765,9 @@ def cleanup(path, timeout=600):
     priority = {
         ROLE_TYPE: 0, "microsoft.deviceregistry/assets": 1,
         "microsoft.iotoperations/instances": 2, "microsoft.deviceregistry/assetendpointprofiles": 3,
-        "microsoft.secretsync/secretsyncs": 4,
-        "microsoft.secretsync/azurekeyvaultsecretproviderclasses": 5,
+        # These extension resources must disappear while their custom location and cluster still exist.
+        "microsoft.secretsynccontroller/secretsyncs": 4,
+        "microsoft.secretsynccontroller/azurekeyvaultsecretproviderclasses": 5,
         "microsoft.extendedlocation/customlocations": 6,
         "microsoft.kubernetes/connectedclusters": 7,
         "microsoft.deviceregistry/namespaces": 8, "microsoft.deviceregistry/schemaregistries": 8,
@@ -757,7 +782,9 @@ def cleanup(path, timeout=600):
     if failures:
         raise RuntimeError("Owned-resource cleanup is incomplete; retain the ownership context and retry.")
     if journal.has_violations():
-        raise RuntimeError("Ownership guard rejected mutations; this attempt cannot qualify even after cleanup.")
+        raise OwnershipViolationError(
+            "Ownership guard rejected mutations; this attempt cannot qualify even after cleanup.",
+        )
 
 
 def cli():

@@ -106,6 +106,11 @@ def verify_runtime(commands, state, output):
 
 
 def gate(output):
+    result = {
+        "schema": 1, "status": "incomplete", "phase": "release-identity", "releaseQualified": False,
+    }
+    # Publish failure-shaped evidence before validation can reject the run.
+    native.write(output / "monitor-results.json", result)
     bundle = Path(native.required("OPS_MONITOR_BUNDLE")).resolve()
     manifest = bundle_manifest(bundle)
     value = native.read(bundle / "plan.json")
@@ -114,13 +119,16 @@ def gate(output):
             or native.release_build_id() != "0" or value.get("releaseBuildId", "0") != "0"
             or native.required("OPS_CANDIDATE_DIGEST") != manifest["wheel"]["sha256"]):
         raise ValueError("Monitor results do not belong to this standalone released-version plan.")
+    result.update(
+        producer=native.producer(), monitor=manifest, phase="scenario-evidence",
+        expectedScenarios=[row["key"] for row in value["rows"]],
+    )
+    native.write(output / "monitor-results.json", result)
     verified = [
         receipt for _, _, receipt in native.scenario_evidence(value, Path(native.required("OPS_HISTORY")))
     ]
-    native.write(output / "monitor-results.json", {
-        "schema": 1, "producer": native.producer(), "monitor": manifest,
-        "scenarios": verified, "releaseQualified": False,
-    })
+    result.update(status="passed", phase="complete", scenarios=verified)
+    native.write(output / "monitor-results.json", result)
 
 
 def main(argv=None):
