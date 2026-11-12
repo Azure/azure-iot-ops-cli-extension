@@ -624,7 +624,7 @@ def test_frozen_certificate_tests_get_only_the_reviewed_read_wait(adapter, monke
     for name, content in originals.items():
         path = target / compat.PREFIX / name
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(content)
+        path.write_bytes(content.encode("utf-8"))
     monkeypatch.setattr(compat, "REMOVAL_FILES", {
         name: hashlib.sha256(content.encode()).hexdigest() for name, content in originals.items()
     })
