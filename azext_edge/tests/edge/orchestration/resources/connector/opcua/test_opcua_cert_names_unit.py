@@ -9,6 +9,8 @@ from types import SimpleNamespace
 
 import pytest
 import responses
+from azure.cli.core.azclierror import InvalidArgumentValueError
+from azure.core.exceptions import HttpResponseError
 
 from azext_edge.edge import commands_connector
 from azext_edge.edge.providers.orchestration.common import EXTENSION_TYPE_OPS
@@ -99,6 +101,7 @@ def test_per_instance_names_isolate_certificate_lifecycle(
         shown = getattr(commands_connector, f"show_connector_opcua_{kind}")(**common)
         assert shown["name"] == sync_name
         mocked_responses.add(responses.DELETE, endpoint, status=204)
+        mocked_responses.add(responses.GET, get_secretsync_endpoint("", "mock-rg"), json={"value": []})
         getattr(commands_connector, f"remove_connector_opcua_{kind}")(
             **common, certificate_names=files, confirm_yes=True,
         )
@@ -177,11 +180,72 @@ def test_removing_old_named_certificate_preserves_active_reference(
     mocked_instance.get_default_spc.return_value = get_mock_spc_record("default-spc", "mock-rg")
     mocker.patch.object(OpcUACerts, "_remove_secrets_from_spc")
     mocked_responses.add(responses.DELETE, get_secretsync_endpoint("old-certificate", "mock-rg"), status=204)
+    mocked_responses.add(responses.GET, get_secretsync_endpoint("", "mock-rg"), json={"value": []})
     getattr(commands_connector, f"remove_connector_opcua_{kind}")(
         mocked_cmd, "instance-a", "mock-rg", ["old.der"], confirm_yes=True, secret_sync_name="old-certificate",
     )
     mocked_instance.get_resource_map().connected_cluster.update_aio_extension.assert_not_called()
     assert settings[key] == "current-certificate"
+
+
+@pytest.mark.parametrize("reference", ["shared", "only-shared", "other-spc", "other-location", "lookup-error"])
+def test_removing_certificate_preserves_authoritatively_shared_sources(
+    mocker, mocked_cmd, mocked_instance, mocked_responses, reference,
+):
+    record = get_mock_secretsync_record("old-sync", "mock-rg", objects=[
+        {"sourcePath": "shared-der", "targetKey": "shared.der"},
+        {"sourcePath": "old-der", "targetKey": "old.der"},
+    ])
+    if reference == "only-shared":
+        record["properties"]["objectSecretMapping"] = record["properties"]["objectSecretMapping"][:1]
+    certificate_names = [mapping["targetKey"] for mapping in record["properties"]["objectSecretMapping"]]
+    other = get_mock_secretsync_record("current-sync", "mock-rg", objects=[
+        {"sourcePath": "shared-der", "targetKey": "shared.der"},
+    ])
+    other["properties"]["secretProviderClassName"] = "other-spc" if reference == "other-spc" else "default-spc"
+    other["extendedLocation"] = {"name": "other-cl" if reference == "other-location" else "mock-cl"}
+    spc = get_mock_spc_record("default-spc", "mock-rg")
+    settings = {"connectors.values.securityPki.trustedCerts": "current-sync"}
+    assemble_resource_map_mock(
+        mocked_instance.get_resource_map,
+        {EXTENSION_TYPE_OPS: {"name": "aio-ext", "properties": {"configurationSettings": settings}}},
+        [record], ssc=record,
+    )
+    mocked_instance.get_default_spc.return_value = spc
+    provider = OpcUACerts(mocked_cmd, resource_group_name="mock-rg", instance_name="instance-a")
+    update_spc = mocker.patch.object(provider, "_remove_secrets_from_spc")
+    delete_secret = mocker.patch.object(provider, "_begin_delete_secret")
+    purge_secret = mocker.patch.object(provider.keyvault_client, "purge_deleted_secret")
+    list_secrets = mocker.patch.object(provider, "_get_secret_names", return_value=[
+        "https://mock-keyvault.vault.azure.net/secrets/shared-der",
+        "https://mock-keyvault.vault.azure.net/secrets/old-der",
+    ])
+    inventory = get_secretsync_endpoint("", "mock-rg")
+    if reference == "lookup-error":
+        mocked_responses.add(responses.GET, inventory, status=403, json={"error": {"code": "Forbidden"}})
+        with pytest.raises(HttpResponseError):
+            provider.remove("old-sync", certificate_names, confirm_yes=True, include_secrets=True)
+        update_spc.assert_not_called()
+        delete_secret.assert_not_called()
+        purge_secret.assert_not_called()
+        assert all(call.request.method == "GET" for call in mocked_responses.calls)
+        return
+    next_page = inventory + "&$skiptoken=second"
+    mocked_responses.add(responses.GET, inventory, json={"value": [record], "nextLink": next_page})
+    mocked_responses.add(responses.GET, next_page, json={"value": [other]})
+    mocked_responses.add(responses.DELETE, get_secretsync_endpoint("old-sync", "mock-rg"), status=204)
+    provider.remove(
+        "old-sync", certificate_names, confirm_yes=True, include_secrets=True, certificate_type="trust",
+    )
+    expected = [] if reference == "only-shared" else ["old-der"] if reference == "shared" else ["shared-der", "old-der"]
+    if expected:
+        update_spc.assert_called_once_with(secrets=expected, spc=spc, resource_group="mock-rg")
+    else:
+        update_spc.assert_not_called()
+        list_secrets.assert_not_called()
+    assert [call.args[1] for call in delete_secret.call_args_list] == expected
+    assert [call.kwargs["secret_name"] for call in purge_secret.call_args_list] == expected
+    mocked_instance.get_resource_map().connected_cluster.update_aio_extension.assert_not_called()
 
 
 @pytest.mark.parametrize("kind", ["trust", "issuer", "client"])
@@ -233,3 +297,9 @@ def test_certificate_commands_parse_custom_secret_sync_names(mocker, tmp_path, k
         "client": "aio-opc-ua-broker-client-certificate",
     }[kind]
     assert parser.parse_args(name.split() + args[:4] + args[6:]).secret_sync_name == expected_default
+    provider = mocker.patch.object(commands_connector, "OpcUACerts")
+    for invalid in ("INVALID_NAME", "", "a..b", "-a", "a-", "a" * 254):
+        with pytest.raises(InvalidArgumentValueError, match="Kubernetes Secret name"):
+            parser.parse_args(name.split() + args[:4] + [f"--secret-sync-name={invalid}"] + args[6:])
+    provider.assert_not_called()
+    assert parser.parse_args(name.split() + args[:5] + ["valid.name-1"] + args[6:]).secret_sync_name == "valid.name-1"

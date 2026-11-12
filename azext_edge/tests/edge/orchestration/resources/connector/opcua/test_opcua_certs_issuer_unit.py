@@ -706,6 +706,7 @@ def test_issuer_remove(
 ):
     instance_name = generate_random_string()
     rg_name = "mock-rg"
+    mocked_responses.add(responses.GET, get_secretsync_endpoint("", rg_name), json={"value": []})
     assemble_resource_map_mock(
         resource_map_mock=mocked_instance.get_resource_map,
         extension=expected_resources_map["extension"],

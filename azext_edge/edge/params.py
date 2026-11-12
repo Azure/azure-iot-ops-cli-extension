@@ -18,7 +18,9 @@ from knack.arguments import CaseInsensitiveList
 from azext_edge.constants import PREVIEW_AGREEMENT_URL, PREVIEW_NOTICE
 from azext_edge.edge.providers.edge_api.dataflow import DataflowResourceKinds
 
-from ._validators import validate_connector_metadata_ref, validate_namespace, validate_resource_name
+from ._validators import (
+    validate_connector_metadata_ref, validate_namespace, validate_resource_name, validate_secret_sync_name,
+)
 from .common import OpsServiceType
 from .providers.check.common import ResourceOutputDetailLevel
 from .providers.edge_api import DeviceRegistryResourceKinds, MqResourceKinds
@@ -2066,6 +2068,7 @@ def load_iotops_arguments(self, _):
         context.argument(
             "secret_sync_name",
             options_list=["--secret-sync-name"],
+            type=validate_secret_sync_name,
             help="SecretSync resource and Kubernetes secret name. Defaults to the existing name for the certificate "
             "type. Use a unique name per instance when sharing a resource group, and the same name for add, show "
             "and remove. Add also updates the connector's certificate reference.",

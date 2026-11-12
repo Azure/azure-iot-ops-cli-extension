@@ -430,6 +430,22 @@ class OpcUACerts(Queryable):
         # get properties from default spc
         spc_properties = target_spc.get("properties", {})
         spc_keyvault_name = spc_properties.get("keyvaultName", "")
+        shared_sources = {
+            mapping["sourcePath"]
+            for sync in self.ssc_mgmt_client.secret_syncs.list_by_resource_group(
+                resource_group_name=self.resource_group_name,
+            )
+            if sync["name"].casefold() != secretsync_name.casefold()
+            and sync["properties"]["secretProviderClassName"] == target_spc["name"]
+            and sync["extendedLocation"]["name"].casefold() == self.extended_location["name"].casefold()
+            for mapping in sync["properties"].get("objectSecretMapping", [])
+        }
+        unreferenced_secrets = [name for name in secret_to_remove if name not in shared_sources]
+        if shared_sources.intersection(secret_to_remove):
+            logger.warning(
+                "Preserving SPC and Key Vault sources still referenced by another SecretSync: %s",
+                ", ".join(sorted(shared_sources.intersection(secret_to_remove))),
+            )
 
         # remove secret reference from secret sync
         modified_secret_sync = self._remove_secrets_from_secret_sync(
@@ -440,14 +456,17 @@ class OpcUACerts(Queryable):
             certificate_type=certificate_type,
         )
 
-        self._remove_secrets_from_spc(secrets=secret_to_remove, spc=target_spc, resource_group=self.resource_group_name)
+        if unreferenced_secrets:
+            self._remove_secrets_from_spc(
+                secrets=unreferenced_secrets, spc=target_spc, resource_group=self.resource_group_name,
+            )
 
-        if include_secrets:
+        if include_secrets and unreferenced_secrets:
             # verify the behaviour of non existed secret
             secret_names = self._get_secret_names(spc_keyvault_name)
 
             # remove secret from keyvault
-            for name in secret_to_remove:
+            for name in unreferenced_secrets:
                 # perform delete operation if name exists in secret_names(endwith)
                 if any(secret_name.endswith(name) for secret_name in secret_names):
                     with console.status(f"Deleting and purging secret {name} from keyvault {spc_keyvault_name}..."):

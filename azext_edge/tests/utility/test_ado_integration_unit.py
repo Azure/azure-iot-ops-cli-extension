@@ -604,14 +604,90 @@ def test_commands_abort_when_auth_process_dies(monkeypatch):
     process = Mock(pid=12345, returncode=None)
     process.poll.return_value = None
     monkeypatch.setattr(cluster.subprocess, "Popen", Mock(return_value=process))
-    kill = Mock()
+    kill = Mock(side_effect=[None, ProcessLookupError()])
     # Windows does not expose this Unix API.
     monkeypatch.delattr(cluster.os, "killpg", raising=False)
     monkeypatch.setattr(cluster.os, "killpg", kill, raising=False)
     with pytest.raises(RuntimeError, match="renewal stopped"):
         cluster.Commands(auth=Mock(poll=Mock(return_value=1))).run(["offline-command"])
-    kill.assert_called_once_with(12345, cluster.signal.SIGTERM)
-    process.wait.assert_called_once()
+    assert [call.args for call in kill.call_args_list] == [(12345, cluster.signal.SIGTERM), (12345, 0)]
+    process.wait.assert_called_once_with(timeout=5)
+
+
+@pytest.mark.parametrize("launcher_exited,ignore_term", [(True, False), (True, True), (False, True)])
+def test_command_timeout_terminates_descendants_even_after_launcher_exit(monkeypatch, launcher_exited, ignore_term):
+    clock = [0]
+    alive = [True]
+    signals = []
+    process = Mock(pid=12345, returncode=0 if launcher_exited else None)
+    process.poll.return_value = process.returncode
+
+    def communicate(timeout):
+        clock[0] += timeout
+        raise subprocess.TimeoutExpired("offline-command", timeout)
+
+    def kill(pid, signum):
+        assert pid == process.pid
+        if not alive[0]:
+            raise ProcessLookupError()
+        if signum:
+            signals.append(signum)
+            if not ignore_term or signum == cluster.signal.SIGKILL:
+                alive[0] = False
+
+    process.communicate.side_effect = communicate
+    monkeypatch.setattr(cluster.subprocess, "Popen", Mock(return_value=process))
+    monkeypatch.setattr(cluster.os, "killpg", kill, raising=False)
+    monkeypatch.setattr(cluster.signal, "SIGKILL", 9, raising=False)
+    monkeypatch.setattr(cluster.time, "monotonic", lambda: clock[0])
+    monkeypatch.setattr(cluster.time, "sleep", lambda seconds: clock.__setitem__(0, clock[0] + seconds))
+    with pytest.raises(TimeoutError, match="Command timed out"):
+        cluster.Commands().run(["offline-command"], capture=True, timeout=1)
+    assert signals == [cluster.signal.SIGTERM] + ([cluster.signal.SIGKILL] if ignore_term else [])
+    assert not alive[0] and clock[0] <= 21
+    process.wait.assert_called_once_with(timeout=5)
+
+
+def test_process_group_cleanup_is_bounded_even_after_kill(monkeypatch):
+    clock = [0]
+    process = Mock(pid=12345, poll=Mock(return_value=0))
+    monkeypatch.setattr(cluster.os, "killpg", Mock(), raising=False)
+    monkeypatch.setattr(cluster.signal, "SIGKILL", 9, raising=False)
+    monkeypatch.setattr(cluster.time, "monotonic", lambda: clock[0])
+    monkeypatch.setattr(cluster.time, "sleep", lambda seconds: clock.__setitem__(0, clock[0] + seconds))
+    with pytest.raises(RuntimeError, match="process group did not terminate"):
+        cluster.stop_process_group(process)
+    assert clock[0] == 25
+    assert [call.args[1] for call in cluster.os.killpg.call_args_list if call.args[1]] == [cluster.signal.SIGTERM, 9]
+
+
+@pytest.mark.skipif(sys.platform != "linux", reason="Requires POSIX process groups.")
+def test_timeout_kills_orphan_descendant_holding_captured_stdout(monkeypatch, tmp_path):
+    child_pid = tmp_path / "child.pid"
+    child = (
+        "import os, signal, time\nfrom pathlib import Path\n"
+        "signal.signal(signal.SIGTERM, signal.SIG_IGN)\n"
+        f"Path({str(child_pid)!r}).write_text(str(os.getpid()))\n"
+        "time.sleep(60)\n"
+    )
+    launcher = (
+        "import subprocess, sys\n"
+        f"subprocess.Popen([sys.executable, '-c', {child!r}])\n"
+    )
+    monotonic = cluster.time.monotonic
+    monkeypatch.setattr(cluster.time, "monotonic", lambda: monotonic() * 100)
+    try:
+        with pytest.raises(TimeoutError, match="Command timed out"):
+            cluster.Commands().run([sys.executable, "-c", launcher], capture=True, timeout=2)
+        assert child_pid.is_file()
+        with pytest.raises(ProcessLookupError):
+            cluster.os.kill(int(child_pid.read_text()), 0)
+    finally:
+        if child_pid.is_file():
+            try:
+                cluster.os.kill(int(child_pid.read_text()), cluster.signal.SIGKILL)
+            except ProcessLookupError:
+                pass
 
 
 @pytest.mark.skipif(sys.platform != "linux" or not shutil.which("setfacl") or not shutil.which("getfacl"),
@@ -780,13 +856,16 @@ def test_cluster_retries_classified_controller_exit_after_node_and_api_are_ready
     ("cloud-controller-manager exited: extension-apiserver-authentication forbidden", "active", 1),
     ("unclassified fatal exit", "inactive", 1),
 ])
-def test_cluster_restarts_only_the_classified_exited_startup_race(monkeypatch, tmp_path, reason, active, retries):
+@pytest.mark.parametrize("wait_error", [subprocess.CalledProcessError, TimeoutError])
+def test_cluster_restarts_only_the_classified_exited_startup_race(
+    monkeypatch, tmp_path, reason, active, retries, wait_error,
+):
     state = make_state()
     directory, unit = cluster.cluster_paths(state)
     directory.mkdir()
     (directory / "k3s").write_bytes(b"offline")
     commands = Mock()
-    error = subprocess.CalledProcessError(1, ["ready"])
+    error = wait_error(1, ["ready"]) if wait_error is subprocess.CalledProcessError else wait_error("stale lease")
     wait = Mock(side_effect=[error, None])
     monkeypatch.setattr(cluster, "wait_cluster", wait)
     monkeypatch.setattr(cluster.diagnostics, "journal", Mock(return_value=reason))
@@ -794,7 +873,7 @@ def test_cluster_restarts_only_the_classified_exited_startup_race(monkeypatch, t
     monkeypatch.setattr(cluster.time, "sleep", Mock())
     monkeypatch.setattr(cluster.subprocess, "run", Mock())
     if retries == 1:
-        with pytest.raises(subprocess.CalledProcessError):
+        with pytest.raises(wait_error):
             cluster.start_cluster(commands, state, tmp_path)
     else:
         cluster.start_cluster(commands, state, tmp_path)
@@ -947,6 +1026,63 @@ def test_run_without_admission_still_cleans_after_provision_failure(monkeypatch,
     assert order == [("diagnostics", True), ("cleanup", True)]
     assert cluster.Commands.call_args.kwargs["budget"] == 360 * 60
     identity.terminate.assert_called_once()
+
+
+@pytest.mark.parametrize("upgrade", [False, True])
+@pytest.mark.parametrize("scenario_failure", [False, True])
+def test_monitor_verifies_target_only_after_successful_baseline_upgrade(
+    monkeypatch, tmp_path, upgrade, scenario_failure,
+):
+    state = make_state()
+    state.update(monitor={"release": "offline"}, status="prepared", phases={})
+    state["row"]["scenario"].update(
+        requires_baseline=upgrade, baseline={"version": "older"} if upgrade else None,
+        tox_env="python-upgrade-int" if upgrade else "python-edge-int",
+    )
+    pipeline.write(tmp_path / "state.json", state)
+    identity = Mock(poll=Mock(return_value=None))
+    monkeypatch.setattr(cluster, "start_auth", Mock(return_value=identity))
+    monkeypatch.setattr(cluster, "Commands", Mock())
+    monkeypatch.setattr(cluster, "resource_ids", Mock(return_value=set()))
+    for name in (
+        "check_account", "start_cluster", "connect_cluster", "create_resources", "verify_locations", "cleanup",
+    ):
+        monkeypatch.setattr(cluster, name, Mock())
+    monkeypatch.setattr(cluster.diagnostics, "HookCollector", Mock())
+    events = []
+
+    def phase(_commands, current, _output, name, _marker):
+        events.append(name)
+        if name == "scenario" and scenario_failure:
+            raise AssertionError("upgrade failed")
+        current["phases"][name] = "passed"
+
+    def smoke(_commands, current, _output):
+        events.append("smoke")
+        current["phases"]["smoke"] = "passed"
+
+    def verify(_commands, current, _output):
+        events.append("verify")
+        current["observedRuntime"] = {"version": "target", "train": "stable"}
+
+    monkeypatch.setattr(cluster, "test_phase", phase)
+    monkeypatch.setattr(cluster, "smoke", smoke)
+    monkeypatch.setitem(sys.modules, "release_monitor_adapter", SimpleNamespace(
+        validate_state=Mock(), test_source=Mock(), verify_runtime=verify,
+    ))
+    if scenario_failure:
+        with pytest.raises(AssertionError, match="upgrade failed"):
+            cluster.run(tmp_path)
+        assert pipeline.read(tmp_path / "state.json")["status"] == "prepared"
+        assert events == (["init", "scenario"] if upgrade else ["init", "verify", "scenario"])
+    else:
+        cluster.run(tmp_path)
+        expected = ["init", "scenario", "verify", "smoke"] if upgrade else ["init", "verify", "scenario", "smoke"]
+        assert events == expected
+        result = pipeline.read(tmp_path / "state.json")
+        assert result["observedRuntime"] == {"version": "target", "train": "stable"}
+        assert result["status"] == "passed"
+    cluster.cleanup.assert_called_once_with(tmp_path)
 
 
 def test_assertion_request_is_scoped_and_never_redirects(monkeypatch):

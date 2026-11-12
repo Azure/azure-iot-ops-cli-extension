@@ -40,6 +40,30 @@ MARKERS = {
 }
 
 
+def stop_process_group(process):
+    signum = signal.SIGTERM
+    for grace in (20, 5):
+        try:
+            os.killpg(process.pid, signum)
+        except ProcessLookupError:
+            process.wait(timeout=5)
+            return
+        deadline = time.monotonic() + grace
+        while True:
+            process.poll()
+            try:
+                os.killpg(process.pid, 0)
+            except ProcessLookupError:
+                process.wait(timeout=5)
+                return
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                break
+            time.sleep(min(0.1, remaining))
+        signum = signal.SIGKILL
+    raise RuntimeError("Owned command process group did not terminate.")
+
+
 class Commands:
     def __init__(self, auth=None, budget=None):
         self.auth = auth
@@ -72,13 +96,7 @@ class Commands:
                 raise subprocess.CalledProcessError(process.returncode, arguments)
             return stdout
         finally:
-            if process.poll() is None:
-                os.killpg(process.pid, signal.SIGTERM)
-                try:
-                    process.wait(timeout=20)
-                except subprocess.TimeoutExpired:
-                    os.killpg(process.pid, signal.SIGKILL)
-                    process.wait()
+            stop_process_group(process)
 
     def az_json(self, *arguments):
         return json.loads(self.run(["az", *arguments, "--output", "json"], capture=True))
@@ -236,7 +254,7 @@ def start_cluster(commands, state, output, issuer=None):
         try:
             wait_cluster(commands, state, directory, unit, started)
             break
-        except subprocess.CalledProcessError:
+        except (subprocess.CalledProcessError, TimeoutError):
             log = diagnostics.journal(unit, since=started)
             folder = output / "diagnostics"
             folder.mkdir(exist_ok=True)
@@ -520,14 +538,17 @@ def run(output):
             configure_trust(commands)
         connect_cluster(commands, state, output)
         create_resources(commands, state)
+        scenario = state["row"]["scenario"]
         test_phase(commands, state, output, "init", "init_scenario_test")
         if state.get("monitor"):
             from release_monitor_adapter import verify_runtime
-            verify_runtime(commands, state, output)
+            if not scenario.get("requires_baseline"):
+                verify_runtime(commands, state, output)
         verify_locations(commands, state, output)
-        scenario = state["row"]["scenario"]
         if scenario["tox_env"]:
             test_phase(commands, state, output, "scenario", MARKERS[scenario["tox_env"]])
+            if state.get("monitor") and scenario.get("requires_baseline"):
+                verify_runtime(commands, state, output)
         smoke(commands, state, output)
         if scenario["test_redeploy"]:
             commands.run(["az", "iot", "ops", "delete", "--name", state["instance"],
