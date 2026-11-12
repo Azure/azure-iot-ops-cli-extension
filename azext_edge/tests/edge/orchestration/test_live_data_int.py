@@ -30,6 +30,7 @@ from typing import Dict, List
 from uuid import UUID, uuid4
 
 import pytest
+from azure.cli.core import get_default_cli
 from knack.log import get_logger
 
 from azext_edge.edge.providers.orchestration.common import (
@@ -72,7 +73,12 @@ def test_live_data_rejects_stable_without_writes(settings, operation):
         arguments.append("--yes")
     result = subprocess.run(arguments, capture_output=True, text=True, check=False)
     assert result.returncode != 0, f"Live Data {operation} unexpectedly succeeded on stable."
-    assert "requires a preview runtime; the target uses stable" in result.stderr.lower(), result.stderr
+    cloud = get_default_cli().cloud.name
+    rejection = (
+        f"the aio preview runtime is not supported in {cloud.lower()}."
+        if cloud == "AzureUSGovernment" else "requires a preview runtime; the target uses stable"
+    )
+    assert rejection in result.stderr.lower(), result.stderr
     assert not result.stdout.strip()
     _, instance_after, extensions_after = read_runtime(name, group)
     assert instance_after["properties"] == instance_before["properties"]

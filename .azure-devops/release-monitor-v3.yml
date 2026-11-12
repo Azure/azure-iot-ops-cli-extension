@@ -106,3 +106,4 @@ stages:
   - template: templates/release-monitor-stages.yml
     parameters:
       mode: ${{ parameters.mode }}
+      scenarioTimeoutMinutes: ${{ parameters.scenarioTimeoutMinutes }}

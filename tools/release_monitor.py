@@ -231,7 +231,7 @@ def resolve(extension, cloud, track, automation_commit, releases=None):
     blockers = []
     if extension == "azure-iot-ops" and runtime is None:
         blockers.append("This release has no reviewed bundled runtime profile for the selected cloud.")
-    return {
+    manifest = {
         "schema": 1, **config, "cloud": CLOUDS[cloud], "cloudKey": cloud, "track": track,
         "automationCommit": automation_commit,
         "release": {
@@ -241,6 +241,12 @@ def resolve(extension, cloud, track, automation_commit, releases=None):
         "testSourceCommit": source_commit, "blockers": blockers,
         "releaseQualified": False,
     }
+    if extension == "azure-iot-ops":
+        from release_test_compatibility import compatibility
+        plan = compatibility(manifest)
+        if plan is not None:
+            manifest["testCompatibility"] = plan
+    return manifest
 
 
 def validate_manifest(manifest, *, extension=None, cloud=None, track=None, slot=None, automation_commit=None):
@@ -265,6 +271,10 @@ def validate_manifest(manifest, *, extension=None, cloud=None, track=None, slot=
     commit(manifest["automationCommit"])
     if commit(manifest["testSourceCommit"]) != commit(manifest["release"]["commit"]):
         raise ValueError("Test source must match the released source commit.")
+    if config["extension"] == "azure-iot-ops":
+        from release_test_compatibility import compatibility
+        if manifest.get("testCompatibility") != compatibility(manifest):
+            raise ValueError("Test compatibility differs from the frozen automation manifest.")
     version = release_version({"tag_name": manifest["release"]["tag"]})
     if str(version) != manifest["release"]["version"] or manifest.get("releaseQualified") is not False:
         raise ValueError("Invalid published version or release-qualification boundary.")
@@ -343,6 +353,9 @@ def verify_bundle(directory, **expected):
     inventory = read_json(snapshot)
     if inventory["commit"] != manifest["testSourceCommit"] or inventory["files"] != source_files(source):
         raise ValueError("Released test source is missing, modified, or belongs to a different commit.")
+    if manifest.get("testCompatibility"):
+        from release_test_compatibility import verify_source
+        verify_source(source, manifest["testCompatibility"])
     with ZipFile(wheel) as archive:
         prefix = manifest["package"] + "/"
         entries = {name for name in archive.namelist() if name.startswith(prefix) and not name.endswith("/")}

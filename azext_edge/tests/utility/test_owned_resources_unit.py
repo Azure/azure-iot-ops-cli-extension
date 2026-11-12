@@ -299,6 +299,19 @@ def test_prepared_mutation_serializes_owner_and_normalizes_the_response(journal,
         observer.uninstall()
 
 
+def test_unclassified_guard_failure_records_code_location_without_error_content(journal):
+    with pytest.raises(ValueError) as rejected:
+        journal.record(RESOURCE, "secret-invalid-api-value")
+    journal.violation("DELETE", RESOURCE, rejected.value)
+    evidence, = journal.path.with_suffix(".violations").glob("*.json")
+    value = json.loads(evidence.read_text())
+    assert value["reason"] == "unclassified"
+    assert value["guardFrames"][-1]["function"] == "record"
+    assert value["guardFrames"][-1]["line"] > 0
+    assert "secret-invalid-api-value" not in evidence.read_text()
+    assert journal.has_violations()
+
+
 def test_expected_negative_test_cannot_hide_ownership_violation(journal, monkeypatch):
     arm = Mock(endpoint="https://management.azure.com")
     observer = owned.Observer(journal, arm)

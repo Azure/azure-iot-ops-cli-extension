@@ -16,6 +16,7 @@ import re
 import runpy
 import sys
 import time
+import traceback
 from urllib.parse import parse_qs, urlsplit
 from uuid import uuid4
 
@@ -180,6 +181,11 @@ class Journal:
         write_new(self.path.with_suffix(".violations") / f"{uuid4().hex}.json", {
             "owner": self.owner, "method": method, "resource": resource, "errorType": type(error).__name__,
             "reason": error.reason if isinstance(error, OwnershipRejected) else "unclassified",
+            "guardFrames": [
+                {"function": frame.name, "line": frame.lineno}
+                for frame in traceback.extract_tb(error.__traceback__)
+                if Path(frame.filename).resolve() == Path(__file__).resolve()
+            ],
         })
 
     def has_violations(self):

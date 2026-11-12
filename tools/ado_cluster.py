@@ -400,6 +400,9 @@ def test_phase(commands, state, output, phase, marker):
     if phase == "scenario" and state["row"]["scenario"]["parallel"]:
         args += ["-n", "6", "--dist", "worksteal"]
     commands.run(args, env=environment, cwd=output, timeout=18000)
+    compatibility = state.get("monitor", {}).get("testCompatibility")
+    if compatibility is not None and read(output / "work" / phase / "test-compatibility.json") != compatibility:
+        raise ValueError("Executed test compatibility differs from the monitored release plan.")
     junit_results(junit)
     state["phases"][phase] = "passed"
     write(output / "state.json", state)

@@ -5,6 +5,7 @@
 # ----------------------------------------------------------------------------------------------
 
 import pytest
+from azure.cli.core import get_default_cli
 
 from azext_edge.edge.providers.orchestration.common import TrustedSigningKeyType
 from azext_edge.tests.generators import generate_random_string
@@ -13,6 +14,10 @@ from azext_edge.tests.settings import EnvironmentVariables
 
 # pytest mark for rpsaas (cloud-side) tests
 pytestmark = pytest.mark.rpsaas
+
+
+def registry_host(name):
+    return name + get_default_cli().cloud.suffixes.acr_login_server_endpoint
 
 
 @pytest.fixture(scope="function")
@@ -37,7 +42,7 @@ def test_registry_endpoint_lifecycle_anonymous(registry_endpoint_test_setup, tra
     resource_group = registry_endpoint_test_setup["resourceGroup"]
     instance_name = registry_endpoint_test_setup["instanceName"]
     registry_endpoint_name = f"test-registry-{generate_random_string(force_lower=True, size=8)}"
-    host = "myregistry.azurecr.io"
+    host = registry_host("myregistry")
     registry_endpoint = {}
 
     try:
@@ -77,7 +82,7 @@ def test_registry_endpoint_lifecycle_anonymous(registry_endpoint_test_setup, tra
         assert registry_endpoint_name in endpoint_names
 
         # UPDATE - change host
-        new_host = "newregistry.azurecr.io"
+        new_host = registry_host("newregistry")
         updated_endpoint = run(
             f"az iot ops registry update -n {registry_endpoint_name} "
             f"-g {resource_group} --instance {instance_name} "
@@ -123,7 +128,7 @@ def test_registry_endpoint_artifact_pull_secret(registry_endpoint_test_setup, tr
     resource_group = registry_endpoint_test_setup["resourceGroup"]
     instance_name = registry_endpoint_test_setup["instanceName"]
     registry_endpoint_name = f"test-registry-{generate_random_string(force_lower=True, size=8)}"
-    host = "secretregistry.azurecr.io"
+    host = registry_host("secretregistry")
     secret_ref = "my-registry-secret"
     registry_endpoint = {}
 
@@ -184,7 +189,7 @@ def test_registry_endpoint_system_assigned_auth(registry_endpoint_test_setup, tr
     resource_group = registry_endpoint_test_setup["resourceGroup"]
     instance_name = registry_endpoint_test_setup["instanceName"]
     registry_endpoint_name = f"test-registry-{generate_random_string(force_lower=True, size=8)}"
-    host = "systemregistry.azurecr.io"
+    host = registry_host("systemregistry")
     audience = "https://containerregistry.azure.net"
     registry_endpoint = {}
 
@@ -245,7 +250,7 @@ def test_registry_endpoint_user_assigned_auth(registry_endpoint_test_setup, trac
     resource_group = registry_endpoint_test_setup["resourceGroup"]
     instance_name = registry_endpoint_test_setup["instanceName"]
     registry_endpoint_name = f"test-registry-{generate_random_string(force_lower=True, size=8)}"
-    host = "userregistry.azurecr.io"
+    host = registry_host("userregistry")
     client_id = "test-client-id"
     tenant_id = "test-tenant-id"
     scope = "https://containerregistry.azure.net"
@@ -341,7 +346,7 @@ def test_registry_endpoint_authentication_auto_detection(registry_endpoint_test_
         endpoint1 = run(
             f"az iot ops registry create -n {name1} "
             f"-g {resource_group} --instance {instance_name} "
-            f"--host registry1.azurecr.io --secret-ref my-secret"
+            f"--host {registry_host('registry1')} --secret-ref my-secret"
         )
         endpoints_to_cleanup.append((endpoint1["id"], name1))
         assert_registry_endpoint(
@@ -349,7 +354,7 @@ def test_registry_endpoint_authentication_auto_detection(registry_endpoint_test_
             name=name1,
             resource_group=resource_group,
             instance_name=instance_name,
-            host="registry1.azurecr.io",
+            host=registry_host("registry1"),
             auth_method="ArtifactPullSecret",
         )
 
@@ -358,7 +363,7 @@ def test_registry_endpoint_authentication_auto_detection(registry_endpoint_test_
         endpoint2 = run(
             f"az iot ops registry create -n {name2} "
             f"-g {resource_group} --instance {instance_name} "
-            f"--host registry2.azurecr.io"
+            f"--host {registry_host('registry2')}"
         )
         endpoints_to_cleanup.append((endpoint2["id"], name2))
         assert_registry_endpoint(
@@ -366,7 +371,7 @@ def test_registry_endpoint_authentication_auto_detection(registry_endpoint_test_
             name=name2,
             resource_group=resource_group,
             instance_name=instance_name,
-            host="registry2.azurecr.io",
+            host=registry_host("registry2"),
             auth_method="SystemAssignedManagedIdentity",
         )
 
@@ -375,7 +380,7 @@ def test_registry_endpoint_authentication_auto_detection(registry_endpoint_test_
         endpoint3 = run(
             f"az iot ops registry create -n {name3} "
             f"-g {resource_group} --instance {instance_name} "
-            f"--host registry3.azurecr.io --client-id my-client --tenant-id my-tenant"
+            f"--host {registry_host('registry3')} --client-id my-client --tenant-id my-tenant"
         )
         endpoints_to_cleanup.append((endpoint3["id"], name3))
         assert_registry_endpoint(
@@ -383,7 +388,7 @@ def test_registry_endpoint_authentication_auto_detection(registry_endpoint_test_
             name=name3,
             resource_group=resource_group,
             instance_name=instance_name,
-            host="registry3.azurecr.io",
+            host=registry_host("registry3"),
             auth_method="UserAssignedManagedIdentity",
         )
 
@@ -392,7 +397,7 @@ def test_registry_endpoint_authentication_auto_detection(registry_endpoint_test_
         endpoint4 = run(
             f"az iot ops registry create -n {name4} "
             f"-g {resource_group} --instance {instance_name} "
-            f"--host registry4.azurecr.io --no-auth"
+            f"--host {registry_host('registry4')} --no-auth"
         )
         endpoints_to_cleanup.append((endpoint4["id"], name4))
         assert_registry_endpoint(
@@ -400,7 +405,7 @@ def test_registry_endpoint_authentication_auto_detection(registry_endpoint_test_
             name=name4,
             resource_group=resource_group,
             instance_name=instance_name,
-            host="registry4.azurecr.io",
+            host=registry_host("registry4"),
             auth_method="Anonymous",
         )
 
@@ -425,7 +430,7 @@ def test_registry_endpoint_code_signing_cas(registry_endpoint_test_setup, tracke
     resource_group = registry_endpoint_test_setup["resourceGroup"]
     instance_name = registry_endpoint_test_setup["instanceName"]
     registry_endpoint_name = f"test-registry-{generate_random_string(force_lower=True, size=8)}"
-    host = "trustregistry.azurecr.io"
+    host = registry_host("trustregistry")
 
     # Define test values
     configmap1 = "configmap1"

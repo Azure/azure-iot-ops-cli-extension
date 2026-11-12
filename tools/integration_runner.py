@@ -151,6 +151,14 @@ def main(argv=None):
             shutil.copyfile(Path(__file__).with_name(name + ".py"), target / f"azext_edge/tests/_{name}.py")
         pytest_args += ["-p", "azext_edge.tests._owned_resources_pytest"]
     if args.monitor:
+        from release_monitor import validate_manifest
+        from release_test_compatibility import stage_tests
+
+        manifest = validate_manifest(json.loads((tests.parents[2] / "manifest.json").read_text(encoding="utf-8")))
+        if manifest["cloud"] != cloud:
+            raise ValueError("Released test compatibility targets a different cloud.")
+        stage_tests(target, manifest, work_dir / "test-compatibility.json")
+        os.environ["AZEXT_OPS_RELEASE_TEST_SOURCE"] = manifest["testSourceCommit"]
         shutil.copyfile(
             Path(__file__).with_name("release_monitor_pytest.py"),
             target / "azext_edge/tests/_release_monitor.py",

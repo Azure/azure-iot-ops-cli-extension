@@ -83,7 +83,7 @@ stages:
               configuration:
                 health: false
                 releaseBuildId: 0
-                scenarioTimeoutMinutes: ${{ variables.TestTimeout }}
+                scenarioTimeoutMinutes: ${{ parameters.scenarioTimeoutMinutes }}
                 cloud: $(TestAzureCloud)
                 azureServiceConnection: $(TestAzureServiceConnection)
                 subscriptionId: $(TestSubscription)
@@ -106,7 +106,7 @@ stages:
               configuration:
                 health: false
                 releaseBuildId: 0
-                scenarioTimeoutMinutes: ${{ variables.TestTimeout }}
+                scenarioTimeoutMinutes: ${{ parameters.scenarioTimeoutMinutes }}
                 cloud: $(TestAzureCloud)
                 azureServiceConnection: $(TestAzureServiceConnection)
                 subscriptionId: $(TestSubscription)
@@ -158,3 +158,6 @@ stages:
 parameters:
   - name: mode
     type: string
+  - name: scenarioTimeoutMinutes
+    type: number
+    default: 360

@@ -7,6 +7,7 @@
 from copy import deepcopy
 import hashlib
 import importlib
+import json
 from pathlib import Path
 from unittest.mock import Mock
 from zipfile import ZipFile
@@ -34,6 +35,19 @@ def test_health_pipeline_runs_only_the_selected_mode():
     assert any("release_monitor_adapter.py plan" in step.get("bash", "") for step in steps)
     assert stages["Results"]["dependsOn"] == ["Prepare", "Integration", "TrustBundle"]
     assert "runIntegration" not in str(pipeline)
+
+
+def test_health_job_timeout_uses_the_typed_selection_not_a_runtime_variable():
+    template = yaml.safe_load((ROOT / ".azure-devops/templates/release-monitor-stages.yml").read_text())
+    stages = template["stages"][1]["${{ if eq(parameters.mode, 'Integration tests') }}"]
+    for stage in stages[:2]:
+        configuration = stage["jobs"][0]["parameters"]["configuration"]
+        assert configuration["scenarioTimeoutMinutes"] == "${{ parameters.scenarioTimeoutMinutes }}"
+    for path in (ROOT / ".azure-devops").glob("release-monitor*.yml"):
+        pipeline = yaml.safe_load(path.read_text())
+        assert pipeline["stages"][0]["parameters"]["scenarioTimeoutMinutes"] == (
+            "${{ parameters.scenarioTimeoutMinutes }}"
+        )
 
 
 @pytest.fixture
@@ -551,3 +565,68 @@ def test_fairfax_released_test_catalog_is_bound_without_changing_product(adapter
     catalog.assert_called_once_with("AzureUSGovernment")
     with pytest.raises(ValueError, match="different cloud"):
         checks.get_runtime_catalog("AzureCloud")
+
+
+@pytest.mark.parametrize("tamper", [None, "baseline", "replacement", "manifest"])
+def test_reviewed_test_compatibility_is_explicit_and_never_changes_product(
+        adapter, monkeypatch, tmp_path, tamper):
+    compat = importlib.import_module("release_test_compatibility")
+    name = "edge/orchestration/test_runtime_channels_int.py"
+    original, corrected = b"original test\n", b"cloud-correct test\n"
+    automation, target = tmp_path / "automation", tmp_path / "installed"
+    replacement = automation / compat.PREFIX / name
+    staged = target / compat.PREFIX / name
+    replacement.parent.mkdir(parents=True)
+    staged.parent.mkdir(parents=True)
+    replacement.write_bytes(corrected)
+    staged.write_bytes(original)
+    product = target / "azext_edge/__init__.py"
+    product.write_bytes(b"published product\n")
+    monkeypatch.setattr(compat, "ROOT", automation)
+    monkeypatch.setattr(compat, "BASE_FILES", {name: hashlib.sha256(original).hexdigest()})
+    manifest = {
+        "extension": "azure-iot-ops", "cloud": "AzureUSGovernment",
+        "testSourceCommit": compat.FAIRFAX_TEST_SOURCE, "automationCommit": AUTOMATION,
+    }
+    manifest["testCompatibility"] = compat.compatibility(manifest)
+    if tamper == "baseline":
+        staged.write_bytes(b"unreviewed released test\n")
+    elif tamper == "replacement":
+        replacement.write_bytes(b"unreviewed automation test\n")
+    elif tamper == "manifest":
+        manifest["testCompatibility"]["exclusions"] = {}
+    receipt = tmp_path / "test-compatibility.json"
+    if tamper:
+        with pytest.raises(ValueError, match="baseline|manifest"):
+            compat.stage_tests(target, manifest, receipt)
+        assert not receipt.exists()
+    else:
+        compat.stage_tests(target, manifest, receipt)
+        assert staged.read_bytes() == corrected
+        assert json.loads(receipt.read_text()) == manifest["testCompatibility"]
+    assert product.read_bytes() == b"published product\n"
+
+
+@pytest.mark.parametrize("cloud,source,excluded", [
+    ("AzureUSGovernment", "40ca69187cb8a04e1ea92f5d759c3f4a0a1c868a", True),
+    ("AzureCloud", "40ca69187cb8a04e1ea92f5d759c3f4a0a1c868a", False),
+    ("AzureUSGovernment", "c" * 40, False),
+])
+def test_only_proven_unavailable_fairfax_cases_are_explicitly_skipped(adapter, monkeypatch, cloud, source, excluded):
+    plugin = importlib.import_module("release_monitor_pytest")
+    monkeypatch.setenv("azext_edge_cloud", cloud)
+    monkeypatch.setenv("AZEXT_OPS_RELEASE_TEST_SOURCE", source)
+    items = [
+        Mock(path=Path("/installed/azext_edge/tests") / path, originalname=name)
+        for path, name in [
+            ("edge/adr/test_asset_lifecycle_int.py", "test_asset_lifecycle"),
+            ("edge/adr/test_namespaces_int.py", "test_namespace_lifecycle"),
+            ("edge/orchestration/test_secretsync_int.py", "test_secretsync"),
+        ]
+    ]
+    plugin.pytest_collection_modifyitems(items)
+    assert items[0].add_marker.call_count == int(excluded)
+    if excluded:
+        assert "2026-04-01" in items[0].add_marker.call_args.args[0].kwargs["reason"]
+    items[1].add_marker.assert_not_called()
+    items[2].add_marker.assert_not_called()
