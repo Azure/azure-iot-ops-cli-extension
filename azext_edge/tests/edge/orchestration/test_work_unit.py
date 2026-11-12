@@ -256,6 +256,51 @@ def test_wait_for_deployment_timeout_empty_or_partial_diagnostics(
     assert "az deployment operation group list" in message
 
 
+@pytest.mark.parametrize("failure_page", [1, 2])
+@pytest.mark.parametrize("content_type", ["application/json", "text/html", "text/plain"])
+def test_wait_for_deployment_timeout_malformed_response(
+    mocker, mocked_responses, deployment_wait_manager, failure_page, content_type,
+):
+    timeout = OperationTimeoutError("Timed out after 3600 seconds.")
+    mocker.patch(
+        "azext_edge.edge.providers.orchestration.work.wait_for_terminal_state", side_effect=timeout,
+    )
+    url = (
+        f"{ARM_ENDPOINT.rstrip('/')}/subscriptions/{ZEROED_SUBSCRIPTION}/resourcegroups/rg"
+        "/deployments/deployment/operations"
+    )
+    query = {"api-version": "2024-03-01", "$top": "100"}
+    if failure_page == 2:
+        next_link = f"{url}?api-version=2024-03-01&$skiptoken=next"
+        mocked_responses.add(
+            responses.GET, url,
+            json={"value": [{"properties": {
+                "provisioningState": "Running", "targetResource": {"id": "/resources/template"},
+            }}], "nextLink": next_link},
+            match=[responses.matchers.query_param_matcher(query)],
+        )
+        url = next_link
+        query = {"api-version": "2024-03-01", "$skiptoken": "next"}
+    mocked_responses.add(
+        responses.GET, url, status=200, body="<html>Gateway error</html>", content_type=content_type,
+        match=[responses.matchers.query_param_matcher(query)],
+    )
+
+    with pytest.raises(OperationTimeoutError) as exc:
+        deployment_wait_manager._wait_for_deployment(Mock(), "deployment")
+
+    message = str(exc.value)
+    assert exc.value.__cause__ is timeout
+    assert "Timed out after 3600 seconds." in message
+    assert "Unable to retrieve deployment operations:" in message
+    assert ("/resources/template: Running" in message) == (failure_page == 2)
+    arguments = f"--name deployment --resource-group rg --subscription {ZEROED_SUBSCRIPTION}"
+    assert f"az deployment group show {arguments}" in message
+    assert f"az deployment operation group list {arguments}" in message
+    assert "The deployment has not been canceled." in message
+    assert len(mocked_responses.calls) == failure_page
+
+
 def test_deployment_what_if_timeout(mocker, deployment_wait_manager):
     mocker.patch("azext_edge.edge.util.az_client.POLL_RETRIES", 1)
     mocker.patch("azext_edge.edge.util.az_client.sleep")

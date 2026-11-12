@@ -368,7 +368,7 @@ class WorkManager:
                             "Deployment diagnostics reached their time limit; resource details may be incomplete."
                         )
                         break
-            except AzureError as diagnostic_error:
+            except (AzureError, ValueError) as diagnostic_error:
                 lines.append(f"Unable to retrieve deployment operations: {get_api_error_str(diagnostic_error)}")
             if pending:
                 lines.extend(["Pending resource operations:", *pending])
