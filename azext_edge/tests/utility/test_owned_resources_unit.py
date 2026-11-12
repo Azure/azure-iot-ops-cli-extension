@@ -312,6 +312,65 @@ def test_unclassified_guard_failure_records_code_location_without_error_content(
     assert journal.has_violations()
 
 
+@pytest.mark.parametrize("api", ["2025-05-31-preview", "2025-05-31-PREVIEW", "2025-05-31-Preview"])
+@pytest.mark.parametrize("matching_owner", [True, False])
+def test_preview_api_casing_preserves_delete_ownership_guard(http_arm, journal, monkeypatch, api, matching_owner):
+    resource = GROUP + "/providers/microsoft.managedidentity/userassignedidentities/testidentity"
+    value = {
+        "id": resource, "tags": {owned.TAG: journal.owner if matching_owner else "another-owner"},
+        "etag": "owned-etag",
+    }
+    request = Mock(return_value=(200, value, {}))
+    monkeypatch.setattr(http_arm, "request", request)
+    observer = owned.Observer(journal, http_arm)
+    original_send = requests.Session.send
+    response = requests.Response()
+    response.status_code, response._content = 204, b""
+    observer.install()
+    try:
+        observer.original_send = Mock(return_value=response)
+        url = http_arm.endpoint + resource + "?api-version=" + api
+        if matching_owner:
+            assert requests.Session().delete(url).status_code == 204
+            observer.original_send.assert_called_once()
+            prepared = observer.original_send.call_args.args[1]
+            assert prepared.headers["If-Match"] == "owned-etag"
+            assert owned.Journal(journal.path).records()[resource]["api"] == api
+            assert not journal.has_violations()
+        else:
+            with pytest.raises(owned.OwnershipRejected, match="matching attempt ownership"):
+                requests.Session().delete(url)
+            observer.original_send.assert_not_called()
+            assert not journal.records()
+            assert journal.has_violations()
+        request.assert_called_once_with("GET", resource, api)
+    finally:
+        observer.original_send = original_send
+        observer.uninstall()
+
+
+@pytest.mark.parametrize("versions, expected", [
+    (["2025-05-31-PREVIEW", "2024-11-30"], "2024-11-30"),
+    (["2025-05-31-PREVIEW", "2025-01-31-preview"], "2025-05-31-PREVIEW"),
+])
+def test_cleanup_api_discovery_preserves_stable_preference_with_preview_casing(
+    http_arm, monkeypatch, versions, expected,
+):
+    provider = {"resourceTypes": [{"resourceType": "storageAccounts", "apiVersions": versions}]}
+    monkeypatch.setattr(http_arm, "request", Mock(return_value=(200, provider, {})))
+    assert http_arm.api_for(RESOURCE) == expected
+
+
+@pytest.mark.parametrize("api", [
+    None, "", "latest", "2025-05-31-PREVIEW-extra", "2025-05-31-PREVIEW\n",
+    "2025-05-31-PREV\u0130EW", "20\u0662\u0665-05-31-preview",
+])
+def test_preview_api_casing_does_not_accept_malformed_evidence(journal, api):
+    with pytest.raises(ValueError, match="exact ARM API version"):
+        journal.record(RESOURCE, api)
+    assert not journal.records()
+
+
 def test_expected_negative_test_cannot_hide_ownership_violation(journal, monkeypatch):
     arm = Mock(endpoint="https://management.azure.com")
     observer = owned.Observer(journal, arm)

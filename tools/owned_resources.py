@@ -31,7 +31,7 @@ CLOUDS = {
 }
 ROLE_TYPE = "microsoft.authorization/roleassignments"
 DEPLOYMENT_TYPE = "microsoft.resources/deployments"
-API = re.compile(r"20\d{2}-\d{2}-\d{2}(?:-preview)?")
+API = re.compile(r"20\d{2}-\d{2}-\d{2}(?:-preview)?", re.IGNORECASE | re.ASCII)
 TERMINAL_STATES = {"succeeded", "failed", "canceled", "cancelled"}
 NULL_USER_TAGS = {"microsoft.deviceupdate/accounts", "microsoft.deviceregistry/schemaregistries"}
 
@@ -367,7 +367,7 @@ class Arm:
         versions = [version for version in matches[0]["apiVersions"] if API.fullmatch(version)]
         if not versions:
             raise ValueError("Resource provider did not advertise a usable cleanup API.")
-        return sorted(versions, key=lambda version: ("preview" not in version, version), reverse=True)[0]
+        return sorted(versions, key=lambda version: ("preview" not in version.lower(), version), reverse=True)[0]
 
     def verify(self, resource, api):
         status, value, _ = self.request("GET", resource, api)
