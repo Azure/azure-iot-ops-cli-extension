@@ -2346,10 +2346,10 @@ def test_ops_upgrade_retry_assertion(
     mocked_responses: responses,
     target_scenario: UpgradeScenario,
     mocked_logger: Mock,
-    mocked_sleep: Mock,
     spy_upgrade_displays: Dict[str, Mock],
     mocked_upgrade_manager: Mock,
 ):
+    """Keep real polling delays so the SDK retry thread can reach its terminal error."""
     from azext_edge.edge.commands_edge import upgrade_instance
 
     resource_group_name = generate_random_string()
