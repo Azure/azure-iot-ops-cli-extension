@@ -43,6 +43,7 @@ from azext_edge.edge.providers.orchestration.resources.instances import (
 from azext_edge.edge.providers.orchestration.targets import InitTargets
 from azext_edge.edge.providers.orchestration.template import TEMPLATE_BLUEPRINT_INSTANCE
 from azext_edge.edge.util import parse_kvp_nargs
+from azext_edge.edge.util.az_client import OperationTimeoutError
 from azext_edge.edge.util.machinery import scoped_semver_import
 
 from ...generators import generate_random_string
@@ -2346,10 +2347,10 @@ def test_ops_upgrade_retry_assertion(
     mocked_responses: responses,
     target_scenario: UpgradeScenario,
     mocked_logger: Mock,
-    mocked_sleep: Mock,
     spy_upgrade_displays: Dict[str, Mock],
     mocked_upgrade_manager: Mock,
 ):
+    """Keep real polling delays so the SDK retry thread can reach its terminal error."""
     from azext_edge.edge.commands_edge import upgrade_instance
 
     resource_group_name = generate_random_string()
@@ -2924,6 +2925,55 @@ def build_ext_upgrade_state(
         operation_type=operation_type,
         qualification_identities=qualification_identities,
     )
+
+
+@pytest.mark.parametrize("failure_step", [
+    "delete", "create", "update", "instance", "registry", "connector", "secretsync",
+])
+def test_upgrade_timeout_logs_correlation_and_stops(mocker, failure_step):
+    from azext_edge.edge.providers.orchestration.upgrade2 import ExtensionOperation, UpgradeManager
+
+    manager = UpgradeManager.__new__(UpgradeManager)
+    manager.no_progress = True
+    plan = Mock(
+        extension_upgrades=[], instance_upgrade=True, registry_endpoint_needed=True,
+        connector_template_needed=True, secretsync_migration_needed=True,
+    )
+    mocker.patch.object(manager, "_validate_foundation_plan")
+    mocker.patch.object(manager, "_group_by_operation", return_value={
+        operation: [Mock()] for operation in ExtensionOperation
+    })
+    mocker.patch("azext_edge.edge.providers.orchestration.upgrade2.uuid4", return_value="test-correlation")
+    logger = mocker.patch("azext_edge.edge.providers.orchestration.upgrade2.logger")
+    timeout = OperationTimeoutError("Timed out waiting for upgrade.")
+    calls = []
+
+    def apply(step):
+        calls.append(step)
+        if step == failure_step:
+            raise timeout
+        return {}
+
+    mocker.patch.object(
+        manager, "_apply_single_operation", side_effect=lambda ext, op_type, headers: apply(op_type.value),
+    )
+    mocker.patch.object(manager, "_apply_instance_update", side_effect=lambda **kwargs: apply("instance"))
+    mocker.patch.object(manager, "_create_default_registry_endpoint", side_effect=lambda headers: apply("registry"))
+    mocker.patch.object(
+        manager, "_create_default_opcua_connector_template", side_effect=lambda headers: apply("connector"),
+    )
+    manager.secretsync_migration = Mock()
+    manager.secretsync_migration.migrate_to_v2.side_effect = lambda headers: apply("secretsync")
+
+    with pytest.raises(OperationTimeoutError) as exc:
+        manager.apply_upgrades(plan)
+
+    assert exc.value is timeout
+    order = ["delete", "create", "update", "instance", "registry", "connector", "secretsync"]
+    assert calls == order[:order.index(failure_step) + 1]
+    logger.error.assert_called_once()
+    assert "Correlation Id for failed" in logger.error.call_args.args[0]
+    assert "test-correlation" in logger.error.call_args.args[0]
 
 
 def test_preview_upgrade_routes_instance_and_backfills_to_profile_api(

@@ -228,6 +228,24 @@ Inside `azext_edge/tests/edge` - the tests are broken up by category:
 - `rpsaas` - Cloud resource provider tests
 - `support` - Support bundle tests
 
+### Deployment polling timeouts
+
+The CLI stops waiting after 60 minutes of polling per long-running operation
+(240 intervals of 15 seconds by default). This client timeout does not cancel the
+operation in Azure. For init/create ARM deployments, the timeout error includes
+pending resource IDs and provisioning states, plus commands to inspect deployment
+status and operations. Diagnostics follow pagination with bounded requests and a
+30-second collection budget, checked after each page. A request in progress may
+extend that budget. Lookup failures and incomplete diagnostics are reported
+explicitly. Inspect the server-side state before retrying; deleting a pending
+resource is not a supported general recovery procedure.
+
+Malformed diagnostic responses do not replace the original timeout or discard
+resource details already collected. Inspection commands quote Azure resource
+names for Bash, PowerShell, and Windows cmd. Deletion retains its custom-location
+soft-failure policy on timeout so extension cleanup is still attempted; other
+deletion and upgrade timeouts stop the workflow and log the correlation ID.
+
 ### Tox
 
 We support running tests locally using [Tox](https://tox.wiki/) - our [Tox testing guide](./docs/tox-testing.md) has more detailed information on our configuration.

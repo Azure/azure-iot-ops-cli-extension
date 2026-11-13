@@ -23,6 +23,7 @@ from rich.console import Console
 
 from ...util.az_client import (
     DEFAULT_IOTOPS_MGMT_API_VERSION,
+    OperationTimeoutError,
     get_resource_client,
     wait_for_terminal_state,
     wait_for_terminal_states,
@@ -594,7 +595,7 @@ class DeletionManager:
                         self._execute_step_single(
                             display, _STEP_CUSTOM_LOCATION, self._cl_resource
                         )
-                    except HttpResponseError as e:
+                    except (HttpResponseError, OperationTimeoutError) as e:
                         display.update_step(
                             _STEP_CUSTOM_LOCATION, self._cl_resource.display_name,
                             StepState.FAILED, "failed"
@@ -615,7 +616,7 @@ class DeletionManager:
                 if self.include_dependencies and self._dep_extensions:
                     self._execute_extension_parallel(display, _STEP_DEP_EXTENSIONS, self._dep_extensions)
 
-            except HttpResponseError:
+            except (HttpResponseError, OperationTimeoutError):
                 logger.error(
                     f"Correlation Id for failed deletion: {self.headers['x-ms-correlation-request-id']}"
                 )
