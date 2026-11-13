@@ -401,10 +401,14 @@ def test_wait_for_deployment_inspection_command_quoting(mocker, deployment_wait_
         if shell == "bash":
             invocation = [executable, "-c", command]
         elif shell == "cmd":
-            invocation = [executable, "/d", "/s", "/c", f'"{command}"']
+            # A list would apply C-runtime escaping, which cmd does not understand.
+            invocation = command
         else:
             invocation = [executable, "-NoProfile", "-NonInteractive", "-Command", f"& {command}"]
-        result = subprocess.run(invocation, check=True, capture_output=True, text=True, timeout=15)
+        result = subprocess.run(
+            invocation, shell=shell == "cmd", executable=executable if shell == "cmd" else None,
+            check=True, capture_output=True, text=True, timeout=15,
+        )
         assert ast.literal_eval(result.stdout.strip()) == [
             "--name", "deployment", "--resource-group", "rg(prod)", "--subscription", ZEROED_SUBSCRIPTION,
         ]
