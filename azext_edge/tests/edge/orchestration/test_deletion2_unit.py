@@ -30,7 +30,7 @@ from azext_edge.edge.providers.orchestration.deletion2 import (
     DeletionManager,
     delete_ops_resources,
 )
-from azext_edge.edge.util.az_client import DEFAULT_IOTOPS_MGMT_API_VERSION
+from azext_edge.edge.util.az_client import DEFAULT_IOTOPS_MGMT_API_VERSION, OperationTimeoutError
 from azext_edge.edge.util.machinery import scoped_semver_import
 from ...generators import BASE_URL, generate_resource_id, get_zeroed_subscription
 
@@ -1316,6 +1316,49 @@ class TestDeletionOrder:
 # ---------------------------------------------------------------------------
 # Tests: Idempotent Recovery
 # ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("timeout_step", ["instance", "custom-location", "aio-extension"])
+@pytest.mark.parametrize("no_progress", [False, True])
+def test_delete_timeout_policy(
+    mocker, mocked_cmd, mocked_responses, mocked_wait_for_terminal_state, timeout_step, no_progress,
+):
+    _register_instance_discovery(mocked_responses)
+    _register_extensions(mocked_responses, extensions=[
+        _build_extension(name="aio-ext", extension_type=EXTENSION_TYPE_OPS),
+        _build_extension(name="cm-ext", extension_type=EXTENSION_TYPE_CM),
+    ])
+    _register_sync_rules(mocked_responses)
+    _register_arg_sweep(mocked_responses)
+    _register_delete_handler(mocked_responses)
+    timeout = OperationTimeoutError("Timed out waiting for deletion.")
+    outcomes = [None, None, None]
+    outcomes[["instance", "custom-location", "aio-extension"].index(timeout_step)] = timeout
+    mocked_wait_for_terminal_state.side_effect = outcomes
+    mock_logger = mocker.patch("azext_edge.edge.providers.orchestration.deletion2.logger")
+    manager = DeletionManager(
+        cmd=mocked_cmd, instance_name="myinst", resource_group_name=_RG,
+        include_dependencies=True, no_progress=no_progress,
+    )
+    if timeout_step == "custom-location":
+        manager.do_work(confirm_yes=True)
+        assert any(
+            "Could not delete custom location" in call.args[0] and str(timeout) in call.args[0]
+            for call in mock_logger.warning.call_args_list
+        )
+    else:
+        with pytest.raises(OperationTimeoutError) as exc:
+            manager.do_work(confirm_yes=True)
+        assert exc.value is timeout
+        mock_logger.error.assert_called_once_with(
+            f"Correlation Id for failed deletion: {manager.headers['x-ms-correlation-request-id']}"
+        )
+    delete_urls = [
+        call.request.url.lower() for call in mocked_responses.calls if call.request.method == "DELETE"
+    ]
+    assert any("/instances/myinst" in url for url in delete_urls)
+    assert any("/extensions/aio-ext" in url for url in delete_urls) == (timeout_step != "instance")
+    assert any("/extensions/cm-ext" in url for url in delete_urls) == (timeout_step == "custom-location")
 
 
 class TestIdempotentRecovery:

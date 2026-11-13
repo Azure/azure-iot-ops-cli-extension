@@ -240,6 +240,12 @@ extend that budget. Lookup failures and incomplete diagnostics are reported
 explicitly. Inspect the server-side state before retrying; deleting a pending
 resource is not a supported general recovery procedure.
 
+Malformed diagnostic responses do not replace the original timeout or discard
+resource details already collected. Inspection commands quote Azure resource
+names for Bash, PowerShell, and Windows cmd. Deletion retains its custom-location
+soft-failure policy on timeout so extension cleanup is still attempted; other
+deletion and upgrade timeouts stop the workflow and log the correlation ID.
+
 ### Tox
 
 We support running tests locally using [Tox](https://tox.wiki/) - our [Tox testing guide](./docs/tox-testing.md) has more detailed information on our configuration.

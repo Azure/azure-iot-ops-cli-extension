@@ -7,7 +7,6 @@
 import re
 from enum import IntEnum
 from json import dumps
-from shlex import quote
 from time import monotonic, sleep
 from typing import TYPE_CHECKING, Dict, Iterable, List, Optional, Tuple, Union
 from uuid import uuid4
@@ -89,6 +88,10 @@ class WorkRecord:
 
 # Baked-in time for CL service to catch up.
 CATCH_UP_SEC = 7
+DEPLOYMENT_DIAGNOSTICS_BUDGET_SEC = 30
+DEPLOYMENT_DIAGNOSTICS_PAGE_SIZE = 100
+DEPLOYMENT_DIAGNOSTICS_REQUEST_TIMEOUT_SEC = 5
+DEPLOYMENT_DIAGNOSTICS_RETRIES = 0
 
 
 class WorkDisplay:
@@ -341,42 +344,11 @@ class WorkManager:
         except OperationTimeoutError as error:
             resource_group = self._targets.resource_group_name
             lines = [str(error), f"Deployment: {deployment_name} (resource group: {resource_group})."]
-            pending = []
-            deadline = monotonic() + 30
-            try:
-                operations = self.resource_client.deployment_operations.list(
-                    resource_group_name=resource_group,
-                    deployment_name=deployment_name,
-                    top=100,
-                    retry_total=0,
-                    connection_timeout=5,
-                    read_timeout=5,
-                )
-                pages = operations.by_page()
-                for page in pages:
-                    for operation in page:
-                        properties = operation.get("properties") or {}
-                        state = properties.get("provisioningState") or "Unknown"
-                        target = properties.get("targetResource") or {}
-                        if target and state.lower() not in {"succeeded", "failed", "canceled", "cancelled"}:
-                            resource = target.get("id") or (
-                                f"{target.get('resourceType', 'Unknown')}/{target.get('resourceName', 'Unknown')}"
-                            )
-                            pending.append(f"  - {resource}: {state}")
-                    if monotonic() >= deadline and pages.continuation_token is not None:
-                        lines.append(
-                            "Deployment diagnostics reached their time limit; resource details may be incomplete."
-                        )
-                        break
-            except (AzureError, ValueError) as diagnostic_error:
-                lines.append(f"Unable to retrieve deployment operations: {get_api_error_str(diagnostic_error)}")
-            if pending:
-                lines.extend(["Pending resource operations:", *pending])
-            else:
-                lines.append("No pending resource operations were found in the retrieved deployment operations.")
+            lines.extend(self._get_deployment_diagnostics(deployment_name))
+            # These Azure resource names/IDs cannot contain double quotes or shell expansion characters.
             arguments = (
-                f"--name {quote(deployment_name)} --resource-group {quote(resource_group)} "
-                f"--subscription {quote(self.subscription_id)}"
+                f'--name "{deployment_name}" --resource-group "{resource_group}" '
+                f'--subscription "{self.subscription_id}"'
             )
             lines.extend([
                 "Inspect deployment status and resource operations before retrying:",
@@ -385,6 +357,56 @@ class WorkManager:
                 "The deployment has not been canceled. Do not delete resources solely to unblock the CLI.",
             ])
             raise OperationTimeoutError("\n".join(lines)) from error
+
+    def _get_deployment_diagnostics(self, deployment_name: str) -> List[str]:
+        lines, pending = [], []
+        deadline = monotonic() + DEPLOYMENT_DIAGNOSTICS_BUDGET_SEC
+        try:
+            operations = self.resource_client.deployment_operations.list(
+                resource_group_name=self._targets.resource_group_name,
+                deployment_name=deployment_name,
+                top=DEPLOYMENT_DIAGNOSTICS_PAGE_SIZE,
+                retry_total=DEPLOYMENT_DIAGNOSTICS_RETRIES,
+                connection_timeout=DEPLOYMENT_DIAGNOSTICS_REQUEST_TIMEOUT_SEC,
+                read_timeout=DEPLOYMENT_DIAGNOSTICS_REQUEST_TIMEOUT_SEC,
+            )
+            pages = operations.by_page()
+            for page in pages:
+                for operation in page:
+                    if not isinstance(operation, dict):
+                        raise ValueError("Deployment operation must be an object.")
+                    properties = operation.get("properties")
+                    if properties is None:
+                        properties = {}
+                    if not isinstance(properties, dict):
+                        raise ValueError("Deployment operation properties must be an object.")
+                    state = properties.get("provisioningState")
+                    if state is None or state == "":
+                        state = "Unknown"
+                    if not isinstance(state, str):
+                        raise ValueError("Deployment operation provisioningState must be a string.")
+                    target = properties.get("targetResource")
+                    if target is None:
+                        target = {}
+                    if not isinstance(target, dict):
+                        raise ValueError("Deployment operation targetResource must be an object.")
+                    if target and state.lower() not in {"succeeded", "failed", "canceled", "cancelled"}:
+                        resource = target.get("id") or (
+                            f"{target.get('resourceType', 'Unknown')}/{target.get('resourceName', 'Unknown')}"
+                        )
+                        pending.append(f"  - {resource}: {state}")
+                if monotonic() >= deadline and pages.continuation_token is not None:
+                    lines.append("Deployment diagnostics reached their time limit; resource details may be incomplete.")
+                    break
+        except (AzureError, ValueError, TypeError, KeyError) as diagnostic_error:
+            # The SDK pager can raise native errors for a missing or non-iterable "value".
+            logger.debug("Unable to retrieve deployment operations", exc_info=True)
+            lines.append(f"Unable to retrieve deployment operations: {get_api_error_str(diagnostic_error)}")
+        if pending:
+            lines.extend(["Pending resource operations:", *pending])
+        else:
+            lines.append("No pending resource operations were found in the retrieved deployment operations.")
+        return lines
 
     def execute_ops_init(
         self,
