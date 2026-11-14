@@ -1,0 +1,1406 @@
+# coding=utf-8
+# ----------------------------------------------------------------------------------------------
+# Copyright (c) Microsoft Corporation. All rights reserved.
+# Licensed under the MIT License. See License file in the project root for license information.
+# ----------------------------------------------------------------------------------------------
+
+"""Offline contract tests for ops ADO orchestration and fail-closed qualification."""
+
+import importlib
+import json
+from pathlib import Path
+import random
+import shlex
+import shutil
+import stat
+import subprocess
+import sys
+from types import SimpleNamespace
+from unittest.mock import Mock
+from zipfile import ZipFile
+
+import pytest
+import yaml
+
+
+ROOT = Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(ROOT / "tools"))
+try:
+    pipeline = importlib.import_module("ado_integration")
+    cluster = importlib.import_module("ado_cluster")
+    auth = importlib.import_module("ado_auth")
+finally:
+    sys.path.pop(0)
+
+SUBSCRIPTION = "a386d5ea-ea90-441a-8263-d816368c84a1"
+UUID_VALUE = "11111111-1111-4111-8111-111111111111"
+
+
+@pytest.fixture(autouse=True)
+def pipeline_environment(monkeypatch, tmp_path):
+    monkeypatch.setattr(cluster.owned_resources, "activate", Mock())
+    monkeypatch.setattr(cluster.owned_resources, "cleanup", Mock())
+    for name, value in {
+        "SYSTEM_DEFINITIONID": "164", "BUILD_BUILDID": "123", "BUILD_SOURCEVERSION": "a" * 40,
+        "SYSTEM_JOBATTEMPT": "1", "OPS_SCENARIOS": "edge", "OPS_CHANNELS": "stable", "OPS_PYTHONS": "3.13",
+        "OPS_BASELINES": "{}", "OPS_SUBSCRIPTION": SUBSCRIPTION, "OPS_RESOURCE_GROUP": "ops-cli-int-test-rg",
+        "OPS_CUSTOM_LOCATIONS_OID": UUID_VALUE, "OPS_CANDIDATE_DIGEST": "b" * 64,
+        "OPS_SCENARIO_TIMEOUT_MINUTES": "360", "OPS_CLUSTER_REGION": "westus2",
+        "OPS_CLOUD": "AzureCloud",
+        "AZURE_CLIENT_ID": UUID_VALUE, "AZURE_TENANT_ID": UUID_VALUE, "SYSTEM_ACCESSTOKEN": "offline-token",
+        "AZURESUBSCRIPTION_SERVICE_CONNECTION_ID": UUID_VALUE, "SYSTEM_TEAMPROJECTID": UUID_VALUE,
+        "SYSTEM_PLANID": UUID_VALUE, "SYSTEM_JOBID": UUID_VALUE, "AGENT_TEMPDIRECTORY": str(tmp_path),
+        "AZURE_EXTENSION_DIR": str(tmp_path / "azure-cli-extensions"),
+    }.items():
+        monkeypatch.setenv(name, value)
+
+
+def make_state():
+    suffix = "a" * 15
+    prefix = f"/subscriptions/{SUBSCRIPTION}/resourceGroups/ops-cli-int-test-rg/providers"
+    state = {
+        "schema": 1, "producer": pipeline.producer(), "attempt": 1, "suffix": suffix,
+        "subscription": SUBSCRIPTION, "resourceGroup": "ops-cli-int-test-rg", "customLocationsObjectId": UUID_VALUE,
+        "locations": {"clusterRegion": "westus2"},
+        "cluster": f"opado{suffix}", "instance": f"inst{suffix}", "wheel": "/candidate.whl", "sha256": "b" * 64,
+        "resources": {
+            "cluster": f"{prefix}/Microsoft.Kubernetes/connectedClusters/opado{suffix}",
+            "instance": f"{prefix}/Microsoft.IoTOperations/instances/inst{suffix}",
+            "storage": f"{prefix}/Microsoft.Storage/storageAccounts/initstore{suffix}",
+            "registry": f"{prefix}/Microsoft.DeviceRegistry/schemaRegistries/init-registry{suffix}",
+            "namespace": f"{prefix}/Microsoft.DeviceRegistry/namespaces/init-adr-{suffix}",
+        },
+        "row": {"key": "edge_stable_py313", "python": "3.13", "scenario": {
+            "name": "edge-stable", "channel": "stable", "tox_env": "python-edge-int", "parallel": True,
+            "test_redeploy": False, "needs_trust": False, "baseline": None, "env": [],
+            "init_args": "", "create_args": "",
+        }},
+        "ownershipChecked": True, "phases": {"init": "passed", "scenario": "passed", "smoke": "passed"},
+        "cleanup": "passed", "status": "passed",
+    }
+    state["ownership"] = cluster.owned_resources.new_context(**pipeline.ownership_identity(state))
+    return state
+
+
+def test_fairfax_plan_binds_cloud_and_all_resource_locations(monkeypatch, tmp_path):
+    monkeypatch.setenv("OPS_CLOUD", "AzureUSGovernment")
+    monkeypatch.setenv("OPS_CLUSTER_REGION", "usgovvirginia")
+    pipeline.plan(tmp_path)
+    value = pipeline.read(tmp_path / "plan.json")
+    assert value["cloud"] == "AzureUSGovernment"
+    assert set(value["locations"].values()) == {"usgovvirginia"}
+    assert set(value["locations"]) == {"clusterRegion", "resourceRegion", "namespaceRegion"}
+    assert all(row["scenario"]["channel"] == "stable" for row in value["rows"])
+
+
+@pytest.mark.parametrize("setting,value", [
+    ("OPS_CHANNELS", "preview"), ("OPS_CHANNELS", "stable,preview"), ("OPS_CLUSTER_REGION", "westus2"),
+])
+def test_fairfax_rejects_unsupported_plan_before_execution(monkeypatch, tmp_path, setting, value):
+    monkeypatch.setenv("OPS_CLOUD", "AzureUSGovernment")
+    monkeypatch.setenv("OPS_CLUSTER_REGION", "usgovvirginia")
+    monkeypatch.setenv(setting, value)
+    with pytest.raises(ValueError, match="Fairfax|cluster region"):
+        pipeline.plan(tmp_path)
+    assert not (tmp_path / "plan.json").exists()
+
+
+def test_fairfax_state_and_cleanup_require_matching_cloud(monkeypatch):
+    monkeypatch.setenv("OPS_CLOUD", "AzureUSGovernment")
+    state = make_state()
+    state.update(cloud="AzureUSGovernment", locations={
+        key: "usgovvirginia" for key in ("clusterRegion", "resourceRegion", "namespaceRegion")
+    })
+    state["ownership"] = cluster.owned_resources.new_context(**pipeline.ownership_identity(state))
+    cluster.validate_state(state)
+    commands = Mock()
+    commands.az_json.return_value = {"id": SUBSCRIPTION, "environmentName": "AzureCloud"}
+    with pytest.raises(ValueError, match="approved cloud"):
+        cluster.check_account(commands, state)
+    commands.az_json.return_value["environmentName"] = "AzureUSGovernment"
+    cluster.check_account(commands, state)
+    state["locations"]["namespaceRegion"] = "australiaeast"
+    with pytest.raises(ValueError, match="all resources"):
+        cluster.validate_state(state)
+    state["cloud"] = "AzureCloud"
+    with pytest.raises(ValueError, match="approved cloud"):
+        cluster.validate_state(state)
+
+
+def test_fairfax_provisioning_never_inherits_public_resource_locations():
+    state = make_state()
+    state.update(cloud="AzureUSGovernment", locations={
+        key: "usgovvirginia" for key in ("clusterRegion", "resourceRegion", "namespaceRegion")
+    })
+    commands = Mock()
+    cluster.create_resources(commands, state)
+    assert len(commands.run.call_args_list) == 3
+    for call in commands.run.call_args_list:
+        arguments = call.args[0]
+        assert arguments[arguments.index("--location") + 1] == "usgovvirginia"
+
+
+@pytest.mark.parametrize("fixture", ["secretsync", "opcua"])
+@pytest.mark.parametrize("reuse", [False, True])
+def test_workload_identity_resources_do_not_collide_between_seeded_jobs(monkeypatch, fixture, reuse):
+    module_name = (
+        "test_secretsync_int" if fixture == "secretsync"
+        else "resources.connector.opcua.int.helpers"
+    )
+    module = importlib.import_module(f"azext_edge.tests.edge.orchestration.{module_name}")
+    created = {"keyvault": [], "identity": []}
+
+    def run(command):
+        arguments = shlex.split(command)
+        if arguments[:3] in (["az", "keyvault", "create"], ["az", "identity", "create"]):
+            kind = arguments[1]
+            name = arguments[arguments.index("-n") + 1]
+            created[kind].append(name)
+            return {"id": f"/{kind}/{name}"}
+        if arguments[:5] == ["az", "iot", "ops", "secretsync", "list"]:
+            return []
+        return None
+
+    monkeypatch.setattr(module, "run", run)
+    monkeypatch.setattr(module, "sleep", Mock())
+    settings = SimpleNamespace(add_to_config=Mock(), env=SimpleNamespace(
+        azext_edge_rg="shared-test-group", azext_edge_instance="instance",
+        azext_edge_sp_object_id=UUID_VALUE,
+        azext_edge_kv="/existing/vault" if reuse else None,
+        azext_edge_user_assigned_mi_id="/existing/identity" if reuse else None,
+    ))
+    previous_random = random.getstate()
+    try:
+        for _ in range(2):
+            random.seed(42)
+            tracked = []
+            if fixture == "secretsync":
+                setup = module.secretsync_int_setup.__wrapped__(settings, tracked)
+                try:
+                    value = next(setup)
+                    vault, identity = value["keyvaultId"], value["userAssignedId"]
+                finally:
+                    setup.close()
+            else:
+                vault, _ = module.ensure_key_vault(settings, SimpleNamespace(addfinalizer=Mock()))
+                identity = module.ensure_managed_identity(settings, tracked)
+            if reuse:
+                assert (vault, identity) == ("/existing/vault", "/existing/identity")
+                assert not tracked
+            else:
+                assert tracked == [identity]
+        for names in created.values():
+            assert len(names) == len(set(names)) == (0 if reuse else 2)
+    finally:
+        random.setstate(previous_random)
+
+
+def test_plan_reuses_channel_matrix(monkeypatch, tmp_path, capsys):
+    monkeypatch.setenv("OPS_SCENARIOS", "edge,runtime-channel")
+    monkeypatch.setenv("OPS_CHANNELS", "stable,preview")
+    monkeypatch.setenv("OPS_PYTHONS", "3.10,3.13")
+    pipeline.plan(tmp_path)
+    result = pipeline.read(tmp_path / "plan.json")
+    assert len(result["rows"]) == 8
+    assert len({row["key"] for row in result["rows"]}) == 8
+    assert result["producer"] == pipeline.producer()
+    assert result["scenarioTimeoutMinutes"] == 360
+    for row in result["rows"]:
+        assert ("--use-preview" in row["scenario"]["create_args"]) == (row["scenario"]["channel"] == "preview")
+    assert "isOutput=true" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("selection", ["edge", "trustbundle", "edge,trustbundle"])
+def test_plan_serializes_only_wlif_without_losing_rows(monkeypatch, tmp_path, selection):
+    monkeypatch.setenv("OPS_SCENARIOS", selection)
+    monkeypatch.setenv("OPS_CHANNELS", "stable,preview")
+    outputs = {}
+    monkeypatch.setattr(pipeline, "output_variable", lambda name, value: outputs.update({name: value}))
+    pipeline.plan(tmp_path)
+    rows = pipeline.read(tmp_path / "plan.json")["rows"]
+    parallel, trust = (json.loads(outputs[name + "Matrix"]) for name in ("parallel", "trustBundle"))
+    assert not set(parallel) & set(trust)
+    assert set(parallel) | set(trust) == {row["key"] for row in rows}
+    assert set(trust) == {row["key"] for row in rows if row["scenario"]["tox_env"] == "python-wlif-int"}
+    assert outputs["hasParallel"] == str(bool(parallel)).lower()
+    assert outputs["hasTrustBundle"] == str(bool(trust)).lower()
+
+
+@pytest.mark.parametrize("region", ["westus2", "eastus2"])
+def test_title_uses_frozen_scenarios_channels_and_selected_region(monkeypatch, tmp_path, capsys, region):
+    monkeypatch.setenv("OPS_SCENARIOS", "edge,runtime-channel")
+    monkeypatch.setenv("OPS_CHANNELS", "stable,preview")
+    monkeypatch.setenv("OPS_PYTHONS", "3.10,3.13")
+    monkeypatch.setenv("OPS_MODE", "Dry run")
+    monkeypatch.setenv("OPS_CLUSTER_REGION", region)
+    pipeline.plan(tmp_path)
+    capsys.readouterr()
+    original = (tmp_path / "plan.json").read_bytes()
+    monkeypatch.setenv("OPS_SCENARIOS", "trustbundle")
+    monkeypatch.setenv("OPS_CHANNELS", "stable")
+    monkeypatch.setenv("OPS_CLUSTER_REGION", "westeurope")
+    for current in ("aio-integration-20261031.1", "already renamed"):
+        monkeypatch.setenv("BUILD_BUILDNUMBER", current)
+        pipeline.title(tmp_path)
+        assert capsys.readouterr().out.splitlines()[0] == (
+            f"##vso[build.updatebuildnumber]aio-integration-123 ({region}) "
+            "(edge,runtime-channel) (dry-run,stable,preview)"
+        )
+        assert (tmp_path / "plan.json").read_bytes() == original
+
+
+@pytest.mark.parametrize("release_build_id", [None, "456"])
+def test_title_compacts_large_selection_without_release_label(monkeypatch, tmp_path, release_build_id):
+    catalog = yaml.safe_load((ROOT / ".github/test-scenarios.yml").read_text())["scenarios"]
+    selection = [scenario["name"] for scenario in catalog if not scenario.get("requires_baseline")]
+    monkeypatch.setenv("OPS_SCENARIOS", ",".join(selection))
+    pipeline.plan(tmp_path)
+    value = pipeline.read(tmp_path / "plan.json")
+    if release_build_id:
+        value["releaseBuildId"] = release_build_id
+    result = pipeline.run_title(value, "Integration tests")
+    assert result == (
+        "aio-integration-123 (westus2) "
+        "(edge,broker-diagnostics-removal,insecure-listener,rpsaas +7) (stable)"
+    )
+    assert len(result) <= 255
+
+
+@pytest.mark.parametrize("damage", ["producer", "scenario", "empty", "mode", "region"])
+def test_title_rejects_untrusted_plan_values(monkeypatch, tmp_path, damage):
+    pipeline.plan(tmp_path)
+    value = pipeline.read(tmp_path / "plan.json")
+    mode = "Integration tests"
+    if damage == "producer":
+        value["producer"]["build"] = "999"
+    elif damage == "scenario":
+        value["rows"][0]["scenario"]["name"] = "bad\n##vso[task.complete]-stable"
+    elif damage == "empty":
+        value["rows"] = []
+    elif damage == "region":
+        value["locations"]["clusterRegion"] = "default"
+    else:
+        mode = "not a mode"
+    with pytest.raises(ValueError):
+        pipeline.run_title(value, mode)
+
+
+@pytest.mark.parametrize("name,value", [
+    ("OPS_SCENARIOS", "edge,typo"), ("OPS_SCENARIOS", "Default scenarios,edge"),
+    ("OPS_SCENARIOS", "edge,edge"), ("OPS_PYTHONS", "3.9"), ("OPS_PYTHONS", "3.13,3.13"),
+    ("OPS_RESOURCE_GROUP", "rg;echo hello"), ("OPS_SUBSCRIPTION", "not-a-guid"),
+    ("OPS_CHANNELS", "unknown"), ("OPS_BASELINES", "[]"), ("BUILD_SOURCEVERSION", "main"),
+    ("SYSTEM_DEFINITIONID", "0"),
+    ("OPS_SCENARIO_TIMEOUT_MINUTES", "0"), ("OPS_SCENARIO_TIMEOUT_MINUTES", "91"),
+    ("OPS_CLUSTER_REGION", "australiaeast"), ("OPS_CLUSTER_REGION", ""),
+    ("OPS_CLUSTER_REGION", "westus2;echo x"),
+])
+def test_plan_rejects_invalid_inputs(monkeypatch, tmp_path, name, value):
+    monkeypatch.setenv(name, value)
+    with pytest.raises(ValueError):
+        pipeline.plan(tmp_path)
+    assert not (tmp_path / "plan.json").exists()
+
+
+def test_prepare_preserves_selected_cluster_region(monkeypatch, tmp_path):
+    version = f"{sys.version_info.major}.{sys.version_info.minor}"
+    monkeypatch.setenv("OPS_PYTHONS", version)
+    monkeypatch.setenv("OPS_CLUSTER_REGION", "eastus2")
+    pipeline.plan(tmp_path / "plan")
+    monkeypatch.setenv("OPS_CLUSTER_REGION", "westus2")
+    monkeypatch.setenv("OPS_PLAN", str(tmp_path / "plan/plan.json"))
+    monkeypatch.setenv("OPS_ROW", f"edge_stable_py{version.replace('.', '')}")
+    monkeypatch.setenv("OPS_CANDIDATE", str(tmp_path))
+    wheel = tmp_path / "candidate.whl"
+    wheel.write_bytes(b"candidate")
+    monkeypatch.setattr(pipeline, "verified_candidate", Mock(return_value=wheel))
+    monkeypatch.setattr(pipeline.subprocess, "run", Mock())
+    monkeypatch.setattr(pipeline.runpy, "run_path", Mock(return_value={"verify_installed": Mock()}))
+    pipeline.prepare(tmp_path / "attempt")
+    assert pipeline.read(tmp_path / "attempt/state.json")["locations"] == {"clusterRegion": "eastus2"}
+
+
+def test_trust_bundle_jobs_keep_shared_group_and_distinct_resource_names(monkeypatch, tmp_path):
+    version = f"{sys.version_info.major}.{sys.version_info.minor}"
+    monkeypatch.setenv("OPS_PYTHONS", version)
+    monkeypatch.setenv("OPS_SCENARIOS", "trustbundle")
+    monkeypatch.setenv("OPS_CHANNELS", "stable,preview")
+    pipeline.plan(tmp_path / "plan")
+    monkeypatch.setenv("OPS_PLAN", str(tmp_path / "plan/plan.json"))
+    monkeypatch.setenv("OPS_CANDIDATE", str(tmp_path))
+    wheel = tmp_path / "candidate.whl"
+    wheel.write_bytes(b"candidate")
+    monkeypatch.setattr(pipeline, "verified_candidate", Mock(return_value=wheel))
+    monkeypatch.setattr(pipeline.subprocess, "run", Mock())
+    monkeypatch.setattr(pipeline.runpy, "run_path", Mock(return_value={"verify_installed": Mock()}))
+    clusters = []
+    for channel, attempt in (("stable", "1"), ("preview", "1"), ("stable", "2")):
+        monkeypatch.setenv("OPS_ROW", f"trustbundle_{channel}_py{version.replace('.', '')}")
+        monkeypatch.setenv("SYSTEM_JOBATTEMPT", attempt)
+        output = tmp_path / f"{channel}-{attempt}"
+        pipeline.prepare(output)
+        state = pipeline.read(output / "state.json")
+        cluster.validate_state(state)
+        clusters.append(state["resources"]["cluster"])
+        assert state["resourceGroup"] == "ops-cli-int-test-rg"
+        assert "baseResourceGroup" not in state
+        assert all(f"/resourceGroups/{state['resourceGroup']}/" in value for value in state["resources"].values())
+        assert cluster.test_environment(state, output)["azext_edge_rg"] == state["resourceGroup"]
+        state["resourceGroup"] = "another-group"
+        with pytest.raises(ValueError, match="approved resource group"):
+            cluster.validate_state(state)
+    assert len(set(clusters)) == 3
+
+
+def test_default_selection_excludes_explicit_scenarios(monkeypatch, tmp_path):
+    monkeypatch.setenv("OPS_SCENARIOS", "Default scenarios")
+    pipeline.plan(tmp_path)
+    names = {row["scenario"]["name"] for row in pipeline.read(tmp_path / "plan.json")["rows"]}
+    assert "edge-stable" in names
+    assert not any(name.startswith(("upgrade-path", "broker-diagnostics-removal")) for name in names)
+
+
+def test_upgrade_requires_pinned_baseline(monkeypatch, tmp_path):
+    monkeypatch.setenv("OPS_SCENARIOS", "upgrade-path")
+    with pytest.raises(ValueError, match="baseline"):
+        pipeline.plan(tmp_path)
+
+
+@pytest.mark.parametrize("bad_name", ["../../bad.whl", "azure_iot-1.0-py3-none-any.whl"])
+def test_candidate_rejects_other_distribution_or_paths(tmp_path, bad_name):
+    pipeline.write(tmp_path / "candidate.json", {
+        "schema": 1, "producer": pipeline.producer(), "wheel": {"file": bad_name, "sha256": "b" * 64},
+    })
+    with pytest.raises(ValueError, match="filename"):
+        pipeline.verified_candidate(tmp_path, "b" * 64)
+
+
+def test_candidate_requires_digest_and_current_producer(tmp_path):
+    wheel = tmp_path / "azure_iot_ops-1.0-py3-none-any.whl"
+    with ZipFile(wheel, "w") as archive:
+        archive.writestr("azext_edge/__init__.py", "# test\n")
+    value = {"schema": 1, "producer": pipeline.producer(),
+             "wheel": {"file": wheel.name, "sha256": pipeline.digest(wheel)}}
+    pipeline.write(tmp_path / "candidate.json", value)
+    assert pipeline.verified_candidate(tmp_path, value["wheel"]["sha256"]) == wheel
+    with pytest.raises(ValueError, match="digest"):
+        pipeline.verified_candidate(tmp_path, "b" * 64)
+    value["producer"]["build"] = "124"
+    pipeline.write(tmp_path / "candidate.json", value)
+    with pytest.raises(ValueError, match="producer"):
+        pipeline.verified_candidate(tmp_path, pipeline.digest(wheel))
+
+
+@pytest.mark.parametrize("content", [
+    "<testsuite/>", '<testsuite><testcase name="case"><skipped/></testcase></testsuite>',
+    '<testsuite><testcase name="case"><failure/></testcase></testsuite>',
+    '<testsuite><testcase name="case"><error/></testcase></testsuite>',
+])
+def test_junit_empty_skipped_failed_or_error_not_qualification(tmp_path, content):
+    path = tmp_path / "junit.xml"
+    path.write_text(content, encoding="utf-8")
+    with pytest.raises(ValueError):
+        pipeline.junit_results(path)
+
+
+def test_junit_passed_with_explicit_skips(tmp_path):
+    path = tmp_path / "junit.xml"
+    path.write_text('<testsuite><testcase name="passed"/><testcase name="skip"><skipped/></testcase></testsuite>')
+    assert pipeline.junit_results(path) == {"passed": 1, "skipped": 1, "total": 2}
+
+
+@pytest.mark.parametrize("field,value", [
+    ("status", "incomplete"), ("cleanup", "incomplete"), ("phases", {"init": "passed"}),
+])
+def test_report_does_not_hide_incomplete_execution(tmp_path, field, value):
+    state = make_state()
+    state[field] = value
+    pipeline.write(tmp_path / "state.json", state)
+    with pytest.raises(ValueError, match="failed"):
+        pipeline.report(tmp_path)
+    assert pipeline.read(tmp_path / "receipt.json")["status"] == "incomplete"
+
+
+def test_report_missing_state_fails_and_retains_receipt(tmp_path):
+    with pytest.raises(ValueError, match="setup"):
+        pipeline.report(tmp_path)
+    assert pipeline.read(tmp_path / "receipt.json")["status"] == "incomplete"
+
+
+@pytest.mark.parametrize("monitor,baseline,expected", [
+    (False, None, "edge/2.4.0/stable/westus2/py3.13/#2"),
+    (False, {"version": "1.4.12", "train": "stable"}, "edge/2.4.0/1.4/westus2/py3.13/#2"),
+    (True, None, "edge/2.3.1/1.5/westus2/py3.13/#2"),
+])
+def test_results_title_names_scenario_cli_runtime_region_python_and_attempt(
+        tmp_path, monkeypatch, capsys, monitor, baseline, expected):
+    monkeypatch.setenv("SYSTEM_JOBATTEMPT", "2")
+    state = make_state()
+    state["wheel"] = "/candidate/azure_iot_ops-2.4.0-py3-none-any.whl"
+    if baseline:
+        state["row"]["scenario"].update(name="edge-stable-n1", baseline=baseline)
+    if monitor:
+        state["monitor"] = {"release": {"version": "2.3.1"}, "runtimes": {"stable": {"milestone": "1.5"}}}
+    pipeline.write(tmp_path / "state.json", state)
+    assert pipeline.results_title(tmp_path) == expected
+    assert capsys.readouterr().out == f"##vso[task.setvariable variable=testRunTitle]{expected}\n"
+
+
+@pytest.mark.parametrize("state", [None, {"row": {}}])
+def test_results_title_falls_back_to_row_when_setup_state_is_unusable(tmp_path, monkeypatch, state):
+    monkeypatch.setenv("SYSTEM_JOBATTEMPT", "1")
+    monkeypatch.setenv("OPS_ROW", "edge_stable_py313")
+    if state is not None:
+        pipeline.write(tmp_path / "state.json", state)
+    assert pipeline.results_title(tmp_path) == "edge_stable_py313/#1"
+
+
+def seed_gate(tmp_path, monkeypatch):
+    state = make_state()
+    plan = tmp_path / "plan.json"
+    pipeline.write(plan, {"producer": pipeline.producer(), "rows": [state["row"]]})
+    monkeypatch.setenv("OPS_PLAN", str(plan))
+    monkeypatch.setenv("OPS_HISTORY", str(tmp_path))
+    unit_coverage = tmp_path / "unit-coverage"
+    unit_coverage.write_bytes(b"offline unit coverage")
+    monkeypatch.setenv("OPS_UNIT_COVERAGE", str(unit_coverage))
+    directory = tmp_path / "ops-attempt-edge_stable_py313-1"
+    pipeline.write(directory / "state.json", state)
+    pipeline.report(directory)
+    for phase in pipeline.expected_phases(state["row"]):
+        path = directory / "junit" / f"{phase}.xml"
+        path.parent.mkdir(exist_ok=True)
+        path.write_text('<testsuite><testcase name="passed"/></testsuite>')
+    (directory / "coverage.dat").write_bytes(b"offline coverage")
+    monkeypatch.setattr(pipeline.subprocess, "run", Mock())
+    return directory
+
+
+def test_gate_accepts_complete_selected_scope_not_release(tmp_path, monkeypatch):
+    seed_gate(tmp_path, monkeypatch)
+    pipeline.gate(tmp_path / "qualification")
+    value = pipeline.read(tmp_path / "qualification/qualification.json")
+    assert value["scope"] == "selected ops scenarios" and value["releaseQualified"] is False
+    assert len(value["scenarios"]) == 1
+
+
+@pytest.mark.parametrize("changed", [None, "cloud", "subscription", "resourceGroup", "locations"])
+def test_fairfax_gate_binds_evidence_to_cloud_scope_and_locations(tmp_path, monkeypatch, changed):
+    directory = seed_gate(tmp_path, monkeypatch)
+    monkeypatch.setenv("OPS_CLOUD", "AzureUSGovernment")
+    plan = pipeline.read(tmp_path / "plan.json")
+    plan.update(cloud="AzureUSGovernment", subscription=SUBSCRIPTION, resourceGroup="ops-cli-int-test-rg",
+                locations=dict.fromkeys(("clusterRegion", "resourceRegion", "namespaceRegion"), "usgovvirginia"))
+    pipeline.write(tmp_path / "plan.json", plan)
+    receipt = pipeline.read(directory / "receipt.json")
+    receipt.update(cloud=plan["cloud"], locations=pipeline.expected_locations(plan["locations"]))
+    if changed:
+        receipt[changed] = "foreign"
+    pipeline.write(directory / "receipt.json", receipt)
+    if changed:
+        with pytest.raises(ValueError, match="Fairfax"):
+            pipeline.gate(tmp_path / "qualification")
+    else:
+        pipeline.gate(tmp_path / "qualification")
+
+
+@pytest.mark.parametrize("mutation", [
+    "missing", "digest", "producer", "cleanup", "ownershipGuard", "phase", "junit", "coverage", "newer",
+])
+def test_gate_rejects_missing_stale_or_failed_evidence(tmp_path, monkeypatch, mutation):
+    directory = seed_gate(tmp_path, monkeypatch)
+    receipt = pipeline.read(directory / "receipt.json")
+    if mutation == "missing":
+        (directory / "receipt.json").unlink()
+    elif mutation == "coverage":
+        (directory / "coverage.dat").unlink()
+    elif mutation == "junit":
+        (directory / "junit/init.xml").write_text("<testsuite/>")
+    else:
+        if mutation == "digest":
+            receipt["sha256"] = "c" * 64
+        elif mutation == "producer":
+            receipt["producer"]["commit"] = "c" * 40
+        elif mutation == "cleanup":
+            receipt["cleanup"] = "incomplete"
+        elif mutation == "ownershipGuard":
+            receipt["ownershipGuard"] = "rejected"
+        elif mutation == "phase":
+            receipt["phases"].pop("init")
+        elif mutation == "newer":
+            receipt["attempt"] = 2
+            receipt["status"] = "incomplete"
+            directory = directory.with_name("ops-attempt-edge_stable_py313-2")
+        pipeline.write(directory / "receipt.json", receipt)
+    with pytest.raises(ValueError):
+        pipeline.gate(tmp_path / "qualification")
+
+
+@pytest.mark.parametrize("field", ["producer", "resources", "subscription", "suffix", "cluster", "instance"])
+def test_cleanup_rejects_foreign_state_before_commands(tmp_path, monkeypatch, field):
+    state = make_state()
+    if field == "producer":
+        state[field]["build"] = "999"
+    elif field == "resources":
+        state[field]["storage"] = "/subscriptions/other/resourceGroups/production/storage"
+    else:
+        state[field] = "foreign"
+    pipeline.write(tmp_path / "state.json", state)
+    commands = Mock()
+    monkeypatch.setattr(cluster, "Commands", commands)
+    with pytest.raises(ValueError):
+        cluster.cleanup(tmp_path)
+    commands.assert_not_called()
+
+
+def test_cleanup_uses_owned_resource_journal_after_instance_teardown(tmp_path, monkeypatch):
+    state = make_state()
+    pipeline.write(tmp_path / "state.json", state)
+    commands = Mock()
+    clock = [0]
+    monkeypatch.setattr(cluster.time, "monotonic", lambda: clock[0])
+    commands.run.side_effect = lambda *args, **kwargs: clock.__setitem__(0, clock[0] + 900)
+    commands.az_json.side_effect = [
+        {"id": SUBSCRIPTION, "environmentName": "AzureCloud"},
+        [{"id": value} for value in state["resources"].values()],
+    ]
+    monkeypatch.setattr(cluster, "Commands", Mock(return_value=commands))
+    cluster.cleanup(tmp_path)
+    commands.run.assert_called_once_with(
+        ["az", "iot", "ops", "delete", "--name", state["instance"],
+         "-g", state["resourceGroup"], "--yes", "--force"], timeout=900,
+    )
+    cluster.owned_resources.cleanup.assert_called_once_with(tmp_path / "state.json", timeout=150)
+    assert pipeline.read(tmp_path / "state.json")["cleanup"] == "passed"
+
+
+def test_cleanup_retains_instance_failure_and_attempts_other_owned_resources(tmp_path, monkeypatch):
+    state = make_state()
+    pipeline.write(tmp_path / "state.json", state)
+    commands = Mock()
+    resources = [{"id": value} for value in state["resources"].values()]
+    commands.az_json.side_effect = [{"id": SUBSCRIPTION, "environmentName": "AzureCloud"}, resources]
+    commands.run.side_effect = subprocess.CalledProcessError(1, ["az"])
+    monkeypatch.setattr(cluster, "Commands", Mock(return_value=commands))
+    with pytest.raises(RuntimeError, match="Cleanup had failures"):
+        cluster.cleanup(tmp_path)
+    cluster.owned_resources.cleanup.assert_called_once_with(tmp_path / "state.json", timeout=600)
+    assert pipeline.read(tmp_path / "state.json")["cleanup"] == "incomplete"
+
+
+@pytest.mark.parametrize("guard_rejected", [False, True])
+def test_incomplete_owned_cleanup_cannot_qualify_the_attempt(tmp_path, monkeypatch, guard_rejected):
+    state = make_state()
+    pipeline.write(tmp_path / "state.json", state)
+    resources = [{"id": state["resources"]["storage"]}]
+    commands = Mock()
+    commands.az_json.side_effect = [
+        {"id": SUBSCRIPTION, "environmentName": "AzureCloud"}, resources,
+    ]
+    monkeypatch.setattr(cluster, "Commands", Mock(return_value=commands))
+    error = cluster.owned_resources.OwnershipViolationError if guard_rejected else RuntimeError
+    cluster.owned_resources.cleanup.side_effect = error("Owned-resource cleanup is incomplete")
+    with pytest.raises(RuntimeError, match="incomplete"):
+        cluster.cleanup(tmp_path)
+    retained = pipeline.read(tmp_path / "state.json")
+    assert retained["cleanup"] == "incomplete"
+    assert retained["resourceCleanup"] == ("passed" if guard_rejected else "incomplete")
+    assert retained["ownershipGuard"] == ("rejected" if guard_rejected else "not-checked")
+    if guard_rejected:
+        retained["cleanup"] = "passed"
+        pipeline.write(tmp_path / "state.json", retained)
+    with pytest.raises(ValueError, match="failed"):
+        pipeline.report(tmp_path)
+    receipt = pipeline.read(tmp_path / "receipt.json")
+    assert receipt["status"] == "incomplete"
+    assert receipt["resourceCleanup"] == retained["resourceCleanup"]
+    assert receipt["ownershipGuard"] == retained["ownershipGuard"]
+
+
+def test_environment_drops_control_tokens_and_truthy_false_cleanup(monkeypatch, tmp_path):
+    monkeypatch.setenv("idToken", "offline-assertion")
+    monkeypatch.setenv("servicePrincipalKey", "offline-secret")
+    monkeypatch.setenv("azext_edge_aio_cleanup", "false")
+    monkeypatch.setenv("azext_edge_rg", "wrong-rg")
+    environment = cluster.test_environment(make_state(), tmp_path)
+    assert environment["azext_edge_rg"] == "ops-cli-int-test-rg"
+    for name in ("SYSTEM_ACCESSTOKEN", "idToken", "servicePrincipalKey", "azext_edge_aio_cleanup"):
+        assert name not in environment
+
+
+def test_commands_abort_when_auth_process_dies(monkeypatch):
+    process = Mock(pid=12345, returncode=None)
+    process.poll.return_value = None
+    monkeypatch.setattr(cluster.subprocess, "Popen", Mock(return_value=process))
+    kill = Mock(side_effect=[None, ProcessLookupError()])
+    # Windows does not expose this Unix API.
+    monkeypatch.delattr(cluster.os, "killpg", raising=False)
+    monkeypatch.setattr(cluster.os, "killpg", kill, raising=False)
+    with pytest.raises(RuntimeError, match="renewal stopped"):
+        cluster.Commands(auth=Mock(poll=Mock(return_value=1))).run(["offline-command"])
+    assert [call.args for call in kill.call_args_list] == [(12345, cluster.signal.SIGTERM), (12345, 0)]
+    process.wait.assert_called_once_with(timeout=5)
+
+
+@pytest.mark.parametrize("launcher_exited,ignore_term", [(True, False), (True, True), (False, True)])
+def test_command_timeout_terminates_descendants_even_after_launcher_exit(monkeypatch, launcher_exited, ignore_term):
+    clock = [0]
+    alive = [True]
+    signals = []
+    process = Mock(pid=12345, returncode=0 if launcher_exited else None)
+    process.poll.return_value = process.returncode
+
+    def communicate(timeout):
+        clock[0] += timeout
+        raise subprocess.TimeoutExpired("offline-command", timeout)
+
+    def kill(pid, signum):
+        assert pid == process.pid
+        if not alive[0]:
+            raise ProcessLookupError()
+        if signum:
+            signals.append(signum)
+            if not ignore_term or signum == cluster.signal.SIGKILL:
+                alive[0] = False
+
+    process.communicate.side_effect = communicate
+    monkeypatch.setattr(cluster.subprocess, "Popen", Mock(return_value=process))
+    monkeypatch.setattr(cluster.os, "killpg", kill, raising=False)
+    monkeypatch.setattr(cluster.signal, "SIGKILL", 9, raising=False)
+    monkeypatch.setattr(cluster.time, "monotonic", lambda: clock[0])
+    monkeypatch.setattr(cluster.time, "sleep", lambda seconds: clock.__setitem__(0, clock[0] + seconds))
+    with pytest.raises(TimeoutError, match="Command timed out"):
+        cluster.Commands().run(["offline-command"], capture=True, timeout=1)
+    assert signals == [cluster.signal.SIGTERM] + ([cluster.signal.SIGKILL] if ignore_term else [])
+    assert not alive[0] and clock[0] <= 21
+    process.wait.assert_called_once_with(timeout=5)
+
+
+def test_process_group_cleanup_is_bounded_even_after_kill(monkeypatch):
+    clock = [0]
+    process = Mock(pid=12345, poll=Mock(return_value=0))
+    monkeypatch.setattr(cluster.os, "killpg", Mock(), raising=False)
+    monkeypatch.setattr(cluster.signal, "SIGKILL", 9, raising=False)
+    monkeypatch.setattr(cluster.time, "monotonic", lambda: clock[0])
+    monkeypatch.setattr(cluster.time, "sleep", lambda seconds: clock.__setitem__(0, clock[0] + seconds))
+    with pytest.raises(RuntimeError, match="process group did not terminate"):
+        cluster.stop_process_group(process)
+    assert clock[0] == 25
+    assert [call.args[1] for call in cluster.os.killpg.call_args_list if call.args[1]] == [cluster.signal.SIGTERM, 9]
+
+
+@pytest.mark.skipif(sys.platform != "linux", reason="Requires POSIX process groups.")
+def test_timeout_kills_orphan_descendant_holding_captured_stdout(monkeypatch, tmp_path):
+    child_pid = tmp_path / "child.pid"
+    child = (
+        "import os, signal, time\nfrom pathlib import Path\n"
+        "signal.signal(signal.SIGTERM, signal.SIG_IGN)\n"
+        f"Path({str(child_pid)!r}).write_text(str(os.getpid()))\n"
+        "time.sleep(60)\n"
+    )
+    launcher = (
+        "import subprocess, sys\n"
+        f"subprocess.Popen([sys.executable, '-c', {child!r}])\n"
+    )
+    monotonic = cluster.time.monotonic
+    monkeypatch.setattr(cluster.time, "monotonic", lambda: monotonic() * 100)
+    try:
+        with pytest.raises(TimeoutError, match="Command timed out"):
+            cluster.Commands().run([sys.executable, "-c", launcher], capture=True, timeout=2)
+        assert child_pid.is_file()
+        with pytest.raises(ProcessLookupError):
+            cluster.os.kill(int(child_pid.read_text()), 0)
+    finally:
+        if child_pid.is_file():
+            try:
+                cluster.os.kill(int(child_pid.read_text()), cluster.signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+
+
+@pytest.mark.skipif(sys.platform != "linux" or not shutil.which("setfacl") or not shutil.which("getfacl"),
+                    reason="Requires Linux POSIX ACL tools.")
+def test_cluster_storage_does_not_inherit_agent_default_acl(monkeypatch, tmp_path):
+    native_run = subprocess.run
+    native_run([
+        "setfacl", "-m", f"d:u::rwx,d:u:{cluster.os.getuid()}:rwx,d:g::r-x,d:m::rwx,d:o::r-x", str(tmp_path),
+    ], check=True)
+    before = tmp_path / "before" / "volume"
+    before.mkdir(parents=True)
+    before.chmod(0o2777)
+
+    def acl(path):
+        return native_run(["getfacl", "--omit-header", "--absolute-names", str(path)],
+                          stdout=subprocess.PIPE, text=True, check=True).stdout
+
+    assert stat.S_IMODE(before.stat().st_mode) == 0o2777
+    assert "group::r-x\n" in acl(before) and "mask::rwx\n" in acl(before)
+    parent_acl = acl(tmp_path)
+    state = make_state()
+    directory, _ = cluster.cluster_paths(state)
+    directory.mkdir()
+    (directory / "k3s").write_bytes(b"offline-k3s")
+    commands = Mock()
+    commands.run.side_effect = lambda arguments, **_kwargs: (
+        native_run(arguments, check=True) if arguments[0] == "setfacl" else None
+    )
+    monkeypatch.setattr(cluster, "wait_cluster", Mock())
+    monkeypatch.setattr(cluster.subprocess, "run", Mock())
+    cluster.start_cluster(commands, state, tmp_path)
+
+    after = directory / "data" / "storage" / "volume"
+    after.mkdir(parents=True)
+    after.chmod(0o2777)
+    assert "group::rwx\n" in acl(after)
+    assert "mask::" not in acl(after) and "default:" not in acl(after)
+    assert acl(tmp_path) == parent_acl
+    assert "group::r-x\n" in acl(before)
+
+
+def test_cluster_acl_setup_failure_stops_before_starting_k3s(tmp_path):
+    state = make_state()
+    directory, _ = cluster.cluster_paths(state)
+    arguments = ["setfacl", "--remove-default", "--", str(directory)]
+    commands = Mock()
+    commands.run.side_effect = subprocess.CalledProcessError(1, arguments)
+    with pytest.raises(subprocess.CalledProcessError):
+        cluster.start_cluster(commands, state, tmp_path)
+    commands.run.assert_called_once_with(arguments, timeout=10)
+    assert not state.get("clusterStarted") and not (tmp_path / "state.json").exists()
+
+
+@pytest.mark.parametrize("failed_waits", [0, 2, 60])
+def test_cluster_waits_for_its_registered_ready_node(monkeypatch, tmp_path, failed_waits):
+    state = make_state()
+    directory, _ = cluster.cluster_paths(state)
+    directory.mkdir()
+    binary = directory / "k3s"
+    binary.write_bytes(b"offline-k3s")
+    commands = Mock()
+    error = subprocess.CalledProcessError(1, ["kubectl", "wait"])
+    failures = iter(range(failed_waits))
+
+    def run(arguments, **_kwargs):
+        if "wait" in arguments and next(failures, None) is not None:
+            raise error
+        if "lease/k3s-cloud-controller-manager" in arguments:
+            return json.dumps({"spec": {"holderIdentity": "test", "renewTime": "1970-01-01T00:16:41Z"}})
+        return None
+
+    commands.run.side_effect = run
+    monkeypatch.setattr(cluster.diagnostics, "journal", Mock(return_value="unclassified startup failure"))
+    monkeypatch.setattr(cluster.diagnostics, "command", Mock(return_value="active"))
+    sleep = Mock()
+    copy_config = Mock()
+    monkeypatch.setattr(cluster.time, "time", Mock(return_value=1000))
+    monkeypatch.setattr(cluster.time, "sleep", sleep)
+    monkeypatch.setattr(cluster.subprocess, "run", copy_config)
+    monkeypatch.setenv("KUBECONFIG", "before-start")
+
+    if failed_waits == 60:
+        with pytest.raises(subprocess.CalledProcessError):
+            cluster.start_cluster(commands, state, tmp_path)
+        copy_config.assert_not_called()
+        assert cluster.os.environ["KUBECONFIG"] == "before-start"
+    else:
+        cluster.start_cluster(commands, state, tmp_path)
+        copy_config.assert_called_once()
+        assert cluster.os.environ["KUBECONFIG"] == str(directory / "user-config")
+
+    waits = [call for call in commands.run.call_args_list if "wait" in call.args[0]]
+    assert len(waits) == min(failed_waits + 1, 60)
+    assert sleep.call_count == min(failed_waits, 59) + (failed_waits < 60)
+    for call in waits:
+        assert call.args[0] == [
+            "sudo", "-n", str(binary), "kubectl", "--kubeconfig", str(directory / "config"),
+            "wait", "--for=condition=Ready", f"node/{state['cluster']}", "--timeout=5s",
+        ]
+        assert call.kwargs == {"timeout": 20}
+    assert pipeline.read(tmp_path / "state.json")["clusterStarted"] is True
+
+
+@pytest.mark.parametrize("renewed", [False, True])
+def test_cluster_waits_for_current_cloud_controller_not_a_pre_restart_lease(monkeypatch, renewed):
+    state = make_state()
+    directory, unit = cluster.cluster_paths(state)
+    probes = []
+
+    def run(arguments, **_kwargs):
+        if "lease/k3s-cloud-controller-manager" in arguments:
+            stamp = "1970-01-01T00:16:41Z" if renewed and probes else "1970-01-01T00:16:39Z"
+            probes.append(stamp)
+            return json.dumps({"spec": {"holderIdentity": "test", "renewTime": stamp}})
+        return None
+
+    commands = Mock()
+    commands.run.side_effect = run
+    monkeypatch.setattr(cluster.time, "sleep", Mock())
+    if renewed:
+        cluster.wait_cluster(commands, state, directory, unit, started=1000)
+        assert len(probes) == 2
+    else:
+        with pytest.raises(TimeoutError, match="cloud controller did not renew"):
+            cluster.wait_cluster(commands, state, directory, unit, started=1000)
+        assert len(probes) == 60
+
+
+def test_cluster_retries_classified_controller_exit_after_node_and_api_are_ready(monkeypatch, tmp_path):
+    state = make_state()
+    directory, _ = cluster.cluster_paths(state)
+    directory.mkdir()
+    (directory / "k3s").write_bytes(b"offline")
+    starts = []
+    probes = []
+
+    def run(arguments, **_kwargs):
+        if "systemd-run" in arguments:
+            starts.append(arguments)
+        if "lease/k3s-cloud-controller-manager" in arguments:
+            probes.append(arguments)
+            if len(starts) == 1:
+                raise subprocess.CalledProcessError(1, arguments)
+            return json.dumps({"spec": {"holderIdentity": "test", "renewTime": "1970-01-01T00:16:41Z"}})
+        if "is-active" in arguments and len(starts) == 1 and probes:
+            raise subprocess.CalledProcessError(3, arguments)
+        return None
+
+    commands = Mock()
+    commands.run.side_effect = run
+    monkeypatch.setattr(cluster.time, "time", Mock(return_value=1000))
+    monkeypatch.setattr(cluster.time, "sleep", Mock())
+    monkeypatch.setattr(cluster.subprocess, "run", Mock())
+    monkeypatch.setattr(cluster.diagnostics, "journal", Mock(
+        return_value="cloud-controller-manager exited: extension-apiserver-authentication forbidden",
+    ))
+    monkeypatch.setattr(cluster.diagnostics, "command", Mock(return_value="inactive"))
+    cluster.start_cluster(commands, state, tmp_path)
+    assert len(starts) == len(probes) == 2
+    cluster.subprocess.run.assert_called_once()
+    cluster.diagnostics.journal.assert_called_once()
+
+
+@pytest.mark.parametrize("reason,active,retries", [
+    ("cloud-controller-manager exited: extension-apiserver-authentication forbidden", "inactive", 2),
+    ("cloud-controller-manager exited: extension-apiserver-authentication forbidden", "active", 1),
+    ("unclassified fatal exit", "inactive", 1),
+])
+@pytest.mark.parametrize("wait_error", [subprocess.CalledProcessError, TimeoutError])
+def test_cluster_restarts_only_the_classified_exited_startup_race(
+    monkeypatch, tmp_path, reason, active, retries, wait_error,
+):
+    state = make_state()
+    directory, unit = cluster.cluster_paths(state)
+    directory.mkdir()
+    (directory / "k3s").write_bytes(b"offline")
+    commands = Mock()
+    error = wait_error(1, ["ready"]) if wait_error is subprocess.CalledProcessError else wait_error("stale lease")
+    wait = Mock(side_effect=[error, None])
+    monkeypatch.setattr(cluster, "wait_cluster", wait)
+    monkeypatch.setattr(cluster.diagnostics, "journal", Mock(return_value=reason))
+    monkeypatch.setattr(cluster.diagnostics, "command", Mock(return_value=active))
+    monkeypatch.setattr(cluster.time, "sleep", Mock())
+    monkeypatch.setattr(cluster.subprocess, "run", Mock())
+    if retries == 1:
+        with pytest.raises(wait_error):
+            cluster.start_cluster(commands, state, tmp_path)
+    else:
+        cluster.start_cluster(commands, state, tmp_path)
+    assert wait.call_count == retries
+    starts = [call.args[0] for call in commands.run.call_args_list if "systemd-run" in call.args[0]]
+    assert len(starts) == retries
+    assert all(arguments[arguments.index("--unit") + 1] == unit for arguments in starts)
+    assert list((tmp_path / "diagnostics").glob("k3s-startup-*.log"))
+
+
+@pytest.mark.parametrize("tox_env,channel,trust,enabled", [
+    ("python-edge-int", "stable", False, False),
+    ("python-wlif-int", "stable", True, True),
+    ("python-mgmtactions-int", "stable", False, True),
+    ("python-mgmtactions-int", "preview", False, True),
+    ("python-livedata-int", "stable", False, False),
+    ("python-livedata-int", "preview", False, True),
+])
+def test_arc_workload_identity_matches_github_scenario_prerequisites(
+    monkeypatch, tmp_path, tox_env, channel, trust, enabled,
+):
+    state = make_state()
+    state["row"]["scenario"].update(tox_env=tox_env, channel=channel, needs_trust=trust)
+    issuer = "https://issuer.example.test/cluster/"
+    commands = Mock()
+    commands.az_json.return_value = {
+        "connectivityStatus": "Connected", "oidcIssuerProfile": {"issuerUrl": issuer}, "location": "westus2",
+    }
+    commands.run.return_value = json.dumps({"issuer": issuer})
+    restart = Mock()
+    monkeypatch.setattr(cluster, "start_cluster", restart)
+
+    cluster.connect_cluster(commands, state, tmp_path)
+
+    updates = [call.args[0] for call in commands.run.call_args_list if call.args[0][:3] == [
+        "az", "connectedk8s", "update",
+    ]]
+    if enabled:
+        assert len(updates) == 1
+        assert updates[0][-2:] == ["--enable-oidc-issuer", "--enable-workload-identity"]
+        restart.assert_called_once_with(commands, state, tmp_path, issuer)
+        commands.run.assert_any_call(["kubectl", "get", "--raw", "/.well-known/openid-configuration"], capture=True)
+    else:
+        assert not updates
+        restart.assert_not_called()
+        assert not any(call.args[0][0] == "kubectl" for call in commands.run.call_args_list)
+
+
+@pytest.mark.parametrize("missing_reads", [2, 20])
+def test_arc_waits_for_workload_identity_issuer(monkeypatch, tmp_path, missing_reads):
+    state = make_state()
+    state["row"]["scenario"]["tox_env"] = "python-mgmtactions-int"
+    issuer = "https://issuer.example.test/cluster/"
+    commands = Mock()
+    commands.az_json.side_effect = [
+        *[{"connectivityStatus": "Connected"} for _ in range(missing_reads)],
+        {"connectivityStatus": "Connected", "oidcIssuerProfile": {"issuerUrl": issuer}, "location": "westus2"},
+    ]
+    commands.run.return_value = json.dumps({"issuer": issuer})
+    restart, sleep = Mock(), Mock()
+    monkeypatch.setattr(cluster, "start_cluster", restart)
+    monkeypatch.setattr(cluster.time, "sleep", sleep)
+    if missing_reads == 20:
+        with pytest.raises(RuntimeError, match="issuer did not become ready"):
+            cluster.connect_cluster(commands, state, tmp_path)
+        restart.assert_not_called()
+    else:
+        cluster.connect_cluster(commands, state, tmp_path)
+        restart.assert_called_once_with(commands, state, tmp_path, issuer)
+    assert sleep.call_count == min(missing_reads, 19)
+
+
+def test_arc_rejects_mismatched_kubernetes_issuer(monkeypatch, tmp_path):
+    state = make_state()
+    state["row"]["scenario"]["needs_trust"] = True
+    commands = Mock()
+    commands.az_json.return_value = {
+        "connectivityStatus": "Connected", "oidcIssuerProfile": {"issuerUrl": "https://issuer.example.test/cluster/"},
+    }
+    commands.run.return_value = json.dumps({"issuer": "https://different.example.test/"})
+    monkeypatch.setattr(cluster, "start_cluster", Mock())
+    with pytest.raises(RuntimeError, match="OpenID issuer differs"):
+        cluster.connect_cluster(commands, state, tmp_path)
+
+
+@pytest.mark.parametrize("failed_connects", [1, 3])
+def test_arc_connect_retries_are_bounded(monkeypatch, tmp_path, failed_connects):
+    commands, sleep = Mock(), Mock()
+    failures = iter(range(failed_connects))
+
+    def run(arguments, **_kwargs):
+        if arguments[:3] == ["az", "connectedk8s", "connect"] and next(failures, None) is not None:
+            raise subprocess.CalledProcessError(1, arguments)
+
+    commands.run.side_effect = run
+    commands.az_json.return_value = {"connectivityStatus": "Connected", "location": "westus2"}
+    monkeypatch.setattr(cluster.time, "sleep", sleep)
+    if failed_connects == 3:
+        with pytest.raises(subprocess.CalledProcessError):
+            cluster.connect_cluster(commands, make_state(), tmp_path)
+        commands.az_json.assert_not_called()
+    else:
+        cluster.connect_cluster(commands, make_state(), tmp_path)
+    assert sleep.call_count == min(failed_connects, 2)
+
+
+@pytest.mark.parametrize("observed", ["East US 2", "westus2"])
+def test_arc_uses_and_checks_selected_cluster_region(tmp_path, observed):
+    state = make_state()
+    state["locations"]["clusterRegion"] = "eastus2"
+    commands = Mock()
+    commands.az_json.return_value = {"connectivityStatus": "Connected", "location": observed}
+    if observed == "westus2":
+        with pytest.raises(ValueError, match="differs from the selected region"):
+            cluster.connect_cluster(commands, state, tmp_path)
+    else:
+        cluster.connect_cluster(commands, state, tmp_path)
+    connect = next(
+        call.args[0] for call in commands.run.call_args_list
+        if call.args[0][:3] == ["az", "connectedk8s", "connect"]
+    )
+    assert connect[connect.index("--location") + 1] == "eastus2"
+
+
+@pytest.mark.parametrize("definition", ["164", "167"])
+def test_run_without_admission_still_cleans_after_provision_failure(monkeypatch, tmp_path, definition):
+    monkeypatch.setenv("SYSTEM_DEFINITIONID", definition)
+    pipeline.write(tmp_path / "state.json", make_state())
+    monkeypatch.setattr(cluster.os, "cpu_count", Mock(return_value=1))
+    lookup = Mock(side_effect=AssertionError("Unexpected admission lookup"))
+    monkeypatch.setattr(auth.requests, "get", lookup)
+    identity = Mock(poll=Mock(return_value=None))
+    monkeypatch.setattr(cluster, "start_auth", Mock(return_value=identity))
+    commands = Mock()
+    monkeypatch.setattr(cluster, "Commands", Mock(return_value=commands))
+    monkeypatch.setattr(cluster, "check_account", Mock())
+    monkeypatch.setattr(cluster, "resource_ids", Mock(return_value=set()))
+    monkeypatch.setattr(cluster, "start_cluster", Mock(side_effect=RuntimeError("offline setup failure")))
+    collector = Mock()
+    monkeypatch.setattr(cluster.diagnostics, "HookCollector", Mock(return_value=collector))
+    order = []
+    collector.finish.side_effect = lambda failed: order.append(("diagnostics", failed))
+    cleanup = Mock(side_effect=lambda _output: order.append(("cleanup", True)))
+    monkeypatch.setattr(cluster, "cleanup", cleanup)
+    with pytest.raises(RuntimeError, match="offline setup failure"):
+        cluster.run(tmp_path)
+    lookup.assert_not_called()
+    cluster.start_cluster.assert_called_once()
+    cleanup.assert_called_once_with(tmp_path)
+    assert order == [("diagnostics", True), ("cleanup", True)]
+    assert cluster.Commands.call_args.kwargs["budget"] == 360 * 60
+    identity.terminate.assert_called_once()
+
+
+@pytest.mark.parametrize("upgrade", [False, True])
+@pytest.mark.parametrize("scenario_failure", [False, True])
+def test_monitor_verifies_target_only_after_successful_baseline_upgrade(
+    monkeypatch, tmp_path, upgrade, scenario_failure,
+):
+    state = make_state()
+    state.update(monitor={"release": "offline"}, status="prepared", phases={})
+    state["row"]["scenario"].update(
+        requires_baseline=upgrade, baseline={"version": "older"} if upgrade else None,
+        tox_env="python-upgrade-int" if upgrade else "python-edge-int",
+    )
+    pipeline.write(tmp_path / "state.json", state)
+    identity = Mock(poll=Mock(return_value=None))
+    monkeypatch.setattr(cluster, "start_auth", Mock(return_value=identity))
+    monkeypatch.setattr(cluster, "Commands", Mock())
+    monkeypatch.setattr(cluster, "resource_ids", Mock(return_value=set()))
+    for name in (
+        "check_account", "start_cluster", "connect_cluster", "create_resources", "verify_locations", "cleanup",
+    ):
+        monkeypatch.setattr(cluster, name, Mock())
+    monkeypatch.setattr(cluster.diagnostics, "HookCollector", Mock())
+    events = []
+
+    def phase(_commands, current, _output, name, _marker):
+        events.append(name)
+        if name == "scenario" and scenario_failure:
+            raise AssertionError("upgrade failed")
+        current["phases"][name] = "passed"
+
+    def smoke(_commands, current, _output):
+        events.append("smoke")
+        current["phases"]["smoke"] = "passed"
+
+    def verify(_commands, current, _output):
+        events.append("verify")
+        current["observedRuntime"] = {"version": "target", "train": "stable"}
+
+    monkeypatch.setattr(cluster, "test_phase", phase)
+    monkeypatch.setattr(cluster, "smoke", smoke)
+    monkeypatch.setitem(sys.modules, "release_monitor_adapter", SimpleNamespace(
+        validate_state=Mock(), test_source=Mock(), verify_runtime=verify,
+    ))
+    if scenario_failure:
+        with pytest.raises(AssertionError, match="upgrade failed"):
+            cluster.run(tmp_path)
+        assert pipeline.read(tmp_path / "state.json")["status"] == "prepared"
+        assert events == (["init", "scenario"] if upgrade else ["init", "verify", "scenario"])
+    else:
+        cluster.run(tmp_path)
+        expected = ["init", "scenario", "verify", "smoke"] if upgrade else ["init", "verify", "scenario", "smoke"]
+        assert events == expected
+        result = pipeline.read(tmp_path / "state.json")
+        assert result["observedRuntime"] == {"version": "target", "train": "stable"}
+        assert result["status"] == "passed"
+    cluster.cleanup.assert_called_once_with(tmp_path)
+
+
+def test_assertion_request_is_scoped_and_never_redirects(monkeypatch):
+    response = Mock(status_code=200)
+    response.json.return_value = {"oidcToken": "offline-assertion"}
+    post = Mock()
+    context = Mock()
+    context.__enter__ = Mock(return_value=response)
+    context.__exit__ = Mock(return_value=False)
+    post.return_value = context
+    monkeypatch.setattr(auth.requests, "post", post)
+    assert auth.assertion() == "offline-assertion"
+    assert post.call_args.kwargs["params"]["serviceConnectionId"] == UUID_VALUE
+    assert post.call_args.kwargs["allow_redirects"] is False
+    assert "azureiotdevxp" in post.call_args.args[0]
+
+
+def test_auth_error_does_not_print_assertions(capsys):
+    auth.failure(RuntimeError, RuntimeError("offline-secret-assertion"), None)
+    stderr = capsys.readouterr().err
+    assert "RuntimeError" in stderr and "offline-secret-assertion" not in stderr
+
+
+def test_auth_start_ignores_stale_readiness_and_fails_closed(tmp_path, monkeypatch):
+    (tmp_path / "auth.ready").write_text("stale")
+    process = Mock(poll=Mock(return_value=1))
+    monkeypatch.setattr(cluster.subprocess, "Popen", Mock(return_value=process))
+    with pytest.raises(RuntimeError, match="preflight failed"):
+        cluster.start_auth(tmp_path)
+    assert not (tmp_path / "auth.ready").exists()
+    process.wait.assert_called_once()
+
+
+def test_auth_shutdown_kills_only_owned_process_if_unresponsive():
+    process = Mock(poll=Mock(return_value=None))
+    process.wait.side_effect = [subprocess.TimeoutExpired(["auth"], 90), None]
+    with pytest.raises(RuntimeError, match="shut down"):
+        cluster.stop_auth(process)
+    process.terminate.assert_called_once()
+    process.kill.assert_called_once()
+
+
+@pytest.mark.parametrize("mismatch", [None, "id", "tenantId", "name"])
+def test_refresh_requires_exact_account_and_preserves_profile(tmp_path, monkeypatch, mismatch):
+    from azure.cli.core import _environment, _profile, cloud
+    from azure.cli.core.auth import identity, msal_credentials
+
+    account = {
+        "id": SUBSCRIPTION, "tenantId": UUID_VALUE, "isDefault": True, "environmentName": "AzureCloud",
+        "user": {"name": UUID_VALUE, "type": "servicePrincipal"},
+    }
+    if mismatch:
+        target = account["user"] if mismatch == "name" else account
+        target[mismatch] = "22222222-2222-4222-8222-222222222222"
+    profile = tmp_path / "azureProfile.json"
+    before = json.dumps({"subscriptions": [account]}).encode()
+    profile.write_bytes(before)
+    monkeypatch.setattr(_environment, "get_config_dir", lambda: str(tmp_path))
+    monkeypatch.setattr(cloud, "get_active_cloud_name", lambda _: "AzureCloud")
+    monkeypatch.setattr(cloud, "get_cloud", lambda *_: SimpleNamespace(
+        name="AzureCloud", endpoints=SimpleNamespace(
+            active_directory="https://login.microsoftonline.com",
+            active_directory_resource_id="https://management.core.windows.net/",
+        ),
+    ))
+    cached_identity = Mock(tenant_id=UUID_VALUE, _msal_app_kwargs={})
+    create_identity = Mock(return_value=cached_identity)
+    monkeypatch.setattr(_profile, "_create_identity_instance", create_identity)
+    service_auth = Mock()
+    monkeypatch.setattr(identity.ServicePrincipalAuth, "build_from_credential", Mock(return_value=service_auth))
+    credential = Mock()
+    monkeypatch.setattr(msal_credentials, "ServicePrincipalCredential", Mock(return_value=credential))
+    acquire = Mock(return_value="offline-assertion")
+    monkeypatch.setattr(auth, "assertion", acquire)
+    if mismatch:
+        with pytest.raises(ValueError, match="account does not match"):
+            auth.refresh()
+        acquire.assert_not_called()
+        create_identity.assert_not_called()
+    else:
+        auth.refresh()
+        credential.acquire_token.assert_called_once()
+        cached_identity._service_principal_store.save_entry.assert_called_once_with(  # pylint: disable=protected-access
+            service_auth.get_entry_to_persist(),
+        )
+    assert profile.read_bytes() == before
+
+
+@pytest.mark.parametrize("name", ["azext_edge_rg", "azext_edge_wheel", "azext_edge_skip_init", "SYSTEM_ACCESSTOKEN"])
+def test_scenario_cannot_override_execution_contract(name, tmp_path):
+    state = make_state()
+    state["row"]["scenario"]["env"] = [{"name": name, "value": "override"}]
+    with pytest.raises(ValueError, match="override"):
+        cluster.test_environment(state, tmp_path)
+
+
+@pytest.mark.parametrize("mutation", [None, "digest", "origin", "missing", "fragment"])
+def test_inventory_recovers_only_the_exact_tox_candidate(tmp_path, monkeypatch, mutation):
+    monkeypatch.setattr(pipeline, "ROOT", tmp_path)
+    original = tmp_path / ".tox/.tmp/package/1/azure_iot_ops-2.0.0b1.tar.gz"
+    retained = tmp_path / ".tox/.pkg/dist" / original.name
+    retained.parent.mkdir(parents=True)
+    retained.write_bytes(b"installed candidate archive")
+    provenance = {"url": original.as_uri(), "archive_info": {"hashes": {"sha256": pipeline.digest(retained)}}}
+    fragment = "#sha256=" + ("0" * 64 if mutation == "fragment" else pipeline.digest(retained))
+    if mutation == "digest":
+        retained.write_bytes(b"different archive")
+    elif mutation == "origin":
+        provenance["url"] = (tmp_path / "another.tar.gz").as_uri()
+    elif mutation == "missing":
+        retained.unlink()
+    monkeypatch.setattr(pipeline, "distribution", Mock(return_value=SimpleNamespace(
+        read_text=lambda _: json.dumps(provenance))))
+    requirements = f"azure-iot-ops @ {original.as_uri()}{fragment}\nshared==1.0\n"
+    monkeypatch.setattr(pipeline.subprocess, "check_output", Mock(return_value=requirements))
+    output = tmp_path / "dependency-inventory"
+    if mutation:
+        with pytest.raises(ValueError, match="exact installed candidate"):
+            pipeline.inventory(output)
+        assert not output.exists()
+    else:
+        pipeline.inventory(output)
+        assert (output / "environment/requirements.txt").read_text() == (
+            f"azure-iot-ops @ {retained.as_uri()}{fragment}\nshared==1.0\n"
+        )
+
+
+def test_dependency_inventory_preserves_each_installed_environment(tmp_path, monkeypatch):
+    extension = tmp_path / "azure-iot-ops"
+    extension.mkdir()
+    candidate = "azure-iot-ops @ file:///candidate/azure_iot_ops-2.0.0b1-py3-none-any.whl\n"
+    packages = Mock(side_effect=[
+        "azure-cli==2.80.0\nshared==1.0\n",
+        candidate + "shared==2.0\n",
+    ])
+    monkeypatch.setattr(pipeline.subprocess, "check_output", packages)
+    output = tmp_path / "dependency-inventory"
+    pipeline.inventory(output, extension)
+    assert (output / "environment/requirements.txt").read_text() == "azure-cli==2.80.0\nshared==1.0\n"
+    assert (output / "extension/requirements.txt").read_text() == candidate + "shared==2.0\n"
+    assert "--path" not in packages.call_args_list[0].args[0]
+    assert packages.call_args_list[1].args[0][-2:] == ["--path", str(extension)]
+
+
+@pytest.mark.parametrize("extension_packages", ["", "shared==2.0\n"])
+def test_dependency_inventory_rejects_missing_installed_extension(tmp_path, monkeypatch, extension_packages):
+    extension = tmp_path / "azure-iot-ops"
+    extension.mkdir()
+    monkeypatch.setattr(pipeline.subprocess, "check_output", Mock(side_effect=[
+        "azure-cli==2.80.0\n", extension_packages,
+    ]))
+    output = tmp_path / "dependency-inventory"
+    with pytest.raises(ValueError, match="empty|installed extension is missing"):
+        pipeline.inventory(output, extension)
+    assert not (output / "extension/requirements.txt").exists()
+
+
+def test_dependency_inventory_requires_existing_extension_directory(tmp_path, monkeypatch):
+    packages = Mock()
+    monkeypatch.setattr(pipeline.subprocess, "check_output", packages)
+    with pytest.raises(ValueError, match="directory is missing"):
+        pipeline.inventory(tmp_path / "dependency-inventory", tmp_path / "missing")
+    packages.assert_not_called()
+
+
+@pytest.mark.parametrize("result", ["", subprocess.CalledProcessError(1, ["pip", "freeze"])])
+def test_dependency_inventory_rejects_empty_or_failed_collection(tmp_path, monkeypatch, result):
+    packages = Mock(side_effect=result) if isinstance(result, Exception) else Mock(return_value=result)
+    monkeypatch.setattr(pipeline.subprocess, "check_output", packages)
+    with pytest.raises((ValueError, subprocess.CalledProcessError)):
+        pipeline.inventory(tmp_path / "dependency-inventory")
+    assert not (tmp_path / "dependency-inventory").exists()
+
+
+def test_yaml_exposes_installed_dependencies_even_after_test_failure():
+    template = yaml.safe_load((ROOT / ".azure-devops/templates/integration-pipeline.yml").read_text())
+    live = template["stages"][1]["${{ if eq(parameters.mode, 'Integration tests') }}"]
+    scenario_job = yaml.safe_load((ROOT / ".azure-devops/templates/integration-scenario.yml").read_text())["jobs"][0]
+    jobs = {stage["stage"]: stage["jobs"][0].get("steps", scenario_job["steps"]) for stage in live}
+    for stage, interpreter in (("Build", "python"), ("Lint", ".tox/lint/bin/python"),
+                               ("Unit", ".tox/python/bin/python")):
+        step = next(step for step in jobs[stage] if " inventory" in step.get("bash", ""))
+        assert f"{interpreter} tools/ado_integration.py inventory" in step["bash"]
+        assert f"$(Build.SourcesDirectory)/dependency-inventory/{stage.lower()}" in step["bash"]
+        assert step["condition"] == "succeededOrFailed()"
+        feed = next(item for item in jobs[stage] if item.get("template") == "release-feed.yml")
+        assert jobs[stage].index(feed) > jobs[stage].index(step)
+        assert feed["parameters"]["condition"] == step["condition"]
+    assert "sysconfig.get_paths()" in step["bash"] and '--extension-dir "$extension"' in step["bash"]
+    scenario = jobs["Integration"]
+    prepare = next(step for step in scenario if " prepare --output" in step.get("bash", ""))
+    assert prepare["bash"].index(" prepare --output") < prepare["bash"].index(" inventory")
+    cleanup = next(step for step in scenario if "cleanup --output" in step.get("inputs", {}).get("inlineScript", ""))
+    inventory = next(step for step in scenario if "tools/ado_integration.py inventory" in step.get("bash", "")
+                     and step.get("condition") == "always()")
+    assert scenario.index(inventory) > scenario.index(cleanup)
+    assert inventory["condition"] == "always()"
+    assert '$(Build.SourcesDirectory)/dependency-inventory/scenario' in inventory["bash"]
+    assert '--extension-dir "$(Agent.TempDirectory)/azure-cli-extensions/azure-iot-ops"' in inventory["bash"]
+    feed = next(step for step in scenario if step.get("template") == "release-feed.yml")
+    assert scenario.index(feed) > scenario.index(inventory)
+    assert feed["parameters"]["condition"] == "always()"
+    template = yaml.safe_load((ROOT / ".azure-devops/templates/release-feed.yml").read_text())
+    assert template["parameters"][0]["default"] == "succeeded()"
+    assert all(step["condition"] == "${{ parameters.condition }}" for step in template["steps"])
+    assert template["steps"][0]["inputs"] == {"artifactFeeds": "aziotcli/pip", "onlyAddExtraIndex": False}
+
+
+def test_yaml_keeps_dry_run_separate_and_reuses_existing_tests():
+    value = yaml.safe_load((ROOT / ".azure-devops/integration.yml").read_text())
+    assert value["name"] == "aio-integration-$(Date:yyyyMMdd).$(Rev:r)"
+    assert value["trigger"] == "none" and value["pr"] == "none" and "schedules" not in value
+    assert value["appendCommitMessageToRunName"] is False
+    assert next(param for param in value["parameters"] if param["name"] == "mode")["default"] == "Dry run"
+    assert not {"releaseBuildId", "azureServiceConnection", "subscriptionId", "resourceGroup",
+                "customLocationsObjectId"} & {param["name"] for param in value["parameters"]}
+    assert value["extends"]["parameters"]["azureServiceConnection"] == "${{ variables.TestAzureServiceConnection }}"
+    assert list(value).index("variables") < list(value).index("extends")
+    assert value["extends"]["parameters"]["pythonVersions"] == "${{ join(',', parameters.pythonVersions) }}"
+    runtime = next(param for param in value["parameters"] if param["name"] == "runtimeChannels")
+    assert runtime["displayName"] == "Runtime"
+    assert runtime["default"] == ["Stable"]
+    assert runtime["values"] == ["Stable", "Preview"]
+    assert value["extends"]["template"] == "templates/integration-pipeline.yml"
+    region = next(param for param in value["parameters"] if param["name"] == "clusterRegion")
+    assert set(region["values"]) == set(pipeline.release.CLUSTER_REGIONS.values())
+    assert value["extends"]["parameters"]["clusterRegion"] == "${{ variables.TestRegion }}"
+    profile = value["variables"][0]["parameters"]
+    assert profile["cloud"] == "${{ lower(parameters.cloud) }}"
+    assert profile["region"] == "${{ parameters.clusterRegion }}"
+    settings = yaml.safe_load((ROOT / ".azure-devops/templates/integration-profile.yml").read_text())["variables"]
+    fairfax = next(value["${{ if eq(parameters.cloud, 'fairfax') }}"]
+                   for value in settings if "${{ if eq(parameters.cloud, 'fairfax') }}" in value)
+    assert next(value["value"] for value in fairfax if value["name"] == "TestRegion") == "usgovvirginia"
+    value = yaml.safe_load((ROOT / ".azure-devops/templates/integration-pipeline.yml").read_text())
+    assert "variables" not in value
+    assert next(item for item in value["parameters"] if item["name"] == "pythonVersions")["type"] == "string"
+    template_region = next(param for param in value["parameters"] if param["name"] == "clusterRegion")
+    assert template_region["default"] == "westus2"
+    assert region["default"] == "West US 2"
+    assert value["stages"][0]["stage"] == "Plan"
+    plan_step = next(step for step in value["stages"][0]["jobs"][0]["steps"] if step.get("name") == "plan")
+    assert plan_step["env"]["OPS_CLUSTER_REGION"] == "${{ parameters.clusterRegion }}"
+    assert plan_step["env"]["OPS_CHANNELS"] == "${{ lower(join(',', parameters.runtimeChannels)) }}"
+    title_step = value["stages"][0]["jobs"][0]["steps"][-1]
+    assert title_step["bash"] == "python tools/ado_integration.py title --output plan"
+    assert title_step["env"] == {"OPS_MODE": "${{ parameters.mode }}"}
+    live = value["stages"][1]["${{ if eq(parameters.mode, 'Integration tests') }}"]
+    assert [stage["stage"] for stage in live] == ["Build", "Lint", "Unit", "Integration", "TrustBundle", "Qualify"]
+    integration = next(stage for stage in live if stage["stage"] == "Integration")
+    assert integration["dependsOn"] == ["Plan", "Build", "Lint"]
+    unit = next(stage for stage in live if stage["stage"] == "Unit")
+    assert unit["dependsOn"] == "Plan"
+    qualify = next(stage for stage in live if stage["stage"] == "Qualify")
+    assert qualify["dependsOn"] == ["Plan", "Build", "Lint", "Unit", "Integration", "TrustBundle"]
+    assert "in(dependencies.TrustBundle.result, 'Succeeded', 'Skipped')" in qualify["condition"]
+    trust = next(stage for stage in live if stage["stage"] == "TrustBundle")
+    assert "lockBehavior" not in trust
+    assert len(trust["jobs"]) == 1
+    assert "maxParallel" not in trust["jobs"][0]["parameters"]
+    assert all("environment" not in job and "deployment" not in job for stage in live for job in stage["jobs"])
+    assert "hasTrustBundle" in trust["condition"] and "hasParallel" in integration["condition"]
+    scenario_template = yaml.safe_load((ROOT / ".azure-devops/templates/integration-scenario.yml").read_text())
+    assert next(item for item in scenario_template["parameters"] if item["name"] == "maxParallel")["default"] == 0
+    job = scenario_template["jobs"][0]
+    assert job["displayName"] == " "
+    assert all("scenario" not in step.get("displayName", "").lower() for step in job["steps"])
+    assert job["pool"] == {
+        "name": "iotupx-ops-integration",
+        "demands": ["ImageOverride -equals iotupx-1espt-ubuntu2404"],
+    }
+    pool = json.loads((ROOT / ".azure-devops/integration-pool.json").read_text())["resources"][0]
+    assert pool["name"] == job["pool"]["name"]
+    assert pool["properties"]["sku"]["name"] == "Standard_D8ds_v5"
+    assert pool["properties"]["maxPoolSize"] == 22
+    organization, = pool["properties"]["organizationProfile"]["organizations"]
+    assert organization["parallelism"] == pool["properties"]["maxPoolSize"]
+    assert organization["url"] == pool["properties"]["organization"]
+    assert organization["projects"] == pool["properties"]["projects"]
+    assert organization["openAccess"] is False
+    assert pool["properties"]["agentProfile"] == {
+        "type": "Stateless", "resourcePredictions": [{"00:00:00": 0}],
+    }
+    assert all("pool" not in stage for stage in live)
+    assert all("pool" not in job for stage in live if stage["stage"] != "Integration" for job in stage["jobs"])
+    assert job["strategy"]["maxParallel"] == "${{ parameters.maxParallel }}"
+    assert job["${{ elseif eq(parameters.configuration.scenarioTimeoutMinutes, 180) }}"]["timeoutInMinutes"] == 240
+    azure = [step for step in job["steps"] if step.get("task") == "AzureCLI@2"]
+    assert len(azure) == 2 and azure[1]["condition"] == "always()"
+    assert azure[0]["inputs"]["addSpnToEnvironment"] is True
+    assert "continueOnError" not in json.dumps(live)
+    assert "SYSTEM_ACCESSTOKEN" in azure[0]["env"]
+    assert azure[0]["env"]["OPS_SCENARIO_TIMEOUT_MINUTES"] == "$(scenarioTimeoutMinutes)"

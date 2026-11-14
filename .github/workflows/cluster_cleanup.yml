@@ -1,5 +1,6 @@
 name: "Cluster Resource Cleanup"
 on:
+  # Whole-RG cleanup is explicit maintenance; scheduled sweeps delete in-flight ADO resources.
   # On workflow call (by another workflow) - require all inputs and secrets
   workflow_call:
     inputs:
@@ -33,10 +34,6 @@ on:
         type: string
         description: "Your custom prefix for things to delete"
         required: false
-  # Run every night at midnight (Pacific) to cleanup resources
-  schedule:
-    - cron: '0 8 * * *'
-
 env:
   RESOURCE_GROUP: ${{ inputs.resource_group || 'ops-cli-int-test-rg' }}
   CLUSTER_PREFIX: ${{ inputs.cluster_prefix || 'opt' }}

@@ -640,6 +640,7 @@ def test_client_remove(
     ]
     mocked_instance.get_default_spc.return_value = client_list_spc
     mocked_get_resource_client().resources.get_by_id.return_value = {"id": "mock-id"}
+    mocked_responses.add(responses.GET, get_secretsync_endpoint("", rg_name), json={"value": []})
 
     mapping = client_list_secretsync.get("properties", {}).get("objectSecretMapping", [])
     if len(certificate_names) < len(mapping):

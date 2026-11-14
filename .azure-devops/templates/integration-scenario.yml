@@ -1,0 +1,167 @@
+# Copyright (c) Microsoft Corporation. All rights reserved.
+
+parameters:
+  - name: monitor
+    type: boolean
+    default: false
+  - name: configuration
+    type: object
+  - name: matrix
+    type: string
+  - name: maxParallel
+    type: number
+    default: 0
+
+jobs:
+  - job: Scenario
+    # An empty string falls back to the job ID; a space displays only the matrix row.
+    displayName: ' '
+    pool:
+      name: iotupx-ops-integration
+      demands:
+        - ImageOverride -equals iotupx-1espt-ubuntu2404
+    # Keep the selected execution budget, with separate preparation/diagnostic/cleanup headroom.
+    ${{ if eq(parameters.configuration.health, true) }}:
+      timeoutInMinutes: 420
+    ${{ elseif eq(parameters.configuration.scenarioTimeoutMinutes, 90) }}:
+      timeoutInMinutes: 150
+    ${{ elseif eq(parameters.configuration.scenarioTimeoutMinutes, 180) }}:
+      timeoutInMinutes: 240
+    ${{ else }}:
+      timeoutInMinutes: 420
+    cancelTimeoutInMinutes: 20
+    strategy:
+      maxParallel: ${{ parameters.maxParallel }}
+      matrix: ${{ parameters.matrix }}
+    steps:
+      - task: UsePythonVersion@0
+        displayName: Select Python
+        inputs:
+          versionSpec: $(python)
+      - ${{ if not(parameters.monitor) }}:
+          - task: DownloadPipelineArtifact@2
+            displayName: Download artifacts
+            inputs:
+              buildType: current
+              artifactName: $(planArtifact)
+              targetPath: $(Pipeline.Workspace)/plan
+          - task: DownloadPipelineArtifact@2
+            displayName: Download artifacts
+            inputs:
+              buildType: current
+              artifactName: $(candidateArtifact)
+              targetPath: $(Pipeline.Workspace)/candidate
+      - ${{ if parameters.monitor }}:
+          - task: DownloadPipelineArtifact@2
+            displayName: Download frozen release bundle
+            inputs:
+              buildType: current
+              artifactName: $(candidateArtifact)
+              targetPath: $(Pipeline.Workspace)/candidate
+      - bash: |
+          set -euo pipefail
+          python -m pip install -r dev_requirements.txt azure-cli azure-cli-testsdk pytest-randomly PyYAML
+          python "$PREPARE_SCRIPT" prepare --output attempt
+          python tools/ado_integration.py inventory \
+            --output "$(Build.SourcesDirectory)/dependency-inventory/scenario" \
+            --extension-dir "$(Agent.TempDirectory)/azure-cli-extensions/azure-iot-ops"
+        displayName: Prepare tests
+        env:
+          OPS_RELEASE_BUILD_ID: ${{ parameters.configuration.releaseBuildId }}
+          OPS_CLOUD: ${{ parameters.configuration.cloud }}
+          OPS_RESOURCE_GROUP: ${{ parameters.configuration.resourceGroup }}
+          ${{ if parameters.monitor }}:
+            PREPARE_SCRIPT: tools/release_monitor_adapter.py
+            OPS_PLAN: $(Pipeline.Workspace)/candidate/plan.json
+            OPS_MONITOR_BUNDLE: $(Pipeline.Workspace)/candidate
+            MONITOR_CLOUD: $(TestCloud)
+            MONITOR_TRACK: $(TestTrack)
+          ${{ else }}:
+            PREPARE_SCRIPT: tools/ado_integration.py
+            OPS_PLAN: $(Pipeline.Workspace)/plan/plan.json
+          OPS_CANDIDATE: $(Pipeline.Workspace)/candidate
+          OPS_CANDIDATE_DIGEST: $(candidateDigest)
+          OPS_ROW: $(row)
+          AZURE_EXTENSION_DIR: $(Agent.TempDirectory)/azure-cli-extensions
+      - publish: attempt/state.json
+        artifact: ops-manifest-$(row)-$(System.JobAttempt)
+        displayName: Publish resource manifest
+      - task: AzureCLI@2
+        displayName: Run tests
+        inputs:
+          azureSubscription: ${{ parameters.configuration.azureServiceConnection }}
+          addSpnToEnvironment: true
+          visibleAzLogin: false
+          scriptType: bash
+          scriptLocation: inlineScript
+          inlineScript: |
+            set -euo pipefail
+            export AZURE_CLIENT_ID="$servicePrincipalId" AZURE_TENANT_ID="$tenantId"
+            python tools/ado_cluster.py run --output attempt
+        env:
+          SYSTEM_ACCESSTOKEN: $(System.AccessToken)
+          OPS_SUBSCRIPTION: ${{ parameters.configuration.subscriptionId }}
+          OPS_CLOUD: ${{ parameters.configuration.cloud }}
+          OPS_RESOURCE_GROUP: ${{ parameters.configuration.resourceGroup }}
+          OPS_SCENARIO_TIMEOUT_MINUTES: $(scenarioTimeoutMinutes)
+          AZURE_EXTENSION_DIR: $(Agent.TempDirectory)/azure-cli-extensions
+          PYTHONUNBUFFERED: '1'
+          ${{ if parameters.monitor }}:
+            OPS_MONITOR_BUNDLE: $(Pipeline.Workspace)/candidate
+            MONITOR_CLOUD: $(TestCloud)
+            MONITOR_TRACK: $(TestTrack)
+      - task: AzureCLI@2
+        condition: always()
+        displayName: Clean up
+        inputs:
+          azureSubscription: ${{ parameters.configuration.azureServiceConnection }}
+          visibleAzLogin: false
+          scriptType: bash
+          scriptLocation: inlineScript
+          inlineScript: python tools/ado_cluster.py cleanup --output attempt
+        env:
+          OPS_SUBSCRIPTION: ${{ parameters.configuration.subscriptionId }}
+          OPS_CLOUD: ${{ parameters.configuration.cloud }}
+          OPS_RESOURCE_GROUP: ${{ parameters.configuration.resourceGroup }}
+          AZURE_EXTENSION_DIR: $(Agent.TempDirectory)/azure-cli-extensions
+          ${{ if parameters.monitor }}:
+            OPS_MONITOR_BUNDLE: $(Pipeline.Workspace)/candidate
+            MONITOR_CLOUD: $(TestCloud)
+            MONITOR_TRACK: $(TestTrack)
+      - bash: >-
+          python tools/ado_integration.py inventory
+          --output "$(Build.SourcesDirectory)/dependency-inventory/scenario"
+          --extension-dir "$(Agent.TempDirectory)/azure-cli-extensions/azure-iot-ops"
+        condition: always()
+        displayName: Refresh dependencies
+      - template: release-feed.yml
+        parameters:
+          condition: always()
+      - bash: python tools/ado_integration.py report --output attempt
+        condition: always()
+        displayName: Record results
+        env:
+          OPS_RESOURCE_GROUP: ${{ parameters.configuration.resourceGroup }}
+          ${{ if parameters.monitor }}:
+            OPS_MONITOR_BUNDLE: $(Pipeline.Workspace)/candidate
+            MONITOR_CLOUD: $(TestCloud)
+            MONITOR_TRACK: $(TestTrack)
+      - bash: python tools/ado_integration.py results-title --output attempt
+        condition: always()
+        displayName: Name test results
+        env:
+          OPS_ROW: $(row)
+      - task: PublishTestResults@2
+        displayName: Publish results
+        condition: always()
+        inputs:
+          testResultsFormat: JUnit
+          testResultsFiles: attempt/junit/*.xml
+          mergeTestResults: true
+          testRunTitle: $(testRunTitle)
+          failTaskOnFailedTests: true
+          failTaskOnMissingResultsFile: true
+      - publish: attempt
+        displayName: Publish results
+        condition: always()
+        artifact: ops-attempt-$(row)-$(System.JobAttempt)

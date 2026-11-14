@@ -1,0 +1,69 @@
+# Copyright (c) Microsoft Corporation. All rights reserved.
+
+trigger: none
+pr: none
+name: aio-release-$(Date:yyyyMMdd).$(Rev:r)
+
+parameters:
+  - name: mode
+    displayName: Mode
+    type: string
+    default: Plan
+    values: [Plan, Validate, Draft, Release]
+  - name: sourceBranch
+    displayName: Release branch
+    type: string
+    default: dev
+  - name: createIndexPr
+    displayName: Create index PR
+    type: boolean
+    default: false
+  - name: skipIntegrationTests
+    displayName: Skip integration tests
+    type: boolean
+    default: false
+  - name: clusterRegion
+    displayName: Region (Public cloud only)
+    type: string
+    default: West US 2
+    values:
+      - East US
+      - East US 2
+      - West US
+      - West US 2
+      - West US 3
+      - South Central US
+      - West Europe
+      - North Europe
+      - Germany West Central
+
+variables:
+  RELEASE_REGION: ${{ lower(replace(parameters.clusterRegion, ' ', '')) }}
+  RELEASE_SKIP_INTEGRATION_TESTS: ${{ parameters.skipIntegrationTests }}
+
+resources:
+  repositories:
+    - repository: governedTemplates
+      type: git
+      name: 1ESPipelineTemplates/1ESPipelineTemplates
+      ref: refs/tags/stable
+
+extends:
+  template: v1/1ES.Official.PipelineTemplate.yml@governedTemplates
+  parameters:
+    pool:
+      name: iotupx-1espt-release-probe
+      image: iotupx-1espt-ubuntu2404
+      os: linux
+    sdl:
+      sourceAnalysisPool:
+        name: iotupx-1espt-release-probe
+        image: iotupx-1espt-windows2025
+        os: windows
+    stages:
+      - template: templates/release-stages.yml
+        parameters:
+          mode: ${{ parameters.mode }}
+          sourceBranch: ${{ parameters.sourceBranch }}
+          createIndexPr: ${{ parameters.createIndexPr }}
+          skipIntegrationTests: ${{ parameters.skipIntegrationTests }}

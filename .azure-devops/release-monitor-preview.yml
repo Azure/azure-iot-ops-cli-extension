@@ -1,0 +1,108 @@
+# Copyright (c) Microsoft Corporation. All rights reserved.
+
+trigger: none
+pr: none
+schedules: []
+name: aio-health-$(TestCloud)-preview-$(Date:yyyyMMdd).$(Rev:r)
+appendCommitMessageToRunName: false
+parameters:
+  - name: mode
+    displayName: Mode
+    type: string
+    default: Integration tests
+    values:
+      - Dry run
+      - Integration tests
+  - name: cloud
+    displayName: Cloud
+    type: string
+    default: Public
+    values:
+      - Public
+      - Fairfax
+  - name: clusterRegion
+    displayName: Region (Public cloud only)
+    type: string
+    default: West US 2
+    values:
+      - East US
+      - East US 2
+      - West US
+      - West US 2
+      - West US 3
+      - South Central US
+      - West Europe
+      - North Europe
+      - Germany West Central
+  - name: testScenarios
+    displayName: Scenarios
+    type: stringList
+    default:
+      - Default scenarios
+    values:
+      - Default scenarios
+      - edge
+      - broker-diagnostics-removal
+      - insecure-listener
+      - rpsaas
+      - runtime-channel
+      - upgrade
+      - upgrade-path
+      - mgmtactions
+      - livedata
+      - redeploy
+      - essentials-sku
+      - trustbundle
+  - name: pythonVersions
+    displayName: Python
+    type: stringList
+    default:
+      - '3.13'
+    values:
+      - '3.10'
+      - '3.11'
+      - '3.12'
+      - '3.13'
+  - name: runtimeChannels
+    displayName: Runtime
+    type: stringList
+    default:
+      - Preview
+    values:
+      - Preview
+  - name: upgradeBaselines
+    displayName: Upgrade source (only for upgrade-path test)
+    type: string
+    default: '{}'
+  - name: scenarioTimeoutMinutes
+    displayName: Timeout (min)
+    type: number
+    default: 360
+    values:
+      - 90
+      - 180
+      - 360
+pool:
+  vmImage: ubuntu-24.04
+variables:
+  - template: templates/integration-profile.yml
+    parameters:
+      cloud: ${{ lower(parameters.cloud) }}
+      version: preview
+      region: ${{ parameters.clusterRegion }}
+      services: ${{ parameters.testScenarios }}
+  - name: TestMode
+    value: ${{ parameters.mode }}
+  - name: TestPythons
+    value: ${{ join(',', parameters.pythonVersions) }}
+  - name: TestChannels
+    value: ${{ lower(join(',', parameters.runtimeChannels)) }}
+  - name: TestBaselines
+    value: ${{ parameters.upgradeBaselines }}
+  - name: TestTimeout
+    value: ${{ parameters.scenarioTimeoutMinutes }}
+stages:
+  - template: templates/release-monitor-stages.yml
+    parameters:
+      mode: ${{ parameters.mode }}
+      scenarioTimeoutMinutes: ${{ parameters.scenarioTimeoutMinutes }}

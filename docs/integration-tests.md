@@ -122,19 +122,56 @@ live API and connector compatibility must be verified separately.
 
 #### Workload identity scheduling
 
-Workload-identity jobs (`python-wlif-int`, the `trustbundle` scenario) share a
-resource-group-specific concurrency group. Only one runs at a time, from setup and
-init through tests and cleanup, because OPC UA certificate commands create fixed-name
-SecretSync resources. Other scenarios remain parallel. `parallel: false` controls
-pytest workers within a job; it does not provide this cross-job protection.
+Workload-identity jobs (`python-wlif-int`, the `trustbundle` scenario) do not use
+cross-run concurrency locks. Jobs use the configured shared test resource group,
+with independent clusters and instances. The OPC UA certificate fixtures generate
+stable per-instance SecretSync names and pass `--secret-sync-name` to every add,
+show, and remove command. This isolates the resource-group-scoped ARM resources
+as well as their Kubernetes secret references. Without this option, existing CLI
+certificate resource names and behavior are preserved.
 
-The group spans stable/preview channels, branches and workflow runs in the same
-repository that use this configuration. `cancel-in-progress: false` preserves the
-running job and `queue: max` allows up to 100 pending jobs instead of replacing the
-previous pending job. Either channel may run first. Runs in other repositories or
-older workflows without the group are not coordinated. Cleanup failures still need
-investigation: the lock lasts through cleanup attempts, not until successful deletion
-is independently guaranteed.
+The configured resource group is never created or deleted by the runner. Existing
+deployment and role-assignment permissions on that group remain necessary; no new
+subscription-wide RBAC administration grant is required by this test isolation.
+Cleanup remains limited to the attempt's resources. Stable/preview jobs and
+independent runs can execute in parallel; `parallel: false` still runs tests
+sequentially within each instance.
+
+Already-queued ADO runs retain their frozen code and may still use the fixed names.
+Retire the old environment's Exclusive lock check only after its users have
+completed, or rerun them with the updated fixtures and CLI candidate. Distinct
+resource names do not isolate subscription quotas, throttling, or scheduled cleanup.
+
+Each integration attempt remains responsible for cleaning its own resources.
+`Cluster Resource Cleanup` is explicit maintenance, not a scheduled job: its
+whole-group sweep can delete in-flight instances even when their names are unique.
+Run it only when the selected resource group is idle. If the default branch still
+contains the old schedule, keep that workflow disabled until the no-schedule
+revision is merged.
+
+For manual Azure Pipelines Integration runs, select **Cluster region** (default
+`westus2`). The frozen plan uses this region for Arc cluster creation and the run
+title, for example `ops-integration-123 (eastus2) (edge) (preview)`. The runner checks
+that the connected cluster is in the selected region. Health continues to use its
+Library profile, and release children explicitly select `westus2`. Storage, schema
+registry, and namespace location behavior is unchanged.
+
+The ADO runner captures hook Job status, namespace Pod status, and bounded current
+and previous container logs for hooks and unhealthy Pods while tests run, before
+Helm rollback can remove them. On failure it also attempts namespace events and the
+owned K3s unit journal before cleanup. Event snapshots prioritize warnings and recent
+events, retain complete JSON records within the size limit, and report omitted counts.
+Failed attempts also retain Pod/container security contexts, bound volume metadata,
+and read-only permission inspection of verified, owned local-path volume directories.
+The collector never changes filesystem permissions.
+Sanitized snapshots are
+published early as `ops-diagnostics-<row>-<attempt>` artifacts and retained under
+`diagnostics` in the normal attempt artifact. Secrets, kubeconfig contents, pod
+environment values and Helm values are not collected. Collection errors are warnings;
+they never replace the original test failure or prevent cleanup. The selected
+scenario execution budget remains enforced, with separate outer-job headroom for
+preparation, diagnostics and teardown. Hard agent termination can still prevent
+the final upload; already-published snapshots remain available.
 
 #### The same candidate wheel everywhere
 

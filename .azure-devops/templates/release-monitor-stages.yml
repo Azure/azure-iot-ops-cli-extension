@@ -1,0 +1,163 @@
+# Copyright (c) Microsoft Corporation. All rights reserved.
+
+stages:
+  - stage: Prepare
+    displayName: Prepare released version
+    jobs:
+      - job: Acquire
+        timeoutInMinutes: 30
+        steps:
+          - checkout: self
+            clean: true
+            persistCredentials: false
+          - task: UsePythonVersion@0
+            inputs:
+              versionSpec: '3.13'
+          - bash: python -m pip install packaging PyYAML
+            displayName: Install resolver dependencies
+          - task: DownloadPipelineArtifact@2
+            displayName: Restore frozen release on retry
+            condition: gt(variables['System.JobAttempt'], 1)
+            inputs:
+              buildType: current
+              itemPattern: release-selection-*/manifest.json
+              targetPath: $(Pipeline.Workspace)/release-history
+          - bash: |
+              set -euo pipefail
+              python tools/release_monitor.py resolve \
+                --configuration .azure-devops/release-monitors.json \
+                --extension azure-iot-ops --cloud "$CLOUD" --track "$TRACK" \
+                --automation-commit "$BUILD_SOURCEVERSION" --attempt "$SYSTEM_JOBATTEMPT" \
+                --history "$HISTORY" --output manifest.json
+            displayName: Resolve or restore the immutable release selection
+            env:
+              CLOUD: $(TestCloud)
+              TRACK: $(TestTrack)
+              HISTORY: $(Pipeline.Workspace)/release-history
+          - publish: manifest.json
+            artifact: release-selection-$(System.JobAttempt)
+            displayName: Freeze selection before acquisition
+          - bash: |
+              set -euo pipefail
+              python tools/release_monitor.py acquire --manifest manifest.json --output "$BUNDLE"
+              echo "##vso[task.setvariable variable=artifact;isOutput=true]release-bundle-$SYSTEM_JOBATTEMPT"
+            name: bundle
+            displayName: Acquire immutable published wheel and tests
+            env:
+              BUNDLE: $(Pipeline.Workspace)/release-bundle
+          - bash: python tools/release_monitor_adapter.py plan --output "$BUNDLE"
+            name: plan
+            displayName: Validate released integration scenarios
+            env:
+              BUNDLE: $(Pipeline.Workspace)/release-bundle
+              MONITOR_CLOUD: $(TestCloud)
+              MONITOR_TRACK: $(TestTrack)
+              OPS_RELEASE_BUILD_ID: '0'
+              OPS_MODE: $(TestMode)
+              OPS_SCENARIOS: $(TestServices)
+              OPS_CHANNELS: $(TestChannels)
+              OPS_PYTHONS: $(TestPythons)
+              OPS_BASELINES: $(TestBaselines)
+              OPS_CLOUD: $(TestAzureCloud)
+              OPS_SUBSCRIPTION: $(TestSubscription)
+              OPS_RESOURCE_GROUP: $(TestResourceGroup)
+              OPS_CLUSTER_REGION: $(TestRegion)
+              OPS_CUSTOM_LOCATIONS_OID: $(TestCustomLocationsObjectId)
+              OPS_SCENARIO_TIMEOUT_MINUTES: $(TestTimeout)
+          - publish: $(Pipeline.Workspace)/release-bundle
+            artifact: release-bundle-$(System.JobAttempt)
+            displayName: Publish frozen release bundle
+  - ${{ if eq(parameters.mode, 'Integration tests') }}:
+      - stage: Integration
+        displayName: Test released version
+        dependsOn: Prepare
+        condition: and(succeeded(), eq(dependencies.Prepare.outputs['Acquire.plan.hasParallel'], 'true'))
+        variables:
+          candidateArtifact: $[ stageDependencies.Prepare.Acquire.outputs['bundle.artifact'] ]
+          candidateDigest: $[ stageDependencies.Prepare.Acquire.outputs['plan.digest'] ]
+        jobs:
+          - template: integration-scenario.yml
+            parameters:
+              monitor: true
+              maxParallel: 0
+              configuration:
+                health: false
+                releaseBuildId: 0
+                scenarioTimeoutMinutes: ${{ parameters.scenarioTimeoutMinutes }}
+                cloud: $(TestAzureCloud)
+                azureServiceConnection: $(TestAzureServiceConnection)
+                subscriptionId: $(TestSubscription)
+                resourceGroup: $(TestResourceGroup)
+              matrix: $[ stageDependencies.Prepare.Acquire.outputs['plan.parallelMatrix'] ]
+      - stage: TrustBundle
+        displayName: Test released trust bundle scenario
+        dependsOn: Prepare
+        condition: |-
+          and(not(canceled()), eq(dependencies.Prepare.result, 'Succeeded'),
+              eq(dependencies.Prepare.outputs['Acquire.plan.hasTrustBundle'], 'true'))
+        variables:
+          candidateArtifact: $[ stageDependencies.Prepare.Acquire.outputs['bundle.artifact'] ]
+          candidateDigest: $[ stageDependencies.Prepare.Acquire.outputs['plan.digest'] ]
+        jobs:
+          - template: integration-scenario.yml
+            parameters:
+              monitor: true
+              maxParallel: 0
+              configuration:
+                health: false
+                releaseBuildId: 0
+                scenarioTimeoutMinutes: ${{ parameters.scenarioTimeoutMinutes }}
+                cloud: $(TestAzureCloud)
+                azureServiceConnection: $(TestAzureServiceConnection)
+                subscriptionId: $(TestSubscription)
+                resourceGroup: $(TestResourceGroup)
+              matrix: $[ stageDependencies.Prepare.Acquire.outputs['plan.trustBundleMatrix'] ]
+      - stage: Results
+        displayName: Verify released-version monitoring evidence
+        dependsOn:
+          - Prepare
+          - Integration
+          - TrustBundle
+        condition: always()
+        variables:
+          candidateArtifact: $[ stageDependencies.Prepare.Acquire.outputs['bundle.artifact'] ]
+          candidateDigest: $[ stageDependencies.Prepare.Acquire.outputs['plan.digest'] ]
+        jobs:
+          - job: Verify
+            steps:
+              - task: UsePythonVersion@0
+                inputs:
+                  versionSpec: '3.13'
+              - bash: python -m pip install packaging PyYAML
+                displayName: Install evidence dependencies
+              - task: DownloadPipelineArtifact@2
+                inputs:
+                  buildType: current
+                  artifactName: $(candidateArtifact)
+                  targetPath: $(Pipeline.Workspace)/candidate
+                displayName: Download frozen release bundle
+              - task: DownloadPipelineArtifact@2
+                inputs:
+                  buildType: current
+                  itemPattern: ops-attempt-*/**
+                  targetPath: $(Pipeline.Workspace)/history
+                displayName: Download scenario evidence
+              - bash: python tools/release_monitor_adapter.py gate --output monitor-results
+                displayName: Verify test results
+                env:
+                  OPS_MONITOR_BUNDLE: $(Pipeline.Workspace)/candidate
+                  OPS_CANDIDATE_DIGEST: $(candidateDigest)
+                  OPS_RELEASE_BUILD_ID: '0'
+                  OPS_HISTORY: $(Pipeline.Workspace)/history
+                  MONITOR_CLOUD: $(TestCloud)
+                  MONITOR_TRACK: $(TestTrack)
+              - publish: monitor-results
+                condition: succeededOrFailed()
+                artifact: monitor-results-$(System.JobAttempt)
+                displayName: Publish test results
+parameters:
+  - name: mode
+    type: string
+  - name: scenarioTimeoutMinutes
+    type: number
+    default: 360

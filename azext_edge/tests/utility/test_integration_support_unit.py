@@ -259,28 +259,24 @@ def test_init_broker_rejects_custom_persistence_mismatch(init_broker_assertion, 
         assert_broker("instance", "rg", use_preview=use_preview, broker_config_file=str(config_file))
 
 
-def test_workload_identity_jobs_serialize_through_cleanup():
+def test_workload_identity_jobs_have_no_cross_run_lock_and_keep_cleanup():
     config = yaml.safe_load((ROOT / ".github/workflows/int_test.yml").read_text())
     assert "concurrency" not in config
     job = config["jobs"]["int-test"]
     assert "max-parallel" not in job["strategy"]
-    assert job["concurrency"] == {
-        "group": (
-            "${{ matrix.scenario.tox_env == 'python-wlif-int' && "
-            "format('iot-ops-wlif-{0}', inputs.resource-group || 'ops-cli-int-test-rg') || "
-            "format('iot-ops-int-{0}-{1}-{2}', github.run_id, github.run_attempt, matrix.scenario.name) }}"
-        ),
-        "cancel-in-progress": False,
-        "queue": "max",
-    }
+    assert "concurrency" not in job
     steps = {step.get("name"): step for step in job["steps"]}
     names = list(steps)
     assert (
-        names.index("Tox INIT Integration Tests")
+        names.index("Output variables for future steps")
+        < names.index("ARC connect cluster")
+        < names.index("Tox INIT Integration Tests")
         < names.index("${{ matrix.scenario.description }}")
         < names.index("Delete AIO resources")
         < names.index("Delete connected cluster and resources")
     )
+    assert "RESOURCE_GROUP_OWNER" not in job["env"]
+    assert not any("isolated Trust Bundle resource group" in name for name in names if name)
     for name in ("Delete AIO resources", "Delete connected cluster and resources"):
         assert steps[name]["if"] == "${{ always() }}"
 
@@ -315,10 +311,14 @@ def test_live_data_scenario_runs_on_each_selected_channel(channels):
 
 @pytest.mark.parametrize("operation", ["enable", "show", "disable"])
 @pytest.mark.parametrize("outcome", ["expected-rejection", "unexpected-success", "wrong-error"])
-def test_live_data_stable_it_requires_the_runtime_rejection(mocker, monkeypatch, operation, outcome):
+@pytest.mark.parametrize("cloud", ["AzureCloud", "AzureUSGovernment"])
+def test_live_data_stable_it_requires_the_runtime_rejection(mocker, monkeypatch, operation, outcome, cloud):
     from azext_edge.tests.edge.orchestration import test_live_data_int as live_data_tests
 
     monkeypatch.setenv("azext_edge_runtime_channel", "stable")
+    mocker.patch.object(live_data_tests, "get_default_cli", return_value=SimpleNamespace(
+        cloud=SimpleNamespace(name=cloud),
+    ))
     settings = SimpleNamespace(
         add_to_config=mocker.Mock(),
         env=SimpleNamespace(azext_edge_instance="instance", azext_edge_rg="rg"),
@@ -332,7 +332,8 @@ def test_live_data_stable_it_requires_the_runtime_rejection(mocker, monkeypatch,
     result = SimpleNamespace(
         returncode=0 if outcome == "unexpected-success" else 1,
         stderr=(
-            "Live Data requires a preview runtime; the target uses stable."
+            ("The AIO preview runtime is not supported in AzureUSGovernment."
+             if cloud == "AzureUSGovernment" else "Live Data requires a preview runtime; the target uses stable.")
             if outcome != "wrong-error" else "Authorization failed."
         ),
         stdout="",
@@ -353,6 +354,71 @@ def test_live_data_stable_it_requires_the_runtime_rejection(mocker, monkeypatch,
         assert "--skip-ra" in arguments
     elif operation == "disable":
         assert "--yes" in arguments
+
+
+@pytest.mark.parametrize("cloud", ["AzureCloud", "AzureUSGovernment"])
+@pytest.mark.parametrize("wrong_error", [False, True])
+def test_connector_rejection_uses_the_active_cloud(mocker, cloud, wrong_error):
+    from azext_edge.tests.edge.orchestration import test_runtime_channels_int as tests
+
+    mocker.patch.object(tests, "assert_runtime")
+    mocker.patch.object(tests, "get_default_cli", return_value=SimpleNamespace(cloud=SimpleNamespace(name=cloud)))
+    message = (
+        "The AIO preview runtime is not supported in AzureUSGovernment."
+        if cloud == "AzureUSGovernment" else "Command requires a preview runtime; the target uses stable."
+    )
+    mocker.patch.object(tests.subprocess, "run", return_value=SimpleNamespace(
+        returncode=1, stdout="", stderr="Authorization failed" if wrong_error else message,
+    ))
+    if wrong_error:
+        with pytest.raises(AssertionError):
+            tests.test_connector_commands_require_preview_runtime(("instance", "rg", "stable"), "list")
+    else:
+        tests.test_connector_commands_require_preview_runtime(("instance", "rg", "stable"), "list")
+
+
+@pytest.mark.parametrize("mutated", [False, True])
+@pytest.mark.parametrize("version", ["1.5.46", "1.5.99"])
+def test_fairfax_upgrade_rejection_preserves_configuration(mocker, mutated, version):
+    from azext_edge.tests.edge.orchestration import test_runtime_channels_int as tests
+
+    mocker.patch.object(tests, "assert_runtime")
+    mocker.patch.object(tests, "expected_runtime", return_value=SimpleNamespace(version="1.5.46"))
+    mocker.patch.object(tests, "get_default_cli", return_value=SimpleNamespace(
+        cloud=SimpleNamespace(name="AzureUSGovernment"),
+    ))
+    before = (None, {"properties": {"description": "keep"}}, [])
+    after = (None, {"properties": {"description": "changed" if mutated else "keep"}}, [])
+    reader = mocker.patch.object(tests, "read_runtime", side_effect=[before, after])
+    mocker.patch.object(tests.subprocess, "run", return_value=SimpleNamespace(
+        returncode=1, stdout="", stderr=f"Version '{version}' conflicts with the stable runtime profile.",
+    ))
+    if mutated or version != "1.5.46":
+        with pytest.raises(AssertionError):
+            tests.test_cross_channel_upgrade_rejected_without_mutation(("instance", "rg", "stable"))
+    else:
+        tests.test_cross_channel_upgrade_rejected_without_mutation(("instance", "rg", "stable"))
+        assert reader.call_count == 2
+
+
+@pytest.mark.parametrize("government", [False, True])
+@pytest.mark.parametrize("identity", ["system", "user"])
+def test_registry_fixtures_use_cloud_hosts_without_changing_authentication(mocker, government, identity):
+    from azure.cli.core.cloud import AZURE_PUBLIC_CLOUD, AZURE_US_GOV_CLOUD
+    from azext_edge.tests.edge.orchestration.resources.registry_endpoint import test_registry_endpoints_int as tests
+
+    cloud = AZURE_US_GOV_CLOUD if government else AZURE_PUBLIC_CLOUD
+    mocker.patch.object(tests, "get_default_cli", return_value=SimpleNamespace(cloud=cloud))
+    command = mocker.patch.object(tests, "run", return_value={"id": "/owned-registry"})
+    mocker.patch.object(tests, "assert_registry_endpoint")
+    tracked = []
+    test = getattr(tests, f"test_registry_endpoint_{identity}_assigned_auth")
+    test({"resourceGroup": "rg", "instanceName": "instance"}, tracked)
+    create = command.call_args_list[0].args[0]
+    assert f"--host {identity}registry{'.azurecr.us' if government else '.azurecr.io'} " in create
+    flag = "--audience" if identity == "system" else "--scope"
+    assert f"{flag} https://containerregistry.azure.net" in create
+    assert not tracked
 
 
 @pytest.mark.parametrize("channel", ["preview", None])
@@ -763,6 +829,9 @@ def extension_info(command, text):
     return json.dumps({"path": str(target)})
 
 runner.subprocess = SimpleNamespace(run=execute, check_output=extension_info)
+for name in ("azure", "azure.cli", "azure.cli.core"):
+    sys.modules[name] = ModuleType(name)
+sys.modules["azure.cli.core"].get_default_cli = lambda: SimpleNamespace(cloud=SimpleNamespace(name="AzureCloud"))
 pytest = ModuleType("pytest")
 
 def collect(arguments):
@@ -880,6 +949,17 @@ def test_live_assertions_use_actual_installed_identity(mocker, records, channel)
     assert all("az rest --method get" in call.args[0] for call in run.call_args_list[1:])
 
 
+def test_live_runtime_assertions_use_fairfax_catalog(mocker):
+    from azext_edge.edge.providers.orchestration.runtime_catalog import get_runtime_catalog
+
+    mocker.patch.object(runtime_checks, "get_default_cli", return_value=SimpleNamespace(
+        cloud=SimpleNamespace(name="AzureUSGovernment"),
+    ))
+    expected = get_runtime_catalog("AzureUSGovernment").get(RuntimeChannel.STABLE).identity
+    assert runtime_checks.expected_runtime("stable") == expected
+    assert expected != get_runtime_catalog().get(RuntimeChannel.STABLE).identity
+
+
 @pytest.mark.parametrize("failure", ["wrong-channel", "missing-current-version", "pending", "requested-only"])
 def test_live_identity_failures_are_hard_errors(mocker, records, failure):
     profile = make_profile(RuntimeChannel.STABLE, "1.5.7")
@@ -988,6 +1068,11 @@ def test_workflows_default_to_existing_test_resource_group(workflow, input_name)
     assert "centralus" not in source.lower()
 
 
+def test_whole_group_cleanup_requires_explicit_invocation():
+    config = yaml.load((ROOT / ".github/workflows/cluster_cleanup.yml").read_text(), Loader=yaml.BaseLoader)
+    assert set(config["on"]) == {"workflow_call", "workflow_dispatch"}
+
+
 def test_workflow_builds_once_and_tox_never_installs_checkout():
     config = yaml.safe_load((ROOT / ".github/workflows/int_test.yml").read_text())
     jobs = config["jobs"]
@@ -1046,13 +1131,20 @@ def _find_workflow_bash(platform_name):
     if platform_name == "nt":
         # PATH's bash.exe may be the WSL launcher, not Git for Windows' shell.
         git = shutil.which("git")
-        if git:
-            for directory in Path(git).resolve().parents:
+        candidates = ([Path(git)] if git else []) + [
+            Path(directory) / "git.exe" for directory in os.get_exec_path() if directory
+        ]
+        for executable in candidates:
+            if not executable.is_file():
+                continue
+            for directory in executable.resolve().parents:
                 for relative in ("usr/bin/bash.exe", "bin/bash.exe"):
                     candidate = directory / relative
                     if candidate.is_file():
                         return str(candidate)
-        raise RuntimeError("Workflow shell tests require Git for Windows with Bash; WSL is not used.")
+        raise RuntimeError(
+            f"Workflow shell tests require Git for Windows with Bash; WSL is not used. First Git: {git!r}."
+        )
     bash = shutil.which("bash")
     if not bash:
         raise RuntimeError("Workflow shell tests require Bash on PATH.")
@@ -1107,9 +1199,25 @@ def test_workflow_bash_selects_git_for_windows_not_wsl(mocker, tmp_path, git_rel
     which.assert_called_once_with("git")
 
 
+def test_workflow_bash_searches_past_minimal_git_on_path(mocker, tmp_path):
+    minimal = tmp_path / "agent/externals/git/cmd/git.exe"
+    full = tmp_path / "Program Files/Git/cmd/git.exe"
+    bash = full.parent.parent / "usr/bin/bash.exe"
+    wsl = tmp_path / "Windows/System32/bash.exe"
+    for executable in (minimal, full, bash, wsl):
+        executable.parent.mkdir(parents=True, exist_ok=True)
+        executable.touch()
+    mocker.patch.object(shutil, "which", return_value=str(minimal))
+    mocker.patch.object(os, "get_exec_path", return_value=[
+        str(minimal.parent), str(wsl.parent), str(full.parent),
+    ])
+    assert _find_workflow_bash("nt") == str(bash.resolve())
+
+
 @pytest.mark.parametrize("platform_name", ["nt", "posix"])
 def test_workflow_bash_missing_dependency_fails_instead_of_skipping(mocker, platform_name):
     mocker.patch.object(shutil, "which", return_value=None)
+    mocker.patch.object(os, "get_exec_path", return_value=[])
     with pytest.raises(RuntimeError, match="require.*Bash"):
         _find_workflow_bash(platform_name)
 

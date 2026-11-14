@@ -9,6 +9,19 @@ from argparse import Namespace
 from azure.cli.core.azclierror import InvalidArgumentValueError
 
 
+def validate_secret_sync_name(value: str) -> str:
+    import re
+
+    label = r"[a-z0-9](?:[-a-z0-9]*[a-z0-9])?"
+    if len(value) > 253 or not re.fullmatch(rf"{label}(?:\.{label})*", value):
+        raise InvalidArgumentValueError(
+            "--secret-sync-name must be a Kubernetes Secret name: at most 253 characters, "
+            "with dot-separated lowercase alphanumeric or hyphenated labels "
+            "that start and end with an alphanumeric character."
+        )
+    return value
+
+
 def validate_connector_metadata_ref(namespace: Namespace):
     from .providers.orchestration.resources.connectors import validate_metadata_reference
 
