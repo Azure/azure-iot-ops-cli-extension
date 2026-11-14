@@ -427,6 +427,34 @@ def test_report_missing_state_fails_and_retains_receipt(tmp_path):
     assert pipeline.read(tmp_path / "receipt.json")["status"] == "incomplete"
 
 
+@pytest.mark.parametrize("monitor,baseline,expected", [
+    (False, None, "edge/2.4.0/stable/westus2/py3.13/#2"),
+    (False, {"version": "1.4.12", "train": "stable"}, "edge/2.4.0/1.4/westus2/py3.13/#2"),
+    (True, None, "edge/2.3.1/1.5/westus2/py3.13/#2"),
+])
+def test_results_title_names_scenario_cli_runtime_region_python_and_attempt(
+        tmp_path, monkeypatch, capsys, monitor, baseline, expected):
+    monkeypatch.setenv("SYSTEM_JOBATTEMPT", "2")
+    state = make_state()
+    state["wheel"] = "/candidate/azure_iot_ops-2.4.0-py3-none-any.whl"
+    if baseline:
+        state["row"]["scenario"].update(name="edge-stable-n1", baseline=baseline)
+    if monitor:
+        state["monitor"] = {"release": {"version": "2.3.1"}, "runtimes": {"stable": {"milestone": "1.5"}}}
+    pipeline.write(tmp_path / "state.json", state)
+    assert pipeline.results_title(tmp_path) == expected
+    assert capsys.readouterr().out == f"##vso[task.setvariable variable=testRunTitle]{expected}\n"
+
+
+@pytest.mark.parametrize("state", [None, {"row": {}}])
+def test_results_title_falls_back_to_row_when_setup_state_is_unusable(tmp_path, monkeypatch, state):
+    monkeypatch.setenv("SYSTEM_JOBATTEMPT", "1")
+    monkeypatch.setenv("OPS_ROW", "edge_stable_py313")
+    if state is not None:
+        pipeline.write(tmp_path / "state.json", state)
+    assert pipeline.results_title(tmp_path) == "edge_stable_py313/#1"
+
+
 def seed_gate(tmp_path, monkeypatch):
     state = make_state()
     plan = tmp_path / "plan.json"

@@ -482,6 +482,32 @@ def report(output):
         raise ValueError("Scenario failed, was interrupted, or did not finish cleanup.")
 
 
+def results_title(output):
+    """Name a published test run by what separates failures in dashboard trend legends."""
+    attempt = required("SYSTEM_JOBATTEMPT")
+    try:
+        state = read(output / "state.json")
+        row = state["row"]
+        scenario, channel = row["scenario"]["name"], row["scenario"]["channel"]
+        if f"-{channel}" in scenario:
+            scenario = scenario[:scenario.rfind(f"-{channel}")]
+        if state.get("monitor"):
+            version = state["monitor"]["release"]["version"]
+            runtime = state["monitor"]["runtimes"][channel]["milestone"]
+        else:
+            version = Path(state["wheel"]).name.split("-")[1]
+            baseline = row["scenario"].get("baseline")
+            runtime = ".".join(baseline["version"].split(".")[:2]) if baseline else channel
+        title = f"{scenario}/{version}/{runtime}/{state['locations']['clusterRegion']}/py{row['python']}/#{attempt}"
+    except (OSError, ValueError, KeyError, IndexError, TypeError, AttributeError):
+        # Setup can fail before execution state exists; results still need a distinct row title.
+        title = f"{required('OPS_ROW')}/#{attempt}"
+    # Publishing must not depend on naming, so normalize instead of rejecting unexpected values.
+    title = re.sub(r"[^A-Za-z0-9._+/#-]", "-", title)[:255]
+    print(f"##vso[task.setvariable variable=testRunTitle]{title}", flush=True)
+    return title
+
+
 def expected_locations(locations):
     return {
         "cluster": locations["clusterRegion"], "instance": locations["clusterRegion"],
@@ -588,7 +614,7 @@ def gate(output):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("operation", choices=[
-        "plan", "title", "candidate", "acquire", "prepare", "report", "gate", "inventory",
+        "plan", "title", "candidate", "acquire", "prepare", "report", "results-title", "gate", "inventory",
     ])
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--extension-dir", type=Path)
@@ -596,7 +622,7 @@ def main():
     if args.operation == "inventory":
         inventory(args.output.resolve(), args.extension_dir)
     else:
-        globals()[args.operation](args.output.resolve())
+        globals()[args.operation.replace("-", "_")](args.output.resolve())
 
 
 if __name__ == "__main__":

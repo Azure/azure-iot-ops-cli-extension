@@ -146,13 +146,19 @@ jobs:
             OPS_MONITOR_BUNDLE: $(Pipeline.Workspace)/candidate
             MONITOR_CLOUD: $(TestCloud)
             MONITOR_TRACK: $(TestTrack)
+      - bash: python tools/ado_integration.py results-title --output attempt
+        condition: always()
+        displayName: Name test results
+        env:
+          OPS_ROW: $(row)
       - task: PublishTestResults@2
         displayName: Publish results
         condition: always()
         inputs:
           testResultsFormat: JUnit
           testResultsFiles: attempt/junit/*.xml
-          testRunTitle: Ops $(row) attempt $(System.JobAttempt)
+          mergeTestResults: true
+          testRunTitle: $(testRunTitle)
           failTaskOnFailedTests: true
           failTaskOnMissingResultsFile: true
       - publish: attempt
