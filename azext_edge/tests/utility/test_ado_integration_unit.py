@@ -1207,7 +1207,7 @@ def test_start_cluster_retries_transient_k3s_systemd_startup_race(monkeypatch, t
         with pytest.raises(TimeoutError):
             cluster.start_cluster(commands, state, tmp_path)
         assert wait_calls["count"] == 1
-        assert sleeps == []
+        assert not sleeps
     else:
         with pytest.raises(TimeoutError):
             cluster.start_cluster(commands, state, tmp_path)
