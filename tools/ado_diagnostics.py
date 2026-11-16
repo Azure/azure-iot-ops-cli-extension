@@ -304,7 +304,7 @@ class HookCollector:
 
     def watch(self):
         while not self.stop.is_set():
-            if self.lock.acquire(blocking=False):
+            if self.lock.acquire(blocking=False):  # pylint: disable=consider-using-with
                 try:
                     self.snapshot()
                 except (OSError, subprocess.SubprocessError, ValueError, KeyError) as error:
@@ -406,7 +406,7 @@ class HookCollector:
                 self.warn("collector stop", TimeoutError("Hook collector did not stop before cleanup."))
         if not failed:
             return
-        acquired = self.lock.acquire(timeout=5)
+        acquired = self.lock.acquire(timeout=5)  # pylint: disable=consider-using-with
         if not acquired:
             self.warn("collector lock", TimeoutError("Hook collector lock busy during final diagnostics."))
             return
