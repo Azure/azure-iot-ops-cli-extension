@@ -860,7 +860,7 @@ def test_legacy_public_releases_stage_adr_metadata_and_optional_metrics_agent_on
     for rel_path, (_kind, content) in files.items():
         full = target / compat.PREFIX / rel_path
         full.parent.mkdir(parents=True, exist_ok=True)
-        full.write_text(content, encoding="utf-8")
+        full.write_bytes(content.encode("utf-8"))
 
     manifest = {
         "extension": "azure-iot-ops",
@@ -952,16 +952,17 @@ def test_source_patches_match_real_frozen_git_blobs_and_tolerate_missing_metrics
                     if isinstance(stmt, compat.ast.If) and compat.ast.unparse(stmt.test) == "arc_namespace"
                 )
                 mod = compat.ast.Module(body=[arc_if], type_ignores=[])
+                arc_key = os.path.join("root", "azure-arc", "arcagents")
                 namespace.update({
                     "arc_namespace": "azure-arc",
                     "walk_result": {
-                        "root/azure-arc/arcagents": {"folders": ["connect-agent", "config-agent"], "files": []}
+                        arc_key: {"folders": ["connect-agent", "config-agent"], "files": []}
                     },
                 })
                 exec(compile(mod, "<patched_clean_up_folders>", "exec"), namespace)
                 namespace.update({
                     "walk_result": {
-                        "root/azure-arc/arcagents": {"folders": ["connect-agent"], "files": []}
+                        arc_key: {"folders": ["connect-agent"], "files": []}
                     },
                 })
                 with pytest.raises(AssertionError, match="Mismatch"):
