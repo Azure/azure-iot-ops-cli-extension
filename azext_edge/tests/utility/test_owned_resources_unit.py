@@ -760,6 +760,94 @@ def test_inventory_failure_still_attempts_journaled_cleanup(journal, monkeypatch
     assert journal.records()[RESOURCE]["cleanup"] == "absent"
 
 
+def test_prepare_root_retries_non_json_404_during_rg_propagation(journal, http_arm, monkeypatch):
+    transient_404 = requests.Response()
+    transient_404.status_code = 404
+    transient_404._content = b""
+    settled_404 = requests.Response()
+    settled_404.status_code = 404
+    settled_404._content = b'{"error":{"code":"ResourceNotFound"}}'
+    http_arm.session.request.side_effect = [transient_404] * 5 + [settled_404]
+    sleeps = []
+    monkeypatch.setattr(owned.time, "sleep", sleeps.append)
+    observer = owned.Observer(journal, http_arm)
+    payload = {"location": "eastus2", "tags": {"env": "test"}}
+    observer.prepare_root(RESOURCE, "2023-05-01", payload, "PUT")
+    assert http_arm.session.request.call_count == 6
+    assert sleeps == [1, 2, 2, 1, 2]
+    assert payload["tags"][owned.TAG] == journal.owner
+
+
+def test_delete_headers_omits_if_match_for_unconditional_delete_types():
+    custom_location = GROUP + "/providers/microsoft.extendedlocation/customlocations/loc-test"
+    instance = GROUP + "/providers/microsoft.iotoperations/instances/inst-test"
+    hub = GROUP + "/providers/microsoft.devices/iothubs/hub-test"
+    assert owned.delete_headers(custom_location, '"etag-1"') == {}
+    assert owned.delete_headers(instance, '"etag-2"') == {}
+    assert owned.delete_headers(hub, '"etag-3"') == {"If-Match": '"etag-3"'}
+
+
+@pytest.mark.parametrize("second_attempt_succeeds", [True, False])
+def test_cleanup_batch_re_submits_after_lagging_deleting_state_and_bounds_retries(
+    journal, monkeypatch, second_attempt_succeeds
+):
+    op_link = (
+        "https://management.azure.com/subscriptions/11111111-2222-4333-8444-555555555555"
+        "/providers/Microsoft.ExtendedLocation/locations/eastus2/operationStatuses/op-1?api-version=2021-08-31-preview"
+    )
+    resource = GROUP + "/providers/microsoft.extendedlocation/customlocations/loc-retry"
+    journal.record(resource, "2021-08-31-preview", kind="root")
+    arm = Mock(deadline=100, endpoint="https://management.azure.com", journal=journal)
+    arm.verify.side_effect = [
+        {
+            "id": resource,
+            "etag": '"e1"',
+            "tags": {owned.TAG: journal.owner},
+            "properties": {"provisioningState": "Succeeded"},
+        },
+        {
+            "id": resource,
+            "etag": '"e1-stale"',
+            "tags": {owned.TAG: journal.owner},
+            "properties": {"provisioningState": "Deleting"},
+        },
+        {
+            "id": resource,
+            "etag": '"e2"',
+            "tags": {owned.TAG: journal.owner},
+            "properties": {"provisioningState": "Failed"},
+        },
+    ]
+    arm.request.side_effect = [
+        (202, None, {"Azure-AsyncOperation": op_link}),
+        (200, {"id": resource, "properties": {"provisioningState": "Deleting"}}, {}),
+        (200, {"id": resource, "properties": {"provisioningState": "Failed"}}, {}),
+        (200, {"id": resource, "properties": {"provisioningState": "Failed"}}, {}),
+        (202, None, {"Azure-AsyncOperation": op_link}),
+        (
+            (404, None, {})
+            if second_attempt_succeeds
+            else (200, {"id": resource, "properties": {"provisioningState": "Failed"}}, {})
+        ),
+    ]
+    op_failed = requests.Response()
+    op_failed.status_code = 200
+    op_failed._content = b'{"status":"Failed"}'
+    arm.send.return_value = op_failed
+    monkeypatch.setattr(owned.time, "monotonic", lambda: 0)
+    monkeypatch.setattr(owned.time, "sleep", lambda _: None)
+    failures = owned.cleanup_batch(journal, arm, [(resource, journal.records()[resource])])
+    delete_calls = [call for call in arm.request.call_args_list if call.args[0] == "DELETE"]
+    assert len(delete_calls) == 2
+    assert all(call.kwargs["headers"] is None for call in delete_calls)
+    if second_attempt_succeeds:
+        assert failures == []
+        assert journal.records()[resource]["cleanup"] == "absent"
+    else:
+        assert failures == [resource]
+        assert journal.records()[resource]["cleanup"] == "failed"
+
+
 @pytest.mark.parametrize("eventually_created", [False, True])
 def test_unfinished_create_cannot_be_mistaken_for_completed_cleanup(journal, monkeypatch, eventually_created):
     journal.record(RESOURCE, "2023-05-01", kind="root", creates={"request": None})

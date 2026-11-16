@@ -245,8 +245,12 @@ stages:
               matrix: $[ stageDependencies.Plan.Plan.outputs['plan.parallelMatrix'] ]
       - stage: TrustBundle
         displayName: Trust Bundle
-        dependsOn: [Plan, Build, Lint]
-        condition: and(succeeded(), eq(dependencies.Plan.outputs['Plan.plan.hasTrustBundle'], 'true'))
+        dependsOn: [Plan, Build, Lint, Integration]
+        condition: >-
+          and(not(canceled()), eq(dependencies.Plan.result, 'Succeeded'),
+          eq(dependencies.Build.result, 'Succeeded'), eq(dependencies.Lint.result, 'Succeeded'),
+          in(dependencies.Integration.result, 'Succeeded', 'Failed', 'Skipped'),
+          eq(dependencies.Plan.outputs['Plan.plan.hasTrustBundle'], 'true'))
         variables:
           planArtifact: $[ stageDependencies.Plan.Plan.outputs['plan.artifact'] ]
           candidateArtifact: $[ stageDependencies.Build.Build.outputs['candidate.artifact'] ]

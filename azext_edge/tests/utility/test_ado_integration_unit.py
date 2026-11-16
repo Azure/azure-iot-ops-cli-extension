@@ -1128,6 +1128,93 @@ def test_assertion_request_is_scoped_and_never_redirects(monkeypatch):
     assert "azureiotdevxp" in post.call_args.args[0]
 
 
+def test_trust_bundle_stage_serializes_after_integration_in_pipeline_templates():
+    import yaml
+
+    def find_stage(node, name):
+        if isinstance(node, dict):
+            if node.get("stage") == name:
+                return node
+            for value in node.values():
+                found = find_stage(value, name)
+                if found:
+                    return found
+        elif isinstance(node, list):
+            for item in node:
+                found = find_stage(item, name)
+                if found:
+                    return found
+        return None
+
+    root = Path(cluster.__file__).resolve().parents[1]
+    release_doc = yaml.safe_load(
+        (root / ".azure-devops/templates/release-monitor-stages.yml").read_text(encoding="utf-8")
+    )
+    int_doc = yaml.safe_load(
+        (root / ".azure-devops/templates/integration-pipeline.yml").read_text(encoding="utf-8")
+    )
+    release_tb = find_stage(release_doc, "TrustBundle")
+    int_tb = find_stage(int_doc, "TrustBundle")
+    assert release_tb is not None and "Integration" in release_tb["dependsOn"]
+    assert int_tb is not None and "Integration" in int_tb["dependsOn"]
+    expected_cond = "in(dependencies.Integration.result, 'Succeeded', 'Failed', 'Skipped')"
+    assert expected_cond in release_tb["condition"]
+    assert expected_cond in int_tb["condition"]
+
+
+@pytest.mark.parametrize("mode", ["recover", "non_retryable", "exhausted"])
+def test_start_cluster_retries_transient_k3s_systemd_startup_race(monkeypatch, tmp_path, mode):
+    state = make_state()
+    commands = Mock()
+    directory, unit = cluster.cluster_paths(state)
+    directory.mkdir(parents=True, exist_ok=True)
+    (directory / "k3s").write_bytes(b"binary")
+    (directory / "config").write_text("apiVersion: v1\n", encoding="utf-8")
+    wait_calls = {"count": 0}
+
+    def fake_wait(*_args, **_kwargs):
+        wait_calls["count"] += 1
+        if mode != "recover" or wait_calls["count"] == 1:
+            raise TimeoutError("K3s cloud controller did not renew its leader lease after startup.")
+
+    monkeypatch.setattr(cluster, "wait_cluster", fake_wait)
+    ccm_log = (
+        'cloud-controller-manager exited: configmaps "extension-apiserver-authentication" is forbidden'
+        if mode != "non_retryable"
+        else "fatal: unrelated startup crash"
+    )
+    monkeypatch.setattr(cluster.diagnostics, "journal", Mock(return_value=ccm_log))
+    diag_cmds = []
+
+    def fake_diag_cmd(arguments, **_kwargs):
+        diag_cmds.append(arguments)
+        return "failed\n" if "show" in arguments else ""
+
+    monkeypatch.setattr(cluster.diagnostics, "command", fake_diag_cmd)
+    monkeypatch.setattr(
+        cluster.subprocess,
+        "run",
+        lambda _args, stdout=None, check=False: stdout.write("apiVersion: v1\n") if stdout else None,
+    )
+    sleeps = []
+    monkeypatch.setattr(cluster.time, "sleep", sleeps.append)
+    if mode == "recover":
+        cluster.start_cluster(commands, state, tmp_path)
+        assert wait_calls["count"] == 2
+        assert sleeps == [5]
+        assert ["sudo", "-n", "systemctl", "reset-failed", unit] in diag_cmds
+    elif mode == "non_retryable":
+        with pytest.raises(TimeoutError):
+            cluster.start_cluster(commands, state, tmp_path)
+        assert wait_calls["count"] == 1
+        assert sleeps == []
+    else:
+        with pytest.raises(TimeoutError):
+            cluster.start_cluster(commands, state, tmp_path)
+        assert wait_calls["count"] == 4
+        assert sleeps == [5, 10, 15]
+
+
 def test_auth_error_does_not_print_assertions(capsys):
     auth.failure(RuntimeError, RuntimeError("offline-secret-assertion"), None)
     stderr = capsys.readouterr().err

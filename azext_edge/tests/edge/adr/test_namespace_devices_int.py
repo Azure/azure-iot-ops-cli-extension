@@ -443,27 +443,15 @@ def test_namespace_device_lifecycle_operations(require_namespace_init, tracked_r
     assert device_name_2 in device_names
     assert device_name_1 not in device_names
 
-    # Delete devices
-    try:
-        run(
-            f"az iot ops ns device delete --name {device_name_1} --instance {instance_name} "
-            f"-g {resource_group} -y"
-        )
-    except CLIInternalError as e:
-        if "Operation returned an invalid status" in str(e):
-            logger.warning("Device api returns the wrong error code.")
-        else:
-            raise e
-    try:
-        run(
-            f"az iot ops ns device delete --name {device_name_2} --instance {instance_name} "
-            f"-g {resource_group} -y"
-        )
-    except CLIInternalError as e:
-        if "Operation returned an invalid status" in str(e):
-            logger.warning("Device api returns the wrong error code.")
-        else:
-            raise e
+    # Delete devices (must succeed cleanly on synchronous 200 and async 202/204)
+    run(
+        f"az iot ops ns device delete --name {device_name_1} --instance {instance_name} "
+        f"-g {resource_group} -y"
+    )
+    run(
+        f"az iot ops ns device delete --name {device_name_2} --instance {instance_name} "
+        f"-g {resource_group} -y"
+    )
 
 
 def assert_namespace_device_properties(
@@ -854,9 +842,11 @@ def test_generalized_inbound_endpoint_lifecycle(require_namespace_init, tracked_
         expect_failure=True,
     )
 
-    # --- Cleanup: remove all created endpoints ---
-    run(
+    # --- Cleanup: remove all created endpoints and verify server-side removal ---
+    remaining_endpoints = run(
         f"az iot ops ns device endpoint inbound remove "
         f"--device {device_name} --instance {instance_name} -g {resource_group} "
         f"--endpoint {endpoint_opcua_min} {endpoint_opcua_cfg} {endpoint_mqtt_scc} -y"
     )
+    for removed_ep in (endpoint_opcua_min, endpoint_opcua_cfg, endpoint_mqtt_scc):
+        assert removed_ep not in remaining_endpoints

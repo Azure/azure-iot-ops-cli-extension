@@ -104,6 +104,7 @@ class HookCollector:
         self.directory = directory
         self.artifact = artifact
         self.stop = threading.Event()
+        self.lock = threading.Lock()
         self.thread = None
         self.failures = set()
         self.errors = set()
@@ -147,7 +148,10 @@ class HookCollector:
         if final or failed - self.failures:
             self.events()
         if failed - self.failures and self.uploads < 5:
-            self.publish()
+            try:
+                self.publish()
+            except (OSError, ValueError) as error:
+                self.warn("publish", error)
         self.failures.update(failed)
 
     def runtime_storage(self, pods):
@@ -300,10 +304,13 @@ class HookCollector:
 
     def watch(self):
         while not self.stop.is_set():
-            try:
-                self.snapshot()
-            except (OSError, subprocess.SubprocessError, ValueError, KeyError) as error:
-                self.warn("snapshot", error)
+            if self.lock.acquire(blocking=False):
+                try:
+                    self.snapshot()
+                except (OSError, subprocess.SubprocessError, ValueError, KeyError) as error:
+                    self.warn("snapshot", error)
+                finally:
+                    self.lock.release()
             self.stop.wait(10)
 
     def start(self):
@@ -320,26 +327,108 @@ class HookCollector:
         command_text = f"##vso[artifact.upload containerfolder={self.artifact};artifactname={self.artifact};]"
         print(command_text + str(archive), flush=True)
 
+    def secret_sync(self):
+        records = {"secretSync": [], "secretProviderClass": []}
+        for key, resource in (
+            ("secretSync", "secretsync.secret-sync.x-k8s.io"),
+            ("secretProviderClass", "secretproviderclass.secrets-store.csi.x-k8s.io"),
+        ):
+            try:
+                items = json.loads(command([*self.kubectl, "get", resource, "-o", "json"])).get("items", [])
+            except (OSError, subprocess.SubprocessError, ValueError) as error:
+                self.warn(key, error)
+                continue
+            for item in items[:24]:
+                metadata = item.get("metadata", {})
+                spec = item.get("spec", {})
+                records[key].append({
+                    "kind": item.get("kind"),
+                    "name": metadata.get("name"),
+                    "uid": metadata.get("uid"),
+                    "namespace": metadata.get("namespace"),
+                    "generation": metadata.get("generation"),
+                    "deletionTimestamp": metadata.get("deletionTimestamp"),
+                    "finalizers": metadata.get("finalizers", []),
+                    "specRefs": {
+                        field: spec.get(field)
+                        for field in (
+                            "serviceAccountName",
+                            "secretProviderClassName",
+                            "kubernetesSecretType",
+                            "provider",
+                        )
+                        if field in spec
+                    },
+                    "status": item.get("status", {}),
+                })
+        self.save_json("secret-sync.json", records)
+
+        extension_pods = []
+        deadline = time.monotonic() + 15
+        for ext_ns in ("azure-secret-store", "azure-arc"):
+            ext_kubectl = [
+                "kubectl", "--kubeconfig", str(self.directory / "user-config"),
+                "--request-timeout=8s", "--namespace", ext_ns,
+            ]
+            try:
+                pods = json.loads(command([*ext_kubectl, "get", "pods", "-o", "json"])).get("items", [])
+            except (OSError, subprocess.SubprocessError, ValueError) as error:
+                self.warn(f"{ext_ns} pods", error)
+                continue
+            for pod in pods[:24]:
+                extension_pods.append(summary(pod))
+            for pod in [item for item in pods if problem_pod(item)][:8]:
+                for entry in pod.get("status", {}).get("initContainerStatuses", []) + (
+                    pod.get("status", {}).get("containerStatuses", [])
+                ):
+                    remaining = deadline - time.monotonic()
+                    if remaining <= 0:
+                        break
+                    try:
+                        text = command(
+                            [*ext_kubectl, "logs", pod["metadata"]["name"], "-c", entry["name"],
+                             "--timestamps=true", "--tail=500", f"--limit-bytes={LIMIT}"],
+                            timeout=min(8, remaining),
+                        )
+                        name = f"ext-{pod['metadata']['uid']}-{entry['name']}.log"
+                        if re.fullmatch(r"[a-zA-Z0-9_.-]+", name):
+                            self.save(name, text)
+                    except (OSError, subprocess.SubprocessError, ValueError) as error:
+                        self.warn(f"{ext_ns} container logs", error)
+        if extension_pods:
+            self.save_json("extension-pods.json", {"items": extension_pods[:32]})
+
     def finish(self, failed):
         self.stop.set()
         if self.thread is not None:
             self.thread.join(timeout=45)
             if self.thread.is_alive():
-                raise TimeoutError("Hook collector did not stop before cleanup.")
+                self.warn("collector stop", TimeoutError("Hook collector did not stop before cleanup."))
         if not failed:
             return
-        for name, collect in (
-            ("final snapshot", lambda: self.snapshot(final=True)),
-            ("storage snapshot", self.storage),
-            ("K3s unit settings", lambda: self.save("k3s-unit-settings.log", command(
-                ["sudo", "-n", "systemctl", "show", self.unit, "--property=UMask", "--property=User",
-                 "--property=Group", "--property=ProtectSystem", "--property=ProtectHome",
-                 "--property=PrivateTmp", "--property=ReadOnlyPaths", "--property=ReadWritePaths"],
-            ))),
-            ("K3s journal", lambda: self.save("k3s-journal.log", journal(self.unit))),
-        ):
+        acquired = self.lock.acquire(timeout=5)
+        if not acquired:
+            self.warn("collector lock", TimeoutError("Hook collector lock busy during final diagnostics."))
+            return
+        try:
+            for name, collect in (
+                ("final snapshot", lambda: self.snapshot(final=True)),
+                ("secret sync snapshot", self.secret_sync),
+                ("storage snapshot", self.storage),
+                ("K3s unit settings", lambda: self.save("k3s-unit-settings.log", command(
+                    ["sudo", "-n", "systemctl", "show", self.unit, "--property=UMask", "--property=User",
+                     "--property=Group", "--property=ProtectSystem", "--property=ProtectHome",
+                     "--property=PrivateTmp", "--property=ReadOnlyPaths", "--property=ReadWritePaths"],
+                ))),
+                ("K3s journal", lambda: self.save("k3s-journal.log", journal(self.unit))),
+            ):
+                try:
+                    collect()
+                except (OSError, subprocess.SubprocessError, ValueError, KeyError) as error:
+                    self.warn(name, error)
             try:
-                collect()
-            except (OSError, subprocess.SubprocessError, ValueError, KeyError) as error:
-                self.warn(name, error)
-        self.publish()
+                self.publish()
+            except (OSError, ValueError) as error:
+                self.warn("publish", error)
+        finally:
+            self.lock.release()

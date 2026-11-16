@@ -34,6 +34,15 @@ DEPLOYMENT_TYPE = "microsoft.resources/deployments"
 API = re.compile(r"20\d{2}-\d{2}-\d{2}(?:-preview)?", re.IGNORECASE | re.ASCII)
 TERMINAL_STATES = {"succeeded", "failed", "canceled", "cancelled"}
 NULL_USER_TAGS = {"microsoft.deviceupdate/accounts", "microsoft.deviceregistry/schemaregistries"}
+UNCONDITIONAL_DELETE_TYPES = {
+    "microsoft.extendedlocation/customlocations",
+    "microsoft.iotoperations/instances",
+    "microsoft.kubernetes/connectedclusters",
+    "microsoft.kubernetesconfiguration/extensions",
+    "microsoft.network/privateendpoints",
+    "microsoft.secretsynccontroller/azurekeyvaultsecretproviderclasses",
+    "microsoft.secretsynccontroller/secretsyncs",
+}
 
 
 class OwnershipRejected(ValueError):
@@ -216,6 +225,38 @@ def resource_type(resource):
     return "/".join((parts[0], *parts[1::2]))
 
 
+def _json_404(response):
+    try:
+        return isinstance(response.json(), dict)
+    except ValueError:
+        return False
+
+
+def delete_headers(resource, etag):
+    if not etag or ("/providers/" in resource.lower() and resource_type(resource) in UNCONDITIONAL_DELETE_TYPES):
+        return {}
+    return {"If-Match": etag}
+
+
+def operation_url(arm, headers):
+    if not headers or not isinstance(getattr(arm, "endpoint", None), str):
+        return None
+    lowered = {str(key).lower(): value for key, value in headers.items()}
+    link = lowered.get("azure-asyncoperation") or lowered.get("operation-location")
+    if not isinstance(link, str) or not link:
+        return None
+    parsed = urlsplit(link)
+    subscription = getattr(getattr(arm, "journal", None), "context", {}).get("subscription")
+    if not subscription:
+        return None
+    subscription_prefix = f"/subscriptions/{subscription}/".lower()
+    if (parsed.scheme != "https" or parsed.netloc.lower() != urlsplit(arm.endpoint).netloc.lower()
+            or not parsed.path.lower().startswith(subscription_prefix)
+            or not parsed.query or parsed.username or parsed.password or parsed.fragment):
+        return None
+    return link
+
+
 def creation_settled(resource, status=200):
     state = (resource.get("properties", {}).get("provisioningState") or "").lower()
     return status in (200, 201) and (not state or state in TERMINAL_STATES)
@@ -292,7 +333,10 @@ class Arm:
                     raise
                 delay = 2 ** attempt
             else:
-                if method != "GET" or response.status_code not in (408, 429, 500, 502, 503, 504) or attempt == 2:
+                transient = response.status_code in (408, 429, 500, 502, 503, 504) or (
+                    response.status_code == 404 and not _json_404(response)
+                )
+                if method != "GET" or not transient or attempt == 2:
                     return response
                 delay = Retry().get_retry_after(response)
                 if delay is None:
@@ -396,18 +440,30 @@ class Observer:
         self.journal, self.arm = journal, arm
         self.original_send = None
 
+    def _verify_with_404_propagation_retry(self, resource, api):
+        for delay in (2, 4, 8, 12, None):
+            try:
+                return self.arm.verify(resource, api)
+            except RuntimeError as error:
+                if "Unverifiable ARM 404 response." not in str(error) or delay is None:
+                    raise
+                deadline = getattr(self.arm, "deadline", None)
+                if isinstance(deadline, (int, float)) and time.monotonic() + delay >= deadline:
+                    raise
+                time.sleep(delay)
+
     def prepare_root(self, resource, api, body, method, creation_id=None):
-        previous = self.arm.verify(resource, api)
+        previous = self._verify_with_404_propagation_retry(resource, api)
         record = self.journal.records().get(resource, {})
         if previous is None and method == "DELETE" and record.get("confirmed"):
-            return {"If-Match": record["etag"]} if record.get("etag") else {}
+            return delete_headers(resource, record.get("etag"))
         if previous is None and method != "PUT":
             raise OwnershipRejected(
                 "unconfirmed-absent-resource", "A mutation requires an existing owned resource or an initial PUT.",
             )
         if method == "DELETE":
             self.journal.record(resource, api, confirmed=True, etag=previous.get("etag"))
-            return {"If-Match": previous["etag"]} if previous.get("etag") else {}
+            return delete_headers(resource, previous.get("etag"))
         headers = {"If-None-Match": "*"} if previous is None else {}
         creation = {"creates": {creation_id or uuid4().hex: None}} if previous is None else {}
         kind = resource_type(resource)
@@ -694,12 +750,61 @@ def cleanup_submit(journal, arm, resource, record):
             return None
     state = (current.get("properties", {}).get("provisioningState") or "").lower()
     if state == "deleting":
-        return "deletion"
+        return ("deletion", None, True)
     if not creation_settled(current):
         return "creation"
-    headers = {"If-Match": current["etag"]} if current.get("etag") else None
-    arm.request("DELETE", resource, record["api"], headers=headers)
-    return "deletion"
+    headers = delete_headers(resource, current.get("etag")) or None
+    response = arm.request("DELETE", resource, record["api"], headers=headers)
+    response_headers = response[2] if isinstance(response, tuple) and len(response) > 2 else None
+    op_url = operation_url(arm, response_headers)
+    return ("deletion", op_url, False) if op_url else "deletion"
+
+
+def _poll_cleanup_deletion(journal, arm, resource, record, state, retries):
+    if isinstance(state, tuple):
+        _, op_url, deleting, retry_pending = (*state, False)[:4]
+    else:
+        op_url, deleting, retry_pending = None, False, False
+    status, body, _ = arm.request("GET", resource, record["api"])
+    if status == 404:
+        journal.record(resource, record["api"], cleanup="absent")
+        return None
+    if op_url:
+        op_response = arm.send("GET", op_url)
+        if op_response.status_code == 200 and op_response.content:
+            try:
+                op_payload = op_response.json()
+            except ValueError:
+                op_payload = None
+            if isinstance(op_payload, dict):
+                props = op_payload.get("properties")
+                op_status = (
+                    op_payload.get("status")
+                    or (props.get("provisioningState") if isinstance(props, dict) else "")
+                    or ""
+                )
+                lowered = op_status.lower() if isinstance(op_status, str) else ""
+                if lowered in ("failed", "canceled", "cancelled"):
+                    if retries.get(resource, 0) >= 1:
+                        raise RuntimeError(f"Owned-resource async DELETE ended in {op_status}.")
+                    op_url = None
+                    retry_pending = True
+                elif lowered == "succeeded":
+                    op_url = None
+    prov = (body.get("properties", {}).get("provisioningState") or "").lower() if isinstance(body, dict) else ""
+    if prov == "deleting":
+        return ("deletion", op_url, True, retry_pending)
+    if retry_pending or (not op_url and deleting and prov in ("failed", "canceled", "cancelled")):
+        if retries.get(resource, 0) >= 1:
+            raise RuntimeError(f"Owned-resource DELETE provisioningState entered {prov or 'failed'}.")
+        next_state = cleanup_submit(journal, arm, resource, record)
+        if next_state == ("deletion", None, True):
+            return ("deletion", None, True, True)
+        if next_state == "creation":
+            return ("deletion", None, deleting, True)
+        retries[resource] = retries.get(resource, 0) + 1
+        return next_state
+    return ("deletion", op_url, deleting, retry_pending)
 
 
 def cleanup_batch(journal, arm, batch):
@@ -714,6 +819,7 @@ def cleanup_batch(journal, arm, batch):
         print(f"Cleanup pending for {resource}: {type(error).__name__}", file=sys.stderr, flush=True)
 
     pending = {}
+    retries = {}
     for resource, record in batch:
         try:
             state = cleanup_submit(journal, arm, resource, record)
@@ -726,14 +832,12 @@ def cleanup_batch(journal, arm, batch):
             try:
                 if state == "creation":
                     state = cleanup_submit(journal, arm, resource, record)
-                    pending[resource] = (record, state)
                 else:
-                    status, _, _ = arm.request("GET", resource, record["api"])
-                    if status == 404:
-                        journal.record(resource, record["api"], cleanup="absent")
-                        state = None
+                    state = _poll_cleanup_deletion(journal, arm, resource, record, state, retries)
                 if state is None:
                     del pending[resource]
+                else:
+                    pending[resource] = (record, state)
             except errors as error:
                 failed(resource, record["api"], error)
                 del pending[resource]

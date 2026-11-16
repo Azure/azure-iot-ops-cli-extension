@@ -770,3 +770,201 @@ def test_only_proven_unavailable_fairfax_cases_are_explicitly_skipped(adapter, m
         assert "2026-04-01" in items[0].add_marker.call_args.args[0].kwargs["reason"]
     items[1].add_marker.assert_not_called()
     items[2].add_marker.assert_not_called()
+
+
+@pytest.mark.parametrize("source", [
+    "0b555d6e535f7e212db7aa8b79436d652507e96b",
+    "16e6e1d64ffe266970596d0b66cf8ff464b8c85a",
+])
+def test_legacy_public_releases_stage_adr_metadata_and_optional_metrics_agent_only(
+    adapter, monkeypatch, tmp_path, source
+):
+    compat = importlib.import_module("release_test_compatibility")
+    plugin = importlib.import_module("release_monitor_pytest")
+    target = tmp_path / "installed"
+    conftest_src = (
+        "def shared_device(require_namespace_init_session, tracked_resources):\n"
+        "    result = run(\n"
+        '        f"az iot ops ns device create --name {device_name} "\n'
+        '        f"--instance {instance_name} -g {resource_group}"\n'
+        "    )\n"
+        "    return result\n"
+    )
+    ns_devices_src = (
+        "def test_namespace_device_lifecycle_operations():\n"
+        "    result = run(\n"
+        '        f"az iot ops ns device create --name {device_name} "\n'
+        '        f"--instance {instance_name} -g {resource_group}"\n'
+        "    )\n\n"
+        "def test_generalized_inbound_endpoint_lifecycle():\n"
+        "    result = run(\n"
+        '        f"az iot ops ns device create --name {device_name} "\n'
+        '        f"--instance {instance_name} -g {resource_group}"\n'
+        "    )\n"
+    )
+    mgmt_src = (
+        "def mgmt_actions_setup():\n"
+        '    run(f"az iot ops ns device create -n {device_name} {common}")\n'
+    )
+    bundle_helper_src = (
+        "def _clean_up_folders(walk_result, arc_namespace):\n"
+        "    if arc_namespace:\n"
+        '        level_2 = walk_result.pop(path.join(BASE_ZIP_PATH, arc_namespace, "arcagents"))\n'
+        '        assert level_2["folders"] == [agent[0] for agent in ARC_AGENTS], '
+        'f"Mismatch; folders: [{level_2[\'folders\']}]"\n'
+        '        assert not level_2["files"]\n\n'
+        "def get_file_map(walk_result):\n"
+        "    num_additional_services = len(ARC_AGENTS)\n"
+        "    if arc_namespace:\n"
+        "        for agent, _ in ARC_AGENTS:\n"
+        '            agent_path = path.join(BASE_ZIP_PATH, arc_namespace, "arcagents", agent)\n'
+        '            file_map["arc"][agent] = convert_file_names(walk_result[agent_path]["files"])\n'
+    )
+    arcagents_test_src = (
+        "def test_create_bundle_arcagents():\n"
+        "    for agent, has_service in ARC_AGENTS:\n"
+        "        file_map = agents_file_map[agent]\n"
+        "        assert file_map\n"
+    )
+    auto_test_src = (
+        "def test_create_bundle():\n"
+        "    actual_walk_result = len(expected_services) + int(is_billing_included) + len(ARC_AGENTS)\n"
+        "    assert len(walk_result) == actual_walk_result\n"
+    )
+    is_v2 = source == compat.PUBLIC_V2_TEST_SOURCE
+    files = {
+        "edge/adr/conftest.py": ("adr_shared_device_metadata", conftest_src),
+        "edge/adr/test_namespace_devices_int.py": ("adr_generalized_endpoint_device_metadata", ns_devices_src),
+        **(
+            {"edge/orchestration/test_mgmt_actions_int.py": ("adr_mgmt_actions_device_metadata", mgmt_src)}
+            if is_v2
+            else {
+                "edge/support/create_bundle_int/helpers.py": ("optional_arc_metrics_agent_helper", bundle_helper_src),
+                "edge/support/create_bundle_int/test_arcagents_int.py": (
+                    "optional_arc_metrics_agent_test",
+                    arcagents_test_src,
+                ),
+                "edge/support/create_bundle_int/test_auto_int.py": (
+                    "optional_arc_metrics_agent_auto_test",
+                    auto_test_src,
+                ),
+            }
+        ),
+    }
+    patched_registry = dict(compat.SOURCE_PATCHES)
+    patched_registry[("AzureCloud", source)] = [
+        {"path": rel_path, "kind": kind, "baseSha256": hashlib.sha256(content.encode("utf-8")).hexdigest()}
+        for rel_path, (kind, content) in files.items()
+    ]
+    monkeypatch.setattr(compat, "SOURCE_PATCHES", patched_registry)
+    for rel_path, (_kind, content) in files.items():
+        full = target / compat.PREFIX / rel_path
+        full.parent.mkdir(parents=True, exist_ok=True)
+        full.write_text(content, encoding="utf-8")
+
+    manifest = {
+        "extension": "azure-iot-ops",
+        "cloud": "AzureCloud",
+        "testSourceCommit": source,
+        "automationCommit": AUTOMATION,
+    }
+    manifest["testCompatibility"] = compat.compatibility(manifest)
+    receipt = tmp_path / "receipt.json"
+    compat.stage_tests(target, manifest, receipt)
+
+    assert "--manufacturer Contoso" in (target / compat.PREFIX / "edge/adr/conftest.py").read_text(encoding="utf-8")
+    staged_ns_devices = (target / compat.PREFIX / "edge/adr/test_namespace_devices_int.py").read_text(encoding="utf-8")
+    assert staged_ns_devices.count("--manufacturer Contoso") == 1
+    untouched_lifecycle = (
+        "def test_namespace_device_lifecycle_operations():\n"
+        "    result = run(\n"
+        '        f"az iot ops ns device create --name {device_name} "\n'
+        '        f"--instance {instance_name} -g {resource_group}"\n'
+        "    )"
+    )
+    assert untouched_lifecycle in staged_ns_devices
+    if is_v2:
+        assert "--manufacturer Contoso" in (
+            target / compat.PREFIX / "edge/orchestration/test_mgmt_actions_int.py"
+        ).read_text(encoding="utf-8")
+    else:
+        assert 'agent == "metrics-agent"' in (
+            target / compat.PREFIX / "edge/support/create_bundle_int/helpers.py"
+        ).read_text(encoding="utf-8")
+        assert 'agent == "metrics-agent"' in (
+            target / compat.PREFIX / "edge/support/create_bundle_int/test_arcagents_int.py"
+        ).read_text(encoding="utf-8")
+        assert "missing_metrics" in (
+            target / compat.PREFIX / "edge/support/create_bundle_int/test_auto_int.py"
+        ).read_text(encoding="utf-8")
+
+    monkeypatch.setenv("azext_edge_cloud", "AzureCloud")
+    monkeypatch.setenv("AZEXT_OPS_RELEASE_TEST_SOURCE", source)
+    items = [
+        Mock(path=Path("/installed/azext_edge/tests") / path, originalname=name)
+        for path, name in [
+            ("edge/adr/test_namespace_devices_int.py", "test_namespace_device_lifecycle_operations"),
+            ("edge/adr/test_namespace_devices_int.py", "test_generalized_inbound_endpoint_lifecycle"),
+        ]
+    ]
+    plugin.pytest_collection_modifyitems(items)
+    assert items[0].add_marker.call_count == 1
+    assert "PR #941" in items[0].add_marker.call_args.args[0].kwargs["reason"]
+    items[1].add_marker.assert_not_called()
+
+
+def test_source_patches_match_real_frozen_git_blobs_and_tolerate_missing_metrics_agent(adapter):
+    import os
+    import subprocess
+
+    compat = importlib.import_module("release_test_compatibility")
+    for (_cloud, commit), entries in compat.SOURCE_PATCHES.items():
+        check = subprocess.run(
+            ["git", "cat-file", "-e", f"{commit}^{{commit}}"],
+            cwd=compat.ROOT,
+            capture_output=True,
+            check=False,
+        )
+        if check.returncode != 0:
+            pytest.skip(f"Frozen commit {commit} not present in shallow clone.")
+        for entry in entries:
+            blob = subprocess.check_output(
+                ["git", "show", f"{commit}:{compat.PREFIX}{entry['path']}"],
+                cwd=compat.ROOT,
+            )
+            assert hashlib.sha256(blob).hexdigest() == entry["baseSha256"]
+            patched = compat.apply_source_patch(blob.decode("utf-8"), entry["kind"]).decode("utf-8")
+            if entry["kind"] == "optional_arc_metrics_agent_helper":
+                assert "expected_arc_folders" in patched
+                namespace = {
+                    "path": os.path,
+                    "BASE_ZIP_PATH": "root",
+                    "ARC_AGENTS": [("connect-agent", False), ("metrics-agent", False), ("config-agent", True)],
+                }
+                tree = compat.ast.parse(patched)
+                fn_node = next(
+                    item for item in tree.body
+                    if isinstance(item, compat.ast.FunctionDef) and item.name == "_clean_up_folders"
+                )
+                # Verify patched _clean_up_folders Arc folder assertion passes without metrics-agent
+                arc_if = next(
+                    stmt for stmt in fn_node.body
+                    if isinstance(stmt, compat.ast.If) and compat.ast.unparse(stmt.test) == "arc_namespace"
+                )
+                mod = compat.ast.Module(body=[arc_if], type_ignores=[])
+                namespace.update({
+                    "arc_namespace": "azure-arc",
+                    "walk_result": {
+                        "root/azure-arc/arcagents": {"folders": ["connect-agent", "config-agent"], "files": []}
+                    },
+                })
+                exec(compile(mod, "<patched_clean_up_folders>", "exec"), namespace)
+                namespace.update({
+                    "walk_result": {
+                        "root/azure-arc/arcagents": {"folders": ["connect-agent"], "files": []}
+                    },
+                })
+                with pytest.raises(AssertionError, match="Mismatch"):
+                    exec(compile(mod, "<patched_clean_up_folders>", "exec"), namespace)
+            elif entry["kind"] == "optional_arc_metrics_agent_auto_test":
+                assert "missing_metrics" in patched

@@ -248,7 +248,7 @@ def start_cluster(commands, state, output, issuer=None):
     if issuer:
         arguments += ["--kube-apiserver-arg", f"service-account-issuer={issuer}",
                       "--kube-apiserver-arg", "service-account-max-token-expiration=24h"]
-    for attempt in range(2):
+    for attempt in range(4):
         started = time.time()
         commands.run(arguments)
         try:
@@ -269,10 +269,11 @@ def start_cluster(commands, state, output, issuer=None):
                 ["sudo", "-n", "systemctl", "show", unit, "--property=ActiveState", "--value"],
                 accepted_codes=(0, 1),
             ).strip()
-            if attempt or not retryable or status not in {"inactive", "failed"}:
+            if attempt == 3 or not retryable or status not in {"inactive", "failed"}:
                 raise
-            print("Retrying the known K3s cloud-controller-manager startup race once.", flush=True)
-            time.sleep(10)
+            diagnostics.command(["sudo", "-n", "systemctl", "reset-failed", unit], accepted_codes=(0, 1))
+            print(f"Retrying the known K3s cloud-controller-manager startup race ({attempt + 1}/3).", flush=True)
+            time.sleep(5 * (attempt + 1))
     config = directory / "user-config"
     with config.open("w", encoding="utf-8") as stream:
         subprocess.run(["sudo", "-n", "cat", str(directory / "config")], stdout=stream, check=True)

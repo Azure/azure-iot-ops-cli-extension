@@ -247,3 +247,69 @@ def test_runtime_storage_rejects_another_pod_without_saving_its_spec(tmp_path, m
     collector.runtime_storage([pod])
     assert not list(collector.folder.glob("runtime-*.json"))
     assert "container runtime storage" in capsys.readouterr().out
+
+
+def test_finish_never_raises_on_hung_collector_thread_and_captures_secret_sync_evidence(tmp_path, monkeypatch, capsys):
+    collector = diagnostics.HookCollector(tmp_path, tmp_path / "owned", "ops-k3s-owned", "ops-diagnostics-owned-1")
+    hung_thread = Mock()
+    hung_thread.is_alive.return_value = True
+    collector.thread = hung_thread
+
+    secret_sync_item = {
+        "kind": "SecretSync",
+        "metadata": {
+            "name": "aio-opc-ua-broker-client-certificate",
+            "uid": "ss-uid-1",
+            "namespace": diagnostics.NAMESPACE,
+            "generation": 2,
+            "finalizers": ["secretsync.secret-sync.x-k8s.io/finalizer"],
+        },
+        "spec": {
+            "serviceAccountName": "aio-ssc-sa",
+            "secretProviderClassName": "spc-ops-test",
+            "kubernetesSecretType": "Opaque",
+            "objectMapping": [{"sourcePath": "secret-value-never-export"}],
+        },
+        "status": {"conditions": [{"type": "Ready", "status": "False", "message": "sync pending"}]},
+    }
+    ext_pod = {
+        "kind": "Pod",
+        "metadata": {"uid": "ssc-pod-1", "name": "secrets-store-sync-controller-0", "namespace": "azure-secret-store"},
+        "spec": {
+            "containers": [
+                {"name": "manager", "image": "mcr.microsoft.com/ssc:1", "env": [{"value": "secret-env"}]}
+            ]
+        },
+        "status": {"phase": "Running", "containerStatuses": [{"name": "manager", "ready": False, "restartCount": 1}]},
+    }
+
+    def run(arguments, **_kwargs):
+        if "secretsync.secret-sync.x-k8s.io" in arguments:
+            return json.dumps({"items": [secret_sync_item]})
+        if "secretproviderclass.secrets-store.csi.x-k8s.io" in arguments:
+            return json.dumps({"items": []})
+        if "azure-secret-store" in arguments and "pods" in arguments:
+            return json.dumps({"items": [ext_pod]})
+        if "azure-secret-store" in arguments and "logs" in arguments:
+            return "reconciler failed: timeout\ntoken=do-not-export"
+        if "jobs,pods" in arguments or "events" in arguments or "pvc" in arguments or "pods" in arguments:
+            return json.dumps({"items": []})
+        return "ok"
+
+    monkeypatch.setattr(diagnostics, "command", run)
+    monkeypatch.setattr(diagnostics, "journal", Mock(return_value="k3s ok"))
+    collector.finish(failed=True)
+    hung_thread.join.assert_called_once_with(timeout=45)
+    saved_ss = (collector.folder / "secret-sync.json").read_text()
+    assert "aio-opc-ua-broker-client-certificate" in saved_ss
+    assert "spc-ops-test" in saved_ss
+    assert "secret-value-never-export" not in saved_ss
+    saved_ext_pods = (collector.folder / "extension-pods.json").read_text()
+    assert "secrets-store-sync-controller-0" in saved_ext_pods
+    assert "secret-env" not in saved_ext_pods
+    ext_log = (collector.folder / "ext-ssc-pod-1-manager.log").read_text()
+    assert "reconciler failed: timeout" in ext_log
+    assert "do-not-export" not in ext_log
+    output = capsys.readouterr().out
+    assert "collector stop" in output
+    assert "artifact.upload" in output

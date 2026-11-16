@@ -91,9 +91,12 @@ stages:
               matrix: $[ stageDependencies.Prepare.Acquire.outputs['plan.parallelMatrix'] ]
       - stage: TrustBundle
         displayName: Test released trust bundle scenario
-        dependsOn: Prepare
+        dependsOn:
+          - Prepare
+          - Integration
         condition: |-
           and(not(canceled()), eq(dependencies.Prepare.result, 'Succeeded'),
+              in(dependencies.Integration.result, 'Succeeded', 'Failed', 'Skipped'),
               eq(dependencies.Prepare.outputs['Acquire.plan.hasTrustBundle'], 'true'))
         variables:
           candidateArtifact: $[ stageDependencies.Prepare.Acquire.outputs['bundle.artifact'] ]
