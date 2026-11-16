@@ -105,5 +105,6 @@ variables:
 stages:
   - template: templates/release-monitor-stages.yml
     parameters:
+      cloud: ${{ lower(parameters.cloud) }}
       mode: ${{ parameters.mode }}
       scenarioTimeoutMinutes: ${{ parameters.scenarioTimeoutMinutes }}

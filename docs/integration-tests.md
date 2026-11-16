@@ -137,9 +137,13 @@ Cleanup remains limited to the attempt's resources. Stable/preview jobs and
 independent runs can execute in parallel; `parallel: false` still runs tests
 sequentially within each instance.
 
-Already-queued ADO runs retain their frozen code and may still use the fixed names.
-Retire the old environment's Exclusive lock check only after its users have
-completed, or rerun them with the updated fixtures and CLI candidate. Distinct
+Published release-monitor pipelines (`release-monitor*.yml`) test frozen wheels
+that predate `--secret-sync-name` and still create the fixed-name SecretSync
+resources. Release-monitor `TrustBundle` stages therefore keep `maxParallel: 1`,
+and Public Azure runs sharing `ops-cli-int-test-rg` serialize the stage across
+tracks via the `ops-wlif-a386d5ea-ea90-441a-8263-d816368c84a1-ops-cli-int-test-rg`
+environment **Exclusive lock** (`TrustBundleLock`). Retain that environment check
+while any release-monitor track tests a pre-`--secret-sync-name` wheel. Distinct
 resource names do not isolate subscription quotas, throttling, or scheduled cleanup.
 
 Each integration attempt remains responsible for cleaning its own resources.

@@ -29,6 +29,8 @@ BASE_FILES = {
         "5e89d3c4eb721f055dc731b7dd8a4c4596b4aad1a6788b8fde94fc0c6beeb90c",
     "edge/orchestration/resources/registry_endpoint/test_registry_endpoints_int.py":
         "13b4ee051aedcbe09d0e624310b28c7c5f2ebe824d11f8840eb2463c4746cff6",
+    "edge/orchestration/resources/test_schema_int.py":
+        "013709a13ffbd074a49a088d95259b9a7ccabf7e1100360a93e34afc65149ce8",
 }
 OPCUA_PREFIX = "edge/orchestration/resources/connector/opcua/int/"
 REMOVAL_FUNCTION = "assert_ssc_secret_not_exists"

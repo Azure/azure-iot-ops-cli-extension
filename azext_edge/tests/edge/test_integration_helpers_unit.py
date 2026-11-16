@@ -243,3 +243,43 @@ def test_opcua_fixtures_register_cleanup_before_setup_failure(opcua_context, moc
     prepare.return_value.assert_called_once_with()
     vault_name = run.call_args_list[0].args[0].split()[4]
     cleanup.assert_called_once_with(settings, vault_name)
+
+
+@pytest.mark.parametrize("error_msg,should_retry", [
+    ("Schema versions require public network access to be enabled in the associated storage account.", True),
+    ("ERROR: (AuthorizationPermissionMismatch) This request is not authorized to perform this operation.", True),
+    ("ERROR: (BadRequest) Invalid schema format.", False),
+])
+def test_schema_retry_handles_public_network_and_storage_rbac_propagation(mocker, error_msg, should_retry):
+    schema_int = import_module("azext_edge.tests.edge.orchestration.resources.test_schema_int")
+    sleep = mocker.patch.object(schema_int, "sleep")
+    run = mocker.patch.object(
+        schema_int,
+        "run",
+        side_effect=[CLIInternalError(error_msg), CLIInternalError(error_msg), {"name": "1"}],
+    )
+
+    if should_retry:
+        result = schema_int.run_with_public_network_retry("az iot ops schema version show --version 1")
+        assert result == {"name": "1"}
+        assert run.call_count == 3
+        assert sleep.call_count == 2
+    else:
+        with pytest.raises(CLIInternalError, match="Invalid schema format"):
+            schema_int.run_with_public_network_retry("az iot ops schema version show --version 1")
+        assert run.call_count == 1
+        sleep.assert_not_called()
+
+
+def test_schema_retry_raises_when_storage_rbac_propagation_exhausts_budget(mocker):
+    schema_int = import_module("azext_edge.tests.edge.orchestration.resources.test_schema_int")
+    sleep = mocker.patch.object(schema_int, "sleep")
+    mocker.patch.object(
+        schema_int,
+        "run",
+        side_effect=CLIInternalError("ERROR: (AuthorizationPermissionMismatch) Still propagating."),
+    )
+
+    with pytest.raises(CLIInternalError, match="AuthorizationPermissionMismatch"):
+        schema_int.run_with_public_network_retry("az iot ops schema version show --version 1")
+    assert sleep.call_count == schema_int.PUBLIC_NETWORK_MAX_RETRIES - 1

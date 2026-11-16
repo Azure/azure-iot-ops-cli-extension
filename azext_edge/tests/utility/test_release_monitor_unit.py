@@ -43,9 +43,20 @@ def test_health_job_timeout_uses_the_typed_selection_not_a_runtime_variable():
     for stage in stages[:2]:
         configuration = stage["jobs"][0]["parameters"]["configuration"]
         assert configuration["scenarioTimeoutMinutes"] == "${{ parameters.scenarioTimeoutMinutes }}"
+    trust_stage = stages[1]
+    assert trust_stage["stage"] == "TrustBundle"
+    assert trust_stage["lockBehavior"] == "sequential"
+    assert trust_stage["jobs"][0]["parameters"]["maxParallel"] == 1
+    lock_job, = trust_stage["jobs"][1]["${{ if eq(parameters.cloud, 'public') }}"]
+    assert lock_job["deployment"] == "TrustBundleLock"
+    assert lock_job["dependsOn"] == "Scenario"
+    assert lock_job["condition"] == "always()"
+    assert lock_job["environment"] == "ops-wlif-a386d5ea-ea90-441a-8263-d816368c84a1-ops-cli-int-test-rg"
     for path in (ROOT / ".azure-devops").glob("release-monitor*.yml"):
         pipeline = yaml.safe_load(path.read_text())
-        assert pipeline["stages"][0]["parameters"]["scenarioTimeoutMinutes"] == (
+        stage_params = pipeline["stages"][0]["parameters"]
+        assert stage_params["cloud"] == "${{ lower(parameters.cloud) }}"
+        assert stage_params["scenarioTimeoutMinutes"] == (
             "${{ parameters.scenarioTimeoutMinutes }}"
         )
 
@@ -969,3 +980,17 @@ def test_source_patches_match_real_frozen_git_blobs_and_tolerate_missing_metrics
                     exec(compile(mod, "<patched_clean_up_folders>", "exec"), namespace)
             elif entry["kind"] == "optional_arc_metrics_agent_auto_test":
                 assert "missing_metrics" in patched
+
+    check = subprocess.run(
+        ["git", "cat-file", "-e", f"{compat.FAIRFAX_TEST_SOURCE}^{{commit}}"],
+        cwd=compat.ROOT,
+        capture_output=True,
+        check=False,
+    )
+    if check.returncode == 0:
+        for rel_path, expected_sha in compat.BASE_FILES.items():
+            blob = subprocess.check_output(
+                ["git", "show", f"{compat.FAIRFAX_TEST_SOURCE}:{compat.PREFIX}{rel_path}"],
+                cwd=compat.ROOT,
+            )
+            assert hashlib.sha256(blob).hexdigest() == expected_sha
