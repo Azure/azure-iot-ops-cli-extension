@@ -5,8 +5,12 @@
 # ----------------------------------------------------------------------------------------------
 
 
+import ast
 import json
 import re
+import shutil
+import subprocess
+import sys
 from copy import deepcopy
 from enum import Enum
 from random import randint
@@ -26,6 +30,7 @@ from unittest.mock import Mock
 import pytest
 import requests
 import responses
+from azure.core.exceptions import HttpResponseError
 from azure.cli.core.azclierror import (
     AzureResponseError,
     InvalidArgumentValueError,
@@ -71,7 +76,7 @@ from azext_edge.edge.providers.orchestration.work import (
     WorkStepKey,
 )
 from azext_edge.edge.util import assemble_nargs_to_dict
-from azext_edge.edge.util.az_client import DEFAULT_DEVICEREGISTRY_MGMT_API_VERSION
+from azext_edge.edge.util.az_client import DEFAULT_DEVICEREGISTRY_MGMT_API_VERSION, OperationTimeoutError
 
 from ...generators import (
     generate_random_string,
@@ -82,6 +87,400 @@ from .resources.conftest import RequestKPIs, get_request_kpis
 from .test_template_unit import EXPECTED_EXTENSION_RESOURCE_KEYS, EXPECTED_INSTANCE_RESOURCE_KEYS
 
 ZEROED_SUBSCRIPTION = get_zeroed_subscription()
+
+
+@pytest.fixture
+def deployment_wait_manager(mocked_cmd):
+    manager = WorkManager(mocked_cmd)
+    manager._targets = Mock(resource_group_name="rg")
+    return manager
+
+
+@pytest.mark.parametrize("error", [None, HttpResponseError(message="Deployment failed")])
+def test_wait_for_deployment_terminal_result(mocker, deployment_wait_manager, error):
+    poller = Mock()
+    poller.done.return_value = True
+    poller.result.side_effect = error
+    diagnostics = mocker.spy(deployment_wait_manager.resource_client.deployment_operations, "list")
+
+    if error:
+        with pytest.raises(HttpResponseError) as exc:
+            deployment_wait_manager._wait_for_deployment(poller, "deployment")
+        assert exc.value is error
+    else:
+        assert deployment_wait_manager._wait_for_deployment(poller, "deployment") == poller.result.return_value
+    diagnostics.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "page_count,stop_after_first_page,elapsed",
+    [(2, False, 2), (2, True, 30), (1, False, 30), (1, False, 31), (2, False, 30), (2, False, 31)],
+)
+def test_wait_for_deployment_timeout_diagnostics(
+    mocker, mocked_responses, deployment_wait_manager, page_count, stop_after_first_page, elapsed,
+):
+    timeout = OperationTimeoutError("Timed out after 3600 seconds; operation not canceled.")
+    diagnostics = mocker.spy(deployment_wait_manager.resource_client.deployment_operations, "list")
+    mocker.patch(
+        "azext_edge.edge.providers.orchestration.work.wait_for_terminal_state", side_effect=timeout,
+    )
+    mocker.patch(
+        "azext_edge.edge.providers.orchestration.work.monotonic",
+        side_effect=[0, elapsed] if stop_after_first_page or page_count == 1 else [0, 1, elapsed],
+    )
+    url = (
+        f"{ARM_ENDPOINT.rstrip('/')}/subscriptions/{ZEROED_SUBSCRIPTION}/resourcegroups/rg"
+        "/deployments/deployment/operations"
+    )
+    next_link = f"{url}?api-version=2024-03-01&$skiptoken=next"
+    operations = [
+        {"properties": {"provisioningState": state, "targetResource": {"id": f"/resources/{state}"}}}
+        for state in ["Running", "Accepted", "sUcCeEdEd", "Failed", "Canceled", "Cancelled"]
+    ]
+    operations.extend([{}, {"properties": {"provisioningState": "Running"}}])
+    payload = {"value": operations}
+    if page_count == 2:
+        payload["nextLink"] = next_link
+    mocked_responses.add(responses.GET, url, json=payload)
+    if page_count == 2 and not stop_after_first_page:
+        mocked_responses.add(
+            responses.GET, next_link,
+            json={"value": [
+                {"properties": {"targetResource": {"id": "/resources/statusless"}}},
+                {"properties": {
+                    "provisioningState": "Creating",
+                    "targetResource": {
+                        "resourceType": "Microsoft.IoTOperations/instances/akriConnectorTemplates",
+                        "resourceName": "instance/opcua",
+                    },
+                }},
+            ]},
+            match=[responses.matchers.query_param_matcher({"api-version": "2024-03-01", "$skiptoken": "next"})],
+        )
+
+    with pytest.raises(OperationTimeoutError) as exc:
+        deployment_wait_manager._wait_for_deployment(Mock(), "deployment")
+
+    message = str(exc.value)
+    assert exc.value.__cause__ is timeout
+    assert "3600 seconds" in message
+    assert "/resources/Running: Running" in message
+    assert "/resources/Accepted: Accepted" in message
+    for state in ["sUcCeEdEd", "Failed", "Canceled", "Cancelled"]:
+        assert f"/resources/{state}" not in message
+    arguments = f'--name "deployment" --resource-group "rg" --subscription "{ZEROED_SUBSCRIPTION}"'
+    assert f"az deployment group show {arguments}" in message
+    assert f"az deployment operation group list {arguments}" in message
+    assert "has not been canceled" in message
+    diagnostics.assert_called_once_with(
+        resource_group_name="rg", deployment_name="deployment", top=100,
+        retry_total=0, connection_timeout=5, read_timeout=5,
+    )
+    if stop_after_first_page:
+        assert "may be incomplete" in message
+        assert len(mocked_responses.calls) == 1
+    else:
+        assert "may be incomplete" not in message
+        assert len(mocked_responses.calls) == page_count
+        if page_count == 2:
+            assert "/resources/statusless: Unknown" in message
+            assert "Microsoft.IoTOperations/instances/akriConnectorTemplates/instance/opcua: Creating" in message
+
+
+@pytest.mark.parametrize("failure", [403, 429, "connection"])
+def test_wait_for_deployment_timeout_diagnostic_failure(
+    mocker, mocked_responses, deployment_wait_manager, failure,
+):
+    mocker.patch(
+        "azext_edge.edge.providers.orchestration.work.wait_for_terminal_state",
+        side_effect=OperationTimeoutError("Timed out after 3600 seconds."),
+    )
+    url = (
+        f"{ARM_ENDPOINT.rstrip('/')}/subscriptions/{ZEROED_SUBSCRIPTION}/resourcegroups/rg"
+        "/deployments/deployment/operations"
+    )
+    if failure == "connection":
+        mocked_responses.add(responses.GET, url, body=requests.exceptions.ConnectionError("Lookup unavailable"))
+    else:
+        mocked_responses.add(
+            responses.GET, url, status=failure,
+            json={"error": {"code": "LookupUnavailable", "message": "Lookup unavailable"}},
+        )
+
+    with pytest.raises(OperationTimeoutError) as exc:
+        deployment_wait_manager._wait_for_deployment(Mock(), "deployment")
+
+    assert "3600 seconds" in str(exc.value)
+    assert "Unable to retrieve deployment operations" in str(exc.value)
+    assert "Lookup unavailable" in str(exc.value)
+    assert "az deployment operation group list" in str(exc.value)
+    assert len(mocked_responses.calls) == 1
+
+
+@pytest.mark.parametrize("outcome", ["empty", "terminal", "later-page-error"])
+def test_wait_for_deployment_timeout_empty_or_partial_diagnostics(
+    mocker, mocked_responses, deployment_wait_manager, outcome,
+):
+    mocker.patch(
+        "azext_edge.edge.providers.orchestration.work.wait_for_terminal_state",
+        side_effect=OperationTimeoutError("Timed out after 3600 seconds."),
+    )
+    url = (
+        f"{ARM_ENDPOINT.rstrip('/')}/subscriptions/{ZEROED_SUBSCRIPTION}/resourcegroups/rg"
+        "/deployments/deployment/operations"
+    )
+    state = "Succeeded" if outcome == "terminal" else "Running"
+    payload = {"value": [] if outcome == "empty" else [{"properties": {
+        "provisioningState": state, "targetResource": {"id": "/resources/template"},
+    }}]}
+    if outcome == "later-page-error":
+        next_link = f"{url}?api-version=2024-03-01&$skiptoken=next"
+        payload["nextLink"] = next_link
+        mocked_responses.add(
+            responses.GET, next_link, status=403,
+            json={"error": {"code": "AuthorizationFailed", "message": "Cannot read next page"}},
+            match=[responses.matchers.query_param_matcher({"api-version": "2024-03-01", "$skiptoken": "next"})],
+        )
+    mocked_responses.add(
+        responses.GET, url, json=payload,
+        match=[responses.matchers.query_param_matcher({"api-version": "2024-03-01", "$top": "100"})],
+    )
+
+    with pytest.raises(OperationTimeoutError) as exc:
+        deployment_wait_manager._wait_for_deployment(Mock(), "deployment")
+
+    message = str(exc.value)
+    if outcome == "later-page-error":
+        assert "/resources/template: Running" in message
+        assert "Unable to retrieve deployment operations" in message
+        assert "Cannot read next page" in message
+    else:
+        assert "No pending resource operations were found" in message
+        assert "/resources/template" not in message
+    assert "az deployment operation group list" in message
+
+
+@pytest.mark.parametrize("failure_page", [1, 2])
+@pytest.mark.parametrize("content_type", ["application/json", "text/html", "text/plain"])
+def test_wait_for_deployment_timeout_malformed_response(
+    mocker, mocked_responses, deployment_wait_manager, failure_page, content_type,
+):
+    timeout = OperationTimeoutError("Timed out after 3600 seconds.")
+    mocker.patch(
+        "azext_edge.edge.providers.orchestration.work.wait_for_terminal_state", side_effect=timeout,
+    )
+    url = (
+        f"{ARM_ENDPOINT.rstrip('/')}/subscriptions/{ZEROED_SUBSCRIPTION}/resourcegroups/rg"
+        "/deployments/deployment/operations"
+    )
+    query = {"api-version": "2024-03-01", "$top": "100"}
+    if failure_page == 2:
+        next_link = f"{url}?api-version=2024-03-01&$skiptoken=next"
+        mocked_responses.add(
+            responses.GET, url,
+            json={"value": [{"properties": {
+                "provisioningState": "Running", "targetResource": {"id": "/resources/template"},
+            }}], "nextLink": next_link},
+            match=[responses.matchers.query_param_matcher(query)],
+        )
+        url = next_link
+        query = {"api-version": "2024-03-01", "$skiptoken": "next"}
+    mocked_responses.add(
+        responses.GET, url, status=200, body="<html>Gateway error</html>", content_type=content_type,
+        match=[responses.matchers.query_param_matcher(query)],
+    )
+
+    with pytest.raises(OperationTimeoutError) as exc:
+        deployment_wait_manager._wait_for_deployment(Mock(), "deployment")
+
+    message = str(exc.value)
+    assert exc.value.__cause__ is timeout
+    assert "Timed out after 3600 seconds." in message
+    assert "Unable to retrieve deployment operations:" in message
+    assert ("/resources/template: Running" in message) == (failure_page == 2)
+    arguments = f'--name "deployment" --resource-group "rg" --subscription "{ZEROED_SUBSCRIPTION}"'
+    assert f"az deployment group show {arguments}" in message
+    assert f"az deployment operation group list {arguments}" in message
+    assert "The deployment has not been canceled." in message
+    assert len(mocked_responses.calls) == failure_page
+
+
+def test_deployment_what_if_timeout(mocker, deployment_wait_manager):
+    mocker.patch("azext_edge.edge.util.az_client.POLL_RETRIES", 1)
+    mocker.patch("azext_edge.edge.util.az_client.sleep")
+    poller = Mock()
+    poller.done.return_value = False
+    deployment_wait_manager._headers = {}
+    mocker.patch.object(
+        deployment_wait_manager.resource_client.deployments, "begin_what_if", return_value=poller,
+    )
+    writes = mocker.spy(deployment_wait_manager.resource_client.deployments, "begin_create_or_update")
+    diagnostics = mocker.spy(deployment_wait_manager.resource_client.deployment_operations, "list")
+
+    with pytest.raises(OperationTimeoutError):
+        deployment_wait_manager._deploy_template({}, {}, "deployment", what_if=True)
+
+    poller.result.assert_not_called()
+    writes.assert_not_called()
+    diagnostics.assert_not_called()
+
+
+@pytest.mark.parametrize("failure_page", [1, 2])
+@pytest.mark.parametrize("payload", [
+    {},
+    {"value": None},
+    {"value": 1},
+    {"value": [None]},
+    {"value": ["not-an-operation"]},
+    {"value": [{"properties": []}]},
+    {"value": [{"properties": {"provisioningState": 42, "targetResource": {"id": "/bad"}}}]},
+    {"value": [{"properties": {"provisioningState": "Running", "targetResource": "not-an-object"}}]},
+])
+def test_wait_for_deployment_timeout_invalid_shape(
+    mocker, mocked_responses, deployment_wait_manager, failure_page, payload,
+):
+    timeout = OperationTimeoutError("Timed out after 3600 seconds.")
+    mocker.patch(
+        "azext_edge.edge.providers.orchestration.work.wait_for_terminal_state", side_effect=timeout,
+    )
+    url = (
+        f"{ARM_ENDPOINT.rstrip('/')}/subscriptions/{ZEROED_SUBSCRIPTION}/resourcegroups/rg"
+        "/deployments/deployment/operations"
+    )
+    query = {"api-version": "2024-03-01", "$top": "100"}
+    if failure_page == 2:
+        next_link = f"{url}?api-version=2024-03-01&$skiptoken=next"
+        mocked_responses.add(
+            responses.GET, url,
+            json={"value": [{"properties": {
+                "provisioningState": "Running", "targetResource": {"id": "/resources/retained"},
+            }}], "nextLink": next_link},
+            match=[responses.matchers.query_param_matcher(query)],
+        )
+        url = next_link
+        query = {"api-version": "2024-03-01", "$skiptoken": "next"}
+    mocked_responses.add(
+        responses.GET, url, json=payload, match=[responses.matchers.query_param_matcher(query)],
+    )
+
+    with pytest.raises(OperationTimeoutError) as exc:
+        deployment_wait_manager._wait_for_deployment(Mock(), "deployment")
+
+    message = str(exc.value)
+    assert exc.value.__cause__ is timeout
+    assert "Timed out after 3600 seconds." in message
+    assert "Unable to retrieve deployment operations:" in message
+    assert ("/resources/retained: Running" in message) == (failure_page == 2)
+    assert "az deployment group show" in message
+    assert "az deployment operation group list" in message
+    assert "The deployment has not been canceled." in message
+
+
+@pytest.mark.parametrize("shell", ["bash", "cmd", "pwsh"])
+def test_wait_for_deployment_inspection_command_quoting(mocker, deployment_wait_manager, shell):
+    executable = shutil.which(shell)
+    if not executable:
+        pytest.skip(f"{shell} is not available")
+    deployment_wait_manager._targets.resource_group_name = "rg(prod)"
+    mocker.patch(
+        "azext_edge.edge.providers.orchestration.work.wait_for_terminal_state",
+        side_effect=OperationTimeoutError("Timed out."),
+    )
+    mocker.patch.object(
+        deployment_wait_manager.resource_client.deployment_operations, "list",
+        side_effect=HttpResponseError("Lookup failed"),
+    )
+    with pytest.raises(OperationTimeoutError) as exc:
+        deployment_wait_manager._wait_for_deployment(Mock(), "deployment")
+
+    for line in str(exc.value).splitlines():
+        if not line.startswith("  az deployment "):
+            continue
+        arguments = line[line.index("--name"):]
+        command = f'"{sys.executable}" -c "import sys; print(repr(sys.argv[1:]))" {arguments}'
+        if shell == "bash":
+            invocation = [executable, "-c", command]
+        elif shell == "cmd":
+            # A list would apply C-runtime escaping, which cmd does not understand.
+            invocation = command
+        else:
+            invocation = [executable, "-NoProfile", "-NonInteractive", "-Command", f"& {command}"]
+        result = subprocess.run(
+            invocation, shell=shell == "cmd", executable=executable if shell == "cmd" else None,
+            check=True, capture_output=True, text=True, timeout=15,
+        )
+        assert ast.literal_eval(result.stdout.strip()) == [
+            "--name", "deployment", "--resource-group", "rg(prod)", "--subscription", ZEROED_SUBSCRIPTION,
+        ]
+
+
+@pytest.mark.parametrize("phase", ["enablement", "extension", "instance", "resources"])
+@pytest.mark.parametrize("no_progress", [False, True])
+def test_init_create_timeout_stops_workflow(
+    mocker, mocked_cmd, mocked_responses, mocked_sleep, phase, no_progress,
+):
+    from azext_edge.edge.commands_edge import create_instance, init
+
+    scenario = build_target_scenario(no_preflight=True, no_progress=no_progress)
+    action = "init" if phase == "enablement" else "create"
+    servgen = ServiceGenerator(
+        scenario=scenario, mocked_responses=mocked_responses, action=action,
+        omit_http_methods=frozenset([responses.PUT]) if phase == "enablement" else frozenset(),
+    )
+    original_deploy = WorkManager._deploy_template
+    pending_poller = Mock()
+    pending_poller.done.return_value = False
+
+    def deploy(manager, content, parameters, deployment_name, what_if=False):
+        if not what_if and deployment_name.startswith(f"aziotops.{phase}."):
+            return pending_poller
+        return original_deploy(manager, content, parameters, deployment_name, what_if)
+
+    mocker.patch.object(WorkManager, "_deploy_template", autospec=True, side_effect=deploy)
+    mocker.patch("azext_edge.edge.util.az_client.POLL_RETRIES", 1)
+    complete_step = mocker.spy(WorkManager, "_complete_step")
+    stop_display = mocker.spy(WorkManager, "_stop_display")
+    user_result = mocker.spy(WorkManager, "_get_user_result")
+    mocked_responses.add(
+        responses.GET,
+        re.compile(r".*/deployments/aziotops\." + phase + r"\.[^/]+/operations.*"),
+        json={"value": [{"properties": {
+            "provisioningState": "Running",
+            "targetResource": {"id": "/resources/stuck-opcua-template"},
+        }}]},
+    )
+    arguments = {
+        "cmd": mocked_cmd,
+        "cluster_name": scenario["cluster"]["name"],
+        "resource_group_name": scenario["resourceGroup"],
+        "no_preflight": True,
+        "no_progress": no_progress,
+    }
+    if action == "create":
+        arguments.update({
+            "instance_name": scenario["instance"]["name"],
+            "schema_registry_resource_id": scenario["schemaRegistry"]["id"],
+            "adr_namespace_resource_id": scenario["adrNamespace"]["id"],
+        })
+
+    with pytest.raises(OperationTimeoutError) as exc:
+        (init if action == "init" else create_instance)(**arguments)
+
+    assert f"Deployment: aziotops.{phase}." in str(exc.value)
+    assert "/resources/stuck-opcua-template: Running" in str(exc.value)
+    pending_poller.result.assert_not_called()
+    user_result.assert_not_called()
+    stop_display.assert_called_once()
+    manager = stop_display.call_args.args[0]
+    if not no_progress:
+        assert not manager._live.is_started
+    completed = [call.kwargs["completed_step"] for call in complete_step.call_args_list]
+    assert WorkStepKey.DEPLOY_RESOURCES not in completed
+    if phase in {"extension", "instance"}:
+        assert WorkStepKey.DEPLOY_INSTANCE not in completed
+    if phase == "enablement":
+        assert WorkStepKey.DEPLOY_ENABLEMENT not in completed
+    assert not servgen.call_map[CallKey.PUT_SCHEMA_REGISTRY_RA]
 
 
 @pytest.mark.parametrize(
