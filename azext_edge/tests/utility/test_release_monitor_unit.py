@@ -7,8 +7,12 @@
 from copy import deepcopy
 import hashlib
 import importlib
+import io
 import json
 from pathlib import Path
+import shutil
+import subprocess
+import tarfile
 from unittest.mock import Mock
 from zipfile import ZipFile
 
@@ -78,10 +82,20 @@ def test_branch_build_retry_reuses_original_bytes_and_rejects_tampering(branch, 
     template = source / "source" / selected["runtime"]["template"]
     template.parent.mkdir(parents=True)
     template.write_text("P = {'VERSIONS': {'iotOperations': '1.5.45'}, 'TRAINS': {'iotOperations': 'stable'}}\n")
+    compat = importlib.import_module("release_test_compatibility")
+    scenarios = source / "source/.github/test-scenarios.yml"
+    scenarios.parent.mkdir(parents=True)
+    scenarios.write_text("scenarios: []\n")
+    tests = product / "tests/conftest.py"
+    tests.parent.mkdir()
+    tests.write_text("# selected tests\n")
     monitor.write_json(source / "source.json", {
         "commit": SOURCE, "files": monitor.source_files(source / "source"),
     })
     selected["sourceSha256"] = hashlib.sha256((source / "source.json").read_bytes()).hexdigest()
+    selected["testCompatibility"] = compat.source_compatibility(
+        selected, source / "source", monitor.source_files(source / "source"),
+    )
     monitor.write_json(source / "manifest.json", selected)
     built = tmp_path / "history/branch-wheel-1-1"
     mocker.patch.object(branch.shutil, "copytree", wraps=branch.shutil.copytree)
@@ -93,7 +107,8 @@ def test_branch_build_retry_reuses_original_bytes_and_rejects_tampering(branch, 
         build_calls.append(arguments)
         with ZipFile(built / "azure_iot_ops-2.12.0b1-py3-none-any.whl", "w") as archive:
             for path in product.rglob("*.py"):
-                archive.write(path, path.relative_to(source / "source"))
+                if "tests" not in path.relative_to(product).parts:
+                    archive.write(path, path.relative_to(source / "source"))
             archive.writestr(
                 "azure_iot_ops-2.12.0b1.dist-info/METADATA", "Name: azure-iot-ops\nVersion: 2.12.0b1\n",
             )
@@ -590,7 +605,9 @@ def test_definition_generation_cannot_enable_runs_or_copy_secrets(monitor):
         preview = item["variables"]["MonitorTrack"]["value"] == "preview"
         assert item["queueStatus"] == "disabled" and item["triggers"] == []
         assert "Secret" not in item["variables"]
-        assert item["repository"]["properties"] == {"connectedServiceId": "github-connection"}
+        assert item["repository"]["properties"] == {
+            "connectedServiceId": "github-connection", "reportBuildStatus": "false",
+        }
         assert all(not value["allowOverride"] for value in item["variables"].values())
         pipeline = yaml.safe_load((ROOT / item["process"]["yamlFilename"]).read_text(encoding="utf-8"))
         parameters = {parameter["name"]: parameter for parameter in pipeline["parameters"]}
@@ -896,10 +913,17 @@ def test_frozen_certificate_tests_get_only_the_reviewed_read_wait(adapter, monke
     ("AzureCloud", "40ca69187cb8a04e1ea92f5d759c3f4a0a1c868a", False),
     ("AzureUSGovernment", "c" * 40, False),
 ])
-def test_only_proven_unavailable_fairfax_cases_are_explicitly_skipped(adapter, monkeypatch, cloud, source, excluded):
+def test_only_proven_unavailable_fairfax_cases_are_explicitly_skipped(
+        adapter, monkeypatch, tmp_path, cloud, source, excluded):
     plugin = importlib.import_module("release_monitor_pytest")
     monkeypatch.setenv("azext_edge_cloud", cloud)
     monkeypatch.setenv("AZEXT_OPS_RELEASE_TEST_SOURCE", source)
+    receipt = tmp_path / "receipt.json"
+    receipt.write_text(json.dumps({
+        "schema": 1, "baseTestSourceCommit": source, "exclusions": plugin.exclusions_for(cloud, source),
+    }))
+    monkeypatch.setenv(plugin.TEST_COMPATIBILITY_ENV, str(receipt))
+    monkeypatch.setenv("AZEXT_OPS_TEST_KIND", "release")
     items = [
         Mock(path=Path("/installed/azext_edge/tests") / path, originalname=name)
         for path, name in [
@@ -914,6 +938,214 @@ def test_only_proven_unavailable_fairfax_cases_are_explicitly_skipped(adapter, m
         assert "2026-04-01" in items[0].add_marker.call_args.args[0].kwargs["reason"]
     items[1].add_marker.assert_not_called()
     items[2].add_marker.assert_not_called()
+
+
+def test_monitor_pytest_requires_staged_receipt_instead_of_commit_lookup(adapter, monkeypatch):
+    plugin = importlib.import_module("release_monitor_pytest")
+    monkeypatch.delenv(plugin.TEST_COMPATIBILITY_ENV, raising=False)
+    monkeypatch.setenv("azext_edge_cloud", "AzureUSGovernment")
+    monkeypatch.setenv("AZEXT_OPS_RELEASE_TEST_SOURCE", plugin.FAIRFAX_TEST_SOURCE)
+    with pytest.raises(ValueError, match="staged.*receipt"):
+        plugin.pytest_collection_modifyitems([])
+
+
+def test_release_pytest_rejects_receipt_exclusions_outside_exact_release_rule(adapter, monkeypatch, tmp_path):
+    plugin = importlib.import_module("release_monitor_pytest")
+    receipt = tmp_path / "receipt.json"
+    receipt.write_text(json.dumps({
+        "schema": 1, "baseTestSourceCommit": SOURCE, "exclusions": plugin.FAIRFAX_EXCLUSIONS,
+    }))
+    monkeypatch.setenv(plugin.TEST_COMPATIBILITY_ENV, str(receipt))
+    monkeypatch.setenv("AZEXT_OPS_TEST_KIND", "release")
+    monkeypatch.setenv("azext_edge_cloud", "AzureUSGovernment")
+    monkeypatch.setenv("AZEXT_OPS_RELEASE_TEST_SOURCE", SOURCE)
+    with pytest.raises(ValueError, match="reviewed release"):
+        plugin.pytest_collection_modifyitems([])
+
+
+@pytest.fixture
+def branch_compatibility_source(adapter, monkeypatch, tmp_path):
+    compat = importlib.import_module("release_test_compatibility")
+    if subprocess.run(["git", "cat-file", "-e", compat.FAIRFAX_TEST_SOURCE], cwd=ROOT, capture_output=True,
+                      check=False).returncode:
+        pytest.skip("Reviewed compatibility baseline is unavailable in this shallow checkout.")
+    source = tmp_path / "source"
+    archived = subprocess.check_output([
+        "git", "archive", compat.FAIRFAX_TEST_SOURCE,
+        "azext_edge/tests", ".github/test-scenarios.yml", "azext_edge/edge/util/az_client.py",
+    ], cwd=ROOT)
+    with tarfile.open(fileobj=io.BytesIO(archived)) as archive:
+        for item in archive:
+            if item.isfile() and not item.name.endswith("_unit.py"):
+                destination = source / item.name
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                destination.write_bytes(archive.extractfile(item).read())
+    (source / "azext_edge/__init__.py").write_bytes(b"unchanged product\n")
+    monkeypatch.setenv(compat.TEST_COMPATIBILITY_ENV, "")
+    monkeypatch.setenv("AZEXT_OPS_TEST_KIND", "")
+    monkeypatch.setenv("BUILD_SOURCEVERSION", AUTOMATION)
+    monkeypatch.setenv("AZEXT_OPS_RELEASE_TEST_SOURCE", SOURCE)
+    monkeypatch.setenv("azext_edge_cloud", "AzureUSGovernment")
+    manifest = {
+        "extension": "azure-iot-ops", "kind": "branch", "cloud": "AzureUSGovernment",
+        "testSourceCommit": SOURCE, "automationCommit": AUTOMATION, "sourceSha256": "d" * 64,
+    }
+    return compat, source, manifest
+
+
+@pytest.mark.parametrize("change", ["none", "one-fixture", "fixed-fixtures", "unit-only", "scenario"])
+@pytest.mark.parametrize("cloud", ["AzureCloud", "AzureUSGovernment"])
+def test_branch_fairfax_compatibility_uses_reviewed_bytes_not_whole_commit(
+        branch_compatibility_source, monitor, monkeypatch, tmp_path, change, cloud):
+    compat, source, manifest = branch_compatibility_source
+    manifest["cloud"] = cloud
+    monkeypatch.setenv("azext_edge_cloud", cloud)
+    if change == "fixed-fixtures":
+        for name in [*compat.BASE_FILES, *compat.REMOVAL_FILES]:
+            (source / compat.PREFIX / name).write_bytes((ROOT / compat.PREFIX / name).read_bytes())
+    elif change == "one-fixture":
+        path = source / compat.PREFIX / next(iter(compat.BASE_FILES))
+        path.write_text(path.read_text() + "\n# source-owned fixture change\n")
+    elif change == "unit-only":
+        (source / compat.PREFIX / "test_new_unit.py").write_text("# unrelated unit tests\n")
+    elif change == "scenario":
+        path = source / ".github/test-scenarios.yml"
+        path.write_text(path.read_text() + "\n# selected scenario change\n")
+    original = monitor.source_files(source)
+    manifest["testCompatibility"] = compat.source_compatibility(manifest, source, original)
+    plan = manifest["testCompatibility"]
+    tier_a = change in {"none", "unit-only"}
+    fairfax = cloud == "AzureUSGovernment"
+    if tier_a:
+        assert plan["baseTestSourceCommit"] == compat.FAIRFAX_TEST_SOURCE != SOURCE
+        assert plan["sourceTreeSha256"] == compat.REVIEWED_TEST_TREE
+        assert len(plan["files"]) == (4 if fairfax else 0)
+        assert len(plan["secretSyncRemoval"]["files"]) == 4
+    elif fairfax:
+        assert plan["files"] == [] and plan["secretSyncRemoval"] is None
+        assert plan["sourceTreeSha256"] != compat.REVIEWED_TEST_TREE
+    else:
+        assert plan is None
+    target = tmp_path / "installed"
+    shutil.copytree(source, target)
+    receipt = tmp_path / "compatibility.json"
+    compat.stage_tests(target, manifest, receipt)
+    assert json.loads(receipt.read_text()) == plan
+    assert monitor.source_files(source) == original
+    assert (target / "azext_edge/__init__.py").read_bytes() == b"unchanged product\n"
+    expected_changes = {
+        item["path"] for item in (plan or {}).get("files", [])
+        + ((plan or {}).get("secretSyncRemoval") or {"files": []})["files"]
+    }
+    assert {name for name, value in monitor.source_files(target).items() if original[name] != value} == expected_changes
+    plugin = importlib.import_module("release_monitor_pytest")
+    monkeypatch.setattr(plugin, "__file__", str(target / "azext_edge/tests/_release_monitor.py"))
+    items = [
+        Mock(path=target / compat.PREFIX / path, originalname=name)
+        for path, name in (entry.split("::") for entry in compat.FAIRFAX_EXCLUSIONS)
+    ]
+    unaffected = Mock(path=target / compat.PREFIX / "edge/adr/test_namespaces_int.py",
+                      originalname="test_namespace_lifecycle")
+    plugin.pytest_collection_modifyitems([*items, unaffected])
+    assert all(item.add_marker.call_count == int(fairfax) for item in items)
+    unaffected.add_marker.assert_not_called()
+
+
+@pytest.mark.parametrize("drift", ["api", "missing-api", "excluded-file"])
+def test_branch_fairfax_rejects_unknown_api_or_test_drift_before_patching(
+        branch_compatibility_source, monitor, drift):
+    compat, source, manifest = branch_compatibility_source
+    api = source / "azext_edge/edge/util/az_client.py"
+    if drift == "api":
+        api.write_text(api.read_text().replace(
+            "DEFAULT_DEVICEREGISTRY_MGMT_API_VERSION = DeviceRegistryMgmtApiVersion.V20260401",
+            "DEFAULT_DEVICEREGISTRY_MGMT_API_VERSION = '2027-01-01'",
+        ))
+    elif drift == "missing-api":
+        api.unlink()
+    else:
+        path = source / next(iter(compat.FAIRFAX_EXCLUSION_FILES))
+        path.write_text(path.read_text() + "\n# revised exclusion case\n")
+    with pytest.raises(ValueError, match="re-review"):
+        compat.source_compatibility(manifest, source, monitor.source_files(source))
+
+
+@pytest.mark.parametrize("tamper", ["source", "receipt", "installed-exclusion", "missing"])
+def test_branch_fairfax_rechecks_proof_before_patching_and_skipping(
+        branch_compatibility_source, monitor, monkeypatch, tmp_path, tamper):
+    compat, source, manifest = branch_compatibility_source
+    manifest["testCompatibility"] = compat.source_compatibility(manifest, source, monitor.source_files(source))
+    receipt = tmp_path / "compatibility.json"
+    if tamper in {"source", "missing"}:
+        path = source / next(iter(compat.FAIRFAX_EXCLUSION_FILES))
+        if tamper == "source":
+            path.write_bytes(b"unreviewed tests\n")
+        elif tamper == "missing":
+            path.unlink()
+        with pytest.raises(ValueError):
+            compat.stage_tests(source, manifest, receipt)
+        assert not receipt.exists()
+        return
+    compat.stage_tests(source, manifest, receipt)
+    if tamper == "receipt":
+        plan = json.loads(receipt.read_text())
+        plan["exclusions"]["edge/adr/test_namespaces_int.py::test_namespace_lifecycle"] = "unreviewed skip"
+        receipt.write_text(json.dumps(plan))
+    else:
+        (source / next(iter(compat.FAIRFAX_EXCLUSION_FILES))).write_text("unreviewed skipped test\n")
+    plugin = importlib.import_module("release_monitor_pytest")
+    monkeypatch.setattr(plugin, "__file__", str(source / "azext_edge/tests/_release_monitor.py"))
+    item = Mock(path=source / compat.PREFIX / "edge/adr/test_asset_lifecycle_int.py",
+                originalname="test_asset_lifecycle")
+    with pytest.raises(ValueError, match="exclusions"):
+        plugin.pytest_collection_modifyitems([item])
+    item.add_marker.assert_not_called()
+
+
+def test_branch_compatibility_never_targets_product_bytes(branch_compatibility_source, monitor, tmp_path):
+    compat, source, manifest = branch_compatibility_source
+    manifest["testCompatibility"] = compat.source_compatibility(manifest, source, monitor.source_files(source))
+    manifest["testCompatibility"]["files"] = [{
+        "path": "azext_edge/__init__.py", "baseSha256": compat.digest(source / "azext_edge/__init__.py"),
+        "sha256": "a" * 64,
+    }]
+    with pytest.raises(ValueError, match="never product"):
+        compat.stage_tests(source, manifest, tmp_path / "receipt.json")
+    assert (source / "azext_edge/__init__.py").read_bytes() == b"unchanged product\n"
+
+
+@pytest.mark.parametrize("tamper", [None, "plan", "source"])
+def test_branch_acquisition_binds_compatibility_to_its_frozen_source_inventory(
+        branch_compatibility_source, branch, monitor, mocker, tmp_path, tamper):
+    compat, source, _ = branch_compatibility_source
+    manifest = branch_selection(branch, monitor, mocker, tmp_path, cloud="fairfax")
+    assert "testCompatibility" not in manifest
+
+    def checkout(arguments, **_):
+        destination = Path(arguments[2])
+        if arguments[3] == "init":
+            (destination / ".git").mkdir()
+        if arguments[3] == "checkout":
+            shutil.copytree(source, destination, dirs_exist_ok=True)
+
+    mocker.patch.object(branch.subprocess, "run", side_effect=checkout)
+    mocker.patch.object(branch.subprocess, "check_output", return_value=SOURCE + "\n")
+    bundle = tmp_path / "bundle"
+    branch.acquire(manifest, bundle)
+    acquired = monitor.verify_bundle(bundle, require_wheel=False)
+    plan = acquired["testCompatibility"]
+    assert plan["sourceTreeSha256"] == compat.REVIEWED_TEST_TREE
+    assert plan["baseTestSourceCommit"] == compat.FAIRFAX_TEST_SOURCE != SOURCE
+    assert plan["exclusions"] == compat.FAIRFAX_EXCLUSIONS
+    if tamper == "plan":
+        acquired["testCompatibility"]["files"] = []
+        monitor.write_json(bundle / "manifest.json", acquired)
+    elif tamper == "source":
+        path = bundle / "source" / compat.PREFIX / next(iter(compat.BASE_FILES))
+        path.write_text(path.read_text() + "\n# bundle drift\n")
+    if tamper:
+        with pytest.raises(ValueError, match="source|Source"):
+            monitor.verify_bundle(bundle, require_wheel=False)
 
 
 @pytest.mark.parametrize("source", [

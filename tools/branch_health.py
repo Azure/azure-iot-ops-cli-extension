@@ -46,9 +46,8 @@ def validate_manifest(manifest, **expected):
         if expected.get(key) is not None and manifest.get(field) != expected[key]:
             raise ValueError(f"Branch Health differs from the requested {field}.")
     monitor.commit(manifest["automationCommit"])
-    from release_test_compatibility import compatibility
-    if manifest.get("testCompatibility") != compatibility(manifest):
-        raise ValueError("Source test compatibility differs from the frozen automation manifest.")
+    from release_test_compatibility import validate_source_compatibility
+    validate_source_compatibility(manifest)
     source = manifest["source"]
     if (source["branch"] != BRANCH or monitor.commit(source["commit"]) != monitor.commit(manifest["testSourceCommit"])
             or source["version"] != str(Version(source["version"]))):
@@ -108,10 +107,6 @@ def resolve(history, cloud, track, automation, attempt):
         "runtime": runtime, "runtimes": {TRACKS[(cloud, track)]: runtime},
         "wheel": None, "blockers": [], "releaseQualified": False,
     }
-    from release_test_compatibility import compatibility
-    plan = compatibility(manifest)
-    if plan is not None:
-        manifest["testCompatibility"] = plan
     return validate_manifest(manifest)
 
 
@@ -133,9 +128,15 @@ def acquire(manifest, output):
         raise ValueError("Downloaded source is not the selected dev commit.")
     # Keep only selected repository bytes in the bundle; no agent-local Git metadata.
     shutil.rmtree(source / ".git")
-    monitor.write_json(output / "source.json", {"commit": actual, "files": monitor.source_files(source)})
+    files = monitor.source_files(source)
+    monitor.write_json(output / "source.json", {"commit": actual, "files": files})
     from ado_integration import digest
-    monitor.write_json(output / "manifest.json", {**manifest, "sourceSha256": digest(output / "source.json")})
+    from release_test_compatibility import source_compatibility
+    manifest = {**manifest, "sourceSha256": digest(output / "source.json")}
+    plan = source_compatibility(manifest, source, files)
+    if plan is not None:
+        manifest["testCompatibility"] = plan
+    monitor.write_json(output / "manifest.json", manifest)
     monitor.verify_bundle(output, require_wheel=False)
 
 

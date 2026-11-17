@@ -357,6 +357,10 @@ def verify_bundle(directory, *, require_wheel=True, **expected):
     inventory = read_json(snapshot)
     if inventory["commit"] != manifest["testSourceCommit"] or inventory["files"] != source_files(source):
         raise ValueError("Released test source is missing, modified, or belongs to a different commit.")
+    if manifest.get("kind") == "branch":
+        from release_test_compatibility import source_compatibility
+        if manifest.get("testCompatibility") != source_compatibility(manifest, source, inventory["files"]):
+            raise ValueError("Source test compatibility differs from the verified source inventory.")
     if manifest.get("testCompatibility"):
         from release_test_compatibility import verify_source
         verify_source(source, manifest["testCompatibility"])
@@ -603,7 +607,9 @@ def definitions(config, baseline, branch):
         key: repository[key] for key in ("id", "name", "type", "url")
     }
     source["defaultBranch"] = branch
-    source["properties"] = {"connectedServiceId": repository["properties"]["connectedServiceId"]}
+    source["properties"] = {
+        "connectedServiceId": repository["properties"]["connectedServiceId"], "reportBuildStatus": "false",
+    }
     return [{
         "name": item["name"], "path": "\\official\\release-health", "type": "build",
         "queueStatus": "disabled", "triggers": [], "repository": source,

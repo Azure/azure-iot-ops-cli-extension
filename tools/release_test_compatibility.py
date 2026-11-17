@@ -9,9 +9,13 @@
 import ast
 import hashlib
 import json
+import os
 from pathlib import Path
+import re
 
 from release_monitor_pytest import (
+    TEST_COMPATIBILITY_ENV,
+    FAIRFAX_EXCLUSION_FILES,
     FAIRFAX_EXCLUSIONS,
     FAIRFAX_TEST_SOURCE,
     PUBLIC_V2_TEST_SOURCE,
@@ -22,6 +26,7 @@ from release_monitor_pytest import (
 
 ROOT = Path(__file__).resolve().parents[1]
 PREFIX = "azext_edge/tests/"
+REVIEWED_TEST_TREE = "0ba7af749761a9a51ae86e5fa72bd3b17c1e9bc646c1097ed2691ffb8d3d8171"
 BASE_FILES = {
     "edge/orchestration/test_runtime_channels_int.py":
         "002a27f50f6d606346e212bd506f20af91e3897ada72fca4bc8aa1c20f2c2329",
@@ -137,6 +142,87 @@ def compatibility(manifest):
     }
 
 
+def source_tree_digest(files):
+    selected = {
+        name: value for name, value in files.items()
+        if name == ".github/test-scenarios.yml" or name.startswith(PREFIX) and not name.endswith("_unit.py")
+    }
+    if ".github/test-scenarios.yml" not in selected or len(selected) < 2:
+        raise ValueError("Source compatibility requires the scenario catalog and non-unit test inventory.")
+    return hashlib.sha256(json.dumps(selected, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+
+
+def registry_api_version(source):
+    tree = ast.parse((Path(source) / "azext_edge/edge/util/az_client.py").read_text(encoding="utf-8"))
+    value, = [
+        node.value for node in tree.body if isinstance(node, ast.Assign)
+        and any(isinstance(target, ast.Name) and target.id == "DEFAULT_DEVICEREGISTRY_MGMT_API_VERSION"
+                for target in node.targets)
+    ]
+    if isinstance(value, ast.Attribute) and isinstance(value.value, ast.Name):
+        enum, = [node for node in tree.body if isinstance(node, ast.ClassDef) and node.name == value.value.id]
+        value, = [
+            node.value for node in enum.body if isinstance(node, ast.Assign)
+            and any(isinstance(target, ast.Name) and target.id == value.attr for target in node.targets)
+        ]
+    return ast.literal_eval(value)
+
+
+def source_compatibility(manifest, source, files):
+    tree = source_tree_digest(files)
+    fairfax = manifest["cloud"] == "AzureUSGovernment"
+    if fairfax:
+        try:
+            version = registry_api_version(source)
+        except (OSError, ValueError, TypeError, SyntaxError) as error:
+            raise ValueError("Cannot verify Fairfax ADR API; re-review compatibility before provisioning.") from error
+        if version != "2026-04-01":
+            raise ValueError("Fairfax ADR API changed; re-review test compatibility before provisioning.")
+        for name, expected in FAIRFAX_EXCLUSION_FILES.items():
+            if files.get(name) != expected or digest(Path(source) / name) != expected:
+                raise ValueError("Fairfax excluded tests changed; re-review compatibility before provisioning.")
+    if tree == REVIEWED_TEST_TREE:
+        plan = compatibility({**manifest, "testSourceCommit": FAIRFAX_TEST_SOURCE})
+    elif not fairfax:
+        return None
+    else:
+        plan = {
+            "schema": 1, "automationCommit": manifest["automationCommit"],
+            "baseTestSourceCommit": manifest["testSourceCommit"],
+            "files": [], "secretSyncRemoval": None, "exclusions": FAIRFAX_EXCLUSIONS,
+        }
+    return {
+        **plan, "kind": "branch", "cloud": manifest["cloud"],
+        "testSourceCommit": manifest["testSourceCommit"], "sourceTreeSha256": tree,
+        "exclusionFiles": [
+            {"path": name, "baseSha256": expected} for name, expected in FAIRFAX_EXCLUSION_FILES.items()
+        ] if fairfax else [],
+    }
+
+
+def validate_source_compatibility(manifest):
+    plan = manifest.get("testCompatibility")
+    if plan is None:
+        if manifest["cloud"] == "AzureUSGovernment" and "sourceSha256" in manifest:
+            raise ValueError("An acquired Fairfax source requires a reviewed compatibility plan.")
+        return
+    if (not isinstance(plan, dict) or "sourceSha256" not in manifest or plan.get("schema") != 1
+            or plan.get("kind") != "branch" or plan.get("cloud") != manifest["cloud"]
+            or plan.get("automationCommit") != manifest["automationCommit"]
+            or plan.get("testSourceCommit") != manifest["testSourceCommit"]
+            or not re.fullmatch(r"[0-9a-f]{40}", plan.get("baseTestSourceCommit", ""))
+            or not re.fullmatch(r"[0-9a-f]{64}", plan.get("sourceTreeSha256", ""))
+            or not isinstance(plan.get("files"), list) or not isinstance(plan.get("exclusionFiles"), list)
+            or not isinstance(plan.get("exclusions"), dict)):
+        raise ValueError("Invalid source test compatibility identity or structure.")
+    removal = plan.get("secretSyncRemoval") or {"files": []}
+    for item in plan["files"] + plan["exclusionFiles"] + removal["files"]:
+        name = item.get("path", "")
+        if (not name.startswith(PREFIX) or ".." in Path(name).parts or "\\" in name
+                or not re.fullmatch(r"[0-9a-f]{64}", item.get("baseSha256", ""))):
+            raise ValueError("Source compatibility may target only reviewed test files, never product bytes.")
+
+
 def removal_function():
     path = ROOT / PREFIX / OPCUA_PREFIX / "helpers.py"
     digest(path)
@@ -150,7 +236,7 @@ def verify_source(source, plan):
     if plan is not None:
         removal = plan.get("secretSyncRemoval") or {"files": []}
         patches = plan.get("sourcePatches") or []
-        for item in plan["files"] + removal["files"] + patches:
+        for item in plan["files"] + removal["files"] + patches + plan.get("exclusionFiles", []):
             if digest(Path(source) / item["path"]) != item["baseSha256"]:
                 raise ValueError("Released tests differ from the reviewed compatibility baseline.")
 
@@ -277,10 +363,18 @@ def patch_removal(source, helper, replacement):
 
 
 def stage_tests(target, manifest, output):
-    plan = compatibility(manifest)
-    if manifest.get("testCompatibility") != plan:
-        raise ValueError("Test compatibility differs from the frozen automation manifest.")
+    os.environ.pop(TEST_COMPATIBILITY_ENV, None)
+    if manifest.get("kind") == "branch":
+        validate_source_compatibility(manifest)
+        plan = manifest.get("testCompatibility")
+    else:
+        plan = compatibility(manifest)
+        if manifest.get("testCompatibility") != plan:
+            raise ValueError("Test compatibility differs from the frozen automation manifest.")
     if plan is None:
+        Path(output).write_text("null\n", encoding="utf-8")
+        os.environ[TEST_COMPATIBILITY_ENV] = str(Path(output).resolve())
+        os.environ["AZEXT_OPS_TEST_KIND"] = manifest.get("kind", "release")
         return
     verify_source(target, plan)
     replacements = []
@@ -304,4 +398,6 @@ def stage_tests(target, manifest, output):
     for path, content in replacements:
         path.write_bytes(content)
     Path(output).write_text(json.dumps(plan, indent=2) + "\n", encoding="utf-8")
+    os.environ[TEST_COMPATIBILITY_ENV] = str(Path(output).resolve())
+    os.environ["AZEXT_OPS_TEST_KIND"] = manifest.get("kind", "release")
     print("Applied test-only compatibility: " + json.dumps(plan, sort_keys=True), flush=True)

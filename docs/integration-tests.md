@@ -222,6 +222,19 @@ wheel, and publishes it before planning tests. Build retries restore that exact 
 The source bundle records the real branch, product/test SHA, separate automation SHA,
 cloud/runtime profile, source inventory and wheel digest. Source and wheel product bytes
 must match; only explicitly audited test-only compatibility may be applied.
+Branch compatibility has two tiers, computed after acquiring the selected source.
+A digest of non-unit `azext_edge/tests/**` plus `.github/test-scenarios.yml` matching the
+reviewed v2.11.2 tree permits the existing corrections: Public gets only SecretSync;
+Fairfax also gets the four reviewed file replacements and four ADR case exclusions.
+Other test trees receive **no replacements**: Public runs natively, and Fairfax retains
+only the four exclusions if their file hashes still match and AST inspection confirms
+the default ADR API is `2026-04-01`. API/excluded-file drift fails Prepare for re-review.
+Thus rewritten fixtures run natively rather than receiving stale automation copies.
+The frozen manifest records the tree digest, reviewed baseline and excluded-file hashes.
+Bundle verification recomputes the plan, staging checks original files, and pytest requires
+the staged `AZEXT_OPS_TEST_COMPATIBILITY` receipt instead of inferring branch skips from a
+commit ID. Product bytes are never patched. Published-release rules remain commit-specific;
+pytest additionally checks their receipt exclusions against those existing rules.
 
 Dry run performs acquisition/build/lint/unit without Azure integration. Integration mode
 additionally gates native scenarios, serialized Trust Bundle and final evidence on the
@@ -235,6 +248,9 @@ Definition setup requires authorizing the existing `iotupx-ops-integration` pool
 and Public's existing shared Trust Bundle environment/exclusive lock. Profiles reuse
 the current subscriptions and resource groups, including Fairfax's `v1` group. No new
 secret variables or schedules are required. Retain all run artifacts through retries.
+Health-only definitions use repository property `reportBuildStatus: 'false'`: results
+remain in ADO/the dashboard instead of attaching health status to the automation commit.
+Normal PR CI, manual integration 164 and release 165 keep their existing status reporting.
 Storage fixtures already explicitly disable blob public access; their existing network
 and shared-key settings are independent and are preserved.
 

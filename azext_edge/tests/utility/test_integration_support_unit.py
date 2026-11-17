@@ -782,6 +782,32 @@ def test_verification_only_does_not_install_or_authenticate(wheel, mocker, monke
     execute.assert_not_called()
 
 
+def test_monitor_runner_reverifies_source_bundle_before_test_compatibility(
+        wheel, mocker, monkeypatch, tmp_path):
+    archive, digest, target = wheel
+    tests = tmp_path / "bundle/source/azext_edge/tests"
+    tests.mkdir(parents=True)
+    monkeypatch.syspath_prepend(str(ROOT / "tools"))
+    monitor = importlib.import_module("release_monitor")
+    verify = mocker.patch.object(monitor, "verify_bundle", side_effect=ValueError("source bundle drift"))
+    mocker.patch("azure.cli.core.get_default_cli", return_value=SimpleNamespace(
+        cloud=SimpleNamespace(name="AzureCloud"),
+    ))
+    monkeypatch.setenv("azext_edge_wheel", str(archive))
+    monkeypatch.setenv("azext_edge_wheel_sha256", digest)
+    monkeypatch.setenv("azext_edge_cloud", "AzureCloud")
+    mocker.patch.object(runner, "install_wheel")
+    execute = mocker.patch("pytest.main")
+    with pytest.raises(ValueError, match="source bundle drift"):
+        runner.main([
+            "--extension-dir", str(target), "--tests", str(tests), "--work-dir", str(tmp_path / "work"),
+            "--junit", str(tmp_path / "junit.xml"), "--coverage-config", str(ROOT / ".coveragerc"),
+            "--scenario", "edge", "--monitor",
+        ])
+    verify.assert_called_once_with(tmp_path / "bundle")
+    execute.assert_not_called()
+
+
 @pytest.mark.parametrize("environment", ["extension", "baseline"])
 def test_locked_reinstall_uses_separate_candidate_and_baseline_constraints(
         wheel, mocker, monkeypatch, tmp_path, environment):
