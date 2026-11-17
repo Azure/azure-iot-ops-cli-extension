@@ -1,0 +1,41 @@
+# Copyright (c) Microsoft Corporation. All rights reserved.
+
+trigger: none
+pr: none
+schedules: []
+name: aio-branch-health-public-preview-$(Date:yyyyMMdd).$(Rev:r)
+appendCommitMessageToRunName: false
+pool:
+  vmImage: ubuntu-24.04
+parameters:
+  - name: mode
+    type: string
+    default: Integration tests
+    values: [Dry run, Integration tests]
+  - name: clusterRegion
+    displayName: Region
+    type: string
+    default: West US 2
+    values: [East US, East US 2, West US, West US 2, West US 3, South Central US, West Europe, North Europe, Germany West Central]
+  - name: pythonVersions
+    displayName: Python
+    type: stringList
+    default: ['3.13']
+    values: ['3.10', '3.11', '3.12', '3.13']
+variables:
+  - template: templates/integration-profile.yml
+    parameters:
+      cloud: public
+      version: preview
+      region: ${{ parameters.clusterRegion }}
+      services: [Default scenarios]
+  - name: TestChannels
+    value: preview
+stages:
+  - template: templates/branch-health-stages.yml
+    parameters:
+      cloud: public
+      track: preview
+      mode: ${{ parameters.mode }}
+      pythonVersions: ${{ join(',', parameters.pythonVersions) }}
+      region: ${{ parameters.clusterRegion }}

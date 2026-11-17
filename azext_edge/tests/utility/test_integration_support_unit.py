@@ -762,7 +762,7 @@ def test_baseline_safe_download_verifies_digest_before_install(
     if valid_digest:
         target = runner.prepare_baseline(definition, "preview", work)
         assert target == work / "baseline-extensions/azure-iot-ops"
-        install.assert_called_once_with(work / archive.name, target)
+        install.assert_called_once_with(work / archive.name, target, "baseline")
         assert os.environ["azext_edge_baseline_extension_dir"] == str(target.parent)
     else:
         with pytest.raises(ValueError, match="SHA256 mismatch"):
@@ -780,6 +780,19 @@ def test_verification_only_does_not_install_or_authenticate(wheel, mocker, monke
     execute = mocker.patch.object(runner.subprocess, "run", side_effect=AssertionError("unexpected execution"))
     assert runner.main(["--verify-installed", "--extension-dir", str(target)]) == 0
     execute.assert_not_called()
+
+
+@pytest.mark.parametrize("environment", ["extension", "baseline"])
+def test_locked_reinstall_uses_separate_candidate_and_baseline_constraints(
+        wheel, mocker, monkeypatch, tmp_path, environment):
+    archive, _, target = wheel
+    locks = tmp_path / "locks"
+    monkeypatch.setenv("OPS_DEPENDENCY_LOCK", str(locks))
+    monkeypatch.setenv("PIP_CONSTRAINT", "unrelated-host-constraints")
+    execute = mocker.patch.object(runner.subprocess, "run")
+    mocker.patch.object(runner, "verify_installed")
+    runner.install_wheel(archive, target, environment)
+    assert execute.call_args.kwargs["env"]["PIP_CONSTRAINT"] == str(locks / f"{environment}.txt")
 
 
 @pytest.mark.parametrize("target_exists", [False, True])
@@ -813,7 +826,7 @@ runner = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(runner)
 calls = []
 
-def execute(command, check):
+def execute(command, check, env=None):
     assert check
     calls.append(command)
     if command[:4] == [sys.executable, "-m", "pip", "install"]:

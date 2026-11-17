@@ -284,6 +284,24 @@ def candidate(output):
     output_variable("artifact", f"ops-wheel-{required('SYSTEM_JOBATTEMPT')}")
 
 
+def restore_candidate(output):
+    history = Path(required("OPS_CANDIDATE_HISTORY"))
+    candidates = sorted(history.glob("ops-wheel-*/candidate.json"))
+    if not candidates:
+        attempt = max(int(required("SYSTEM_JOBATTEMPT")), int(os.environ.get("SYSTEM_STAGEATTEMPT", "1")))
+        if attempt != 1:
+            raise ValueError("A retry cannot rebuild without the original candidate artifact.")
+        print("##vso[task.setvariable variable=candidateRestored]false")
+        return
+    values = [read(path) for path in candidates]
+    if any(value != values[0] for value in values):
+        raise ValueError("Candidate identity changed between attempts.")
+    for path, value in zip(candidates, values):
+        verified_candidate(path.parent, value["wheel"]["sha256"])
+    shutil.copytree(candidates[0].parent, output)
+    print("##vso[task.setvariable variable=candidateRestored]true")
+
+
 def acquire(output):
     parent_id = release_build_id()
     if parent_id == "0":
@@ -492,7 +510,8 @@ def results_title(output):
         if f"-{channel}" in scenario:
             scenario = scenario[:scenario.rfind(f"-{channel}")]
         if state.get("monitor"):
-            version = state["monitor"]["release"]["version"]
+            identity = "source" if state["monitor"].get("kind") == "branch" else "release"
+            version = state["monitor"][identity]["version"]
             runtime = state["monitor"]["runtimes"][channel]["milestone"]
         else:
             version = Path(state["wheel"]).name.split("-")[1]
@@ -614,7 +633,8 @@ def gate(output):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("operation", choices=[
-        "plan", "title", "candidate", "acquire", "prepare", "report", "results-title", "gate", "inventory",
+        "plan", "title", "candidate", "restore-candidate", "acquire", "prepare", "report", "results-title",
+        "gate", "inventory",
     ])
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--extension-dir", type=Path)

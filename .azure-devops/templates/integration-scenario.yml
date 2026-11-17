@@ -4,6 +4,9 @@ parameters:
   - name: monitor
     type: boolean
     default: false
+  - name: monitorKind
+    type: string
+    default: release
   - name: configuration
     type: object
   - name: matrix
@@ -58,10 +61,15 @@ jobs:
               buildType: current
               artifactName: $(candidateArtifact)
               targetPath: $(Pipeline.Workspace)/candidate
+      - task: DownloadPipelineArtifact@2
+        displayName: Restore run-scoped dependency snapshots
+        inputs:
+          buildType: current
+          itemPattern: dependencies-$(row)-*/**
+          targetPath: $(Pipeline.Workspace)/dependency-history
       - bash: |
           set -euo pipefail
-          python -m pip install -r dev_requirements.txt azure-cli azure-cli-testsdk pytest-randomly PyYAML
-          python "$PREPARE_SCRIPT" prepare --output attempt
+          python tools/integration_dependencies.py
           python tools/ado_integration.py inventory \
             --output "$(Build.SourcesDirectory)/dependency-inventory/scenario" \
             --extension-dir "$(Agent.TempDirectory)/azure-cli-extensions/azure-iot-ops"
@@ -76,13 +84,20 @@ jobs:
             OPS_MONITOR_BUNDLE: $(Pipeline.Workspace)/candidate
             MONITOR_CLOUD: $(TestCloud)
             MONITOR_TRACK: $(TestTrack)
+            MONITOR_KIND: ${{ parameters.monitorKind }}
           ${{ else }}:
             PREPARE_SCRIPT: tools/ado_integration.py
             OPS_PLAN: $(Pipeline.Workspace)/plan/plan.json
           OPS_CANDIDATE: $(Pipeline.Workspace)/candidate
           OPS_CANDIDATE_DIGEST: $(candidateDigest)
           OPS_ROW: $(row)
+          OPS_DEPENDENCY_LOCK: $(Build.SourcesDirectory)/dependency-lock
+          OPS_DEPENDENCY_HISTORY: $(Pipeline.Workspace)/dependency-history
           AZURE_EXTENSION_DIR: $(Agent.TempDirectory)/azure-cli-extensions
+      - publish: dependency-lock
+        artifact: dependencies-$(row)-$(System.StageAttempt)-$(System.JobAttempt)
+        displayName: Publish immutable dependency snapshot
+        condition: and(succeededOrFailed(), eq(variables['dependencyLockReady'], 'true'))
       - publish: attempt/state.json
         artifact: ops-manifest-$(row)-$(System.JobAttempt)
         displayName: Publish resource manifest
@@ -104,12 +119,15 @@ jobs:
           OPS_CLOUD: ${{ parameters.configuration.cloud }}
           OPS_RESOURCE_GROUP: ${{ parameters.configuration.resourceGroup }}
           OPS_SCENARIO_TIMEOUT_MINUTES: $(scenarioTimeoutMinutes)
+          OPS_ROW: $(row)
+          OPS_DEPENDENCY_LOCK: $(Build.SourcesDirectory)/dependency-lock
           AZURE_EXTENSION_DIR: $(Agent.TempDirectory)/azure-cli-extensions
           PYTHONUNBUFFERED: '1'
           ${{ if parameters.monitor }}:
             OPS_MONITOR_BUNDLE: $(Pipeline.Workspace)/candidate
             MONITOR_CLOUD: $(TestCloud)
             MONITOR_TRACK: $(TestTrack)
+            MONITOR_KIND: ${{ parameters.monitorKind }}
       - task: AzureCLI@2
         condition: always()
         displayName: Clean up
@@ -123,11 +141,14 @@ jobs:
           OPS_SUBSCRIPTION: ${{ parameters.configuration.subscriptionId }}
           OPS_CLOUD: ${{ parameters.configuration.cloud }}
           OPS_RESOURCE_GROUP: ${{ parameters.configuration.resourceGroup }}
+          OPS_ROW: $(row)
+          OPS_DEPENDENCY_LOCK: $(Build.SourcesDirectory)/dependency-lock
           AZURE_EXTENSION_DIR: $(Agent.TempDirectory)/azure-cli-extensions
           ${{ if parameters.monitor }}:
             OPS_MONITOR_BUNDLE: $(Pipeline.Workspace)/candidate
             MONITOR_CLOUD: $(TestCloud)
             MONITOR_TRACK: $(TestTrack)
+            MONITOR_KIND: ${{ parameters.monitorKind }}
       - bash: >-
           python tools/ado_integration.py inventory
           --output "$(Build.SourcesDirectory)/dependency-inventory/scenario"
@@ -146,6 +167,7 @@ jobs:
             OPS_MONITOR_BUNDLE: $(Pipeline.Workspace)/candidate
             MONITOR_CLOUD: $(TestCloud)
             MONITOR_TRACK: $(TestTrack)
+            MONITOR_KIND: ${{ parameters.monitorKind }}
       - bash: python tools/ado_integration.py results-title --output attempt
         condition: always()
         displayName: Name test results

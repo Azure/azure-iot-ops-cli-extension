@@ -21,6 +21,139 @@ AUTOMATION = "a" * 40
 SOURCE = "b" * 40
 
 
+@pytest.fixture
+def branch(monkeypatch, monitor):
+    monkeypatch.setenv("BUILD_BUILDID", "123")
+    monkeypatch.setenv("SYSTEM_DEFINITIONID", "200")
+    monkeypatch.setenv("BUILD_SOURCEVERSION", AUTOMATION)
+    return importlib.import_module("branch_health")
+
+
+def branch_selection(branch, monitor, mocker, tmp_path, cloud="public", track="ga"):
+    mocker.patch.object(branch.subprocess, "run", return_value=Mock(stdout=f"{SOURCE}\trefs/heads/dev\n"))
+    mocker.patch.object(monitor, "download", return_value=b'VERSION = "2.12.0b1"\n')
+    runtime = profile("1.5.45", cloud)
+    if track == "preview":
+        runtime = {**runtime, "train": "preview", "template": monitor.TEMPLATE.format("_preview")}
+    mocker.patch.object(monitor, "runtime_profile", return_value=runtime)
+    return branch.resolve(tmp_path / "history", cloud, track, AUTOMATION, 1)
+
+
+@pytest.mark.parametrize("cloud,track", [("public", "ga"), ("fairfax", "ga"), ("public", "preview")])
+def test_branch_selection_records_product_and_automation_and_never_reresolves(
+        branch, monitor, mocker, tmp_path, cloud, track):
+    selected = branch_selection(branch, monitor, mocker, tmp_path, cloud, track)
+    assert selected["source"] == {"branch": "refs/heads/dev", "commit": SOURCE, "version": "2.12.0b1"}
+    assert selected["testSourceCommit"] == SOURCE != selected["automationCommit"] == AUTOMATION
+    assert set(selected["runtimes"]) == {"preview" if track == "preview" else "stable"}
+    saved = tmp_path / "history/branch-selection-1-1/manifest.json"
+    monitor.write_json(saved, selected)
+    branch.subprocess.run.side_effect = AssertionError("A retry must never look up moving dev")
+    assert branch.resolve(saved.parents[1], cloud, track, AUTOMATION, 2) == selected
+
+
+@pytest.mark.parametrize("failure", ["missing", "source", "cloud", "automation", "run", "fairfax-preview"])
+def test_branch_selection_rejects_retry_identity_drift(branch, monitor, mocker, tmp_path, monkeypatch, failure):
+    selected = branch_selection(branch, monitor, mocker, tmp_path)
+    if failure == "source":
+        selected["source"]["commit"] = "c" * 40
+    if failure == "automation":
+        selected["automationCommit"] = "c" * 40
+    if failure == "run":
+        monkeypatch.setenv("BUILD_BUILDID", "124")
+    if failure != "missing":
+        monitor.write_json(tmp_path / "history/branch-selection-1-1/manifest.json", selected)
+    cloud = "fairfax" if failure in {"cloud", "fairfax-preview"} else "public"
+    track = "preview" if failure == "fairfax-preview" else "ga"
+    with pytest.raises(ValueError):
+        branch.resolve(tmp_path / "history", cloud, track, AUTOMATION, 2)
+
+
+def test_branch_build_retry_reuses_original_bytes_and_rejects_tampering(branch, monitor, mocker, tmp_path):
+    selected = branch_selection(branch, monitor, mocker, tmp_path)
+    source = tmp_path / "input"
+    product = source / "source/azext_edge"
+    product.mkdir(parents=True)
+    (product / "__init__.py").write_text("# original product\n")
+    template = source / "source" / selected["runtime"]["template"]
+    template.parent.mkdir(parents=True)
+    template.write_text("P = {'VERSIONS': {'iotOperations': '1.5.45'}, 'TRAINS': {'iotOperations': 'stable'}}\n")
+    monitor.write_json(source / "source.json", {
+        "commit": SOURCE, "files": monitor.source_files(source / "source"),
+    })
+    selected["sourceSha256"] = hashlib.sha256((source / "source.json").read_bytes()).hexdigest()
+    monitor.write_json(source / "manifest.json", selected)
+    built = tmp_path / "history/branch-wheel-1-1"
+    mocker.patch.object(branch.shutil, "copytree", wraps=branch.shutil.copytree)
+    build_calls = []
+
+    def build_wheel(arguments, cwd, check):
+        assert check and (cwd / "azext_edge/__init__.py").read_text() == "# original product\n"
+        assert cwd != ROOT
+        build_calls.append(arguments)
+        with ZipFile(built / "azure_iot_ops-2.12.0b1-py3-none-any.whl", "w") as archive:
+            for path in product.rglob("*.py"):
+                archive.write(path, path.relative_to(source / "source"))
+            archive.writestr(
+                "azure_iot_ops-2.12.0b1.dist-info/METADATA", "Name: azure-iot-ops\nVersion: 2.12.0b1\n",
+            )
+
+    branch.subprocess.run.side_effect = build_wheel
+    first = branch.build(source, tmp_path / "history", built, 1)
+    assert len(build_calls) == 1
+    original = (built / first["wheel"]["name"]).read_bytes()
+    branch.subprocess.run.side_effect = AssertionError("Retry must not rebuild")
+    restored = tmp_path / "retry"
+    assert branch.build(source, tmp_path / "history", restored, 2) == first
+    assert (restored / first["wheel"]["name"]).read_bytes() == original
+    (built / first["wheel"]["name"]).write_bytes(original + b"drift")
+    with pytest.raises(ValueError, match="SHA256"):
+        branch.build(source, tmp_path / "history", tmp_path / "rejected", 3)
+
+
+def test_branch_build_requires_the_original_artifact_on_retry(branch, monitor, mocker, tmp_path):
+    mocker.patch.object(monitor, "verify_bundle", return_value={})
+    with pytest.raises(ValueError, match="cannot rebuild"):
+        branch.build(tmp_path / "source", tmp_path / "history", tmp_path / "output", 2)
+
+
+def test_branch_adapter_plans_the_selected_tests_not_the_automation_checkout(
+        branch, adapter, monitor, mocker, tmp_path):
+    manifest = branch_selection(branch, monitor, mocker, tmp_path)
+    mocker.patch.object(adapter, "bundle_manifest", return_value=manifest)
+
+    def plan(output, scenario_source):
+        assert scenario_source == tmp_path / "source"
+        monitor.write_json(output / "plan.json", {"producer": "automation"})
+
+    mocker.patch.object(adapter.native, "plan", side_effect=plan)
+    mocker.patch.object(adapter.native, "candidate", side_effect=lambda output: monitor.write_json(
+        output / "candidate.json", {"producer": "automation"},
+    ))
+    adapter.plan(tmp_path)
+    for name in ("plan", "candidate"):
+        assert monitor.read_json(tmp_path / f"{name}.json")["monitor"] == manifest
+
+
+def test_fixed_branch_wrappers_cannot_override_source_cloud_or_runtime():
+    config = json.loads((ROOT / ".azure-devops/branch-health.json").read_text())
+    assert len(config["definitions"]) == 3
+    assert config["folder"] == "\\official\\branch-health"
+    for definition in config["definitions"]:
+        pipeline = yaml.safe_load((ROOT / definition["yaml"]).read_text())
+        assert {item["name"] for item in pipeline["parameters"]} <= {"mode", "pythonVersions", "clusterRegion"}
+        parameters = pipeline["stages"][0]["parameters"]
+        assert (parameters["cloud"], parameters["track"]) == (definition["cloud"], definition["track"])
+        assert not pipeline["schedules"]
+        assert "Runtime" not in definition["name"]
+    template = yaml.safe_load((ROOT / ".azure-devops/templates/branch-health-stages.yml").read_text())
+    live = template["stages"][-1]["${{ if eq(parameters.mode, 'Integration tests') }}"]
+    for stage in live:
+        assert {"Build", "Lint", "Unit"} <= set(stage["dependsOn"])
+    integration = live[0]["jobs"][0]["parameters"]
+    assert integration["monitor"] and integration["monitorKind"] == "branch"
+
+
 def test_health_pipeline_runs_only_the_selected_mode():
     pipeline = yaml.safe_load(
         (ROOT / ".azure-devops/templates/release-monitor-stages.yml").read_text(encoding="utf-8")

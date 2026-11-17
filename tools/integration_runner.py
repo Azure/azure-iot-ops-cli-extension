@@ -50,15 +50,20 @@ def verify_installed(wheel, target):
                 raise ValueError(f"Installed candidate differs from wheel: {name}")
 
 
-def install_wheel(wheel, target):
+def install_wheel(wheel, target, environment_name="extension"):
     target = Path(target).resolve()
     if target.name != "azure-iot-ops":
         raise ValueError("Isolated extension destination must end in azure-iot-ops.")
     if target.exists():
         shutil.rmtree(target)
+    environment = dict(os.environ)
+    if environment.get("OPS_DEPENDENCY_LOCK"):
+        environment["PIP_CONSTRAINT"] = str(
+            Path(environment["OPS_DEPENDENCY_LOCK"]) / f"{environment_name}.txt"
+        )
     subprocess.run(
         [sys.executable, "-m", "pip", "install", "--disable-pip-version-check", "--target", str(target), str(wheel)],
-        check=True,
+        check=True, env=environment,
     )
     verify_installed(wheel, target)
 
@@ -110,7 +115,7 @@ def prepare_baseline(baseline, channel, work_dir):
             shutil.copyfileobj(response, output)
     verify_wheel(wheel, baseline["sha256"])
     target = Path(work_dir) / "baseline-extensions" / "azure-iot-ops"
-    install_wheel(wheel, target)
+    install_wheel(wheel, target, "baseline")
     os.environ["azext_edge_baseline_extension_dir"] = str(target.parent)
     return target
 
@@ -145,6 +150,9 @@ def main(argv=None):
     work_dir = Path(args.work_dir).resolve()
     work_dir.mkdir(parents=True, exist_ok=True)
     install_wheel(wheel, target)
+    if os.environ.get("OPS_DEPENDENCY_LOCK"):
+        from integration_dependencies import verify_target
+        verify_target("extension", target, wheel)
     shutil.copytree(tests, target / "azext_edge" / "tests", ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
     if os.environ.get("AZEXT_TEST_OWNERSHIP"):
         for name in ("owned_resources", "owned_resources_pytest"):
@@ -181,7 +189,17 @@ def main(argv=None):
     if baseline:
         validate_baseline_identity(baseline, os.environ["azext_edge_runtime_channel"])
         if args.scenario.strip('"') == "init_scenario_test":
-            prepare_baseline(baseline, os.environ["azext_edge_runtime_channel"], work_dir)
+            if os.environ.get("OPS_DEPENDENCY_LOCK"):
+                baseline_target = Path(os.environ["OPS_BASELINE_EXTENSION"])
+                baseline_wheel = verify_wheel(
+                    baseline_target.parents[1] / Path(validate_baseline_url(baseline["wheel_url"]).path).name,
+                    baseline["sha256"],
+                )
+                verify_installed(baseline_wheel, baseline_target)
+                verify_target("baseline", baseline_target, wheel)
+                os.environ["azext_edge_baseline_extension_dir"] = str(baseline_target.parent)
+            else:
+                prepare_baseline(baseline, os.environ["azext_edge_runtime_channel"], work_dir)
     subprocess.run(["az", "version"], check=True)
     extension = subprocess.check_output(["az", "extension", "show", "--name", "azure-iot-ops", "-o", "json"], text=True)
     if Path(json.loads(extension)["path"]).resolve() != target:

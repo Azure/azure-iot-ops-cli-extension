@@ -15,6 +15,12 @@ from release_monitor import CLOUDS, configured_tracks, validate_manifest, verify
 
 
 def target_track():
+    if os.environ.get("MONITOR_KIND") == "branch":
+        from branch_health import TRACKS
+        slot = native.required("MONITOR_TRACK")
+        if (native.required("MONITOR_CLOUD"), slot) not in TRACKS:
+            raise ValueError("Unsupported fixed Branch Health track.")
+        return slot
     tracks = configured_tracks(native.read(native.ROOT / ".azure-devops/release-monitors.json"))
     slot = native.required("MONITOR_TRACK")
     if slot not in tracks:
@@ -23,10 +29,13 @@ def target_track():
 
 
 def bundle_manifest(bundle):
-    return verify_bundle(
+    manifest = verify_bundle(
         bundle, extension="azure-iot-ops", cloud=os.environ["MONITOR_CLOUD"],
         slot=os.environ["MONITOR_TRACK"], track=target_track(), automation_commit=native.producer()["commit"],
     )
+    if (manifest.get("kind") == "branch") != (os.environ.get("MONITOR_KIND") == "branch"):
+        raise ValueError("Published and source-built health identities cannot be interchanged.")
+    return manifest
 
 
 def plan(bundle):
@@ -64,6 +73,8 @@ def validate_state(state):
         state["monitor"], extension="azure-iot-ops", automation_commit=native.producer()["commit"],
         cloud=os.environ["MONITOR_CLOUD"], slot=os.environ["MONITOR_TRACK"], track=target_track(),
     )
+    if (manifest.get("kind") == "branch") != (os.environ.get("MONITOR_KIND") == "branch"):
+        raise ValueError("Execution kind differs from the selected health pipeline.")
     bundle = Path(native.required("OPS_MONITOR_BUNDLE")).resolve()
     if (manifest["blockers"] or manifest["cloud"] != state["cloud"]
             or state["sha256"] != manifest["wheel"]["sha256"]

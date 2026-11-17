@@ -1,0 +1,24 @@
+{
+  "folder": "\\official\\branch-health",
+  "sourceBranch": "refs/heads/dev",
+  "definitions": [
+    {
+      "name": "Azure IoT Operations CLI - Branch Health (Public GA)",
+      "yaml": ".azure-devops/branch-health.yml",
+      "cloud": "public",
+      "track": "ga"
+    },
+    {
+      "name": "Azure IoT Operations CLI - Branch Health (Fairfax GA)",
+      "yaml": ".azure-devops/branch-health-fairfax.yml",
+      "cloud": "fairfax",
+      "track": "ga"
+    },
+    {
+      "name": "Azure IoT Operations CLI - Branch Health (Public Preview)",
+      "yaml": ".azure-devops/branch-health-preview.yml",
+      "cloud": "public",
+      "track": "preview"
+    }
+  ]
+}

@@ -115,10 +115,25 @@ stages:
                   versionSpec: '3.13'
               - bash: |
                   set -euo pipefail
-                  python -m pip install build
+                  python -m pip install build PyYAML
+                displayName: Install build dependencies
+              - task: DownloadPipelineArtifact@2
+                displayName: Restore this run's original candidate
+                condition: and(succeeded(), eq(variables['releaseBuildId'], '0'))
+                inputs:
+                  buildType: current
+                  itemPattern: ops-wheel-*/**
+                  targetPath: $(Pipeline.Workspace)/candidate-history
+              - bash: python tools/ado_integration.py restore-candidate --output dist
+                displayName: Verify original candidate on retry
+                condition: and(succeeded(), eq(variables['releaseBuildId'], '0'))
+                env:
+                  OPS_CANDIDATE_HISTORY: $(Pipeline.Workspace)/candidate-history
+              - bash: |
+                  set -euo pipefail
                   python -m build --wheel
                 displayName: Build wheel
-                condition: and(succeeded(), eq(variables['releaseBuildId'], '0'))
+                condition: and(succeeded(), eq(variables['releaseBuildId'], '0'), ne(variables['candidateRestored'], 'true'))
               - task: DownloadPipelineArtifact@2
                 displayName: Download artifacts
                 inputs:
@@ -144,6 +159,9 @@ stages:
                   SYSTEM_ACCESSTOKEN: $(System.AccessToken)
                   OPS_RELEASE_BUILD_ID: ${{ parameters.releaseBuildId }}
                   OPS_RELEASE_INPUT: $(Pipeline.Workspace)/release-input
+              - publish: dist
+                displayName: Publish immutable wheel before validation
+                artifact: ops-wheel-$(System.JobAttempt)
               - bash: >-
                   python tools/ado_integration.py inventory
                   --output "$(Build.SourcesDirectory)/dependency-inventory/build"
@@ -152,9 +170,6 @@ stages:
               - template: release-feed.yml
                 parameters:
                   condition: succeededOrFailed()
-              - publish: dist
-                displayName: Publish wheel
-                artifact: ops-wheel-$(System.JobAttempt)
             variables:
               releaseBuildId: ${{ parameters.releaseBuildId }}
       - stage: Lint

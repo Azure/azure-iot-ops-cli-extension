@@ -140,6 +140,41 @@ def test_fairfax_provisioning_never_inherits_public_resource_locations():
         assert arguments[arguments.index("--location") + 1] == "usgovvirginia"
 
 
+def test_storage_policy_explicitly_disables_blob_public_access_without_changing_network_intent():
+    commands = Mock()
+    cluster.create_resources(commands, make_state())
+    arguments = commands.run.call_args_list[0].args[0]
+    assert arguments[arguments.index("--allow-blob-public-access") + 1] == "false"
+    assert arguments[arguments.index("--public-network-access") + 1] == "Disabled"
+    assert arguments[arguments.index("--allow-shared-key-access") + 1] == "false"
+
+
+def test_candidate_retry_restores_original_wheel_instead_of_building(monkeypatch, tmp_path):
+    saved = tmp_path / "history/ops-wheel-1"
+    saved.mkdir(parents=True)
+    wheel = saved / "azure_iot_ops-2.11.0-py3-none-any.whl"
+    with ZipFile(wheel, "w") as archive:
+        archive.writestr("azext_edge/__init__.py", "# unchanged")
+    pipeline.write(saved / "candidate.json", {
+        "schema": 1, "producer": pipeline.producer(),
+        "wheel": {"file": wheel.name, "sha256": pipeline.digest(wheel)},
+    })
+    monkeypatch.setenv("OPS_CANDIDATE_HISTORY", str(saved.parent))
+    monkeypatch.setenv("SYSTEM_JOBATTEMPT", "2")
+    pipeline.restore_candidate(tmp_path / "restored")
+    assert (tmp_path / "restored" / wheel.name).read_bytes() == wheel.read_bytes()
+    wheel.write_bytes(b"drift")
+    with pytest.raises(ValueError, match="digest"):
+        pipeline.restore_candidate(tmp_path / "rejected")
+
+
+def test_candidate_retry_without_original_artifact_fails_closed(monkeypatch, tmp_path):
+    monkeypatch.setenv("OPS_CANDIDATE_HISTORY", str(tmp_path))
+    monkeypatch.setenv("SYSTEM_STAGEATTEMPT", "2")
+    with pytest.raises(ValueError, match="cannot rebuild"):
+        pipeline.restore_candidate(tmp_path / "output")
+
+
 @pytest.mark.parametrize("fixture", ["secretsync", "opcua"])
 @pytest.mark.parametrize("reuse", [False, True])
 def test_workload_identity_resources_do_not_collide_between_seeded_jobs(monkeypatch, fixture, reuse):
@@ -1388,8 +1423,8 @@ def test_yaml_exposes_installed_dependencies_even_after_test_failure():
         assert feed["parameters"]["condition"] == step["condition"]
     assert "sysconfig.get_paths()" in step["bash"] and '--extension-dir "$extension"' in step["bash"]
     scenario = jobs["Integration"]
-    prepare = next(step for step in scenario if " prepare --output" in step.get("bash", ""))
-    assert prepare["bash"].index(" prepare --output") < prepare["bash"].index(" inventory")
+    prepare = next(step for step in scenario if "integration_dependencies.py" in step.get("bash", ""))
+    assert prepare["bash"].index("integration_dependencies.py") < prepare["bash"].index(" inventory")
     cleanup = next(step for step in scenario if "cleanup --output" in step.get("inputs", {}).get("inlineScript", ""))
     inventory = next(step for step in scenario if "tools/ado_integration.py inventory" in step.get("bash", "")
                      and step.get("condition") == "always()")

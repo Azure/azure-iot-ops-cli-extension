@@ -291,7 +291,11 @@ def configure_trust(commands):
 
 
 def connect_cluster(commands, state, output):
-    commands.run(["az", "extension", "add", "--name", "connectedk8s", "--yes"])
+    if os.environ.get("OPS_DEPENDENCY_LOCK"):
+        from integration_dependencies import verify_connected
+        verify_connected()
+    else:
+        commands.run(["az", "extension", "add", "--name", "connectedk8s", "--yes"])
     common = ["--name", state["cluster"], "--resource-group", state["resourceGroup"]]
     custom = ["--custom-locations-oid", state["customLocationsObjectId"]]
     location = ["--location", state["locations"]["clusterRegion"]]

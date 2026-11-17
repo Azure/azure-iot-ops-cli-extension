@@ -195,6 +195,49 @@ resource-group and instance settings. The existing tox environments remain avail
 `python-runtime-int` selects the isolated channel tests. Local test runs still create
 and modify real Azure resources—collection and unit tests do not qualify a live runtime.
 
+#### ADO retry dependencies and Branch Health
+
+Native integration, Release Health, and Branch Health publish `dependencies-<row>-<stage>-<job>`
+before provisioning. Each snapshot binds the run, definition, automation commit, candidate
+SHA256, Python minor version, platform and matrix row. The host and candidate extension
+have **separate** name/version constraints and METADATA hashes; an upgrade baseline has a
+third environment. Conflicting host/extension versions are intentional and are not merged.
+The connectedk8s tool and its dependencies are retained as a hash-verified installed-tree
+artifact, rather than rediscovered on retry. Candidate reinstalls verify the original
+inventory before every test phase. A missing, conflicting or mismatched snapshot fails
+closed: start a new run instead of silently resolving new packages. These are run-scoped
+locks, not permanent dependency pins or wheelhouse guarantees.
+
+The fixed definitions in [branch-health.json](../.azure-devops/branch-health.json) belong in
+`\official\branch-health`, alongside `\official\release-health`:
+
+* **Azure IoT Operations CLI - Branch Health (Public GA)** — stable runtime.
+* **Azure IoT Operations CLI - Branch Health (Fairfax GA)** — stable runtime.
+* **Azure IoT Operations CLI - Branch Health (Public Preview)** — preview runtime.
+
+There is no supported Fairfax Preview definition and no `Runtime` suffix. Definition YAML
+may run from the reviewed automation branch, but the product is always `refs/heads/dev`.
+Prepare freezes its SHA once per run; Build checks out that SHA independently, builds one
+wheel, and publishes it before planning tests. Build retries restore that exact wheel.
+The source bundle records the real branch, product/test SHA, separate automation SHA,
+cloud/runtime profile, source inventory and wheel digest. Source and wheel product bytes
+must match; only explicitly audited test-only compatibility may be applied.
+
+Dry run performs acquisition/build/lint/unit without Azure integration. Integration mode
+additionally gates native scenarios, serialized Trust Bundle and final evidence on the
+selected source's lint/unit results. Fixed wrappers expose mode, Python and applicable
+Public region controls, never source/cloud/runtime overrides. Existing manual pipeline
+164 remains available for PR/ad-hoc source. Release Health support slots `v1/v2/v3/preview`
+continue to consume published wheels unchanged.
+
+Definition setup requires authorizing the existing `iotupx-ops-integration` pool,
+`az-iot-ops-int-sp-ado` (Public) or `sc-iot-ops-cli-fairfax-it` (Fairfax) service connection,
+and Public's existing shared Trust Bundle environment/exclusive lock. Profiles reuse
+the current subscriptions and resource groups, including Fairfax's `v1` group. No new
+secret variables or schedules are required. Retain all run artifacts through retries.
+Storage fixtures already explicitly disable blob public access; their existing network
+and shared-key settings are independent and are preserved.
+
 #### Containerized end-to-end tests
 
 The [container workflow](../.github/workflows/container_int_test.yml) also accepts

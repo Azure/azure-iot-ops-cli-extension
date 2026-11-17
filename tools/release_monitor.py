@@ -250,6 +250,11 @@ def resolve(extension, cloud, track, automation_commit, releases=None):
 
 
 def validate_manifest(manifest, *, extension=None, cloud=None, track=None, slot=None, automation_commit=None):
+    if manifest.get("kind") == "branch":
+        from branch_health import validate_manifest as validate_branch
+        return validate_branch(
+            manifest, extension=extension, cloud=cloud, track=track, slot=slot, automation_commit=automation_commit,
+        )
     config = settings(manifest["extension"])
     if any(manifest.get(key) != value for key, value in config.items()) or manifest.get("schema") != 1:
         raise ValueError("Invalid release manifest repository or schema.")
@@ -327,9 +332,10 @@ def verify_wheel(path, manifest):
         if len(metadata) != 1 or f"{manifest['package']}/__init__.py" not in archive.namelist():
             raise ValueError("Released artifact is not the selected CLI extension wheel.")
         headers = Parser().parsestr(archive.read(metadata[0]).decode("utf-8"))
+        version = manifest["source"]["version"] if manifest.get("kind") == "branch" else manifest["release"]["version"]
         if (not headers["Name"] or not headers["Version"]
                 or headers["Name"].replace("_", "-") != manifest["extension"]
-                or Version(headers["Version"]) != Version(manifest["release"]["version"])):
+                or Version(headers["Version"]) != Version(version)):
             raise ValueError("Wheel metadata does not match the selected release.")
         for channel, runtime in manifest["runtimes"].items():
             if runtime is None:
@@ -341,11 +347,9 @@ def verify_wheel(path, manifest):
                 raise ValueError("Wheel runtime differs from the resolved release source.")
 
 
-def verify_bundle(directory, **expected):
+def verify_bundle(directory, *, require_wheel=True, **expected):
     directory = Path(directory)
     manifest = validate_manifest(read_json(directory / "manifest.json"), **expected)
-    wheel = directory / manifest["wheel"]["name"]
-    verify_wheel(wheel, manifest)
     source = directory / "source"
     snapshot = directory / "source.json"
     if hashlib.sha256(snapshot.read_bytes()).hexdigest() != manifest.get("sourceSha256"):
@@ -356,6 +360,12 @@ def verify_bundle(directory, **expected):
     if manifest.get("testCompatibility"):
         from release_test_compatibility import verify_source
         verify_source(source, manifest["testCompatibility"])
+    if manifest["wheel"] is None:
+        if require_wheel or manifest.get("kind") != "branch":
+            raise ValueError("Source has not produced a verified candidate wheel.")
+        return manifest
+    wheel = directory / manifest["wheel"]["name"]
+    verify_wheel(wheel, manifest)
     with ZipFile(wheel) as archive:
         prefix = manifest["package"] + "/"
         entries = {name for name in archive.namelist() if name.startswith(prefix) and not name.endswith("/")}
