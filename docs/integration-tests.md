@@ -147,6 +147,14 @@ while any release-monitor track tests a pre-`--secret-sync-name` wheel. Distinct
 resource names do not isolate subscription quotas, throttling, or scheduled cleanup.
 
 Each integration attempt remains responsible for cleaning its own resources.
+Scenario teardown skips its fallback Azure CLI login only when an offline proof
+step verifies the runner's completed cleanup state against its task-output digest,
+current run, attempt, row, candidate, and successful ownership checks. The runner
+emits that digest only after owned-resource cleanup, local cluster shutdown, and
+the final state write succeed. Missing, changed, foreign, or incomplete evidence
+retains fallback cleanup; cancellation always retains it. Test and authentication
+failures remain failures even when cleanup succeeds.
+
 `Cluster Resource Cleanup` is explicit maintenance, not a scheduled job: its
 whole-group sweep can delete in-flight instances even when their names are unique.
 Run it only when the selected resource group is idle. If the default branch still

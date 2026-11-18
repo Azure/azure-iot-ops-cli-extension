@@ -9,6 +9,7 @@ from types import SimpleNamespace
 
 import pytest
 import responses
+import yaml
 from azure.cli.core.azclierror import InvalidArgumentValueError
 from azure.core.exceptions import HttpResponseError
 
@@ -23,10 +24,12 @@ from azext_edge.edge.providers.orchestration.resources.instances import SECRET_S
 from .conftest import (
     assemble_resource_map_mock,
     build_mock_cert,
+    generate_ssc_object_string,
     get_mock_secretsync_record,
     get_mock_spc_record,
     get_secret_endpoint,
     get_secretsync_endpoint,
+    get_spc_endpoint,
     setup_mock_common_responses,
 )
 from .int.helpers import certificate_sync_name
@@ -91,12 +94,12 @@ def test_per_instance_names_isolate_certificate_lifecycle(
             {"public_key_file": "/fake/certificate.der", "private_key_file": "/fake/certificate.pem"}
             if kind == "client" else {"file": "/fake/certificate.der"}
         )
-        getattr(commands_connector, f"add_connector_opcua_{kind}")(**common, **inputs)
+        result = getattr(commands_connector, f"add_connector_opcua_{kind}")(**common, **inputs)
+        assert result == (extension if kind == "client" else record)
         settings = extension["properties"]["configurationSettings"]
         assert settings[f"connectors.values.securityPki.{setting}"] == sync_name
         assert settings["unrelated"] == "preserved"
-        # Helm must create named trust/issuer secrets before SecretSync populates them.
-        assert order == (["sync", "reference"] if kind == "client" else ["reference", "sync"])
+        assert order == ["sync", "reference"]
         cluster.get_cl_resources_by_type.return_value = {SECRET_SYNC_RESOURCE_TYPE: [record]}
         shown = getattr(commands_connector, f"show_connector_opcua_{kind}")(**common)
         assert shown["name"] == sync_name
@@ -115,6 +118,126 @@ def test_per_instance_names_isolate_certificate_lifecycle(
     deleted = [call.request.url.split("?")[0].rsplit("/", 1)[-1] for call in mocked_responses.calls
                if call.request.method == "DELETE"]
     assert deleted == names
+
+
+@pytest.mark.parametrize("kind,setting", [("trust", "trustedCerts"), ("issuer", "issuerCerts")])
+def test_list_add_failed_secretsync_put_preserves_active_reference(
+    kind, setting, mocked_cmd, mocked_instance, mocked_responses,
+    mocked_read_file_content, mocked_decode_certificate,
+):
+    mocked_read_file_content.return_value = b"\x00\x01\x02\x03"
+    mocked_decode_certificate.side_effect = lambda *_args, **_kwargs: [build_mock_cert()]
+    record = get_mock_secretsync_record("new-list", "mock-rg")
+    spc = get_mock_spc_record("default-spc", "mock-rg")
+    key = f"connectors.values.securityPki.{setting}"
+    settings = {key: "active-list", "unrelated": "preserved"}
+    assemble_resource_map_mock(
+        mocked_instance.get_resource_map,
+        {EXTENSION_TYPE_OPS: {"name": "aio-ext", "properties": {"configurationSettings": settings}}},
+        [], ssc=record,
+    )
+    cluster = mocked_instance.get_resource_map().connected_cluster
+    cluster.get_cl_resources_by_type.return_value = {SECRET_SYNC_RESOURCE_TYPE: []}
+    mocked_instance.get_default_spc.return_value = spc
+    setup_mock_common_responses(
+        mocked_responses, spc, record, "new-list", "mock-rg", "certificate-der", "default-spc",
+    )
+    mocked_responses.add(
+        responses.PUT, get_secretsync_endpoint("new-list", "mock-rg"),
+        status=403, json={"error": {"code": "Forbidden"}},
+    )
+    with pytest.raises(HttpResponseError):
+        getattr(commands_connector, f"add_connector_opcua_{kind}")(
+            mocked_cmd, "instance-a", "mock-rg", file="/fake/certificate.der", secret_sync_name="new-list",
+        )
+    cluster.update_aio_extension.assert_not_called()
+    assert settings == {key: "active-list", "unrelated": "preserved"}
+
+
+@pytest.mark.parametrize("reference", [
+    "shared", "unshared", "other-spc", "other-location", "no-replacements", "new-sync", "lookup-error",
+])
+def test_client_rotation_preserves_only_peer_sources_in_same_spc_and_location(
+    reference, mocked_cmd, mocked_instance, mocked_responses, mocked_read_file_content, mocked_decode_certificate,
+):
+    mocked_read_file_content.return_value = b"\x00\x01\x02\x03"
+    mocked_decode_certificate.side_effect = lambda *_args, **_kwargs: [build_mock_cert()]
+    record = get_mock_secretsync_record("client-sync", "mock-rg", objects=[
+        {"sourcePath": "shared-der", "targetKey": "shared.der"},
+        {"sourcePath": "old-pem", "targetKey": "old.pem"},
+    ])
+    record["properties"]["secretProviderClassName"] = "default-spc"
+    record["extendedLocation"] = {"name": "mock-cl"}
+    if reference == "no-replacements":
+        record["properties"]["objectSecretMapping"] = []
+    peer = get_mock_secretsync_record("peer-sync", "mock-rg", objects=[
+        {"sourcePath": "shared-der", "targetKey": "shared.der"},
+    ])
+    peer["properties"]["secretProviderClassName"] = "other-spc" if reference == "other-spc" else "default-spc"
+    peer["extendedLocation"] = {"name": "other-cl" if reference == "other-location" else "MOCK-CL"}
+    spc = get_mock_spc_record(
+        "default-spc", "mock-rg", objects=generate_ssc_object_string(["shared-der", "old-pem", "unrelated"]),
+    )
+    extension = {"name": "aio-ext", "properties": {"configurationSettings": {}}}
+    assemble_resource_map_mock(
+        mocked_instance.get_resource_map, {EXTENSION_TYPE_OPS: extension}, [], ssc=record,
+    )
+    cluster = mocked_instance.get_resource_map().connected_cluster
+    if reference == "new-sync":
+        cluster.get_cl_resources_by_type.return_value = {SECRET_SYNC_RESOURCE_TYPE: []}
+    mocked_instance.get_default_spc.return_value = spc
+    setup_mock_common_responses(
+        mocked_responses, spc, record, "client-sync", "mock-rg", "certificate-der", "default-spc",
+    )
+    mocked_responses.add(
+        responses.PUT, get_secret_endpoint("mock-keyvault", secret_name="certificate-pem"), json={},
+    )
+    endpoint = get_secretsync_endpoint("", "mock-rg")
+    if reference not in {"no-replacements", "new-sync"}:
+        if reference == "lookup-error":
+            mocked_responses.add(responses.GET, endpoint, status=403, json={"error": {"code": "Forbidden"}})
+        else:
+            next_page = endpoint + "&$skiptoken=second"
+            mocked_responses.add(responses.GET, endpoint, json={"value": [record], "nextLink": next_page})
+            mocked_responses.add(
+                responses.GET, next_page, json={"value": [] if reference == "unshared" else [peer]},
+            )
+    mocked_responses.add(responses.PUT, get_secretsync_endpoint("client-sync", "mock-rg"), json=record)
+    arguments = {
+        "cmd": mocked_cmd, "instance_name": "instance-a", "resource_group": "mock-rg",
+        "public_key_file": "/fake/certificate.der", "private_key_file": "/fake/certificate.pem",
+        "secret_sync_name": "client-sync",
+    }
+    if reference == "lookup-error":
+        mocked_responses.remove(responses.PUT, get_spc_endpoint("default-spc", "mock-rg"))
+        mocked_responses.remove(responses.PUT, get_secretsync_endpoint("client-sync", "mock-rg"))
+        with pytest.raises(HttpResponseError):
+            commands_connector.add_connector_opcua_client(**arguments)
+        cluster.update_aio_extension.assert_not_called()
+        assert not any(
+            call.request.method == "PUT" and "Microsoft.SecretSyncController" in call.request.url
+            for call in mocked_responses.calls
+        )
+        return
+    commands_connector.add_connector_opcua_client(**arguments)
+    spc_call = next(call for call in mocked_responses.calls
+                    if call.request.url == get_spc_endpoint("default-spc", "mock-rg"))
+    objects = yaml.safe_load(json.loads(spc_call.request.body)["properties"]["objects"])["array"]
+    sources = {yaml.safe_load(item)["objectName"] for item in objects}
+    expected = {"unrelated", "certificate-der", "certificate-pem"}
+    if reference in {"shared", "no-replacements", "new-sync"}:
+        expected.add("shared-der")
+    if reference in {"no-replacements", "new-sync"}:
+        expected.add("old-pem")
+        assert not any(call.request.url == endpoint for call in mocked_responses.calls)
+    assert sources == expected
+    sync_call = next(call for call in mocked_responses.calls
+                     if call.request.url == get_secretsync_endpoint("client-sync", "mock-rg"))
+    assert json.loads(sync_call.request.body)["properties"]["objectSecretMapping"] == [
+        {"sourcePath": "certificate-der", "targetKey": "certificate.der"},
+        {"sourcePath": "certificate-pem", "targetKey": "certificate.pem"},
+    ]
+    cluster.update_aio_extension.assert_called_once()
 
 
 @pytest.mark.parametrize("kind,setting,default", [

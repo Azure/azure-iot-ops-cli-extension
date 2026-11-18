@@ -26,7 +26,7 @@ import ado_diagnostics as diagnostics
 import owned_resources
 from ado_integration import (
     ROOT, expected_locations, expected_phases, junit_results, producer, read, required, scenario_timeout, write,
-    cloud_name, ownership_identity,
+    cloud_name, digest, output_variable, ownership_identity,
 )
 from release_pipeline import validate_cluster_region
 
@@ -513,6 +513,34 @@ def cleanup(output):
         raise RuntimeError(f"Cleanup had failures: {', '.join(errors)}. Inspect retained state and retry cleanup.")
     state["cleanup"] = "passed"
     write(output / "state.json", state)
+    if state["ownershipChecked"] is True:
+        # Bind task-scoped completion evidence to the final persisted state.
+        output_variable("cleanupStateDigest", digest(output / "state.json"))
+
+
+def cleanup_proof(output):
+    output_variable("complete", "false")
+    try:
+        if os.environ.get("AGENT_JOBSTATUS", "").lower() == "canceled":
+            raise ValueError("Canceled execution requires fallback cleanup.")
+        expected_digest = required("OPS_CLEANUP_STATE_DIGEST")
+        if (not re.fullmatch(r"[0-9a-f]{64}", expected_digest)
+                or digest(output / "state.json") != expected_digest):
+            raise ValueError("Cleanup state does not match the completed task output.")
+        state = read(output / "state.json")
+        validate_state(state)
+        if (state["attempt"] != int(required("SYSTEM_JOBATTEMPT"))
+                or state["row"]["key"] != required("OPS_ROW")
+                or state["sha256"] != required("OPS_CANDIDATE_DIGEST")):
+            raise ValueError("Cleanup proof belongs to another attempt, row, or candidate.")
+        if (state.get("ownershipChecked") is not True
+                or any(state.get(key) != "passed" for key in ("cleanup", "resourceCleanup", "ownershipGuard"))):
+            raise ValueError("Cleanup or ownership verification is incomplete.")
+    except (OSError, ValueError, KeyError, TypeError) as error:
+        print(f"No valid cleanup proof ({type(error).__name__}); running fallback cleanup.", flush=True)
+        return
+    print("Verified current-attempt cleanup proof; skipping redundant Azure login.", flush=True)
+    output_variable("complete", "true")
 
 
 def run(output):
@@ -589,7 +617,7 @@ def run(output):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("operation", choices=["run", "cleanup"])
+    parser.add_argument("operation", choices=["run", "cleanup", "cleanup-proof"])
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     if args.operation == "run":
@@ -598,8 +626,10 @@ def main():
         signal.signal(signal.SIGTERM, interrupted)
         signal.signal(signal.SIGINT, interrupted)
         run(args.output.resolve())
-    else:
+    elif args.operation == "cleanup":
         cleanup(args.output.resolve())
+    else:
+        cleanup_proof(args.output.resolve())
 
 
 if __name__ == "__main__":

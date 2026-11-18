@@ -609,6 +609,143 @@ def test_cleanup_uses_owned_resource_journal_after_instance_teardown(tmp_path, m
     assert pipeline.read(tmp_path / "state.json")["cleanup"] == "passed"
 
 
+@pytest.mark.parametrize("cluster_started", [False, True])
+def test_cleanup_proof_is_exposed_only_after_stop_and_persisted_success(
+    tmp_path, monkeypatch, capsys, cluster_started,
+):
+    state = make_state()
+    state["clusterStarted"] = cluster_started
+    pipeline.write(tmp_path / "state.json", state)
+    monkeypatch.setenv("OPS_ROW", state["row"]["key"])
+    commands = Mock()
+    commands.az_json.side_effect = [{"id": SUBSCRIPTION, "environmentName": "AzureCloud"}, []]
+    monkeypatch.setattr(cluster, "Commands", Mock(return_value=commands))
+    monkeypatch.setattr(cluster.subprocess, "run", Mock(return_value=Mock(stdout="loaded")))
+    order = []
+    commands.run.side_effect = lambda *args, **kwargs: order.append("stop")
+
+    def persist(path, value):
+        pipeline.write(path, value)
+        if value["cleanup"] == "passed":
+            order.append("persist")
+
+    def emit(name, value):
+        order.append("proof")
+        assert name == "cleanupStateDigest"
+        assert value == pipeline.digest(tmp_path / "state.json")
+        assert pipeline.read(tmp_path / "state.json")["cleanup"] == "passed"
+        monkeypatch.setenv("OPS_CLEANUP_STATE_DIGEST", value)
+
+    monkeypatch.setattr(cluster, "write", persist)
+    monkeypatch.setattr(cluster, "output_variable", emit)
+    cluster.cleanup(tmp_path)
+    assert order == (["stop", "persist", "proof"] if cluster_started else ["persist", "proof"])
+    cluster.owned_resources.cleanup.assert_called_once()
+    monkeypatch.setattr(cluster, "output_variable", pipeline.output_variable)
+    cluster.cleanup_proof(tmp_path)
+    output = capsys.readouterr().out
+    assert output.endswith("##vso[task.setvariable variable=complete;isOutput=true]true\n")
+    assert "Verified current-attempt cleanup proof" in output
+
+
+@pytest.mark.parametrize("damage", [
+    "attempt", "row", "candidate", "producer", "resource", "ownership", "unchecked",
+    "cleanup", "resourceCleanup", "ownershipGuard", "tampered", "missing-state", "malformed-state",
+    "missing-output", "unresolved-output", "canceled",
+])
+def test_cleanup_proof_fails_closed_without_current_complete_evidence(tmp_path, monkeypatch, capsys, damage):
+    state = make_state()
+    state.update(resourceCleanup="passed", ownershipGuard="passed")
+    monkeypatch.setenv("OPS_ROW", state["row"]["key"])
+    if damage == "attempt":
+        monkeypatch.setenv("SYSTEM_JOBATTEMPT", "2")
+    elif damage == "row":
+        monkeypatch.setenv("OPS_ROW", "other-row")
+    elif damage == "candidate":
+        monkeypatch.setenv("OPS_CANDIDATE_DIGEST", "c" * 64)
+    elif damage == "producer":
+        state["producer"]["build"] = "999"
+    elif damage == "resource":
+        state["resources"]["storage"] += "-foreign"
+    elif damage == "ownership":
+        state["ownership"]["resourceSuffix"] = "c" * 15
+    elif damage == "unchecked":
+        state["ownershipChecked"] = False
+    elif damage in {"cleanup", "resourceCleanup", "ownershipGuard"}:
+        state[damage] = "rejected" if damage == "ownershipGuard" else "incomplete"
+    elif damage == "canceled":
+        monkeypatch.setenv("AGENT_JOBSTATUS", "Canceled")
+    pipeline.write(tmp_path / "state.json", state)
+    monkeypatch.setenv("OPS_CLEANUP_STATE_DIGEST", pipeline.digest(tmp_path / "state.json"))
+    if damage == "tampered":
+        state["phases"]["scenario"] = "changed"
+        pipeline.write(tmp_path / "state.json", state)
+    elif damage == "missing-state":
+        (tmp_path / "state.json").unlink()
+    elif damage == "malformed-state":
+        (tmp_path / "state.json").write_text("{")
+        monkeypatch.setenv("OPS_CLEANUP_STATE_DIGEST", pipeline.digest(tmp_path / "state.json"))
+    elif damage == "missing-output":
+        monkeypatch.delenv("OPS_CLEANUP_STATE_DIGEST")
+    elif damage == "unresolved-output":
+        monkeypatch.setenv("OPS_CLEANUP_STATE_DIGEST", "$(runScenario.cleanupStateDigest)")
+    commands = Mock()
+    monkeypatch.setattr(cluster, "Commands", commands)
+    cluster.cleanup_proof(tmp_path)
+    output = capsys.readouterr().out
+    assert "##vso[task.setvariable variable=complete;isOutput=true]false" in output
+    assert "##vso[task.setvariable variable=complete;isOutput=true]true" not in output
+    assert "running fallback cleanup" in output
+    commands.assert_not_called()
+
+
+@pytest.mark.parametrize("failure", ["account", "resources", "ownership", "stop", "write", "cancel"])
+def test_cleanup_failure_cannot_emit_success_proof(tmp_path, monkeypatch, capsys, failure):
+    state = make_state()
+    state["clusterStarted"] = True
+    pipeline.write(tmp_path / "state.json", state)
+    commands = Mock()
+    commands.az_json.side_effect = [{"id": SUBSCRIPTION, "environmentName": "AzureCloud"}, []]
+    monkeypatch.setattr(cluster, "Commands", Mock(return_value=commands))
+    monkeypatch.setattr(cluster.subprocess, "run", Mock(return_value=Mock(stdout="loaded")))
+    if failure == "account":
+        commands.az_json.side_effect = RuntimeError("account failed")
+    elif failure in {"resources", "ownership"}:
+        error = cluster.owned_resources.OwnershipViolationError if failure == "ownership" else RuntimeError
+        cluster.owned_resources.cleanup.side_effect = error("resource cleanup failed")
+    elif failure in {"stop", "cancel"}:
+        commands.run.side_effect = InterruptedError("canceled") if failure == "cancel" else RuntimeError("stop failed")
+    else:
+        def persist(path, value):
+            if value["cleanup"] == "passed":
+                raise OSError("state write failed")
+            pipeline.write(path, value)
+        monkeypatch.setattr(cluster, "write", persist)
+    with pytest.raises((OSError, RuntimeError)):
+        cluster.cleanup(tmp_path)
+    assert pipeline.read(tmp_path / "state.json")["cleanup"] == "incomplete"
+    assert "cleanupStateDigest" not in capsys.readouterr().out
+    monkeypatch.setenv("OPS_ROW", state["row"]["key"])
+    monkeypatch.delenv("OPS_CLEANUP_STATE_DIGEST", raising=False)
+    cluster.cleanup_proof(tmp_path)
+    assert "running fallback cleanup" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("missing", [False, True])
+def test_unprovisioned_cleanup_does_not_prove_owned_resources_cleaned(tmp_path, monkeypatch, capsys, missing):
+    if not missing:
+        state = make_state()
+        state["ownershipChecked"] = False
+        pipeline.write(tmp_path / "state.json", state)
+    monkeypatch.setattr(cluster, "Commands", Mock())
+    cluster.cleanup(tmp_path)
+    assert "cleanupStateDigest" not in capsys.readouterr().out
+    cluster.owned_resources.cleanup.assert_not_called()
+    monkeypatch.delenv("OPS_CLEANUP_STATE_DIGEST", raising=False)
+    cluster.cleanup_proof(tmp_path)
+    assert "running fallback cleanup" in capsys.readouterr().out
+
+
 def test_cleanup_retains_instance_failure_and_attempts_other_owned_resources(tmp_path, monkeypatch):
     state = make_state()
     pipeline.write(tmp_path / "state.json", state)
@@ -1091,6 +1228,39 @@ def test_run_without_admission_still_cleans_after_provision_failure(monkeypatch,
     identity.terminate.assert_called_once()
 
 
+@pytest.mark.parametrize("failure", ["scenario", "auth-shutdown"])
+def test_run_cleanup_proof_never_hides_scenario_or_auth_failure(tmp_path, monkeypatch, capsys, failure):
+    state = make_state()
+    state.update(cleanup="not-started", status="incomplete", phases={})
+    pipeline.write(tmp_path / "state.json", state)
+    identity = Mock(poll=Mock(return_value=None))
+    monkeypatch.setattr(cluster, "start_auth", Mock(return_value=identity))
+    monkeypatch.setattr(cluster, "Commands", Mock())
+    monkeypatch.setattr(cluster, "resource_ids", Mock(return_value=set()))
+    for name in ("check_account", "start_cluster", "connect_cluster", "create_resources", "verify_locations"):
+        monkeypatch.setattr(cluster, name, Mock())
+    monkeypatch.setattr(cluster.diagnostics, "HookCollector", Mock())
+
+    def phase(_commands, current, _output, name, _marker):
+        if name == "scenario" and failure == "scenario":
+            raise RuntimeError("scenario failed")
+        current["phases"][name] = "passed"
+
+    def smoke(_commands, current, _output):
+        current["phases"]["smoke"] = "passed"
+
+    monkeypatch.setattr(cluster, "test_phase", phase)
+    monkeypatch.setattr(cluster, "smoke", smoke)
+    if failure == "auth-shutdown":
+        monkeypatch.setattr(cluster, "stop_auth", Mock(side_effect=RuntimeError("auth-shutdown failed")))
+    with pytest.raises(RuntimeError, match=f"{failure} failed"):
+        cluster.run(tmp_path)
+    assert "##vso[task.setvariable variable=cleanupStateDigest;isOutput=true]" in capsys.readouterr().out
+    retained = pipeline.read(tmp_path / "state.json")
+    assert retained["cleanup"] == "passed"
+    assert retained["status"] == ("incomplete" if failure == "scenario" else "passed")
+
+
 @pytest.mark.parametrize("upgrade", [False, True])
 @pytest.mark.parametrize("scenario_failure", [False, True])
 def test_monitor_verifies_target_only_after_successful_baseline_upgrade(
@@ -1407,6 +1577,22 @@ def test_dependency_inventory_rejects_empty_or_failed_collection(tmp_path, monke
     assert not (tmp_path / "dependency-inventory").exists()
 
 
+def test_yaml_gates_fallback_before_azure_login_and_keeps_cancellation_fail_closed():
+    steps = yaml.safe_load((ROOT / ".azure-devops/templates/integration-scenario.yml").read_text())["jobs"][0]["steps"]
+    run = next(step for step in steps if step.get("name") == "runScenario")
+    proof = next(step for step in steps if step.get("name") == "cleanupProof")
+    cleanup = next(step for step in steps if step.get("displayName") == "Clean up")
+    assert steps.index(run) < steps.index(proof) < steps.index(cleanup)
+    assert "cleanup-proof --output attempt" in proof["bash"]
+    assert proof["condition"] == "always()"
+    assert proof["env"]["OPS_CLEANUP_STATE_DIGEST"] == "$(runScenario.cleanupStateDigest)"
+    assert proof["env"]["OPS_CANDIDATE_DIGEST"] == "$(candidateDigest)"
+    assert proof["env"]["OPS_ROW"] == "$(row)"
+    assert cleanup["task"] == "AzureCLI@2"
+    assert cleanup["condition"] == "and(always(), or(canceled(), ne(variables['cleanupProof.complete'], 'true')))"
+    assert cleanup["inputs"]["inlineScript"] == "python tools/ado_cluster.py cleanup --output attempt"
+
+
 def test_yaml_exposes_installed_dependencies_even_after_test_failure():
     template = yaml.safe_load((ROOT / ".azure-devops/templates/integration-pipeline.yml").read_text())
     live = template["stages"][1]["${{ if eq(parameters.mode, 'Integration tests') }}"]
@@ -1521,7 +1707,8 @@ def test_yaml_keeps_dry_run_separate_and_reuses_existing_tests():
     assert job["strategy"]["maxParallel"] == "${{ parameters.maxParallel }}"
     assert job["${{ elseif eq(parameters.configuration.scenarioTimeoutMinutes, 180) }}"]["timeoutInMinutes"] == 240
     azure = [step for step in job["steps"] if step.get("task") == "AzureCLI@2"]
-    assert len(azure) == 2 and azure[1]["condition"] == "always()"
+    assert len(azure) == 2
+    assert azure[1]["condition"] == "and(always(), or(canceled(), ne(variables['cleanupProof.complete'], 'true')))"
     assert azure[0]["inputs"]["addSpnToEnvironment"] is True
     assert "continueOnError" not in json.dumps(live)
     assert "SYSTEM_ACCESSTOKEN" in azure[0]["env"]

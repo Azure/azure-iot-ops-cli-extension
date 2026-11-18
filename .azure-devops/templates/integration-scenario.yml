@@ -102,6 +102,7 @@ jobs:
         artifact: ops-manifest-$(row)-$(System.JobAttempt)
         displayName: Publish resource manifest
       - task: AzureCLI@2
+        name: runScenario
         displayName: Run tests
         inputs:
           azureSubscription: ${{ parameters.configuration.azureServiceConnection }}
@@ -128,8 +129,26 @@ jobs:
             MONITOR_CLOUD: $(TestCloud)
             MONITOR_TRACK: $(TestTrack)
             MONITOR_KIND: ${{ parameters.monitorKind }}
-      - task: AzureCLI@2
+      - bash: |
+          echo "Checking cleanup proof; absent or invalid proof requires fallback cleanup."
+          python tools/ado_cluster.py cleanup-proof --output attempt
+        name: cleanupProof
         condition: always()
+        displayName: Verify cleanup proof
+        env:
+          OPS_CLEANUP_STATE_DIGEST: $(runScenario.cleanupStateDigest)
+          OPS_CANDIDATE_DIGEST: $(candidateDigest)
+          OPS_SUBSCRIPTION: ${{ parameters.configuration.subscriptionId }}
+          OPS_CLOUD: ${{ parameters.configuration.cloud }}
+          OPS_RESOURCE_GROUP: ${{ parameters.configuration.resourceGroup }}
+          OPS_ROW: $(row)
+          ${{ if parameters.monitor }}:
+            OPS_MONITOR_BUNDLE: $(Pipeline.Workspace)/candidate
+            MONITOR_CLOUD: $(TestCloud)
+            MONITOR_TRACK: $(TestTrack)
+            MONITOR_KIND: ${{ parameters.monitorKind }}
+      - task: AzureCLI@2
+        condition: and(always(), or(canceled(), ne(variables['cleanupProof.complete'], 'true')))
         displayName: Clean up
         inputs:
           azureSubscription: ${{ parameters.configuration.azureServiceConnection }}

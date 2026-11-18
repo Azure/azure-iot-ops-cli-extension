@@ -147,17 +147,18 @@ class OpcUACerts(Queryable):
             resource_name=secret_sync_name,
         )
 
-        self._update_extension_configuration(
-            {"connectors.values.securityPki.trustedCerts": secret_sync_name},
-            f"Updating IoT Operations extension to use {secret_sync_name}...",
-        )
-        return self._add_secrets_to_secret_sync(
+        result = self._add_secrets_to_secret_sync(
             secrets=[(secret_name, file_name)],
             secret_sync=opcua_secret_sync,
             resource_group=self.resource_group_name,
             spc_name=spc_name,
             secret_sync_name=secret_sync_name,
         )
+        self._update_extension_configuration(
+            {"connectors.values.securityPki.trustedCerts": secret_sync_name},
+            f"Updating IoT Operations extension to use {secret_sync_name}...",
+        )
+        return result
 
     def issuer_add(
         self,
@@ -251,17 +252,18 @@ class OpcUACerts(Queryable):
             resource_group=self.resource_group_name,
         )
 
-        self._update_extension_configuration(
-            {"connectors.values.securityPki.issuerCerts": secret_sync_name},
-            f"Updating IoT Operations extension to use {secret_sync_name}...",
-        )
-        return self._add_secrets_to_secret_sync(
+        result = self._add_secrets_to_secret_sync(
             secrets=[(secret_name, file_name)],
             secret_sync=opcua_secret_sync,
             resource_group=self.resource_group_name,
             spc_name=spc_name,
             secret_sync_name=secret_sync_name,
         )
+        self._update_extension_configuration(
+            {"connectors.values.securityPki.issuerCerts": secret_sync_name},
+            f"Updating IoT Operations extension to use {secret_sync_name}...",
+        )
+        return result
 
     def client_add(
         self,
@@ -342,11 +344,13 @@ class OpcUACerts(Queryable):
             )
             secrets_to_add.append((secret_name, file_name))
 
-        # use secret sync to find certificate pair secret names to be replaces
+        # Replace old SPC sources only when no peer SecretSync still consumes them.
         secrets_to_replace = []
         if opcua_secret_sync:
             secret_mapping = opcua_secret_sync.get("properties", {}).get("objectSecretMapping", [])
-            secrets_to_replace = [mapping["sourcePath"] for mapping in secret_mapping]
+            secrets_to_replace = self._unreferenced_secret_sources(
+                [mapping["sourcePath"] for mapping in secret_mapping], secret_sync_name, spc_name,
+            )
 
         self._add_secrets_to_spc(
             secrets=[secret[0] for secret in secrets_to_add],
@@ -430,22 +434,9 @@ class OpcUACerts(Queryable):
         # get properties from default spc
         spc_properties = target_spc.get("properties", {})
         spc_keyvault_name = spc_properties.get("keyvaultName", "")
-        shared_sources = {
-            mapping["sourcePath"]
-            for sync in self.ssc_mgmt_client.secret_syncs.list_by_resource_group(
-                resource_group_name=self.resource_group_name,
-            )
-            if sync["name"].casefold() != secretsync_name.casefold()
-            and sync["properties"]["secretProviderClassName"] == target_spc["name"]
-            and sync["extendedLocation"]["name"].casefold() == self.extended_location["name"].casefold()
-            for mapping in sync["properties"].get("objectSecretMapping", [])
-        }
-        unreferenced_secrets = [name for name in secret_to_remove if name not in shared_sources]
-        if shared_sources.intersection(secret_to_remove):
-            logger.warning(
-                "Preserving SPC and Key Vault sources still referenced by another SecretSync: %s",
-                ", ".join(sorted(shared_sources.intersection(secret_to_remove))),
-            )
+        unreferenced_secrets = self._unreferenced_secret_sources(
+            secret_to_remove, secretsync_name, target_spc["name"],
+        )
 
         # remove secret reference from secret sync
         modified_secret_sync = self._remove_secrets_from_secret_sync(
@@ -479,6 +470,26 @@ class OpcUACerts(Queryable):
                     logger.warning(f"Secret {name} not found in keyvault {spc_keyvault_name}. Skipping removal...")
 
         return modified_secret_sync
+
+    def _unreferenced_secret_sources(self, sources: List[str], secret_sync_name: str, spc_name: str) -> List[str]:
+        if not sources:
+            return []
+        shared_sources = {
+            mapping["sourcePath"]
+            for sync in self.ssc_mgmt_client.secret_syncs.list_by_resource_group(
+                resource_group_name=self.resource_group_name,
+            )
+            if sync["name"].casefold() != secret_sync_name.casefold()
+            and sync["properties"]["secretProviderClassName"] == spc_name
+            and sync["extendedLocation"]["name"].casefold() == self.extended_location["name"].casefold()
+            for mapping in sync["properties"].get("objectSecretMapping", [])
+        }
+        if shared_sources.intersection(sources):
+            logger.warning(
+                "Preserving SPC and Key Vault sources still referenced by another SecretSync: %s",
+                ", ".join(sorted(shared_sources.intersection(sources))),
+            )
+        return [name for name in sources if name not in shared_sources]
 
     def show(self, secretsync_name: str) -> dict:
         # check if secret sync exists
