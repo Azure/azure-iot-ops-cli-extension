@@ -31,6 +31,15 @@ CLOUDS = {
 }
 ROLE_TYPE = "microsoft.authorization/roleassignments"
 DEPLOYMENT_TYPE = "microsoft.resources/deployments"
+SECRET_SYNC_TYPE = "microsoft.secretsynccontroller/secretsyncs"
+SECRET_PROVIDER_TYPE = "microsoft.secretsynccontroller/azurekeyvaultsecretproviderclasses"
+CUSTOM_LOCATION_TYPE = "microsoft.extendedlocation/customlocations"
+CONNECTED_CLUSTER_TYPE = "microsoft.kubernetes/connectedclusters"
+CLEANUP_DEPENDENCIES = {
+    SECRET_SYNC_TYPE: (SECRET_PROVIDER_TYPE, CUSTOM_LOCATION_TYPE),
+    SECRET_PROVIDER_TYPE: (CUSTOM_LOCATION_TYPE,),
+    CUSTOM_LOCATION_TYPE: (CONNECTED_CLUSTER_TYPE,),
+}
 API = re.compile(r"20\d{2}-\d{2}-\d{2}(?:-preview)?", re.IGNORECASE | re.ASCII)
 TERMINAL_STATES = {"succeeded", "failed", "canceled", "cancelled"}
 NULL_USER_TAGS = {"microsoft.deviceupdate/accounts", "microsoft.deviceregistry/schemaregistries"}
@@ -848,6 +857,47 @@ def cleanup_batch(journal, arm, batch):
     return failures
 
 
+def cleanup_dependencies(journal, arm, resource, records):
+    from knack.util import CLIError
+
+    kind = resource_type(resource)
+    parent_types = CLEANUP_DEPENDENCIES.get(kind, ())
+    if not parent_types:
+        return set()
+    candidates = {
+        parent for parent in records if resource_type(parent) in (*parent_types, CONNECTED_CLUSTER_TYPE)
+    }
+    if not candidates:
+        return set()
+    try:
+        current = arm.verify(resource, records[resource]["api"])
+        if current is None:
+            raise ValueError("Failed cleanup no longer exposes its dependencies.")
+        if kind == CUSTOM_LOCATION_TYPE:
+            parents = {CONNECTED_CLUSTER_TYPE: current["properties"]["hostResourceId"]}
+        else:
+            parents = {CUSTOM_LOCATION_TYPE: current["extendedLocation"]["name"]}
+            if kind == SECRET_SYNC_TYPE:
+                parents[SECRET_PROVIDER_TYPE] = (
+                    journal.group + "/providers/" + SECRET_PROVIDER_TYPE + "/"
+                    + current["properties"]["secretProviderClassName"]
+                )
+        for parent_type, parent in parents.items():
+            if resource_type(journal.resource_id(parent)) != parent_type:
+                raise ValueError("Cleanup dependency has an unexpected resource type.")
+        if CUSTOM_LOCATION_TYPE in parents and parents[CUSTOM_LOCATION_TYPE].lower() not in records:
+            raise ValueError("The dependent custom location is missing from the ownership inventory.")
+        return {parent.lower() for parent in parents.values()} & candidates
+    except (CLIError, OSError, RuntimeError, ValueError, KeyError, TypeError) as error:
+        # Older receipts or failed reads cannot prove which parents are independent.
+        print(
+            f"Cleanup dependencies unverified for {resource}: {type(error).__name__}; "
+            "retaining all candidate parents.",
+            file=sys.stderr, flush=True,
+        )
+        return candidates
+
+
 def cleanup(path, timeout=600):
     from knack.util import CLIError
 
@@ -876,10 +926,8 @@ def cleanup(path, timeout=600):
         ROLE_TYPE: 0, "microsoft.deviceregistry/assets": 1,
         "microsoft.iotoperations/instances": 2, "microsoft.deviceregistry/assetendpointprofiles": 3,
         # These extension resources must disappear while their custom location and cluster still exist.
-        "microsoft.secretsynccontroller/secretsyncs": 4,
-        "microsoft.secretsynccontroller/azurekeyvaultsecretproviderclasses": 5,
-        "microsoft.extendedlocation/customlocations": 6,
-        "microsoft.kubernetes/connectedclusters": 7,
+        SECRET_SYNC_TYPE: 4, SECRET_PROVIDER_TYPE: 5,
+        CUSTOM_LOCATION_TYPE: 6, CONNECTED_CLUSTER_TYPE: 7,
         "microsoft.deviceregistry/namespaces": 8, "microsoft.deviceregistry/schemaregistries": 8,
         "microsoft.storage/storageaccounts": 10, DEPLOYMENT_TYPE: 11,
     }
@@ -887,8 +935,23 @@ def cleanup(path, timeout=600):
     def order(item):
         return priority.get(resource_type(item[0]), 9)
 
+    blocked = set()
     for _, batch in groupby(sorted(records.items(), key=order), key=order):
-        failures.extend(cleanup_batch(journal, arm, batch))
+        failed = cleanup_batch(journal, arm, (item for item in batch if item[0] not in blocked))
+        failures.extend(failed)
+        pending = list(failed)
+        while pending:
+            dependent = pending.pop()
+            for parent in cleanup_dependencies(journal, arm, dependent, records):
+                if parent not in blocked:
+                    blocked.add(parent)
+                    pending.append(parent)
+                    failures.append(parent)
+                    journal.record(parent, records[parent]["api"], cleanup="blocked", blockedBy=dependent)
+                    print(
+                        f"Cleanup pending for {parent}: dependent {dependent} is not confirmed absent.",
+                        file=sys.stderr, flush=True,
+                    )
     if failures:
         raise RuntimeError("Owned-resource cleanup is incomplete; retain the ownership context and retry.")
     if journal.has_violations():

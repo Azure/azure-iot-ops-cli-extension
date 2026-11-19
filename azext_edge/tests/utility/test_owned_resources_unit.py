@@ -747,6 +747,103 @@ def test_secret_sync_cleanup_finishes_before_custom_location_and_cluster(journal
     assert all(record["cleanup"] == "absent" for record in journal.records().values())
 
 
+@pytest.mark.parametrize("failed_type", [
+    owned.SECRET_SYNC_TYPE, owned.SECRET_PROVIDER_TYPE, owned.CUSTOM_LOCATION_TYPE,
+])
+@pytest.mark.parametrize("dependency_read", ["verified", "forbidden", "missing-metadata"])
+def test_failed_cleanup_retains_dependent_parents_and_recovers_without_blocking_independent_resources(
+    journal, monkeypatch, failed_type, dependency_read,
+):
+    resources = {}
+    stacks = []
+    for suffix in ("failed", "independent"):
+        sync, provider, location, cluster = [
+            GROUP + "/providers/" + kind + "/" + suffix for kind in (
+                owned.SECRET_SYNC_TYPE, owned.SECRET_PROVIDER_TYPE,
+                owned.CUSTOM_LOCATION_TYPE, owned.CONNECTED_CLUSTER_TYPE,
+            )
+        ]
+        stacks.append((sync, provider, location, cluster))
+        resources.update({
+            sync: {"extendedLocation": {"name": location.upper()}, "properties": {"secretProviderClassName": suffix}},
+            provider: {"extendedLocation": {"name": location}},
+            location: {"properties": {"hostResourceId": cluster.upper()}},
+            cluster: {},
+        })
+    resources[RESOURCE] = {}
+    for resource, value in resources.items():
+        value.update(id=resource, tags={owned.TAG: journal.owner})
+        journal.record(resource, "2023-05-01", kind="root")
+    failed_resource = GROUP + "/providers/" + failed_type + "/failed"
+    deleted, deletes = set(), []
+    reject_delete = [True]
+
+    def verify(resource, _api):
+        if resource in deleted:
+            return None
+        if resource == failed_resource and resource in deletes and reject_delete[0]:
+            if dependency_read == "forbidden":
+                raise ValueError("Ownership lookup rejected")
+            if dependency_read == "missing-metadata":
+                return {"id": resource, "tags": {owned.TAG: journal.owner}}
+        return resources[resource]
+
+    def request(method, resource, *_args, **_kwargs):
+        if method == "DELETE":
+            deletes.append(resource)
+            if resource == failed_resource and reject_delete[0]:
+                raise RuntimeError("Injected DELETE failure")
+            deleted.add(resource)
+            return 202, None, {}
+        assert method == "GET"
+        return (404, None, {}) if resource in deleted else (200, resources[resource], {})
+
+    arm = Mock()
+    arm.pages.side_effect = lambda *_args: []
+    arm.verify.side_effect = verify
+    arm.request.side_effect = request
+    monkeypatch.setattr(owned, "Arm", Mock(return_value=arm))
+    with pytest.raises(RuntimeError, match="incomplete"):
+        owned.cleanup(journal.path)
+    failed_index = stacks[0].index(failed_resource)
+    parents = stacks[0][failed_index + 1:]
+    assert all(parent not in deletes for parent in parents)
+    assert all(journal.records()[parent]["cleanup"] == "blocked" for parent in parents)
+    assert journal.records()[failed_resource]["cleanup"] == "failed"
+    assert RESOURCE in deleted
+    if dependency_read == "verified":
+        assert set(stacks[1]) <= deleted
+    else:
+        assert stacks[1][-1] not in deleted  # An unreadable dependency cannot prove this cluster is independent.
+
+    reject_delete[0] = False
+    owned.cleanup(journal.path)
+    assert set(resources) == deleted
+    assert all(record["cleanup"] == "absent" for record in journal.records().values())
+    assert deletes.count(failed_resource) == 2
+    assert all(deletes.count(resource) == 1 for resource in resources if resource != failed_resource)
+
+
+def test_failed_secret_sync_retains_cluster_when_intermediate_parent_is_not_journaled(journal, monkeypatch):
+    sync = GROUP + "/providers/" + owned.SECRET_SYNC_TYPE + "/sync"
+    cluster = GROUP + "/providers/" + owned.CONNECTED_CLUSTER_TYPE + "/cluster"
+    for resource in (sync, cluster):
+        journal.record(resource, "2023-05-01", kind="root")
+    arm = Mock()
+    arm.pages.side_effect = lambda *_args: []
+    arm.verify.return_value = {
+        "id": sync, "tags": {owned.TAG: journal.owner},
+        "extendedLocation": {"name": GROUP + "/providers/" + owned.CUSTOM_LOCATION_TYPE + "/unrecorded"},
+        "properties": {"secretProviderClassName": "unrecorded"},
+    }
+    arm.request.side_effect = RuntimeError("Injected DELETE failure")
+    monkeypatch.setattr(owned, "Arm", Mock(return_value=arm))
+    with pytest.raises(RuntimeError, match="incomplete"):
+        owned.cleanup(journal.path)
+    assert [call.args[:2] for call in arm.request.call_args_list] == [("DELETE", sync)]
+    assert journal.records()[cluster]["cleanup"] == "blocked"
+
+
 def test_inventory_failure_still_attempts_journaled_cleanup(journal, monkeypatch):
     journal.record(RESOURCE, "2023-05-01", kind="root")
     arm = Mock()

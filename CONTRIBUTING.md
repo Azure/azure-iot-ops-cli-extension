@@ -110,11 +110,20 @@ Never store personal account passwords or tokens in these files.
 Keep all definitions disabled until an owner approves automation connections,
 resource scopes/RBAC, capacity and live qualification. Each scenario attempt uses
 the configured, pre-created resource group. Released Trust Bundle tests reuse
-fixed SecretSync names: do not overlap Trust Bundle jobs or runs in the same group,
-including Public Stable/Preview health and GitHub integration runs. Use one Python
-version and one runtime channel per Trust Bundle invocation until serialization
-or resource-group isolation is implemented. No cross-run lock is supplied. The runner
-never creates or deletes a resource group. Cleanup must target only the attempt's
+fixed SecretSync names. Public Release Health and Branch Health TrustBundle stages
+use `maxParallel: 1` and `lockBehavior: sequential` with the shared environment
+`ops-wlif-a386d5ea-ea90-441a-8263-d816368c84a1-ops-cli-int-test-rg` to serialize
+participating stages across runs and tracks through cleanup. An administrator must
+configure and retain that environment's **Exclusive Lock** check; `lockBehavior`
+alone does not provide a lock.
+
+This shared lock does not cover Fairfax, native ADO integration, or GitHub/local
+executions. Do not overlap executions that still use fixed SecretSync names in
+the same group unless they participate in equivalent serialization or use isolated
+groups. For those unprotected legacy tests, use one Python version and one runtime
+channel per invocation. Current source tests using per-instance SecretSync names
+have separate isolation, as described in [Workload identity scheduling](docs/integration-tests.md#workload-identity-scheduling).
+The runner never creates or deletes a resource group. Cleanup must target only the attempt's
 owned resources, including resources created by its test fixtures.
 An administrator must provision the configured groups once and grant the service
 identity the resource-specific deployment and RBAC operations needed within them;
