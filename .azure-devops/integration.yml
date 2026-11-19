@@ -1,0 +1,109 @@
+# Copyright (c) Microsoft Corporation. All rights reserved.
+
+trigger: none
+pr: none
+name: aio-integration-$(Date:yyyyMMdd).$(Rev:r)
+appendCommitMessageToRunName: false
+pool:
+  vmImage: ubuntu-24.04
+parameters:
+  - name: mode
+    displayName: Mode
+    type: string
+    default: Dry run
+    values:
+      - Dry run
+      - Integration tests
+  - name: cloud
+    displayName: Cloud
+    type: string
+    default: Public
+    values:
+      - Public
+      - Fairfax
+  - name: clusterRegion
+    displayName: Region (Public cloud only)
+    type: string
+    default: West US 2
+    values:
+      - East US
+      - East US 2
+      - West US
+      - West US 2
+      - West US 3
+      - South Central US
+      - West Europe
+      - North Europe
+      - Germany West Central
+  - name: testScenarios
+    displayName: Scenarios
+    type: stringList
+    default:
+      - edge
+    values:
+      - Default scenarios
+      - edge
+      - broker-diagnostics-removal
+      - insecure-listener
+      - rpsaas
+      - runtime-channel
+      - upgrade
+      - upgrade-path
+      - mgmtactions
+      - livedata
+      - redeploy
+      - essentials-sku
+      - trustbundle
+  - name: pythonVersions
+    displayName: Python
+    type: stringList
+    default:
+      - '3.13'
+    values:
+      - '3.10'
+      - '3.11'
+      - '3.12'
+      - '3.13'
+  - name: runtimeChannels
+    displayName: Runtime
+    type: stringList
+    default:
+      - Stable
+    values:
+      - Stable
+      - Preview
+  - name: upgradeBaselines
+    displayName: Upgrade source (only for upgrade-path test)
+    type: string
+    default: '{}'
+  - name: scenarioTimeoutMinutes
+    displayName: Timeout (min)
+    type: number
+    default: 360
+    values:
+      - 90
+      - 180
+      - 360
+variables:
+  - template: templates/integration-profile.yml
+    parameters:
+      cloud: ${{ lower(parameters.cloud) }}
+      version: v1
+      region: ${{ parameters.clusterRegion }}
+      services: ${{ parameters.testScenarios }}
+extends:
+  template: templates/integration-pipeline.yml
+  parameters:
+    mode: ${{ parameters.mode }}
+    clusterRegion: ${{ variables.TestRegion }}
+    testScenarios: ${{ parameters.testScenarios }}
+    pythonVersions: ${{ join(',', parameters.pythonVersions) }}
+    runtimeChannels: ${{ parameters.runtimeChannels }}
+    upgradeBaselines: ${{ parameters.upgradeBaselines }}
+    scenarioTimeoutMinutes: ${{ parameters.scenarioTimeoutMinutes }}
+    cloud: ${{ variables.TestAzureCloud }}
+    azureServiceConnection: ${{ variables.TestAzureServiceConnection }}
+    subscriptionId: $(TestSubscription)
+    resourceGroup: $(TestResourceGroup)
+    customLocationsObjectId: $(TestCustomLocationsObjectId)
+    releaseBuildId: $(ReleaseCandidateBuildId)

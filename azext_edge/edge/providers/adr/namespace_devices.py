@@ -770,46 +770,56 @@ class NamespaceDevices(Queryable):
         if not should_continue_prompt(confirm_yes):
             return
 
-        # get the original inbound endpoints
-        device = self.show(
-            device_name=device_name,
-            instance_name=instance_name,
-            resource_group=instance_resource_group
-        )
-        namespace = parse_resource_id(device["id"])
-        original_endpoints = _get_endpoints(device)
-        # remove the endpoints from the endpoint list by key
-        # only send endpoints to be removed with null values
-        # also include any existing endpoints that already have null bodies
-        endpoints_to_remove = {}
+        from azure.core.exceptions import HttpResponseError
 
-        # Add endpoints explicitly requested for removal
-        for endpoint_name in endpoint_names:
-            if endpoint_name in original_endpoints:
-                endpoints_to_remove[endpoint_name] = None
-
-        # Add any existing endpoints that already have null/None bodies
-        for endpoint_name, endpoint_body in original_endpoints.items():
-            if endpoint_body is None:
-                endpoints_to_remove[endpoint_name] = None
-
-        # update payload
-        update_payload = {
-            "properties": {
-                "endpoints": {
-                    "inbound": endpoints_to_remove
-                }
-            }
-        }
-
+        targets = set(endpoint_names)
         with console.status(f"Updating inbound endpoints for {device_name}..."):
-            poller = self.ops.begin_update(
-                resource_group_name=namespace["resource_group"],
-                namespace_name=namespace["name"],
-                device_name=device_name,
-                properties=update_payload
-            )
-            wait_for_terminal_state(poller, **kwargs)
+            for attempt in range(3):
+                device = self.show(
+                    device_name=device_name,
+                    instance_name=instance_name,
+                    resource_group=instance_resource_group
+                )
+                namespace = parse_resource_id(device["id"])
+                original_endpoints = _get_endpoints(device)
+                remaining_endpoints = {
+                    endpoint_name: endpoint_body
+                    for endpoint_name, endpoint_body in original_endpoints.items()
+                    if endpoint_name not in targets and endpoint_body is not None
+                }
+
+                properties = {
+                    key: value
+                    for key, value in device.get("properties", {}).items()
+                    if key not in {"provisioningState", "uuid", "version", "status", "lastTransitionTime"}
+                }
+                endpoints = dict(properties.get("endpoints") or {})
+                endpoints["inbound"] = remaining_endpoints
+                properties["endpoints"] = endpoints
+
+                put_payload = {
+                    "location": device["location"],
+                    "properties": properties,
+                }
+                if "extendedLocation" in device:
+                    put_payload["extendedLocation"] = device["extendedLocation"]
+                if "tags" in device:
+                    put_payload["tags"] = device["tags"]
+
+                put_kwargs = {"headers": {"If-Match": device["etag"]}} if device.get("etag") else {}
+                try:
+                    poller = self.ops.begin_create_or_replace(
+                        resource_group_name=namespace["resource_group"],
+                        namespace_name=namespace["name"],
+                        device_name=device_name,
+                        resource=put_payload,
+                        **put_kwargs
+                    )
+                    wait_for_terminal_state(poller, **kwargs)
+                    break
+                except HttpResponseError as error:
+                    if getattr(error, "status_code", None) != 412 or attempt == 2:
+                        raise
             result = self.show(
                 device_name=device_name,
                 namespace_name=namespace["name"],

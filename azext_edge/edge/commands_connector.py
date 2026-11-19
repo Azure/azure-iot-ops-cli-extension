@@ -36,6 +36,7 @@ def add_connector_opcua_trust(
     overwrite_secret: bool = False,
     secret_name: Optional[str] = None,
     expiration_date: Optional[str] = None,
+    secret_sync_name: str = OPCUA_TRUST_LIST_SECRET_SYNC_NAME,
 ) -> dict:
     return OpcUACerts(
         cmd,
@@ -46,6 +47,7 @@ def add_connector_opcua_trust(
         secret_name=secret_name,
         overwrite_secret=overwrite_secret,
         expiration_date=expiration_date,
+        secret_sync_name=secret_sync_name,
     )
 
 
@@ -56,6 +58,7 @@ def add_connector_opcua_issuer(
     file: str,
     overwrite_secret: bool = False,
     secret_name: Optional[str] = None,
+    secret_sync_name: str = OPCUA_ISSUER_LIST_SECRET_SYNC_NAME,
 ) -> dict:
     return OpcUACerts(
         cmd,
@@ -65,6 +68,7 @@ def add_connector_opcua_issuer(
         file=file,
         secret_name=secret_name,
         overwrite_secret=overwrite_secret,
+        secret_sync_name=secret_sync_name,
     )
 
 
@@ -79,6 +83,7 @@ def add_connector_opcua_client(
     application_uri: Optional[str] = None,
     public_key_secret_name: Optional[str] = None,
     private_key_secret_name: Optional[str] = None,
+    secret_sync_name: str = OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
 ) -> dict:
     return OpcUACerts(
         cmd,
@@ -92,6 +97,7 @@ def add_connector_opcua_client(
         public_key_secret_name=public_key_secret_name,
         private_key_secret_name=private_key_secret_name,
         overwrite_secret=overwrite_secret,
+        secret_sync_name=secret_sync_name,
     )
 
 
@@ -103,17 +109,19 @@ def remove_connector_opcua_trust(
     confirm_yes: Optional[bool] = False,
     force: Optional[bool] = False,
     include_secrets: Optional[bool] = False,
+    secret_sync_name: str = OPCUA_TRUST_LIST_SECRET_SYNC_NAME,
 ) -> dict:
     return OpcUACerts(
         cmd,
         resource_group_name=resource_group,
         instance_name=instance_name,
     ).remove(
-        secretsync_name=OPCUA_TRUST_LIST_SECRET_SYNC_NAME,
+        secretsync_name=secret_sync_name,
         certificate_names=certificate_names,
         confirm_yes=confirm_yes,
         force=force,
         include_secrets=include_secrets,
+        certificate_type="trust",
     )
 
 
@@ -125,17 +133,19 @@ def remove_connector_opcua_issuer(
     confirm_yes: Optional[bool] = False,
     force: Optional[bool] = False,
     include_secrets: Optional[bool] = False,
+    secret_sync_name: str = OPCUA_ISSUER_LIST_SECRET_SYNC_NAME,
 ) -> dict:
     return OpcUACerts(
         cmd,
         resource_group_name=resource_group,
         instance_name=instance_name,
     ).remove(
-        secretsync_name=OPCUA_ISSUER_LIST_SECRET_SYNC_NAME,
+        secretsync_name=secret_sync_name,
         certificate_names=certificate_names,
         confirm_yes=confirm_yes,
         force=force,
         include_secrets=include_secrets,
+        certificate_type="issuer",
     )
 
 
@@ -147,17 +157,19 @@ def remove_connector_opcua_client(
     confirm_yes: Optional[bool] = False,
     force: Optional[bool] = False,
     include_secrets: Optional[bool] = False,
+    secret_sync_name: str = OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
 ) -> dict:
     return OpcUACerts(
         cmd,
         resource_group_name=resource_group,
         instance_name=instance_name,
     ).remove(
-        secretsync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
+        secretsync_name=secret_sync_name,
         certificate_names=certificate_names,
         confirm_yes=confirm_yes,
         force=force,
         include_secrets=include_secrets,
+        certificate_type="client",
     )
 
 
@@ -165,13 +177,14 @@ def show_connector_opcua_trust(
     cmd,
     instance_name: str,
     resource_group: str,
+    secret_sync_name: str = OPCUA_TRUST_LIST_SECRET_SYNC_NAME,
 ) -> dict:
     return OpcUACerts(
         cmd,
         resource_group_name=resource_group,
         instance_name=instance_name,
     ).show(
-        secretsync_name=OPCUA_TRUST_LIST_SECRET_SYNC_NAME,
+        secretsync_name=secret_sync_name,
     )
 
 
@@ -179,13 +192,14 @@ def show_connector_opcua_issuer(
     cmd,
     instance_name: str,
     resource_group: str,
+    secret_sync_name: str = OPCUA_ISSUER_LIST_SECRET_SYNC_NAME,
 ) -> dict:
     return OpcUACerts(
         cmd,
         resource_group_name=resource_group,
         instance_name=instance_name,
     ).show(
-        secretsync_name=OPCUA_ISSUER_LIST_SECRET_SYNC_NAME,
+        secretsync_name=secret_sync_name,
     )
 
 
@@ -193,13 +207,14 @@ def show_connector_opcua_client(
     cmd,
     instance_name: str,
     resource_group: str,
+    secret_sync_name: str = OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
 ) -> dict:
     return OpcUACerts(
         cmd,
         resource_group_name=resource_group,
         instance_name=instance_name,
     ).show(
-        secretsync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
+        secretsync_name=secret_sync_name,
     )
 
 

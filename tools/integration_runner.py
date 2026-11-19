@@ -50,26 +50,32 @@ def verify_installed(wheel, target):
                 raise ValueError(f"Installed candidate differs from wheel: {name}")
 
 
-def install_wheel(wheel, target):
+def install_wheel(wheel, target, environment_name="extension"):
     target = Path(target).resolve()
     if target.name != "azure-iot-ops":
         raise ValueError("Isolated extension destination must end in azure-iot-ops.")
     if target.exists():
         shutil.rmtree(target)
+    environment = dict(os.environ)
+    if environment.get("OPS_DEPENDENCY_LOCK"):
+        environment["PIP_CONSTRAINT"] = str(
+            Path(environment["OPS_DEPENDENCY_LOCK"]) / f"{environment_name}.txt"
+        )
     subprocess.run(
         [sys.executable, "-m", "pip", "install", "--disable-pip-version-check", "--target", str(target), str(wheel)],
-        check=True,
+        check=True, env=environment,
     )
     verify_installed(wheel, target)
 
 
 def validate_baseline_identity(baseline, channel):
+    from azure.cli.core import get_default_cli
     from azext_edge.edge.providers.orchestration.runtime_catalog import get_runtime_catalog
     from azext_edge.edge.providers.orchestration.runtime_profiles import (
         RuntimeChannel, parse_runtime_version, resolve_runtime_identity, validate_upgrade_boundary,
     )
 
-    catalog = get_runtime_catalog()
+    catalog = get_runtime_catalog(os.environ.get("azext_edge_cloud") or get_default_cli().cloud.name)
     target = catalog.get(RuntimeChannel(channel)).identity
     source = resolve_runtime_identity(baseline["version"], baseline["train"], catalog.qualification_identities)
     if source.channel != target.channel:
@@ -109,7 +115,7 @@ def prepare_baseline(baseline, channel, work_dir):
             shutil.copyfileobj(response, output)
     verify_wheel(wheel, baseline["sha256"])
     target = Path(work_dir) / "baseline-extensions" / "azure-iot-ops"
-    install_wheel(wheel, target)
+    install_wheel(wheel, target, "baseline")
     os.environ["azext_edge_baseline_extension_dir"] = str(target.parent)
     return target
 
@@ -123,6 +129,7 @@ def main(argv=None):
     parser.add_argument("--junit")
     parser.add_argument("--coverage-config")
     parser.add_argument("--scenario")
+    parser.add_argument("--monitor", action="store_true")
     args, pytest_args = parser.parse_known_args(argv)
     wheel = verify_wheel(os.environ.get("azext_edge_wheel", ""), os.environ.get("azext_edge_wheel_sha256", ""))
     target = Path(args.extension_dir).resolve()
@@ -131,11 +138,40 @@ def main(argv=None):
         return 0
     if not all((args.tests, args.work_dir, args.junit, args.coverage_config, args.scenario)):
         parser.error("Test execution requires --tests, --work-dir, --junit, --coverage-config and --scenario.")
+    from azure.cli.core import get_default_cli
+    cloud = get_default_cli().cloud.name
+    if cloud not in {"AzureCloud", "AzureUSGovernment"}:
+        raise ValueError("Ops integration tests require public Azure or Fairfax.")
+    if os.environ.get("azext_edge_cloud", cloud) != cloud:
+        raise ValueError("Active Azure CLI cloud differs from the integration target.")
+    if cloud == "AzureUSGovernment" and os.environ.get("azext_edge_runtime_channel", "stable") != "stable":
+        raise ValueError("Fairfax integration tests require stable runtime.")
     tests = Path(args.tests).resolve()
     work_dir = Path(args.work_dir).resolve()
     work_dir.mkdir(parents=True, exist_ok=True)
     install_wheel(wheel, target)
+    if os.environ.get("OPS_DEPENDENCY_LOCK"):
+        from integration_dependencies import verify_target
+        verify_target("extension", target, wheel)
     shutil.copytree(tests, target / "azext_edge" / "tests", ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
+    if os.environ.get("AZEXT_TEST_OWNERSHIP"):
+        for name in ("owned_resources", "owned_resources_pytest"):
+            shutil.copyfile(Path(__file__).with_name(name + ".py"), target / f"azext_edge/tests/_{name}.py")
+        pytest_args += ["-p", "azext_edge.tests._owned_resources_pytest"]
+    if args.monitor:
+        from release_monitor import verify_bundle
+        from release_test_compatibility import stage_tests
+
+        manifest = verify_bundle(tests.parents[2])
+        if manifest["cloud"] != cloud:
+            raise ValueError("Released test compatibility targets a different cloud.")
+        stage_tests(target, manifest, work_dir / "test-compatibility.json")
+        os.environ["AZEXT_OPS_RELEASE_TEST_SOURCE"] = manifest["testSourceCommit"]
+        shutil.copyfile(
+            Path(__file__).with_name("release_monitor_pytest.py"),
+            target / "azext_edge/tests/_release_monitor.py",
+        )
+        pytest_args += ["-p", "azext_edge.tests._release_monitor"]
     # The script path is tools/, not the checkout root; cwd and PYTHONPATH cannot
     # point at the source package when pytest imports or az subprocesses start.
     os.chdir(work_dir)
@@ -153,7 +189,17 @@ def main(argv=None):
     if baseline:
         validate_baseline_identity(baseline, os.environ["azext_edge_runtime_channel"])
         if args.scenario.strip('"') == "init_scenario_test":
-            prepare_baseline(baseline, os.environ["azext_edge_runtime_channel"], work_dir)
+            if os.environ.get("OPS_DEPENDENCY_LOCK"):
+                baseline_target = Path(os.environ["OPS_BASELINE_EXTENSION"])
+                baseline_wheel = verify_wheel(
+                    baseline_target.parents[1] / Path(validate_baseline_url(baseline["wheel_url"]).path).name,
+                    baseline["sha256"],
+                )
+                verify_installed(baseline_wheel, baseline_target)
+                verify_target("baseline", baseline_target, wheel)
+                os.environ["azext_edge_baseline_extension_dir"] = str(baseline_target.parent)
+            else:
+                prepare_baseline(baseline, os.environ["azext_edge_runtime_channel"], work_dir)
     subprocess.run(["az", "version"], check=True)
     extension = subprocess.check_output(["az", "extension", "show", "--name", "azure-iot-ops", "-o", "json"], text=True)
     if Path(json.loads(extension)["path"]).resolve() != target:

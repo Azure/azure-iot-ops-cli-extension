@@ -18,7 +18,9 @@ from knack.arguments import CaseInsensitiveList
 from azext_edge.constants import PREVIEW_AGREEMENT_URL, PREVIEW_NOTICE
 from azext_edge.edge.providers.edge_api.dataflow import DataflowResourceKinds
 
-from ._validators import validate_connector_metadata_ref, validate_namespace, validate_resource_name
+from ._validators import (
+    validate_connector_metadata_ref, validate_namespace, validate_resource_name, validate_secret_sync_name,
+)
 from .common import OpsServiceType
 from .providers.check.common import ResourceOutputDetailLevel
 from .providers.edge_api import DeviceRegistryResourceKinds, MqResourceKinds
@@ -1977,8 +1979,9 @@ def load_iotops_arguments(self, _):
             "                - `mcr.microsoft.com/azureiotoperations/akri-connectors/onvif-metadata:VERSION`\n\n"
             "                3rd-party connectors:\n"
             "                - `REGISTRY.azurecr.io/PATH-metadata:VERSION`\n\n"
-            "                To list available versions for 1st-party connectors:\n"
-            "                `curl https://mcr.microsoft.com/v2/"
+            "                To list available versions for 1st-party connectors, run curl with this URL "
+            "(replace TYPE with the connector type):\n"
+            "                `https://mcr.microsoft.com/v2/"
             "azureiotoperations/akri-connectors/TYPE-metadata/tags/list`",
         )
         context.argument(
@@ -2062,6 +2065,14 @@ def load_iotops_arguments(self, _):
         )
 
     with self.argument_context("iot ops connector opcua") as context:
+        context.argument(
+            "secret_sync_name",
+            options_list=["--secret-sync-name"],
+            type=validate_secret_sync_name,
+            help="SecretSync resource and Kubernetes secret name. Defaults to the existing name for the certificate "
+            "type. Use a unique name per instance when sharing a resource group, and the same name for add, show "
+            "and remove. Add also updates the connector's certificate reference.",
+        )
         context.argument(
             "instance_name",
             options_list=["--instance", "-i", "-n"],

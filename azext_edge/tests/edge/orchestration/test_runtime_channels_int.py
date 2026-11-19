@@ -12,9 +12,10 @@ import shlex
 import subprocess
 
 import pytest
+from azure.cli.core import get_default_cli
 
 from ...helpers import run
-from ...runtime_checks import assert_runtime, configured_baseline, read_runtime
+from ...runtime_checks import assert_runtime, configured_baseline, expected_runtime, read_runtime
 
 
 pytestmark = pytest.mark.runtime_channel
@@ -44,7 +45,12 @@ def test_connector_commands_require_preview_runtime(channel_target, operation):
     )
     if channel == "stable":
         assert result.returncode != 0, f"Connector {operation} unexpectedly succeeded on a stable runtime."
-        assert "requires a preview runtime; the target uses stable" in result.stderr.lower(), result.stderr
+        cloud = get_default_cli().cloud.name
+        rejection = (
+            f"the aio preview runtime is not supported in {cloud.lower()}."
+            if cloud == "AzureUSGovernment" else "requires a preview runtime; the target uses stable"
+        )
+        assert rejection in result.stderr.lower(), result.stderr
         assert not result.stdout.strip(), f"Rejected connector {operation} returned results."
         return
 
@@ -117,9 +123,13 @@ def test_cross_channel_upgrade_rejected_without_mutation(channel_target):
          "--force", "--yes", "--no-progress"], capture_output=True, text=True, check=False,
     )
     assert result.returncode != 0, "Cross-channel upgrade unexpectedly succeeded."
-    assert any(message in result.stderr.lower() for message in (
+    rejections = [
         "cross-train", "ga clusters must remain ga", "train overrides cannot change",
-    )), result.stderr
+    ]
+    if get_default_cli().cloud.name == "AzureUSGovernment" and channel == "stable":
+        version = expected_runtime(channel, configured_baseline()).version
+        rejections.append(f"version '{version}' conflicts with the stable runtime profile.")
+    assert any(message in result.stderr.lower() for message in rejections), result.stderr
     _, instance_after, extensions_after = read_runtime(name, group)
     assert instance_after["properties"] == instance_before["properties"]
     # Controller status timestamps can advance independently of this rejected command.

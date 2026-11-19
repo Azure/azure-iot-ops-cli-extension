@@ -1,0 +1,39 @@
+# Copyright (c) Microsoft Corporation. All rights reserved.
+
+trigger: none
+pr: none
+# Held: planned daily cron "0 14 * * *" (UTC); sovereign scheduling is not authorized.
+schedules: []
+name: aio-branch-health-fairfax-ga-$(Date:yyyyMMdd).$(Rev:r)
+appendCommitMessageToRunName: false
+pool:
+  vmImage: ubuntu-24.04
+parameters:
+  - name: mode
+    type: string
+    default: Integration tests
+    values: [Dry run, Integration tests]
+  - name: pythonVersions
+    displayName: Python
+    type: stringList
+    default: ['3.13']
+    values: ['3.10', '3.11', '3.12', '3.13']
+variables:
+  - template: templates/integration-profile.yml
+    parameters:
+      cloud: fairfax
+      version: v1
+      region: US Gov Virginia
+      services: [Default scenarios]
+  - name: TestTrack
+    value: ga
+  - name: TestChannels
+    value: stable
+stages:
+  - template: templates/branch-health-stages.yml
+    parameters:
+      cloud: fairfax
+      track: ga
+      mode: ${{ parameters.mode }}
+      pythonVersions: ${{ join(',', parameters.pythonVersions) }}
+      region: US Gov Virginia

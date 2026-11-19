@@ -1,0 +1,274 @@
+# Copyright (c) Microsoft Corporation. All rights reserved.
+
+parameters:
+  - name: cloud
+    type: string
+  - name: track
+    type: string
+  - name: mode
+    type: string
+  - name: pythonVersions
+    type: string
+  - name: region
+    type: string
+
+stages:
+  - stage: Prepare
+    displayName: Freeze dev source selection
+    jobs:
+      - job: Acquire
+        timeoutInMinutes: 30
+        steps:
+          - checkout: self
+            clean: true
+            persistCredentials: false
+          - task: UsePythonVersion@0
+            inputs:
+              versionSpec: '3.13'
+          - bash: python -m pip install packaging PyYAML
+            displayName: Install resolver dependencies
+          - task: DownloadPipelineArtifact@2
+            displayName: Restore this run's frozen selection
+            inputs:
+              buildType: current
+              itemPattern: branch-selection-*/manifest.json
+              targetPath: $(Pipeline.Workspace)/selection-history
+          - bash: >-
+              python tools/branch_health.py resolve --history "$(Pipeline.Workspace)/selection-history"
+              --output manifest.json
+            displayName: Resolve dev once, or verify its original SHA
+            env:
+              SYSTEM_ACCESSTOKEN: $(System.AccessToken)
+              MONITOR_CLOUD: ${{ parameters.cloud }}
+              MONITOR_TRACK: ${{ parameters.track }}
+          - publish: manifest.json
+            artifact: branch-selection-$(System.StageAttempt)-$(System.JobAttempt)
+            displayName: Freeze product and automation identities
+          - bash: >-
+              python tools/branch_health.py acquire --source manifest.json
+              --output "$(Pipeline.Workspace)/branch-source"
+            displayName: Acquire selected dev product and matching tests
+          - publish: $(Pipeline.Workspace)/branch-source
+            artifact: branch-source-$(System.StageAttempt)-$(System.JobAttempt)
+            displayName: Publish immutable source bundle
+          - bash: echo "##vso[task.setvariable variable=artifact;isOutput=true]branch-source-$SYSTEM_STAGEATTEMPT-$SYSTEM_JOBATTEMPT"
+            name: source
+            displayName: Record source artifact
+  - stage: Build
+    displayName: Build selected dev source
+    dependsOn: Prepare
+    variables:
+      sourceArtifact: $[ stageDependencies.Prepare.Acquire.outputs['source.artifact'] ]
+    jobs:
+      - job: Build
+        timeoutInMinutes: 30
+        steps:
+          - task: UsePythonVersion@0
+            inputs:
+              versionSpec: '3.13'
+          - bash: python -m pip install packaging PyYAML build
+            displayName: Install build dependencies
+          - task: DownloadPipelineArtifact@2
+            inputs:
+              buildType: current
+              artifactName: $(sourceArtifact)
+              targetPath: $(Pipeline.Workspace)/branch-source
+            displayName: Download selected source, not automation source
+          - task: DownloadPipelineArtifact@2
+            inputs:
+              buildType: current
+              itemPattern: branch-wheel-*/**
+              targetPath: $(Pipeline.Workspace)/build-history
+            displayName: Restore this run's original wheel on retry
+          - bash: >-
+              python tools/branch_health.py build --source "$(Pipeline.Workspace)/branch-source"
+              --history "$(Pipeline.Workspace)/build-history" --output "$(Pipeline.Workspace)/branch-bundle"
+            displayName: Build once or reuse byte-identical wheel
+          - publish: $(Pipeline.Workspace)/branch-bundle
+            artifact: branch-wheel-$(System.StageAttempt)-$(System.JobAttempt)
+            displayName: Freeze original wheel before planning or testing
+          - bash: python tools/release_monitor_adapter.py plan --output "$(Pipeline.Workspace)/branch-bundle"
+            name: plan
+            displayName: Plan matching source scenarios and fixed runtime
+            env:
+              MONITOR_KIND: branch
+              MONITOR_CLOUD: ${{ parameters.cloud }}
+              MONITOR_TRACK: ${{ parameters.track }}
+              OPS_RELEASE_BUILD_ID: '0'
+              OPS_MODE: ${{ parameters.mode }}
+              OPS_SCENARIOS: Default scenarios
+              OPS_CHANNELS: $(TestChannels)
+              OPS_PYTHONS: ${{ parameters.pythonVersions }}
+              OPS_BASELINES: '{}'
+              OPS_CLOUD: $(TestAzureCloud)
+              OPS_SUBSCRIPTION: $(TestSubscription)
+              OPS_RESOURCE_GROUP: $(TestResourceGroup)
+              OPS_CLUSTER_REGION: $(TestRegion)
+              OPS_CUSTOM_LOCATIONS_OID: $(TestCustomLocationsObjectId)
+              OPS_SCENARIO_TIMEOUT_MINUTES: '360'
+          - publish: $(Pipeline.Workspace)/branch-bundle
+            artifact: branch-bundle-$(System.StageAttempt)-$(System.JobAttempt)
+            displayName: Publish frozen candidate and execution plan
+          - bash: echo "##vso[task.setvariable variable=artifact;isOutput=true]branch-bundle-$SYSTEM_STAGEATTEMPT-$SYSTEM_JOBATTEMPT"
+            name: bundle
+            displayName: Record candidate artifact
+  - ${{ each check in split('Lint,Unit', ',') }}:
+      - stage: ${{ check }}
+        displayName: ${{ check }} selected source
+        dependsOn: Build
+        variables:
+          candidateArtifact: $[ stageDependencies.Build.Build.outputs['bundle.artifact'] ]
+        jobs:
+          - job: Check
+            timeoutInMinutes: 60
+            steps:
+              - task: UsePythonVersion@0
+                inputs:
+                  versionSpec: '3.13'
+              - task: DownloadPipelineArtifact@2
+                inputs:
+                  buildType: current
+                  artifactName: $(candidateArtifact)
+                  targetPath: $(Pipeline.Workspace)/candidate
+                displayName: Download frozen source and wheel
+              - bash: |
+                  set -euo pipefail
+                  python -m pip install packaging PyYAML
+                  python tools/branch_health.py stage --source "$BUNDLE" --output "$SOURCE"
+                  python -m pip install -r "$SOURCE/dev_requirements.txt" azure-cli azure-cli-testsdk
+                  az extension add --source "$BUNDLE"/*.whl --yes
+                displayName: Stage selected product and matching source tests
+                env:
+                  BUNDLE: $(Pipeline.Workspace)/candidate
+                  SOURCE: $(Pipeline.Workspace)/check-source
+                  AZURE_EXTENSION_DIR: $(Pipeline.Workspace)/check-extensions
+              - ${{ if eq(check, 'Lint') }}:
+                  - bash: |
+                      set -euo pipefail
+                      python -m flake8 azext_edge/ --config=setup.cfg
+                      python -m pylint azext_edge/ --rcfile=.pylintrc
+                    workingDirectory: $(Pipeline.Workspace)/check-source
+                    displayName: Lint selected dev source
+                    env:
+                      PYTHONPATH: $(Pipeline.Workspace)/check-extensions/azure-iot-ops
+                      AZURE_EXTENSION_DIR: $(Pipeline.Workspace)/check-extensions
+              - ${{ if eq(check, 'Unit') }}:
+                  - bash: >-
+                      python -m pytest -k "_unit.py" azext_edge/tests
+                      --junitxml=junit/branch-unit.xml
+                    workingDirectory: $(Pipeline.Workspace)/check-source
+                    displayName: Test selected dev source
+                    env:
+                      PYTHONPATH: $(Pipeline.Workspace)/check-extensions/azure-iot-ops
+                      AZURE_EXTENSION_DIR: $(Pipeline.Workspace)/check-extensions
+                  - task: PublishTestResults@2
+                    condition: always()
+                    inputs:
+                      testResultsFormat: JUnit
+                      testResultsFiles: $(Pipeline.Workspace)/check-source/junit/branch-unit.xml
+                      testRunTitle: Branch Health Unit $(System.JobAttempt)
+                      failTaskOnFailedTests: true
+                      failTaskOnMissingResultsFile: true
+  - ${{ if eq(parameters.mode, 'Integration tests') }}:
+      - stage: Integration
+        displayName: Test selected dev runtime
+        dependsOn: [Build, Lint, Unit]
+        condition: and(succeeded(), eq(dependencies.Build.outputs['Build.plan.hasParallel'], 'true'))
+        variables:
+          candidateArtifact: $[ stageDependencies.Build.Build.outputs['bundle.artifact'] ]
+          candidateDigest: $[ stageDependencies.Build.Build.outputs['plan.digest'] ]
+        jobs:
+          - template: integration-scenario.yml
+            parameters:
+              monitor: true
+              monitorKind: branch
+              configuration:
+                health: false
+                releaseBuildId: 0
+                scenarioTimeoutMinutes: 360
+                cloud: $(TestAzureCloud)
+                azureServiceConnection: $(TestAzureServiceConnection)
+                subscriptionId: $(TestSubscription)
+                resourceGroup: $(TestResourceGroup)
+              matrix: $[ stageDependencies.Build.Build.outputs['plan.parallelMatrix'] ]
+      - stage: TrustBundle
+        displayName: Test selected dev trust bundle
+        dependsOn: [Build, Lint, Unit, Integration]
+        condition: >-
+          and(not(canceled()), eq(dependencies.Build.result, 'Succeeded'),
+              eq(dependencies.Lint.result, 'Succeeded'), eq(dependencies.Unit.result, 'Succeeded'),
+              in(dependencies.Integration.result, 'Succeeded', 'Failed', 'Skipped'),
+              eq(dependencies.Build.outputs['Build.plan.hasTrustBundle'], 'true'))
+        lockBehavior: sequential
+        variables:
+          candidateArtifact: $[ stageDependencies.Build.Build.outputs['bundle.artifact'] ]
+          candidateDigest: $[ stageDependencies.Build.Build.outputs['plan.digest'] ]
+        jobs:
+          - template: integration-scenario.yml
+            parameters:
+              monitor: true
+              monitorKind: branch
+              maxParallel: 1
+              configuration:
+                health: false
+                releaseBuildId: 0
+                scenarioTimeoutMinutes: 360
+                cloud: $(TestAzureCloud)
+                azureServiceConnection: $(TestAzureServiceConnection)
+                subscriptionId: $(TestSubscription)
+                resourceGroup: $(TestResourceGroup)
+              matrix: $[ stageDependencies.Build.Build.outputs['plan.trustBundleMatrix'] ]
+          - ${{ if eq(parameters.cloud, 'public') }}:
+              - deployment: TrustBundleLock
+                displayName: Release shared trust-bundle lock
+                dependsOn: Scenario
+                condition: always()
+                timeoutInMinutes: 5
+                environment: ops-wlif-a386d5ea-ea90-441a-8263-d816368c84a1-ops-cli-int-test-rg
+                strategy:
+                  runOnce:
+                    deploy:
+                      steps:
+                        - checkout: none
+                        - download: none
+                        - bash: echo "Trust Bundle stage finished."
+      - stage: Results
+        displayName: Qualify Branch Health evidence
+        dependsOn: [Build, Lint, Unit, Integration, TrustBundle]
+        condition: >-
+          and(not(canceled()), eq(dependencies.Build.result, 'Succeeded'),
+              eq(dependencies.Lint.result, 'Succeeded'), eq(dependencies.Unit.result, 'Succeeded'))
+        variables:
+          candidateArtifact: $[ stageDependencies.Build.Build.outputs['bundle.artifact'] ]
+          candidateDigest: $[ stageDependencies.Build.Build.outputs['plan.digest'] ]
+        jobs:
+          - job: Verify
+            steps:
+              - task: UsePythonVersion@0
+                inputs:
+                  versionSpec: '3.13'
+              - bash: python -m pip install packaging PyYAML
+                displayName: Install evidence dependencies
+              - task: DownloadPipelineArtifact@2
+                inputs:
+                  buildType: current
+                  artifactName: $(candidateArtifact)
+                  targetPath: $(Pipeline.Workspace)/candidate
+              - task: DownloadPipelineArtifact@2
+                inputs:
+                  buildType: current
+                  itemPattern: ops-attempt-*/**
+                  targetPath: $(Pipeline.Workspace)/history
+              - bash: python tools/release_monitor_adapter.py gate --output branch-results
+                displayName: Verify matching candidate, runtime and scenario evidence
+                env:
+                  OPS_MONITOR_BUNDLE: $(Pipeline.Workspace)/candidate
+                  OPS_CANDIDATE_DIGEST: $(candidateDigest)
+                  OPS_RELEASE_BUILD_ID: '0'
+                  OPS_HISTORY: $(Pipeline.Workspace)/history
+                  MONITOR_KIND: branch
+                  MONITOR_CLOUD: ${{ parameters.cloud }}
+                  MONITOR_TRACK: ${{ parameters.track }}
+              - publish: branch-results
+                condition: succeededOrFailed()
+                artifact: branch-results-$(System.StageAttempt)-$(System.JobAttempt)

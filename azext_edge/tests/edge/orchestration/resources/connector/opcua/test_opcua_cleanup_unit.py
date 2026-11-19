@@ -37,6 +37,46 @@ def resource(location=LOCATION):
     return {"extendedLocation": {"name": location}}
 
 
+@pytest.mark.parametrize("remaining", [[], [{"sourcePath": "another-secret"}]])
+def test_certificate_removal_waits_for_resource_graph(mocker, remaining):
+    stale = {
+        "name": NAME, "resourceGroup": "test-rg", "extendedLocation": {"name": LOCATION},
+        "properties": {"objectSecretMapping": [{"sourcePath": "trusttest-der"}]},
+    }
+    fresh = {**stale, "properties": {"objectSecretMapping": remaining}}
+    command = mocker.patch.object(helpers, "run", return_value=[fresh])
+    sleep = mocker.patch.object(helpers, "sleep")
+    helpers.assert_ssc_secret_not_exists([stale], LOCATION, "test-rg", "trusttest.der", NAME, "test-instance")
+    command.assert_called_once_with("az iot ops secretsync list -i test-instance -g test-rg")
+    sleep.assert_called_once_with(helpers.SECRETSYNC_RETRY_INTERVAL)
+
+
+@pytest.mark.parametrize("response", ["stale", "foreign", "absent", None, CLIInternalError("read failed")])
+def test_certificate_removal_never_masks_persistent_or_invalid_results(mocker, response):
+    stale = {
+        "name": NAME, "resourceGroup": "test-rg", "extendedLocation": {"name": LOCATION},
+        "properties": {"objectSecretMapping": [{"sourcePath": "trusttest-der"}]},
+    }
+    mocker.patch.object(helpers, "SECRETSYNC_MAX_RETRIES", 2)
+    sleep = mocker.patch.object(helpers, "sleep")
+    command = mocker.patch.object(helpers, "run")
+    if isinstance(response, Exception):
+        command.side_effect = response
+    else:
+        command.return_value = {
+            "stale": [stale], "foreign": [{**stale, "extendedLocation": {"name": OLD_LOCATION}}],
+            "absent": [], None: None,
+        }[response]
+    if response == "absent":
+        helpers.assert_ssc_secret_not_exists([stale], LOCATION, "test-rg", "trusttest.der", NAME, "test-instance")
+    else:
+        with pytest.raises(CLIInternalError if isinstance(response, Exception) else AssertionError):
+            helpers.assert_ssc_secret_not_exists(
+                [stale], LOCATION, "test-rg", "trusttest.der", NAME, "test-instance",
+            )
+    assert command.call_count == sleep.call_count == (2 if response == "stale" else 1)
+
+
 @pytest.fixture
 def cleanup_context(mocker):
     settings = SimpleNamespace(env=SimpleNamespace(azext_edge_rg="test-rg", azext_edge_instance="test-instance"))
@@ -69,6 +109,20 @@ def test_missing_secretsync_needs_no_cleanup(cleanup_context):
     ctx.ssc_factory.assert_called_once_with(
         subscription_id=SUBSCRIPTION, endpoint="https://management.usgovcloudapi.net/",
     )
+
+
+@pytest.mark.parametrize("kind", ["trust", "issuer", "client"])
+def test_per_instance_cleanup_resets_its_certificate_reference(cleanup_context, kind):
+    ctx = cleanup_context
+    name = helpers.certificate_sync_name("test-instance", kind)
+    cleanup = helpers.prepare_opcua_secretsync(ctx.settings, name, certificate_type=kind)
+    ctx.ssc.secret_syncs.get.side_effect = [resource(), ResourceNotFoundError("deleted")]
+    cleanup()
+    ctx.ssc.secret_syncs.begin_delete.assert_called_once_with(
+        resource_group_name="test-rg", secret_sync_name=name,
+    )
+    ctx.certs.return_value._reset_certificate_reference.assert_called_once_with(name, kind)
+    ctx.logger.warning.assert_not_called()
 
 
 @pytest.mark.parametrize("name", [OPCUA_CLIENT_CERT_SECRET_SYNC_NAME, OPCUA_TRUST_LIST_SECRET_SYNC_NAME])
@@ -188,6 +242,12 @@ def test_client_teardown_rolls_back_extension_without_touching_spc(cleanup_conte
         return OpcUACerts._update_client_secret_to_extension(provider, **kwargs)
 
     provider._update_client_secret_to_extension.side_effect = rollback
+    provider._reset_certificate_reference.side_effect = (
+        lambda *args: OpcUACerts._reset_certificate_reference(provider, *args)
+    )
+    provider._update_extension_configuration.side_effect = (
+        lambda *args, **kwargs: OpcUACerts._update_extension_configuration(provider, *args, **kwargs)
+    )
     ctx.ssc.secret_syncs.get.side_effect = [
         ResourceNotFoundError("not created yet"), client_resource(), resource(), ResourceNotFoundError("deleted"),
     ]
@@ -233,12 +293,12 @@ def test_client_teardown_failure_is_warning_only(cleanup_context, phase, error):
     elif phase == "verify":
         ctx.ssc.secret_syncs.get.side_effect = [client_resource(), error]
     else:
-        ctx.certs.return_value._update_client_secret_to_extension.side_effect = error
+        ctx.certs.return_value._reset_certificate_reference.side_effect = error
     cleanup()
     ctx.logger.warning.assert_called_once()
     ctx.command.assert_not_called()
     if phase != "rollback":
-        ctx.certs.return_value._update_client_secret_to_extension.assert_not_called()
+        ctx.certs.return_value._reset_certificate_reference.assert_not_called()
 
 
 @pytest.mark.parametrize("properties", [
@@ -255,8 +315,8 @@ def test_client_teardown_does_not_inspect_or_modify_spc_mappings(cleanup_context
     ctx.ssc.secret_syncs.begin_delete.assert_called_once_with(
         resource_group_name="test-rg", secret_sync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
     )
-    ctx.certs.return_value._update_client_secret_to_extension.assert_called_once_with(
-        application_cert="", subject_name="", application_uri="",
+    ctx.certs.return_value._reset_certificate_reference.assert_called_once_with(
+        OPCUA_CLIENT_CERT_SECRET_SYNC_NAME, "client",
     )
     ctx.certs.return_value._remove_secrets_from_spc.assert_not_called()
     ctx.logger.warning.assert_not_called()
@@ -336,25 +396,33 @@ def test_persistent_resource_exhausts_bounded_deletion_check(cleanup_context):
     assert ctx.sleep.call_count == helpers.SECRETSYNC_MAX_RETRIES - 1
 
 
-@pytest.mark.parametrize("module,fixture_name", [
-    (client_tests, "opcua_certs_client_test_setup"),
-    (issuer_tests, "opcua_certs_issuer_test_setup"),
-    (trust_tests, "opcua_certs_trust_test_setup"),
+@pytest.mark.parametrize("module,fixture_name,kind", [
+    (client_tests, "opcua_certs_client_test_setup", "client"),
+    (issuer_tests, "opcua_certs_issuer_test_setup", "issuer"),
+    (trust_tests, "opcua_certs_trust_test_setup", "trust"),
 ])
-def test_setup_failure_still_registers_cleanup(mocker, module, fixture_name):
+def test_setup_failure_still_registers_cleanup(mocker, module, fixture_name, kind):
     settings = SimpleNamespace(env=SimpleNamespace(azext_edge_rg="test-rg", azext_edge_instance="test-instance"))
     request = mocker.Mock()
     mocker.patch.object(module, "ensure_env_vars")
-    mocker.patch.object(module, "ensure_key_vault", return_value=("/vault", "vault"))
+    vault_cleanup = mocker.Mock()
+
+    def provision_vault(_settings, fixture_request):
+        fixture_request.addfinalizer(vault_cleanup)
+        return "/vault", "vault"
+
+    mocker.patch.object(module, "ensure_key_vault", side_effect=provision_vault)
     mocker.patch.object(module, "ensure_managed_identity", side_effect=CLIInternalError("setup failed"))
     prepare = mocker.patch.object(module, "prepare_opcua_secretsync")
-    vault_cleanup = mocker.patch.object(module, "cleanup_test_resources")
     fixture = getattr(module, fixture_name).__wrapped__(settings, [], request)
     with pytest.raises(CLIInternalError, match="setup failed"):
         next(fixture)
     assert request.addfinalizer.call_count == 2
+    prepare.assert_called_once_with(
+        settings, helpers.certificate_sync_name("test-instance", kind), certificate_type=kind,
+    )
     finalizers = [call.args[0] for call in request.addfinalizer.call_args_list]
     for finalizer in reversed(finalizers):
         finalizer()
     prepare.return_value.assert_called_once_with()
-    vault_cleanup.assert_called_once_with(settings, "vault")
+    vault_cleanup.assert_called_once_with()

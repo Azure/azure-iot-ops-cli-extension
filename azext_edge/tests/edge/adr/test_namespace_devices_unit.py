@@ -345,7 +345,7 @@ def test_query_namespace_devices(mocked_cmd, mocker, req: Dict):
         assert (f'| where properties.enabled == {not req["disabled"]}' in query) is not custom
 
 
-@pytest.mark.parametrize("response_status", [202, 443])
+@pytest.mark.parametrize("response_status", [200, 202, 204, 443])
 def test_delete_namespace_device(
     mocked_cmd, mocked_get_namespace_for_instance, mocked_responses: responses, response_status: int
 ):
@@ -371,7 +371,7 @@ def test_delete_namespace_device(
     )
 
     # Execute test based on status code
-    if response_status != 202:
+    if response_status not in (200, 202, 204):
         with pytest.raises(Exception):
             delete_namespace_device(
                 cmd=mocked_cmd,
@@ -873,14 +873,15 @@ def test_remove_namespace_device_inbound_endpoints(
         content_type="application/json",
     )
 
-    # Mock the PATCH call to update the endpoints
+    # Mock the PUT call to replace the device with remaining endpoints
     mocked_responses.add(
-        method=responses.PATCH,
+        method=responses.PUT,
         url=get_namespace_device_mgmt_uri(
             namespace_name=namespace_name,
             resource_group_name=resource_group_name,
             device_name=device_name
         ),
+        json=updated_device if response_status == 200 else {"error": "Forbidden"},
         status=response_status,
         content_type="application/json",
     )
@@ -926,20 +927,81 @@ def test_remove_namespace_device_inbound_endpoints(
     # Verify result matches expected
     assert result == expected_remaining
 
-    # Verify that both GET and PATCH calls were made
+    # Verify that GET, PUT, and GET calls were made
     assert len(mocked_responses.calls) == 3
     assert mocked_responses.calls[0].request.method == "GET"
-    assert mocked_responses.calls[1].request.method == "PATCH"
+    assert mocked_responses.calls[1].request.method == "PUT"
     assert mocked_responses.calls[2].request.method == "GET"
 
-    # Verify request body contains expected endpoints
-    patch_body = json.loads(mocked_responses.calls[1].request.body)
-    patch_endpoints = patch_body["properties"]["endpoints"]["inbound"]
-    for endpoint in patch_endpoints:
-        if endpoint in expected_remaining:
-            assert patch_endpoints[endpoint] == expected_remaining[endpoint]
-        else:
-            assert patch_endpoints[endpoint] is None
+    # Verify PUT request body contains only remaining endpoints (no null tombstones or read-only metadata)
+    put_body = json.loads(mocked_responses.calls[1].request.body)
+    assert put_body["location"] == original_device["location"]
+    assert put_body["extendedLocation"] == original_device["extendedLocation"]
+    if original_device.get("etag"):
+        assert mocked_responses.calls[1].request.headers.get("If-Match") == original_device["etag"]
+    for readonly_key in ("id", "name", "type", "systemData", "etag"):
+        assert readonly_key not in put_body
+    for readonly_prop in ("provisioningState", "uuid", "version", "status", "lastTransitionTime"):
+        assert readonly_prop not in put_body["properties"]
+    put_endpoints = put_body["properties"]["endpoints"]["inbound"]
+    assert put_endpoints == expected_remaining
+    assert all(val is not None for val in put_endpoints.values())
+
+
+def test_remove_namespace_device_inbound_endpoints_retries_on_etag_conflict(
+    mocked_cmd,
+    mocked_responses: responses,
+    mocked_get_namespace_for_instance,
+):
+    device_name = generate_random_string()
+    instance_name = f"test-inst-{generate_random_string()}"
+    instance_resource_group = f"inst-rg-{generate_random_string()}"
+    namespace_name = mocked_get_namespace_for_instance.return_value["name"]
+    resource_group_name = mocked_get_namespace_for_instance.return_value["resource_group"]
+    uri = get_namespace_device_mgmt_uri(
+        namespace_name=namespace_name,
+        resource_group_name=resource_group_name,
+        device_name=device_name,
+    )
+
+    ep_a = generate_device_inbound_endpoint(endpoint_name="ep_a")["ep_a"]
+    ep_b = generate_device_inbound_endpoint(endpoint_name="ep_b")["ep_b"]
+    ep_c = generate_device_inbound_endpoint(endpoint_name="ep_c")["ep_c"]
+
+    stale_snapshot = get_namespace_device_record(
+        device_name=device_name, namespace_name=namespace_name, resource_group_name=resource_group_name
+    )
+    stale_snapshot["etag"] = '"etag-v1"'
+    stale_snapshot["properties"]["endpoints"] = {"inbound": {"ep_a": ep_a, "ep_b": ep_b, "ep_c": ep_c}}
+
+    concurrent_snapshot = deepcopy(stale_snapshot)
+    concurrent_snapshot["etag"] = '"etag-v2"'
+    concurrent_snapshot["properties"]["endpoints"] = {"inbound": {"ep_b": ep_b, "ep_c": ep_c}}
+
+    final_snapshot = deepcopy(concurrent_snapshot)
+    final_snapshot["etag"] = '"etag-v3"'
+    final_snapshot["properties"]["endpoints"] = {"inbound": {"ep_c": ep_c}}
+
+    mocked_responses.add(method=responses.GET, url=uri, json=stale_snapshot, status=200)
+    mocked_responses.add(method=responses.PUT, url=uri, json={"error": {"code": "PreconditionFailed"}}, status=412)
+    mocked_responses.add(method=responses.GET, url=uri, json=concurrent_snapshot, status=200)
+    mocked_responses.add(method=responses.PUT, url=uri, json=final_snapshot, status=200)
+    mocked_responses.add(method=responses.GET, url=uri, json=final_snapshot, status=200)
+
+    result = remove_inbound_device_endpoints(
+        cmd=mocked_cmd,
+        device_name=device_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
+        endpoint_names=["ep_b"],
+        wait_sec=0,
+        confirm_yes=True,
+    )
+    assert result == {"ep_c": ep_c}
+    assert mocked_responses.calls[1].request.headers["If-Match"] == '"etag-v1"'
+    assert mocked_responses.calls[3].request.headers["If-Match"] == '"etag-v2"'
+    second_put_body = json.loads(mocked_responses.calls[3].request.body)
+    assert second_put_body["properties"]["endpoints"]["inbound"] == {"ep_c": ep_c}
 
 
 @pytest.mark.parametrize("response_status", [200, 400])

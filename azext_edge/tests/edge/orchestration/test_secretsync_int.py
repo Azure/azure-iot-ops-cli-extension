@@ -11,6 +11,7 @@ import pytest
 from knack.log import get_logger
 from time import sleep
 from typing import List, Optional
+from uuid import uuid4
 
 from azure.cli.core.azclierror import CLIInternalError
 
@@ -45,7 +46,7 @@ def secretsync_int_setup(settings, tracked_resources: List[str]):
     kv_id = settings.env.azext_edge_kv
     kv_name = None
     if not kv_id:
-        kv_name = "spc" + generate_random_string(size=6)
+        kv_name = "spc" + uuid4().hex[:16]
         kv_id = run(f"az keyvault create -n {kv_name} -g {settings.env.azext_edge_rg}")["id"]
         # add "Key Vault Secrets Officer" role
         run(
@@ -56,7 +57,7 @@ def secretsync_int_setup(settings, tracked_resources: List[str]):
     mi_id = settings.env.azext_edge_user_assigned_mi_id
     if not mi_id:
         mi_id = run(
-            f"az identity create -n {'spc' + generate_random_string(size=6)} -g {settings.env.azext_edge_rg}"
+            f"az identity create -n spc{uuid4().hex[:16]} -g {settings.env.azext_edge_rg}"
         )["id"]
         tracked_resources.append(mi_id)
 

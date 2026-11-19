@@ -15,9 +15,10 @@ from ....helpers import create_file, run
 
 logger = get_logger(__name__)
 MAX_TRIES = 3
-PUBLIC_NETWORK_MAX_RETRIES = 10
+PUBLIC_NETWORK_MAX_RETRIES = 20
 PUBLIC_NETWORK_RETRY_INTERVAL = 30
 PUBLIC_NETWORK_ERROR = "Schema versions require public network access to be enabled"
+STORAGE_PERMISSION_ERROR = "AuthorizationPermissionMismatch"
 VERSION_STRINGIFY_FORMAT = "aio-sr://{schema_name}:{version}"
 # pytest mark for rpsaas (cloud-side) tests
 pytestmark = pytest.mark.rpsaas
@@ -28,7 +29,10 @@ def run_with_public_network_retry(command: str):
         try:
             return run(command)
         except CLIInternalError as ex:
-            if PUBLIC_NETWORK_ERROR not in ex.error_msg or attempt == PUBLIC_NETWORK_MAX_RETRIES - 1:
+            retryable = any(
+                marker in ex.error_msg for marker in (PUBLIC_NETWORK_ERROR, STORAGE_PERMISSION_ERROR)
+            )
+            if not retryable or attempt == PUBLIC_NETWORK_MAX_RETRIES - 1:
                 raise
             sleep(PUBLIC_NETWORK_RETRY_INTERVAL)
 
@@ -100,7 +104,7 @@ def test_schema_lifecycle(settings_with_rg, tracked_resources, tracked_files):
     )
 
     # SHOW VERSION
-    version_show = run(
+    version_show = run_with_public_network_retry(
         f"az iot ops schema version show --version {version_num} --schema {schema_name1} -g {registry_rg} "
         f"--registry {registry_name}"
     )
@@ -114,7 +118,7 @@ def test_schema_lifecycle(settings_with_rg, tracked_resources, tracked_files):
     )
 
     # VERSION PRINTS
-    version_strings1 = run(
+    version_strings1 = run_with_public_network_retry(
         f"az iot ops schema show-dataflow-refs --schema {schema_name1} -g {registry_rg} "
         f"--registry {registry_name} --ver {version_num}"
     )
@@ -145,7 +149,7 @@ def test_schema_lifecycle(settings_with_rg, tracked_resources, tracked_files):
         content=json_content
     )
 
-    schema2 = run(
+    schema2 = run_with_public_network_retry(
         f"az iot ops schema create -n {schema_name2} -g {registry_rg} --registry {registry_name} "
         f"--format json --type message --desc \"{description}\" --display-name {display_name} "
         f"--vc {file_path} --vd {version_desc} --ver {version_num}"
@@ -167,7 +171,7 @@ def test_schema_lifecycle(settings_with_rg, tracked_resources, tracked_files):
     })
     # fun stuff to make sure the inline is actually formatted correctly in the command
     test_content = inline_content.replace('"', '\\"')
-    version_add = run(
+    version_add = run_with_public_network_retry(
         f"az iot ops schema version add --version {version_num2} --schema {schema_name2} -g {registry_rg} "
         f"--registry {registry_name} --content \"{test_content}\""
     )
@@ -181,7 +185,7 @@ def test_schema_lifecycle(settings_with_rg, tracked_resources, tracked_files):
     )
 
     # LIST VERSION
-    version_list = run(
+    version_list = run_with_public_network_retry(
         f"az iot ops schema version list --schema {schema_name2} -g {registry_rg} "
         f"--registry {registry_name}"
     )
@@ -199,7 +203,7 @@ def test_schema_lifecycle(settings_with_rg, tracked_resources, tracked_files):
     )
 
     # VERSION PRINTS
-    version_strings2 = run(
+    version_strings2 = run_with_public_network_retry(
         f"az iot ops schema show-dataflow-refs --schema {schema_name2} -g {registry_rg} --registry {registry_name}"
     )
     assert schema_name2 in version_strings2
@@ -213,7 +217,7 @@ def test_schema_lifecycle(settings_with_rg, tracked_resources, tracked_files):
     )
 
     # all versions + schemas
-    version_strings_all = run(
+    version_strings_all = run_with_public_network_retry(
         f"az iot ops schema show-dataflow-refs -g {registry_rg} --registry {registry_name}"
     )
     assert schema_name1 in version_strings_all
@@ -229,7 +233,7 @@ def test_schema_lifecycle(settings_with_rg, tracked_resources, tracked_files):
     )
 
     # latest should only contain schema1 + version and schema2 + latest version
-    version_strings_latest = run(
+    version_strings_latest = run_with_public_network_retry(
         f"az iot ops schema show-dataflow-refs -g {registry_rg} --registry {registry_name} --latest"
     )
     assert version_strings_latest[schema_name1][str(1)] == VERSION_STRINGIFY_FORMAT.format(
@@ -241,13 +245,13 @@ def test_schema_lifecycle(settings_with_rg, tracked_resources, tracked_files):
     assert str(version_num) not in version_strings_latest[schema_name2]
 
     # REMOVE VERSION
-    run(
+    run_with_public_network_retry(
         f"az iot ops schema version remove --version {version_num} --schema {schema_name2} -g {registry_rg} "
         f"--registry {registry_name}"
     )
 
     # LIST
-    version_list = run(
+    version_list = run_with_public_network_retry(
         f"az iot ops schema version list --schema {schema_name2} -g {registry_rg} "
         f"--registry {registry_name}"
     )

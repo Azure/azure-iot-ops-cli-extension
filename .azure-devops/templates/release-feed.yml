@@ -1,0 +1,17 @@
+# Copyright (c) Microsoft Corporation. All rights reserved.
+
+parameters:
+  - name: condition
+    type: string
+    default: succeeded()
+
+steps:
+  - task: PipAuthenticate@1
+    displayName: Authenticate feed
+    condition: ${{ parameters.condition }}
+    inputs:
+      artifactFeeds: aziotcli/pip
+      onlyAddExtraIndex: false
+  - script: python tools/release_pipeline.py feed-environment
+    condition: ${{ parameters.condition }}
+    displayName: Configure feed

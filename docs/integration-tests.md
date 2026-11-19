@@ -122,19 +122,68 @@ live API and connector compatibility must be verified separately.
 
 #### Workload identity scheduling
 
-Workload-identity jobs (`python-wlif-int`, the `trustbundle` scenario) share a
-resource-group-specific concurrency group. Only one runs at a time, from setup and
-init through tests and cleanup, because OPC UA certificate commands create fixed-name
-SecretSync resources. Other scenarios remain parallel. `parallel: false` controls
-pytest workers within a job; it does not provide this cross-job protection.
+Workload-identity jobs (`python-wlif-int`, the `trustbundle` scenario) do not use
+cross-run concurrency locks. Jobs use the configured shared test resource group,
+with independent clusters and instances. The OPC UA certificate fixtures generate
+stable per-instance SecretSync names and pass `--secret-sync-name` to every add,
+show, and remove command. This isolates the resource-group-scoped ARM resources
+as well as their Kubernetes secret references. Without this option, existing CLI
+certificate resource names and behavior are preserved.
 
-The group spans stable/preview channels, branches and workflow runs in the same
-repository that use this configuration. `cancel-in-progress: false` preserves the
-running job and `queue: max` allows up to 100 pending jobs instead of replacing the
-previous pending job. Either channel may run first. Runs in other repositories or
-older workflows without the group are not coordinated. Cleanup failures still need
-investigation: the lock lasts through cleanup attempts, not until successful deletion
-is independently guaranteed.
+The configured resource group is never created or deleted by the runner. Existing
+deployment and role-assignment permissions on that group remain necessary; no new
+subscription-wide RBAC administration grant is required by this test isolation.
+Cleanup remains limited to the attempt's resources. Stable/preview jobs and
+independent runs can execute in parallel; `parallel: false` still runs tests
+sequentially within each instance.
+
+Published release-monitor pipelines (`release-monitor*.yml`) test frozen wheels
+that predate `--secret-sync-name` and still create the fixed-name SecretSync
+resources. Release-monitor `TrustBundle` stages therefore keep `maxParallel: 1`,
+and Public Azure runs sharing `ops-cli-int-test-rg` serialize the stage across
+tracks via the `ops-wlif-a386d5ea-ea90-441a-8263-d816368c84a1-ops-cli-int-test-rg`
+environment **Exclusive lock** (`TrustBundleLock`). Retain that environment check
+while any release-monitor track tests a pre-`--secret-sync-name` wheel. Distinct
+resource names do not isolate subscription quotas, throttling, or scheduled cleanup.
+
+Each integration attempt remains responsible for cleaning its own resources.
+Scenario teardown skips its fallback Azure CLI login only when an offline proof
+step verifies the runner's completed cleanup state against its task-output digest,
+current run, attempt, row, candidate, and successful ownership checks. The runner
+emits that digest only after owned-resource cleanup, local cluster shutdown, and
+the final state write succeed. Missing, changed, foreign, or incomplete evidence
+retains fallback cleanup; cancellation always retains it. Test and authentication
+failures remain failures even when cleanup succeeds.
+
+`Cluster Resource Cleanup` is explicit maintenance, not a scheduled job: its
+whole-group sweep can delete in-flight instances even when their names are unique.
+Run it only when the selected resource group is idle. If the default branch still
+contains the old schedule, keep that workflow disabled until the no-schedule
+revision is merged.
+
+For manual Azure Pipelines Integration runs, select **Cluster region** (default
+`westus2`). The frozen plan uses this region for Arc cluster creation and the run
+title, for example `ops-integration-123 (eastus2) (edge) (preview)`. The runner checks
+that the connected cluster is in the selected region. Health continues to use its
+Library profile, and release children explicitly select `westus2`. Storage, schema
+registry, and namespace location behavior is unchanged.
+
+The ADO runner captures hook Job status, namespace Pod status, and bounded current
+and previous container logs for hooks and unhealthy Pods while tests run, before
+Helm rollback can remove them. On failure it also attempts namespace events and the
+owned K3s unit journal before cleanup. Event snapshots prioritize warnings and recent
+events, retain complete JSON records within the size limit, and report omitted counts.
+Failed attempts also retain Pod/container security contexts, bound volume metadata,
+and read-only permission inspection of verified, owned local-path volume directories.
+The collector never changes filesystem permissions.
+Sanitized snapshots are
+published early as `ops-diagnostics-<row>-<attempt>` artifacts and retained under
+`diagnostics` in the normal attempt artifact. Secrets, kubeconfig contents, pod
+environment values and Helm values are not collected. Collection errors are warnings;
+they never replace the original test failure or prevent cleanup. The selected
+scenario execution budget remains enforced, with separate outer-job headroom for
+preparation, diagnostics and teardown. Hard agent termination can still prevent
+the final upload; already-published snapshots remain available.
 
 #### The same candidate wheel everywhere
 
@@ -153,6 +202,67 @@ to its absolute path and `azext_edge_wheel_sha256` to its SHA256 digest. Set
 resource-group and instance settings. The existing tox environments remain available;
 `python-runtime-int` selects the isolated channel tests. Local test runs still create
 and modify real Azure resources—collection and unit tests do not qualify a live runtime.
+
+#### ADO retry dependencies and Branch Health
+
+Native integration, Release Health, and Branch Health publish `dependencies-<row>-<stage>-<job>`
+before provisioning. Each snapshot binds the run, definition, automation commit, candidate
+SHA256, Python minor version, platform and matrix row. The host and candidate extension
+have **separate** name/version constraints and METADATA hashes; an upgrade baseline has a
+third environment. Conflicting host/extension versions are intentional and are not merged.
+The connectedk8s tool and its dependencies are retained as a hash-verified installed-tree
+artifact, rather than rediscovered on retry. Candidate reinstalls verify the original
+inventory before every test phase. A missing, conflicting or mismatched snapshot fails
+closed: start a new run instead of silently resolving new packages. These are run-scoped
+locks, not permanent dependency pins or wheelhouse guarantees.
+
+The fixed definitions in [branch-health.json](../.azure-devops/branch-health.json) belong in
+`\official\branch-health`, alongside `\official\release-health`:
+
+* **Azure IoT Operations CLI - Branch Health (Public GA)** — stable runtime.
+* **Azure IoT Operations CLI - Branch Health (Fairfax GA)** — stable runtime.
+* **Azure IoT Operations CLI - Branch Health (Public Preview)** — preview runtime.
+
+There is no supported Fairfax Preview definition and no `Runtime` suffix. Definition YAML
+may run from the reviewed automation branch, but the product is always `refs/heads/dev`.
+Prepare freezes its SHA once per run; Build checks out that SHA independently, builds one
+wheel, and publishes it before planning tests. Build retries restore that exact wheel.
+The source bundle records the real branch, product/test SHA, separate automation SHA,
+cloud/runtime profile, source inventory and wheel digest. Source and wheel product bytes
+must match; only explicitly audited test-only compatibility may be applied.
+Branch compatibility has two tiers, computed after acquiring the selected source.
+A digest of non-unit `azext_edge/tests/**` plus `.github/test-scenarios.yml` matching the
+reviewed v2.11.2 tree permits the existing corrections: Public gets only SecretSync;
+Fairfax also gets the four reviewed file replacements and four ADR case exclusions.
+Other test trees receive **no replacements**: Public runs natively, and Fairfax retains
+only the four exclusions if their file hashes still match and AST inspection confirms
+the default ADR API is `2026-04-01`. API/excluded-file drift fails Prepare for re-review.
+Thus rewritten fixtures run natively rather than receiving stale automation copies.
+The frozen manifest records the tree digest, reviewed baseline and excluded-file hashes.
+Bundle verification recomputes the plan, staging checks original files, and pytest requires
+the staged `AZEXT_OPS_TEST_COMPATIBILITY` receipt instead of inferring branch skips from a
+commit ID. Product bytes are never patched. Published-release rules remain commit-specific;
+pytest additionally checks their receipt exclusions against those existing rules.
+
+Dry run performs acquisition/build/lint/unit without Azure integration. Integration mode
+additionally gates native scenarios, serialized Trust Bundle and final evidence on the
+selected source's lint/unit results. Fixed wrappers expose mode, Python and applicable
+Public region controls, never source/cloud/runtime overrides. Existing manual pipeline
+164 remains available for PR/ad-hoc source. Release Health support slots `v1/v2/v3/preview`
+continue to consume published wheels unchanged.
+
+Definition setup requires authorizing the existing `iotupx-ops-integration` pool,
+`sc-iot-ops-cli-public-it` (Public) or `sc-iot-ops-cli-fairfax-it` (Fairfax) service connection,
+and Public's existing shared Trust Bundle environment/exclusive lock. Profiles reuse
+the current subscriptions and resource groups, including Fairfax's `v1` group. No new
+secret variables are required. The reviewed Public daily schedules and held Fairfax
+plans are listed in [Contributing](../CONTRIBUTING.md#released-version-monitors).
+Retain all run artifacts through retries.
+Health-only definitions use repository property `reportBuildStatus: 'false'`: results
+remain in ADO/the dashboard instead of attaching health status to the automation commit.
+Normal PR CI, manual integration 164 and release 165 keep their existing status reporting.
+Storage fixtures already explicitly disable blob public access; their existing network
+and shared-key settings are independent and are preserved.
 
 #### Containerized end-to-end tests
 
