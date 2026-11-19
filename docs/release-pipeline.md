@@ -37,7 +37,7 @@ separate Validate run before uploading or releasing.
 9. Draft/Release only: when the publish stage waits, the configured approver
    approves the check on protected variable group `aziotops_release_publish`.
    The requester may self-approve. Upload never waits for approval.
-10. When the run finishes, open its **Artifacts** (below).
+10. When the run finishes, open its **Artifacts** and download its logs (below).
 
 Integration queues pipeline **164** child runs for every default release
 scenario on Stable and Preview with Python 3.13, using Public test connection
@@ -53,10 +53,11 @@ those child runs.
 | `release-security-<attempt>` | Security scan evidence. |
 | `release-index-compatibility-<attempt>` | Index compatibility report. |
 | `release-integration-<cohort>-<attempt>` | The pipeline 164 child run for that cohort. |
-| `release-publication-<attempt>` | `release.json` receipt for Upload, Draft or Release. |
 
-The Upload receipt records the blob URL, SHA-256, length, candidate provenance
-and status `uploaded` or `already-present`.
+For Upload, Draft or Release, choose **... > Download logs** on the run to get
+`release.json`, attached by **Retain publication receipt in task logs**. Release
+jobs publish no pipeline artifacts. The Upload receipt records the blob URL,
+SHA-256, length, candidate provenance and status `uploaded` or `already-present`.
 
 ## Upload rules and retries
 

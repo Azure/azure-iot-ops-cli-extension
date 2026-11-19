@@ -1046,7 +1046,16 @@ def test_yaml_parallel_qualification_requires_all_gates_and_no_default_publicati
     assert "release-tooling/release_pipeline.py" in storage["inputs"]["inlineScript"]
     assert '" upload ' in storage["inputs"]["inlineScript"]
     assert "RELEASE_GITHUB_TOKEN" not in storage["env"]
-    assert upload["templateContext"]["outputs"][0]["artifact"] == "release-publication-$(System.JobAttempt)"
+    for release_job in (upload, job):
+        assert "outputs" not in release_job["templateContext"]
+        receipt = next(step for step in release_job["steps"] if "task.uploadfile" in step.get("bash", ""))
+        assert receipt["env"]["RELEASE_RECEIPT"] == "$(Agent.TempDirectory)/publication/release.json"
+        assert 'if [ ! -s "$RELEASE_RECEIPT" ]' in receipt["bash"]
+        assert "task.logissue type=error" in receipt["bash"] and "exit 1" in receipt["bash"]
+        assert receipt.get("condition", "succeeded()") == "succeeded()"
+    assert next(i for i, step in enumerate(job["steps"]) if "task.uploadfile" in step.get("bash", "")) < next(
+        i for i, step in enumerate(job["steps"]) if "${{ if parameters.createIndexPr }}" in step
+    )
     preparation = next(step for step in stages["Build"]["jobs"][0]["steps"]
                        if "${{ if eq(parameters.mode, 'Upload wheel only') }}" in step)
     assert "prepare-upload" in json.dumps(preparation)
