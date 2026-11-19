@@ -252,10 +252,12 @@ Public region controls, never source/cloud/runtime overrides. Existing manual pi
 continue to consume published wheels unchanged.
 
 Definition setup requires authorizing the existing `iotupx-ops-integration` pool,
-`az-iot-ops-int-sp-ado` (Public) or `sc-iot-ops-cli-fairfax-it` (Fairfax) service connection,
+`sc-iot-ops-cli-public-it` (Public) or `sc-iot-ops-cli-fairfax-it` (Fairfax) service connection,
 and Public's existing shared Trust Bundle environment/exclusive lock. Profiles reuse
 the current subscriptions and resource groups, including Fairfax's `v1` group. No new
-secret variables or schedules are required. Retain all run artifacts through retries.
+secret variables are required. The reviewed Public daily schedules and held Fairfax
+plans are listed in [Contributing](../CONTRIBUTING.md#released-version-monitors).
+Retain all run artifacts through retries.
 Health-only definitions use repository property `reportBuildStatus: 'false'`: results
 remain in ADO/the dashboard instead of attaching health status to the automation commit.
 Normal PR CI, manual integration 164 and release 165 keep their existing status reporting.

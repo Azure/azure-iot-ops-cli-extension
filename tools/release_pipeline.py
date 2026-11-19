@@ -9,7 +9,9 @@
 import argparse
 import base64
 from email.parser import Parser
+from email.utils import formatdate
 import hashlib
+from http.client import HTTPException
 import json
 import os
 from pathlib import Path
@@ -20,8 +22,8 @@ import signal
 import subprocess
 import sys
 import time
-from urllib.error import HTTPError
-from urllib.parse import quote, urlencode, urlsplit
+from urllib.error import HTTPError, URLError
+from urllib.parse import quote, unquote, urlencode, urlsplit
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 import zipfile
 
@@ -31,6 +33,8 @@ INDEX_REPOSITORY = "Azure/azure-cli-extensions"
 ADO = "https://dev.azure.com/azureiotdevxp/aziotcli/_apis"
 PERMISSIONS = "https://dev.azure.com/azureiotdevxp/_apis/permissions"
 FEED = "https://pkgs.dev.azure.com/azureiotdevxp/aziotcli/_packaging/pip/pypi/simple/"
+BLOB_CONTAINER = "https://azedgecli.blob.core.windows.net/drop/"
+MAX_BLOB_BYTES = 256 * 1024 * 1024
 INTEGRATION_PARAMETERS = {
     "mode": "Integration tests", "pythonVersions": ["3.13"], "upgradeBaselines": "{}",
     "scenarioTimeoutMinutes": 360, "cloud": "Public",
@@ -156,7 +160,7 @@ def check_access():
 
 def checkout(destination, resolving=False):
     if resolving:
-        if environment("RELEASE_MODE") in {"Draft", "Release"}:
+        if release_options()[0] in {"Upload wheel only", "Draft", "Release"}:
             automation_allowed()
             if branch(environment("RELEASE_SOURCE_BRANCH")) != "refs/heads/dev":
                 raise ValueError("Ops publication requires the protected dev source branch.")
@@ -651,23 +655,139 @@ def automation_allowed():
 
 
 def release_options():
-    mode = environment("RELEASE_MODE")
+    mode = os.environ.get("RELEASE_MODE", "Validate")
     index = os.environ.get("RELEASE_CREATE_INDEX_PR", "false").lower()
     skip_integration_tests()
-    if mode not in {"Plan", "Validate", "Draft", "Release"} or index not in {"true", "false"}:
+    if mode not in {"Validate", "Upload wheel only", "Draft", "Release"} or index not in {"true", "false"}:
         raise ValueError("Invalid release mode or createIndexPr option.")
     if index == "true" and mode != "Release":
         raise ValueError("createIndexPr requires Release mode and a public GitHub release.")
     return mode, index == "true"
 
 
-def publication_allowed(*, draft=False):
-    if release_options()[0] != ("Draft" if draft else "Release"):
-        raise ValueError("Publication requires explicit Release mode; staging requires Draft.")
+def publication_allowed(*, draft=False, upload=False):
+    expected = "Upload wheel only" if upload else "Draft" if draft else "Release"
+    if release_options()[0] != expected:
+        raise ValueError(f"Publication requires explicit {expected} mode.")
     automation_allowed()
     if branch(environment("RELEASE_SOURCE_BRANCH")) != "refs/heads/dev":
         raise ValueError("Ops publication requires the protected dev source branch.")
-    environment("RELEASE_GITHUB_TOKEN")
+    if not upload:
+        environment("RELEASE_GITHUB_TOKEN")
+
+
+def storage_token():
+    try:
+        result = subprocess.run([
+            "az", "account", "get-access-token", "--resource", "https://storage.azure.com/",
+            "--output", "json", "--only-show-errors",
+        ], capture_output=True, text=True, timeout=60, check=False)
+    except (OSError, subprocess.TimeoutExpired):
+        raise RuntimeError("Storage authentication failed: Azure CLI could not obtain a token.") from None
+    if result.returncode:
+        raise RuntimeError("Storage authentication failed: check the approved WIF service connection.")
+    try:
+        token = json.loads(result.stdout)["accessToken"]
+        if not isinstance(token, str) or not re.fullmatch(r"[A-Za-z0-9._~-]+", token):
+            raise ValueError
+    except (ValueError, KeyError, TypeError):
+        raise RuntimeError("Storage authentication failed: Azure CLI returned an invalid token response.") from None
+    return token
+
+
+def blob_request(url, token, *, size, data=None):
+    filename = unquote(urlsplit(url).path.removeprefix("/drop/"))
+    if (not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.+!-]*\.whl", filename)
+            or url != BLOB_CONTAINER + quote(filename, safe="")):
+        raise ValueError("Unapproved Blob destination; only the fixed drop container is allowed.")
+    if not 0 < size <= MAX_BLOB_BYTES or data is not None and len(data) != size:
+        raise ValueError("Candidate wheel exceeds the bounded Blob size or has changed length.")
+    method = "GET" if data is None else "PUT"
+    headers = {
+        "Authorization": f"Bearer {token}", "x-ms-version": "2023-11-03",
+        "x-ms-date": formatdate(usegmt=True),
+    }
+    if data is not None:
+        headers.update({
+            "If-None-Match": "*", "x-ms-blob-type": "BlockBlob",
+            "Content-Type": "application/octet-stream", "Content-Length": str(size),
+        })
+    request = Request(url, method=method, data=data, headers=headers)
+    try:
+        with build_opener(NoRedirect()).open(request, timeout=60) as response:
+            if response.status != (200 if data is None else 201):
+                raise RuntimeError(f"{method} Blob request returned unexpected HTTP {response.status}.")
+            if data is not None:
+                return {"status": 201}
+            if response.headers.get("Content-Length") != str(size):
+                raise ValueError("Existing Blob length differs from the candidate; refusing overwrite.")
+            actual = hashlib.sha256()
+            length = 0
+            deadline = time.monotonic() + 120
+            while True:
+                if time.monotonic() > deadline:
+                    raise RuntimeError("Blob verification exceeded its download deadline.")
+                chunk = response.read1(min(64 * 1024, size - length + 1))
+                if not chunk:
+                    break
+                length += len(chunk)
+                if length > size:
+                    raise ValueError("Blob download exceeds the candidate length; refusing overwrite.")
+                actual.update(chunk)
+            if length != size:
+                raise ValueError("Blob download is incomplete; candidate length verification failed.")
+            return {"status": 200, "sha256": actual.hexdigest(), "length": length}
+    except HTTPError as error:
+        error.close()
+        if (method == "GET" and error.code == 404 or method == "PUT" and error.code in {409, 412}):
+            return {"status": error.code}
+        reason = "authorization failed" if error.code in {401, 403} else "request failed"
+        raise RuntimeError(f"{method} Blob {reason} with HTTP {error.code}; no automatic write retry.") from None
+    except (URLError, OSError, HTTPException):
+        raise RuntimeError(f"{method} Blob network request failed; no automatic write retry.") from None
+
+
+def prepare_upload(directory, tooling):
+    verify_candidate(directory)
+    tooling.mkdir(parents=True, exist_ok=False)
+    shutil.copyfile(Path(__file__), tooling / "release_pipeline.py")
+
+
+def upload_wheel(directory, receipt):
+    publication_allowed(upload=True)
+    candidate = verify_candidate(directory)
+    wheel = candidate["wheel"]
+    path = directory / wheel["file"]
+    size = path.stat().st_size
+    if not 0 < size <= MAX_BLOB_BYTES:
+        raise ValueError("Candidate wheel exceeds the bounded Blob size.")
+    data = path.read_bytes()
+    if len(data) != size or hashlib.sha256(data).hexdigest() != wheel["sha256"]:
+        raise ValueError("Candidate wheel changed before upload.")
+    url = BLOB_CONTAINER + quote(wheel["file"], safe="")
+    token = storage_token()
+    observed = blob_request(url, token, size=size)
+    status = "already-present"
+    if observed["status"] == 404:
+        created = blob_request(url, token, size=size, data=data)
+        status = "uploaded" if created["status"] == 201 else "already-present"
+        for attempt in range(3):
+            observed = blob_request(url, token, size=size)
+            if observed["status"] != 404:
+                break
+            if attempt < 2:
+                time.sleep(attempt + 1)
+    if observed["status"] != 200:
+        raise RuntimeError("Blob create or create-race could not be verified after three bounded reads.")
+    if observed["sha256"] != wheel["sha256"] or observed["length"] != size:
+        raise ValueError("Existing Blob differs from the qualified candidate; refusing overwrite.")
+    result = {
+        "mode": "Upload wheel only", "status": status, "wheelUrl": url,
+        "sha256": wheel["sha256"], "length": size, "candidate": candidate,
+    }
+    write(receipt, result)
+    print(f"Verified {status} wheel: {url}; no GitHub release, tag or index changes.", flush=True)
+    return result
 
 
 def tag_commit(tag):
@@ -958,9 +1078,9 @@ def index_pull_request(directory, receipt, work_dir, prepared):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("operation", choices=[
-        "access", "options", "plan", "resolve", "checkout", "build", "candidate", "verify", "integrate", "cancel",
+        "access", "options", "resolve", "checkout", "build", "candidate", "verify", "integrate", "cancel",
         "verify-integration", "feed-environment", "prepare-publication", "publish", "index",
-        "unit-constraints", "unit-inventory",
+        "unit-constraints", "unit-inventory", "prepare-upload", "upload",
         "verify-runtime",
     ])
     parser.add_argument("--source", type=Path)
@@ -978,13 +1098,6 @@ def main():
         if skipped:
             print("##vso[task.logissue type=warning]Integration tests skipped by release waiver.")
         print(json.dumps({"mode": mode, "createIndexPr": create_index_pr, "skipIntegrationTests": skipped}))
-    elif args.operation == "plan":
-        print(json.dumps({
-            "sourceBranch": branch(environment("RELEASE_SOURCE_BRANCH")),
-            "mode": "Plan only; governed onboarding; no qualification, release, tag, or index PR.",
-            "integrationPipeline": 164, "unitMatrix": "Python 3.10-3.13 on Ubuntu, Windows and macOS",
-            "skipIntegrationTests": skip_integration_tests(),
-        }, indent=2))
     elif args.operation in ("resolve", "checkout"):
         checkout(args.source, resolving=args.operation == "resolve")
     elif args.operation == "candidate":
@@ -999,6 +1112,8 @@ def main():
         configure_feed()
     elif args.operation == "prepare-publication":
         prepare_publication(args.directory, args.prepared, args.work_dir)
+    elif args.operation == "prepare-upload":
+        prepare_upload(args.directory, args.prepared)
     elif args.operation == "verify":
         verify_candidate(args.directory)
     elif args.operation == "integrate":
@@ -1009,6 +1124,8 @@ def main():
         verify_integration_artifacts(args.directory, args.work_dir)
     elif args.operation == "publish":
         publish(args.directory, args.record, args.prepared)
+    elif args.operation == "upload":
+        upload_wheel(args.directory, args.record)
     elif args.operation == "index":
         result = index_pull_request(args.directory, args.record, args.work_dir, args.prepared)
         write(args.work_dir / "index-pr.json", result)

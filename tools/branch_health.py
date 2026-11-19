@@ -15,6 +15,7 @@ import sys
 from packaging.version import Version
 
 import release_monitor as monitor
+from ado_schedule import check_scheduled_overlap
 
 
 TRACKS = {("public", "ga"): "stable", ("fairfax", "ga"): "stable", ("public", "preview"): "preview"}
@@ -181,6 +182,7 @@ def main(argv=None):
     args = parser.parse_args(argv)
     attempt = max(int(os.environ["SYSTEM_JOBATTEMPT"]), int(os.environ.get("SYSTEM_STAGEATTEMPT", "1")))
     if args.command == "resolve":
+        check_scheduled_overlap()
         monitor.write_json(args.output, resolve(
             args.history, os.environ["MONITOR_CLOUD"], os.environ["MONITOR_TRACK"],
             os.environ["BUILD_SOURCEVERSION"], attempt,

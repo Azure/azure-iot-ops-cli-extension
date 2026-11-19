@@ -2,7 +2,12 @@
 
 trigger: none
 pr: none
-schedules: []
+schedules:
+  - cron: "0 12 * * *"
+    displayName: Daily Public Preview branch health (UTC)
+    branches:
+      include: [dev]
+    always: true
 name: aio-branch-health-public-preview-$(Date:yyyyMMdd).$(Rev:r)
 appendCommitMessageToRunName: false
 pool:

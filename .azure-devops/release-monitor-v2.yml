@@ -2,7 +2,12 @@
 
 trigger: none
 pr: none
-schedules: []
+schedules:
+  - cron: "0 8 * * *"
+    displayName: Daily Public v2 health (UTC)
+    branches:
+      include: [dev]
+    always: true
 name: aio-health-$(TestCloud)-$(Date:yyyyMMdd).$(Rev:r)
 appendCommitMessageToRunName: false
 parameters:

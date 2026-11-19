@@ -9,11 +9,13 @@
 from copy import deepcopy
 from datetime import datetime, timezone
 import importlib
+from io import BytesIO
 import json
 from pathlib import Path
 import subprocess
 import sys
-from unittest.mock import Mock
+from unittest.mock import MagicMock, Mock
+from urllib.error import HTTPError, URLError
 from urllib.parse import parse_qs, urlsplit
 from zipfile import ZipFile
 
@@ -145,12 +147,265 @@ def public_release(value, draft=False):
     }
 
 
-@pytest.mark.parametrize("mode", ["Plan", "Validate", "Draft"])
+@pytest.mark.parametrize("mode", ["Validate", "Upload wheel only", "Draft"])
 def test_nonrelease_modes_cannot_request_index_submission(candidate, monkeypatch, mode):
     monkeypatch.setenv("RELEASE_MODE", mode)
     monkeypatch.setenv("RELEASE_CREATE_INDEX_PR", "True")
     with pytest.raises(ValueError, match="requires Release"):
         release.release_options()
+    release.github.assert_not_called()
+
+
+def test_release_defaults_to_validate_and_rejects_removed_plan(candidate, monkeypatch):
+    monkeypatch.delenv("RELEASE_MODE")
+    assert release.release_options() == ("Validate", False)
+    for mode in ("Validate", "Upload wheel only", "Draft", "Release"):
+        monkeypatch.setenv("RELEASE_MODE", mode)
+        assert release.release_options() == (mode, False)
+    for mode in ("Plan", "upload wheel only", "Upload", "", "$(mode)"):
+        monkeypatch.setenv("RELEASE_MODE", mode)
+        with pytest.raises(ValueError, match="Invalid release mode"):
+            release.release_options()
+
+
+@pytest.fixture
+def storage(candidate, monkeypatch):
+    monkeypatch.setenv("RELEASE_MODE", "Upload wheel only")
+    monkeypatch.delenv("RELEASE_GITHUB_TOKEN")
+    monkeypatch.setattr(release.subprocess, "run", Mock(return_value=Mock(
+        returncode=0, stdout='{"accessToken":"secret-offline-storage-token"}',
+    )))
+    monkeypatch.setattr(release.time, "sleep", Mock())
+    return candidate
+
+
+def blob_response(body=b"", status=200, length=None):
+    response = MagicMock(status=status, headers={"Content-Length": str(len(body) if length is None else length)})
+    response.read1.side_effect = BytesIO(body).read1
+    response.__enter__.return_value = response
+    return response
+
+
+def blob_transport(monkeypatch, responses):
+    transport = Mock()
+    transport.open.side_effect = responses
+    monkeypatch.setattr(release, "build_opener", Mock(return_value=transport))
+    return transport.open
+
+
+def blob_error(code):
+    return HTTPError(release.BLOB_CONTAINER + "wheel.whl", code, "offline error", {}, None)
+
+
+@pytest.mark.parametrize("skipped", [False, True])
+def test_blob_upload_only_exact_candidate_with_receipt_and_no_github(storage, monkeypatch, tmp_path, capsys, skipped):
+    directory, value = storage
+    if skipped:
+        monkeypatch.setenv("RELEASE_SKIP_INTEGRATION_TESTS", "true")
+        value.update(skipIntegrationTests=True, cohorts={})
+        release.write(directory / "candidate.json", value)
+    data = (directory / value["wheel"]["file"]).read_bytes()
+    opened = blob_transport(monkeypatch, [blob_error(404), blob_response(status=201), blob_response(data)])
+    receipt = tmp_path / "receipt.json"
+    result = release.upload_wheel(directory, receipt)
+    assert release.read(receipt) == result
+    assert result == {
+        "mode": "Upload wheel only", "status": "uploaded",
+        "wheelUrl": release.BLOB_CONTAINER + value["wheel"]["file"],
+        "sha256": value["wheel"]["sha256"], "length": len(data), "candidate": value,
+    }
+    requests = [call.args[0] for call in opened.call_args_list]
+    assert [request.method for request in requests] == ["GET", "PUT", "GET"]
+    assert all(request.full_url == result["wheelUrl"] for request in requests)
+    assert requests[1].data == data
+    assert requests[1].get_header("If-none-match") == "*"
+    assert requests[1].get_header("X-ms-blob-type") == "BlockBlob"
+    assert all(request.get_header("Authorization") == "Bearer secret-offline-storage-token" for request in requests)
+    assert all(call.kwargs == {"timeout": 60} for call in opened.call_args_list)
+    assert all(isinstance(call.args[0], release.NoRedirect) for call in release.build_opener.call_args_list)
+    auth = release.subprocess.run.call_args
+    assert auth.args[0] == [
+        "az", "account", "get-access-token", "--resource", "https://storage.azure.com/",
+        "--output", "json", "--only-show-errors",
+    ]
+    assert auth.kwargs == {"capture_output": True, "text": True, "timeout": 60, "check": False}
+    assert "secret-offline-storage-token" not in capsys.readouterr().out + receipt.read_text()
+    release.github.assert_not_called()
+    release.ado.assert_not_called()
+
+
+@pytest.mark.parametrize("content", ["identical", "different", "shorter"])
+def test_blob_existing_content_is_verified_without_overwrite(storage, monkeypatch, tmp_path, content):
+    directory, value = storage
+    data = (directory / value["wheel"]["file"]).read_bytes()
+    existing = data if content == "identical" else b"x" * (len(data) - (content == "shorter"))
+    opened = blob_transport(monkeypatch, [blob_response(existing)])
+    receipt = tmp_path / "receipt.json"
+    if content == "identical":
+        assert release.upload_wheel(directory, receipt)["status"] == "already-present"
+    else:
+        with pytest.raises(ValueError, match="refusing overwrite"):
+            release.upload_wheel(directory, receipt)
+        assert not receipt.exists()
+    assert [call.args[0].method for call in opened.call_args_list] == ["GET"]
+
+
+@pytest.mark.parametrize("code", [409, 412])
+@pytest.mark.parametrize("content", ["identical", "different", "missing"])
+def test_blob_create_race_verifies_bytes_with_bounded_reads(storage, monkeypatch, tmp_path, code, content):
+    directory, value = storage
+    data = (directory / value["wheel"]["file"]).read_bytes()
+    final = [blob_error(404)] * 2 if content == "missing" else [
+        blob_response(data if content == "identical" else b"x" * len(data)),
+    ]
+    opened = blob_transport(monkeypatch, [blob_error(404), blob_error(code), blob_error(404)] + final)
+    receipt = tmp_path / "receipt.json"
+    if content == "identical":
+        assert release.upload_wheel(directory, receipt)["status"] == "already-present"
+    else:
+        with pytest.raises((ValueError, RuntimeError), match="refusing overwrite|bounded reads"):
+            release.upload_wheel(directory, receipt)
+        assert not receipt.exists()
+    methods = [call.args[0].method for call in opened.call_args_list]
+    assert methods.count("PUT") == 1
+    assert methods.count("GET") <= 4
+    assert release.time.sleep.call_count == (2 if content == "missing" else 1)
+
+
+@pytest.mark.parametrize("name,value", [
+    ("BUILD_SOURCEBRANCH", "refs/heads/feature/upload"),
+    ("BUILD_SOURCEBRANCH", "refs/pull/42/merge"),
+    ("RELEASE_SOURCE_BRANCH", "feature/upload"),
+    ("BUILD_REPOSITORY_NAME", "another/repo"),
+    ("RELEASE_MODE", "Validate"), ("RELEASE_MODE", "Draft"), ("RELEASE_MODE", "Release"),
+])
+def test_blob_production_guard_precedes_authentication(storage, monkeypatch, tmp_path, name, value):
+    monkeypatch.setenv(name, value)
+    with pytest.raises(ValueError):
+        release.upload_wheel(storage[0], tmp_path / "receipt.json")
+    release.subprocess.run.assert_not_called()
+    release.github.assert_not_called()
+
+
+@pytest.mark.parametrize("name,value", [
+    ("BUILD_SOURCEBRANCH", "refs/pull/42/merge"),
+    ("RELEASE_SOURCE_BRANCH", "feature/upload"), ("BUILD_REPOSITORY_NAME", "another/repo"),
+])
+def test_blob_resolve_rejects_unprotected_source_before_checkout(storage, monkeypatch, tmp_path, name, value):
+    monkeypatch.setenv(name, value)
+    with pytest.raises(ValueError):
+        release.checkout(tmp_path / "source", resolving=True)
+    release.subprocess.run.assert_not_called()
+
+
+@pytest.mark.parametrize("mutation", ["wheel", "source", "waiver", "size"])
+def test_blob_rejects_unqualified_candidate_before_authentication(storage, monkeypatch, tmp_path, mutation):
+    directory, value = storage
+    if mutation == "wheel":
+        (directory / value["wheel"]["file"]).write_bytes(b"changed")
+    elif mutation == "source":
+        monkeypatch.setenv("RELEASE_SOURCE_COMMIT", "c" * 40)
+    elif mutation == "waiver":
+        monkeypatch.setenv("RELEASE_SKIP_INTEGRATION_TESTS", "true")
+    else:
+        monkeypatch.setattr(release, "MAX_BLOB_BYTES", 1)
+    with pytest.raises(ValueError):
+        release.upload_wheel(directory, tmp_path / "receipt.json")
+    release.subprocess.run.assert_not_called()
+
+
+@pytest.mark.parametrize("phase", ["get", "put", "verify"])
+@pytest.mark.parametrize("code", [301, 307, 401, 403, 500])
+def test_blob_http_failures_never_publish_receipt(storage, monkeypatch, tmp_path, phase, code):
+    responses = [] if phase == "get" else [blob_error(404)]
+    if phase == "verify":
+        responses.append(blob_response(status=201))
+    opened = blob_transport(monkeypatch, responses + [blob_error(code)])
+    receipt = tmp_path / "receipt.json"
+    with pytest.raises(RuntimeError, match=f"HTTP {code}"):
+        release.upload_wheel(storage[0], receipt)
+    assert not receipt.exists()
+    assert opened.call_count == len(responses) + 1
+
+
+@pytest.mark.parametrize("error", [URLError("secret-offline-storage-token"), TimeoutError("secret")])
+def test_blob_network_errors_are_explicit_and_do_not_leak_tokens(storage, monkeypatch, tmp_path, error):
+    blob_transport(monkeypatch, [error])
+    with pytest.raises(RuntimeError, match="Blob network request failed") as caught:
+        release.upload_wheel(storage[0], tmp_path / "receipt.json")
+    assert "secret" not in str(caught.value)
+
+
+@pytest.mark.parametrize("suffix", ["?sig=secret", "#fragment", "/other.whl"])
+def test_blob_destination_rejects_query_fragment_or_nested_path(monkeypatch, suffix):
+    opened = blob_transport(monkeypatch, [])
+    with pytest.raises(ValueError, match="Unapproved Blob"):
+        release.blob_request(release.BLOB_CONTAINER + "wheel.whl" + suffix, "token", size=1)
+    opened.assert_not_called()
+
+
+@pytest.mark.parametrize("url", [
+    "http://azedgecli.blob.core.windows.net/drop/wheel.whl",
+    "https://other.blob.core.windows.net/drop/wheel.whl",
+    "https://azedgecli.blob.core.windows.net/other/wheel.whl",
+    "https://user@azedgecli.blob.core.windows.net/drop/wheel.whl",
+    "https://azedgecli.blob.core.windows.net/drop/a%2Fb.whl",
+])
+def test_blob_destination_is_fixed_without_relaxing_generic_api(monkeypatch, url):
+    opened = blob_transport(monkeypatch, [])
+    with pytest.raises(ValueError, match="Unapproved Blob"):
+        release.blob_request(url, "token", size=1)
+    with pytest.raises(ValueError, match="Unapproved API"):
+        release.api(release.BLOB_CONTAINER + "wheel.whl", "token")
+    opened.assert_not_called()
+
+
+@pytest.mark.parametrize("body", [b"too long", b"x"])
+def test_blob_download_rejects_truncated_or_oversized_content(monkeypatch, body):
+    blob_transport(monkeypatch, [blob_response(body, length=4)])
+    with pytest.raises(ValueError, match="length"):
+        release.blob_request(release.BLOB_CONTAINER + "wheel.whl", "token", size=4)
+
+
+def test_blob_download_deadline_is_bounded(monkeypatch):
+    blob_transport(monkeypatch, [blob_response(b"data")])
+    monkeypatch.setattr(release.time, "monotonic", Mock(side_effect=[0, 121]))
+    with pytest.raises(RuntimeError, match="download deadline"):
+        release.blob_request(release.BLOB_CONTAINER + "wheel.whl", "token", size=4)
+
+
+def test_blob_readback_mismatch_after_creation_never_publishes_receipt(storage, monkeypatch, tmp_path):
+    directory, value = storage
+    size = (directory / value["wheel"]["file"]).stat().st_size
+    opened = blob_transport(monkeypatch, [
+        blob_error(404), blob_response(status=201), blob_response(b"x" * size),
+    ])
+    receipt = tmp_path / "receipt.json"
+    with pytest.raises(ValueError, match="refusing overwrite"):
+        release.upload_wheel(directory, receipt)
+    assert not receipt.exists()
+    assert [call.args[0].method for call in opened.call_args_list] == ["GET", "PUT", "GET"]
+
+
+@pytest.mark.parametrize("response", [
+    Mock(returncode=1, stdout="secret", stderr="secret"),
+    Mock(returncode=0, stdout="secret"),
+    Mock(returncode=0, stdout='{"accessToken":"secret\\ninvalid"}'),
+    Mock(returncode=0, stdout='{"accessToken":null}'),
+])
+def test_blob_authentication_errors_are_sanitized(storage, monkeypatch, tmp_path, capsys, response):
+    monkeypatch.setattr(release.subprocess, "run", Mock(return_value=response))
+    with pytest.raises(RuntimeError, match="Storage authentication failed") as caught:
+        release.upload_wheel(storage[0], tmp_path / "receipt.json")
+    assert "secret" not in str(caught.value) + capsys.readouterr().out
+
+
+def test_upload_preparation_freezes_standalone_tooling_without_index_generation(storage, tmp_path):
+    tooling = tmp_path / "frozen"
+    release.prepare_upload(storage[0], tooling)
+    assert [path.name for path in tooling.iterdir()] == ["release_pipeline.py"]
+    assert (tooling / "release_pipeline.py").read_bytes() == (ROOT / "tools/release_pipeline.py").read_bytes()
+    release.subprocess.run.assert_not_called()
     release.github.assert_not_called()
 
 
@@ -432,7 +687,7 @@ def test_internal_candidate_identity_fails_closed(candidate, variables):
         release.validate_integration(build, value)
 
 
-@pytest.mark.parametrize("mode", ["Validate", "Draft", "Release"])
+@pytest.mark.parametrize("mode", ["Validate", "Upload wheel only", "Draft", "Release"])
 def test_consumer_acquires_identical_candidate_without_rebuilding(candidate, monkeypatch, tmp_path, mode):
     directory, value = candidate
     consumer_environment(candidate, monkeypatch)
@@ -723,17 +978,17 @@ def test_yaml_parallel_qualification_requires_all_gates_and_no_default_publicati
     root = yaml.safe_load((ROOT / ".azure-devops/release.yml").read_text(encoding="utf-8"))
     assert root["name"] == "aio-release-$(Date:yyyyMMdd).$(Rev:r)"
     parameters = {item["name"]: item for item in root["parameters"]}
-    assert parameters["mode"]["default"] == "Plan"
+    assert parameters["mode"]["default"] == "Validate"
     assert parameters["createIndexPr"]["default"] is False
     assert "uploadWheel" not in parameters
     assert parameters["skipIntegrationTests"]["default"] is False
-    assert parameters["mode"]["values"] == ["Plan", "Validate", "Draft", "Release"]
+    assert parameters["mode"]["values"] == ["Validate", "Upload wheel only", "Draft", "Release"]
     assert root["variables"]["RELEASE_SKIP_INTEGRATION_TESTS"] == "${{ parameters.skipIntegrationTests }}"
     template = yaml.safe_load((ROOT / ".azure-devops/templates/release-stages.yml").read_text(encoding="utf-8"))
     stages = {"Resolve": template["stages"][0]}
     for conditional in template["stages"][1:]:
         stages.update({stage["stage"]: stage for stage in next(iter(conditional.values()))})
-    for name in ("Integration", "Publish"):
+    for name in ("Integration", "Upload", "Publish"):
         for dependency in stages[name]["dependsOn"]:
             if isinstance(dependency, dict):
                 continue
@@ -748,9 +1003,8 @@ def test_yaml_parallel_qualification_requires_all_gates_and_no_default_publicati
         "Resolve", "Build", "Unit", "Security", "CommandLint", "IndexCompatibility",
         {"${{ if not(parameters.skipIntegrationTests) }}": ["Integration"]},
     ]
-    assert list(template["stages"][-2]) == [
-        "${{ if and(ne(parameters.mode, 'Plan'), not(parameters.skipIntegrationTests)) }}"
-    ]
+    assert list(template["stages"][-3]) == ["${{ if not(parameters.skipIntegrationTests) }}"]
+    assert list(template["stages"][-2]) == ["${{ if eq(parameters.mode, 'Upload wheel only') }}"]
     assert list(template["stages"][-1]) == ["${{ if in(parameters.mode, 'Draft', 'Release') }}"]
     assert "or(${{ parameters.skipIntegrationTests }}, eq(dependencies.Integration.result, 'Succeeded'))" in (
         stages["Publish"]["condition"]
@@ -769,6 +1023,34 @@ def test_yaml_parallel_qualification_requires_all_gates_and_no_default_publicati
     index = next(step for step in job["steps"] if "${{ if parameters.createIndexPr }}" in step)
     assert " index " in json.dumps(index)
     assert "ReleaseGitHubToken" not in json.dumps(template["stages"][:-1])
+    assert "aziotops_release_publish" not in json.dumps(template["stages"][:-1])
+    assert stages["Publish"]["variables"][0] == {"group": "aziotops_release_publish"}
+    assert "Plan" not in json.dumps(root) + json.dumps(template)
+    template_mode = next(item for item in template["parameters"] if item["name"] == "mode")
+    assert template_mode["default"] == "Validate"
+    assert template_mode["values"] == parameters["mode"]["values"]
+    assert stages["Upload"]["dependsOn"] == stages["Publish"]["dependsOn"]
+    assert "eq(variables['Build.SourceBranch'], 'refs/heads/dev')" in stages["Upload"]["condition"]
+    assert "eq(variables['Build.Repository.Name'], 'Azure/azure-iot-ops-cli-extension')" in (
+        stages["Upload"]["condition"]
+    )
+    assert "or(${{ parameters.skipIntegrationTests }}, eq(dependencies.Integration.result, 'Succeeded'))" in (
+        stages["Upload"]["condition"]
+    )
+    upload = stages["Upload"]["jobs"][0]
+    assert upload["templateContext"] == job["templateContext"]
+    assert [step["checkout"] for step in upload["steps"] if "checkout" in step] == ["none"]
+    assert "ManualValidation" not in json.dumps(upload)
+    storage = next(step for step in upload["steps"] if step.get("task") == "AzureCLI@2")
+    assert storage["inputs"]["azureSubscription"] == "sc-cli-release-storage"
+    assert "release-tooling/release_pipeline.py" in storage["inputs"]["inlineScript"]
+    assert '" upload ' in storage["inputs"]["inlineScript"]
+    assert "RELEASE_GITHUB_TOKEN" not in storage["env"]
+    assert upload["templateContext"]["outputs"][0]["artifact"] == "release-publication-$(System.JobAttempt)"
+    preparation = next(step for step in stages["Build"]["jobs"][0]["steps"]
+                       if "${{ if eq(parameters.mode, 'Upload wheel only') }}" in step)
+    assert "prepare-upload" in json.dumps(preparation)
+    assert "pip install" not in json.dumps(preparation)
     unit = yaml.safe_load((ROOT / ".azure-devops/templates/release-unit.yml").read_text(encoding="utf-8"))
     assert "$(" not in unit["jobs"][0]["displayName"]
     matrix = unit["jobs"][0]["strategy"]["matrix"]
@@ -785,7 +1067,7 @@ def test_yaml_parallel_qualification_requires_all_gates_and_no_default_publicati
 
 def test_security_stages_verified_engine_before_scanning_without_reducing_coverage():
     template = yaml.safe_load((ROOT / ".azure-devops/templates/release-stages.yml").read_text(encoding="utf-8"))
-    stages = template["stages"][1]["${{ if ne(parameters.mode, 'Plan') }}"]
+    stages = template["stages"][1]["${{ if in(parameters.mode, 'Validate', 'Upload wheel only', 'Draft', 'Release') }}"]
     steps = next(stage for stage in stages if stage["stage"] == "Security")["jobs"][0]["steps"]
     bootstrap = next(step for step in steps if step.get("name") == "stageMsdo")
     scanner = next(step for step in steps if step.get("task") == "MicrosoftSecurityDevOps@1")

@@ -2,6 +2,8 @@
 
 This guide will assist you in setting up a local development environment for this extension.
 
+For build qualification and publication, follow the [Ops release pipeline guide](docs/release-pipeline.md).
+
 ## Fairfax ADO integrations
 
 Use the existing integration pipeline with **Cloud: Fairfax** and
@@ -107,8 +109,10 @@ disabled queueing, no triggers/schedules, and non-overridable variables. The run
 also checks definition name, repository and every configured target variable.
 Never store personal account passwords or tokens in these files.
 
-Keep all definitions disabled until an owner approves automation connections,
-resource scopes/RBAC, capacity and live qualification. Each scenario attempt uses
+Before enabling the reviewed Public schedules, an owner must approve automation
+connections, resource scopes/RBAC, capacity and live qualification. Public tests use
+the WIF connection `sc-iot-ops-cli-public-it`; the client identity is read from the
+connection, not hard-coded in test configuration. Each scenario attempt uses
 the configured, pre-created resource group. Released Trust Bundle tests reuse
 fixed SecretSync names. Public Release Health and Branch Health TrustBundle stages
 use `maxParallel: 1` and `lockBehavior: sequential` with the shared environment
@@ -130,11 +134,32 @@ identity the resource-specific deployment and RBAC operations needed within them
 do not grant subscription-wide Owner merely to make the pipeline pass.
 Then enable queueing. Every health run executes the selected integration scenarios
 and requires their results and cleanup evidence. Retries reuse
-the first published release selection. No recurring schedule is supplied before
-live execution and capacity are approved; apply the same schedule policy to the
-IoT and AIO monitor sets. Fairfax needs its own ARM connection, subscription and
+the first published release selection. Public daily schedules below take effect only
+after the reviewed YAML reaches `dev` and operational rollout is completed.
+Fairfax schedules are **held**, not authorized for activation. Fairfax needs its own ARM connection, subscription and
 tenant-specific custom-locations object ID; a source PR does not qualify older wheels.
 Historical source-health runs retained on definition 167 are not released-version evidence.
+
+| Definition | Health target | Planned daily UTC cron | YAML status |
+| --- | --- | --- | --- |
+| 167 | Release Public v1 | `0 0 * * *` | Public daily |
+| 175 | Release Public v2 | `0 8 * * *` | Public daily |
+| 176 | Release Public v3 | `0 16 * * *` | Public daily |
+| 180 | Release Public Preview | `0 20 * * *` | Public daily |
+| 186 | Branch Public GA | `0 4 * * *` | Public daily |
+| 188 | Branch Public Preview | `0 12 * * *` | Public daily |
+| 177 | Release Fairfax v1 | `0 2 * * *` | Held; `schedules: []` |
+| 187 | Branch Fairfax GA | `0 14 * * *` | Held; `schedules: []` |
+| 178 / 179 / 181 | Unsupported Fairfax v2 / v3 / Preview | None | Off; `schedules: []` |
+
+Public schedules include only `dev`, use `always: true`, and default to full
+**Integration tests**. `batch: true` is not relied on with `always: true`.
+Before selection or provisioning, scheduled Prepare jobs use their job token to
+query older active builds of the same ADO definition. Overlap, unavailable API/auth
+or ambiguous evidence explicitly fails Prepare; it is not a passed validation.
+Grant the Build Service scoped **View builds** access for this lookup. Manual runs
+are unchanged. This check is a point-in-time preflight, not a cross-definition lock:
+retain the shared Public TrustBundle environment's Exclusive Lock check.
 
 ### Fixed-group isolation and recovery
 

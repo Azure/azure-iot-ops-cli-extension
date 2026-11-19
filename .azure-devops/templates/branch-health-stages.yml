@@ -38,6 +38,7 @@ stages:
               --output manifest.json
             displayName: Resolve dev once, or verify its original SHA
             env:
+              SYSTEM_ACCESSTOKEN: $(System.AccessToken)
               MONITOR_CLOUD: ${{ parameters.cloud }}
               MONITOR_TRACK: ${{ parameters.track }}
           - publish: manifest.json

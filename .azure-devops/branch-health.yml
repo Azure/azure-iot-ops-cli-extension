@@ -2,7 +2,12 @@
 
 trigger: none
 pr: none
-schedules: []
+schedules:
+  - cron: "0 4 * * *"
+    displayName: Daily Public GA branch health (UTC)
+    branches:
+      include: [dev]
+    always: true
 name: aio-branch-health-public-ga-$(Date:yyyyMMdd).$(Rev:r)
 appendCommitMessageToRunName: false
 pool:

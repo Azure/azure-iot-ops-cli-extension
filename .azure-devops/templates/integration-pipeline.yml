@@ -43,7 +43,7 @@ parameters:
   - name: azureServiceConnection
     displayName: Service connection
     type: string
-    default: az-iot-ops-int-sp-ado
+    default: sc-iot-ops-cli-public-it
   - name: subscriptionId
     type: string
     default: a386d5ea-ea90-441a-8263-d816368c84a1

@@ -31,6 +31,7 @@ stages:
                 --history "$HISTORY" --output manifest.json
             displayName: Resolve or restore the immutable release selection
             env:
+              SYSTEM_ACCESSTOKEN: $(System.AccessToken)
               CLOUD: $(TestCloud)
               TRACK: $(TestTrack)
               HISTORY: $(Pipeline.Workspace)/release-history

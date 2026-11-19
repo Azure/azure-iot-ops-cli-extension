@@ -23,6 +23,8 @@ from zipfile import ZipFile
 
 from packaging.version import InvalidVersion, Version
 
+from ado_schedule import check_scheduled_overlap
+
 
 REPOSITORIES = {
     "azure-iot": "Azure/azure-iot-cli-extension",
@@ -670,6 +672,7 @@ def main(argv=None):
     setup.add_argument("--output", required=True)
     args = parser.parse_args(argv)
     if args.command == "resolve":
+        check_scheduled_overlap()
         target, slot = args.track, None
         if args.configuration:
             config = read_json(args.configuration)

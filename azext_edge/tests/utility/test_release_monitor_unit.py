@@ -14,6 +14,7 @@ import shutil
 import subprocess
 import tarfile
 from unittest.mock import Mock
+from urllib.parse import parse_qs, urlsplit
 from zipfile import ZipFile
 
 import pytest
@@ -159,7 +160,7 @@ def test_fixed_branch_wrappers_cannot_override_source_cloud_or_runtime():
         assert {item["name"] for item in pipeline["parameters"]} <= {"mode", "pythonVersions", "clusterRegion"}
         parameters = pipeline["stages"][0]["parameters"]
         assert (parameters["cloud"], parameters["track"]) == (definition["cloud"], definition["track"])
-        assert not pipeline["schedules"]
+        assert bool(pipeline["schedules"]) == (definition["cloud"] == "public")
         assert "Runtime" not in definition["name"]
     template = yaml.safe_load((ROOT / ".azure-devops/templates/branch-health-stages.yml").read_text())
     live = template["stages"][-1]["${{ if eq(parameters.mode, 'Integration tests') }}"]
@@ -183,6 +184,54 @@ def test_health_pipeline_runs_only_the_selected_mode():
     assert any("release_monitor_adapter.py plan" in step.get("bash", "") for step in steps)
     assert stages["Results"]["dependsOn"] == ["Prepare", "Integration", "TrustBundle"]
     assert "runIntegration" not in str(pipeline)
+
+
+def test_daily_health_schedules_are_public_dev_only_and_fairfax_stays_held():
+    schedules = {
+        "release-monitor.yml": "0 0 * * *", "release-monitor-v2.yml": "0 8 * * *",
+        "release-monitor-v3.yml": "0 16 * * *", "release-monitor-preview.yml": "0 20 * * *",
+        "branch-health.yml": "0 4 * * *", "branch-health-preview.yml": "0 12 * * *",
+    }
+    for filename, cron in schedules.items():
+        pipeline = yaml.safe_load((ROOT / ".azure-devops" / filename).read_text())
+        schedule, = pipeline["schedules"]
+        assert schedule["cron"] == cron
+        assert schedule["branches"] == {"include": ["dev"]}
+        assert schedule["always"] is True and "batch" not in schedule
+        parameters = {parameter["name"]: parameter for parameter in pipeline["parameters"]}
+        assert parameters["mode"]["default"] == "Integration tests"
+        assert parameters["pythonVersions"]["default"] == ["3.13"]
+    for filename in (
+        "release-monitor-fairfax.yml", "release-monitor-fairfax-v2.yml", "release-monitor-fairfax-v3.yml",
+        "release-monitor-fairfax-preview.yml", "branch-health-fairfax.yml",
+    ):
+        assert yaml.safe_load((ROOT / ".azure-devops" / filename).read_text())["schedules"] == []
+
+
+@pytest.mark.parametrize("filename,script", [
+    ("release-monitor-stages.yml", "release_monitor.py"),
+    ("branch-health-stages.yml", "branch_health.py"),
+])
+def test_health_schedule_preflight_receives_job_token_before_artifacts(filename, script):
+    template = yaml.safe_load((ROOT / ".azure-devops/templates" / filename).read_text())
+    steps = template["stages"][0]["jobs"][0]["steps"]
+    resolve = next(step for step in steps if script + " resolve " in step.get("bash", ""))
+    assert resolve["env"]["SYSTEM_ACCESSTOKEN"] == "$(System.AccessToken)"
+    assert not resolve.get("continueOnError")
+    assert steps.index(resolve) < next(index for index, step in enumerate(steps) if "publish" in step)
+
+
+def test_public_test_connection_is_consistent_across_current_ado_profiles():
+    config = json.loads((ROOT / ".azure-devops/release-monitors.json").read_text())
+    connection = config["clouds"]["public"]["variables"]["AzureServiceConnection"]
+    assert connection == "sc-iot-ops-cli-public-it"
+    profile = yaml.safe_load((ROOT / ".azure-devops/templates/integration-profile.yml").read_text())
+    public = next(item["${{ if eq(parameters.cloud, 'public') }}"] for item in profile["variables"]
+                  if "${{ if eq(parameters.cloud, 'public') }}" in item)
+    assert next(item["value"] for item in public if item["name"] == "TestAzureServiceConnection") == connection
+    integration = yaml.safe_load((ROOT / ".azure-devops/templates/integration-pipeline.yml").read_text())
+    assert next(item["default"] for item in integration["parameters"]
+                if item["name"] == "azureServiceConnection") == connection
 
 
 def test_health_job_timeout_uses_the_typed_selection_not_a_runtime_variable():
@@ -214,10 +263,122 @@ def monitor(monkeypatch):
     for key, value in {
         "TESTPYTHONS": "3.13", "TESTMODE": "Integration tests",
         "TESTCHANNELS": "stable", "TESTBASELINES": "{}", "TESTTIMEOUT": "360",
+        "BUILD_REASON": "Manual",
     }.items():
         monkeypatch.setenv(key, value)
     monkeypatch.syspath_prepend(str(ROOT / "tools"))
     return importlib.import_module("release_monitor")
+
+
+@pytest.fixture
+def scheduled(monitor, monkeypatch):
+    for key, value in {
+        "BUILD_REASON": "Schedule", "BUILD_BUILDID": "123", "SYSTEM_DEFINITIONID": "200",
+        "SYSTEM_ACCESSTOKEN": "offline-schedule-token",
+    }.items():
+        monkeypatch.setenv(key, value)
+    helper = importlib.import_module("ado_schedule")
+    api = Mock(return_value={
+        "count": 1, "value": [{"id": 123, "definition": {"id": 200}, "status": "inProgress"}],
+    })
+    monkeypatch.setattr(importlib.import_module("release_pipeline"), "api", api)
+    return helper, api
+
+
+@pytest.mark.parametrize("reason", ["Manual", "PullRequest", "IndividualCI", ""])
+def test_manual_health_runs_do_not_query_scheduled_overlap(scheduled, monkeypatch, reason):
+    helper, api = scheduled
+    monkeypatch.setenv("BUILD_REASON", reason)
+    monkeypatch.delenv("SYSTEM_ACCESSTOKEN")
+    helper.check_scheduled_overlap()
+    api.assert_not_called()
+
+
+def test_scheduled_preflight_scopes_active_build_lookup_and_allows_newer_runs(scheduled):
+    helper, api = scheduled
+    api.return_value["value"].append({"id": 124, "definition": {"id": 200}, "status": "notStarted"})
+    api.return_value["count"] = 2
+    helper.check_scheduled_overlap()
+    api.assert_called_once()
+    url, token = api.call_args.args
+    assert token == "offline-schedule-token"
+    assert url.startswith("https://dev.azure.com/azureiotdevxp/aziotcli/_apis/build/builds?")
+    query = parse_qs(urlsplit(url).query)
+    assert query["definitions"] == ["200"]
+    assert set(query["statusFilter"][0].split(",")) == {"inProgress", "notStarted", "postponed", "cancelling"}
+    assert query["queryOrder"] == ["queueTimeAscending"]
+    assert query["$top"] == ["1000"] and query["api-version"] == ["7.1"]
+    assert not api.call_args.kwargs
+
+
+@pytest.mark.parametrize("status", ["inProgress", "notStarted", "postponed", "cancelling"])
+def test_scheduled_preflight_refuses_every_older_active_build_status(scheduled, status, capsys):
+    helper, api = scheduled
+    api.return_value["value"].insert(0, {"id": 122, "definition": {"id": 200}, "status": status})
+    api.return_value["count"] = 2
+    with pytest.raises(RuntimeError, match="older active build\\(s\\) 122"):
+        helper.check_scheduled_overlap()
+    assert "passed" not in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("failure", [
+    "empty", "limit", "missing-current", "wrong-definition", "unknown-status", "missing-id",
+    "duplicate", "count", "not-list",
+])
+def test_scheduled_preflight_fails_closed_on_ambiguous_evidence(scheduled, failure):
+    helper, api = scheduled
+    result = api.return_value
+    if failure == "empty":
+        result.update(count=0, value=[])
+    elif failure == "limit":
+        result.update(count=1000, value=result["value"] * 1000)
+    elif failure == "missing-current":
+        result["value"][0]["id"] = 124
+    elif failure == "wrong-definition":
+        result["value"][0]["definition"]["id"] = 201
+    elif failure == "unknown-status":
+        result["value"][0]["status"] = "unknown"
+    elif failure == "missing-id":
+        result["value"][0].pop("id")
+    elif failure == "duplicate":
+        result.update(count=2, value=result["value"] * 2)
+    elif failure == "count":
+        result["count"] = True
+    else:
+        result["value"] = {}
+    with pytest.raises(ValueError):
+        helper.check_scheduled_overlap()
+
+
+@pytest.mark.parametrize("failure", ["api", "token"])
+def test_scheduled_preflight_fails_closed_on_lookup_or_authentication_failure(scheduled, monkeypatch, failure):
+    helper, api = scheduled
+    if failure == "api":
+        api.side_effect = RuntimeError("GET API request failed with HTTP 403")
+    else:
+        monkeypatch.delenv("SYSTEM_ACCESSTOKEN")
+    with pytest.raises((RuntimeError, ValueError)):
+        helper.check_scheduled_overlap()
+
+
+@pytest.mark.parametrize("kind", ["release", "branch"])
+def test_scheduled_preflight_blocks_both_resolvers_before_recording_selection(
+        branch, monitor, scheduled, monkeypatch, tmp_path, kind):
+    _, api = scheduled
+    api.side_effect = RuntimeError("Scheduled lookup unavailable")
+    monkeypatch.setenv("SYSTEM_JOBATTEMPT", "1")
+    selection = Mock()
+    owner = monitor if kind == "release" else branch
+    monkeypatch.setattr(owner, "resolve", selection)
+    output = tmp_path / "manifest.json"
+    arguments = ["resolve", "--output", str(output)]
+    if kind == "release":
+        arguments += ["--extension", "azure-iot-ops", "--cloud", "public", "--track", "1.5",
+                      "--automation-commit", AUTOMATION]
+    with pytest.raises(RuntimeError, match="Scheduled lookup unavailable"):
+        owner.main(arguments)
+    selection.assert_not_called()
+    assert not output.exists()
 
 
 @pytest.fixture
