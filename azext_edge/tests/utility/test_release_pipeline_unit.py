@@ -366,7 +366,7 @@ def test_resolve_freezes_any_upstream_branch_and_rejects_nonexistent_branches(
             args = args[:4] + [repository.as_uri()]
         if args[:2] == ["git", "fetch"]:
             fetches.append(args[-1])
-        return original_run(args, **kwargs)
+        return original_run(args, check=kwargs.pop("check", False), **kwargs)
 
     monkeypatch.setattr(release.subprocess, "run", local_run)
     assert release.checkout(tmp_path / "resolve", resolving=True) == initial
@@ -955,7 +955,7 @@ def test_draft_is_promoted_only_after_verified_uploads(
             "length": (directory / value["wheel"]["file"]).stat().st_size,
         }))
         assert release.upload_wheel(directory, blob_receipt)["status"] == "already-present"
-        assert events == []
+        assert not events
     result = release.publish(directory, tmp_path / "release.json", tmp_path / "publication.json")
     assert blob_receipt.exists() is upload_blob
     if upload_blob:
