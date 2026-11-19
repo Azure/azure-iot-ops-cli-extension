@@ -92,10 +92,13 @@ def commit(value):
 
 
 def branch(value):
+    if not isinstance(value, str) or value.startswith("refs/") and not value.startswith("refs/heads/"):
+        raise ValueError("Source must be a safe branch name, not a tag or revision expression.")
     value = value.removeprefix("refs/heads/")
-    if (not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_./-]*", value)
-            or any(part in value for part in ("..", "//", "@{"))
-            or value.endswith(("/", ".", ".lock"))):
+    if (not value or value.startswith("-") or value.endswith(".")
+            or any(ord(char) < 33 or ord(char) == 127 or char in "~^:?*[\\" for char in value)
+            or any(part in value for part in ("..", "@{"))
+            or any(not part or part.startswith(".") or part.endswith(".lock") for part in value.split("/"))):
         raise ValueError("Source must be a safe branch name, not a tag or revision expression.")
     return f"refs/heads/{value}"
 
@@ -169,8 +172,6 @@ def checkout(destination, resolving=False):
     if resolving:
         if release_options()[0] in {"Draft", "Release"} or upload_wheel_to_blob():
             automation_allowed()
-            if branch(environment("RELEASE_SOURCE_BRANCH")) != "refs/heads/dev":
-                raise ValueError("Ops publication requires the protected dev source branch.")
     source_branch = branch(environment("RELEASE_SOURCE_BRANCH"))
     source_commit = None if resolving else commit(environment("RELEASE_SOURCE_COMMIT"))
     if destination.exists():
@@ -660,6 +661,7 @@ def verify_integration_artifacts(directory, artifacts):
 
 
 def automation_allowed():
+    branch(environment("RELEASE_SOURCE_BRANCH"))
     if environment("BUILD_SOURCEBRANCH") != "refs/heads/dev":
         raise ValueError("Publication requires the reviewed release automation on dev, not a feature branch.")
     if environment("BUILD_REPOSITORY_NAME") != REPOSITORY:
@@ -688,8 +690,6 @@ def publication_allowed(*, draft=False, upload=False):
         if mode != expected:
             raise ValueError(f"Publication requires explicit {expected} mode.")
     automation_allowed()
-    if branch(environment("RELEASE_SOURCE_BRANCH")) != "refs/heads/dev":
-        raise ValueError("Ops publication requires the protected dev source branch.")
     if not upload:
         environment("RELEASE_GITHUB_TOKEN")
 

@@ -148,6 +148,26 @@ def public_release(value, draft=False):
     }
 
 
+@pytest.mark.parametrize("value", [
+    "refs/tags/v1", "refs/pull/1/head", "dev;echo bad", "dev\n", "../dev", "dev//test", "dev.lock", "-dev",
+    "", None, 1, "topic/.hidden", "topic.lock/next", "topic@{1}", "topic~1", "topic:next",
+    "topic[1]", "topic\\next", "topic\x7f", "refs/heads/", "/topic",
+])
+def test_invalid_source_branches(value):
+    with pytest.raises(ValueError):
+        release.branch(value)
+
+
+@pytest.mark.parametrize("value", [
+    "dev", "release/1.1.1-preview", "_next/2027+beta", "users/test/fix#123", "releases/\u6d4b\u8bd5", "@",
+])
+def test_source_branch_names_follow_git_syntax_without_release_naming_rules(value):
+    subprocess.run(["git", "check-ref-format", "--branch", value], check=True, capture_output=True)
+    expected = "refs/heads/" + value
+    assert release.branch(value) == expected
+    assert release.branch(expected) == expected
+
+
 @pytest.mark.parametrize("mode", ["Validate", "Draft"])
 def test_nonrelease_modes_cannot_request_index_submission(candidate, monkeypatch, mode):
     monkeypatch.setenv("RELEASE_MODE", mode)
@@ -206,14 +226,17 @@ def blob_error(code):
 
 @pytest.mark.parametrize("skipped", [False, True])
 @pytest.mark.parametrize("mode", ["Validate", "Draft", "Release"])
+@pytest.mark.parametrize("source", ["dev", "release/2027-preview", "users/test/next", "_next/2027+beta"])
 def test_blob_upload_only_exact_candidate_with_receipt_and_no_github(
-        storage, monkeypatch, tmp_path, capsys, skipped, mode):
+        storage, monkeypatch, tmp_path, capsys, skipped, mode, source):
     directory, value = storage
     monkeypatch.setenv("RELEASE_MODE", mode)
+    monkeypatch.setenv("RELEASE_SOURCE_BRANCH", source)
+    value["sourceBranch"] = release.branch(source)
     if skipped:
         monkeypatch.setenv("RELEASE_SKIP_INTEGRATION_TESTS", "true")
         value.update(skipIntegrationTests=True, cohorts={})
-        release.write(directory / "candidate.json", value)
+    release.write(directory / "candidate.json", value)
     data = (directory / value["wheel"]["file"]).read_bytes()
     opened = blob_transport(monkeypatch, [blob_error(404), blob_response(status=201), blob_response(data)])
     receipt = tmp_path / "receipt.json"
@@ -285,7 +308,7 @@ def test_blob_create_race_verifies_bytes_with_bounded_reads(storage, monkeypatch
 @pytest.mark.parametrize("name,value", [
     ("BUILD_SOURCEBRANCH", "refs/heads/feature/upload"),
     ("BUILD_SOURCEBRANCH", "refs/pull/42/merge"),
-    ("RELEASE_SOURCE_BRANCH", "feature/upload"),
+    ("RELEASE_SOURCE_BRANCH", "refs/tags/v1"),
     ("BUILD_REPOSITORY_NAME", "another/repo"),
     ("RELEASE_MODE", "Upload wheel only"), ("RELEASE_MODE", "Plan"),
     ("RELEASE_UPLOAD_WHEEL_TO_BLOB", "false"),
@@ -300,13 +323,68 @@ def test_blob_production_guard_precedes_authentication(storage, monkeypatch, tmp
 
 @pytest.mark.parametrize("name,value", [
     ("BUILD_SOURCEBRANCH", "refs/pull/42/merge"),
-    ("RELEASE_SOURCE_BRANCH", "feature/upload"), ("BUILD_REPOSITORY_NAME", "another/repo"),
+    ("RELEASE_SOURCE_BRANCH", "refs/pull/42/head"), ("BUILD_REPOSITORY_NAME", "another/repo"),
 ])
-def test_blob_resolve_rejects_unprotected_source_before_checkout(storage, monkeypatch, tmp_path, name, value):
+def test_blob_resolve_rejects_invalid_context_before_checkout(storage, monkeypatch, tmp_path, name, value):
     monkeypatch.setenv(name, value)
     with pytest.raises(ValueError):
         release.checkout(tmp_path / "source", resolving=True)
     release.subprocess.run.assert_not_called()
+
+
+@pytest.mark.parametrize("mode,upload", [("Validate", False), ("Validate", True), ("Draft", True), ("Release", False)])
+def test_resolve_freezes_any_upstream_branch_and_rejects_nonexistent_branches(
+        candidate, monkeypatch, tmp_path, capsys, mode, upload):
+    source = "_next/2027+beta"
+    monkeypatch.setenv("RELEASE_MODE", mode)
+    monkeypatch.setenv("RELEASE_UPLOAD_WHEEL_TO_BLOB", str(upload))
+    monkeypatch.setenv("RELEASE_SOURCE_BRANCH", source)
+    repository = tmp_path / "source-repository"
+    subprocess.run(["git", "init", "--quiet", "--initial-branch=" + source, str(repository)], check=True)
+    for relative in (
+        ".azure-devops/templates/integration-pipeline.yml", ".azure-devops/integration.yml",
+        "tools/ado_integration.py", "tools/release_pipeline.py", ".github/test-scenarios.yml",
+    ):
+        path = repository / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("ReleaseCandidateBuildId clusterRegion\n", encoding="utf-8")
+    subprocess.run(["git", "add", "."], cwd=repository, check=True)
+    commit_command = [
+        "git", "-c", "user.name=Release Test", "-c", "user.email=release-test@example.invalid",
+        "commit", "--quiet", "-m",
+        "Test release source\n\nCo-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>",
+    ]
+    subprocess.run(commit_command, cwd=repository, check=True)
+    initial = release.command(["git", "rev-parse", "HEAD"], repository)
+    subprocess.run(["git", "tag", "tag-only"], cwd=repository, check=True)
+    original_run = subprocess.run
+    fetches = []
+
+    def local_run(args, **kwargs):
+        if args[:4] == ["git", "remote", "add", "origin"]:
+            assert args[4] == "https://github.com/Azure/azure-iot-ops-cli-extension.git"
+            args = args[:4] + [repository.as_uri()]
+        if args[:2] == ["git", "fetch"]:
+            fetches.append(args[-1])
+        return original_run(args, **kwargs)
+
+    monkeypatch.setattr(release.subprocess, "run", local_run)
+    assert release.checkout(tmp_path / "resolve", resolving=True) == initial
+    assert f"##vso[task.setvariable variable=commit;isOutput=true]{initial}" in capsys.readouterr().out
+    (repository / "tools/release_pipeline.py").write_text("new tip\n", encoding="utf-8")
+    subprocess.run(["git", "add", "."], cwd=repository, check=True)
+    subprocess.run(commit_command, cwd=repository, check=True)
+    monkeypatch.setenv("RELEASE_SOURCE_COMMIT", initial)
+    downstream = tmp_path / "downstream"
+    assert release.checkout(downstream) == initial
+    assert (downstream / "tools/release_pipeline.py").read_text() == "ReleaseCandidateBuildId clusterRegion\n"
+    for missing in ("missing-branch", "tag-only"):
+        monkeypatch.setenv("RELEASE_SOURCE_BRANCH", missing)
+        with pytest.raises(subprocess.CalledProcessError):
+            release.checkout(tmp_path / missing, resolving=True)
+    assert fetches == ["refs/heads/" + source, initial, "refs/heads/missing-branch", "refs/heads/tag-only"]
+    release.github.assert_not_called()
+    release.ado.assert_not_called()
 
 
 @pytest.mark.parametrize("value", ["", "yes", "1", "$(uploadWheelToBlob)"])
@@ -526,7 +604,7 @@ def test_access_probe_rejects_ambiguous_permission_responses(candidate, monkeypa
 
 
 @pytest.mark.parametrize("name,value", [
-    ("BUILD_SOURCEBRANCH", "refs/heads/feature/work"), ("RELEASE_SOURCE_BRANCH", "feature/work"),
+    ("BUILD_SOURCEBRANCH", "refs/heads/feature/work"), ("RELEASE_SOURCE_BRANCH", "refs/tags/v1"),
     ("BUILD_REPOSITORY_NAME", "another/repo"), ("RELEASE_MODE", "Validate"),
 ])
 def test_publication_rejects_nonproduction_context(candidate, monkeypatch, tmp_path, name, value):
@@ -724,13 +802,18 @@ def test_internal_candidate_identity_fails_closed(candidate, variables):
 
 @pytest.mark.parametrize("mode", ["Validate", "Draft", "Release"])
 @pytest.mark.parametrize("upload", [False, True])
-def test_consumer_acquires_identical_candidate_without_rebuilding(candidate, monkeypatch, tmp_path, mode, upload):
+@pytest.mark.parametrize("source", ["dev", "release/2027-preview", "_next/2027+beta"])
+def test_consumer_acquires_identical_candidate_without_rebuilding(
+        candidate, monkeypatch, tmp_path, mode, upload, source):
     directory, value = candidate
     value["uploadWheelToBlob"] = upload
+    value["sourceBranch"] = release.branch(source)
     release.write(directory / "candidate.json", value)
     consumer_environment(candidate, monkeypatch)
+    monkeypatch.setenv("BUILD_SOURCEBRANCH", value["sourceBranch"])
     producer = parent()
     producer["templateParameters"]["mode"] = mode
+    producer["templateParameters"]["sourceBranch"] = source
     monkeypatch.setattr(release, "ado", Mock(side_effect=[producer, child(value)]))
     run = Mock(side_effect=AssertionError("Handoff must not rebuild or execute packages"))
     monkeypatch.setattr(integration.subprocess, "run", run)
@@ -824,11 +907,15 @@ def test_publication_without_index_credentials_reuses_exact_release(candidate, m
 @pytest.mark.parametrize("mode", ["Draft", "Release"])
 @pytest.mark.parametrize("skipped", [False, True])
 @pytest.mark.parametrize("upload_blob", [False, True])
-def test_draft_is_promoted_only_after_verified_uploads(candidate, monkeypatch, tmp_path, mode, skipped, upload_blob):
+@pytest.mark.parametrize("source", ["dev", "release/2027-preview", "users/test/next"])
+def test_draft_is_promoted_only_after_verified_uploads(
+        candidate, monkeypatch, tmp_path, mode, skipped, upload_blob, source):
     directory, value = candidate
     monkeypatch.setenv("RELEASE_MODE", mode)
     monkeypatch.setenv("RELEASE_SKIP_INTEGRATION_TESTS", str(skipped))
     monkeypatch.setenv("RELEASE_UPLOAD_WHEEL_TO_BLOB", str(upload_blob))
+    monkeypatch.setenv("RELEASE_SOURCE_BRANCH", source)
+    value["sourceBranch"] = release.branch(source)
     value["uploadWheelToBlob"] = upload_blob
     if skipped:
         value.update(skipIntegrationTests=True, cohorts={})
