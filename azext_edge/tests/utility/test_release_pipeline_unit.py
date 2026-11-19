@@ -978,6 +978,9 @@ def test_yaml_parallel_qualification_requires_all_gates_and_no_default_publicati
     root = yaml.safe_load((ROOT / ".azure-devops/release.yml").read_text(encoding="utf-8"))
     assert root["name"] == "aio-release-$(Date:yyyyMMdd).$(Rev:r)"
     parameters = {item["name"]: item for item in root["parameters"]}
+    order = [item["name"] for item in root["parameters"]]
+    region_index = order.index("clusterRegion")
+    assert order[region_index + 1:region_index + 3] == ["skipIntegrationTests", "createIndexPr"]
     assert parameters["mode"]["default"] == "Validate"
     assert parameters["createIndexPr"]["default"] is False
     assert "uploadWheel" not in parameters

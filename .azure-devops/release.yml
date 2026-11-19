@@ -14,14 +14,6 @@ parameters:
     displayName: Release branch
     type: string
     default: dev
-  - name: createIndexPr
-    displayName: Create index PR
-    type: boolean
-    default: false
-  - name: skipIntegrationTests
-    displayName: Skip integration tests
-    type: boolean
-    default: false
   - name: clusterRegion
     displayName: Integration gate region
     type: string
@@ -36,6 +28,14 @@ parameters:
       - West Europe
       - North Europe
       - Germany West Central
+  - name: skipIntegrationTests
+    displayName: Skip integration tests
+    type: boolean
+    default: false
+  - name: createIndexPr
+    displayName: Create index PR
+    type: boolean
+    default: false
 
 variables:
   RELEASE_REGION: ${{ lower(replace(parameters.clusterRegion, ' ', '')) }}
