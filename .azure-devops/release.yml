@@ -23,7 +23,7 @@ parameters:
     type: boolean
     default: false
   - name: clusterRegion
-    displayName: Region (Public cloud only)
+    displayName: Integration gate region
     type: string
     default: West US 2
     values:

@@ -26,7 +26,7 @@ separate Validate run before uploading or releasing.
 3. **Release branch** (product code): keep the default `dev`. Upload, Draft
    and Release reject any other automation or product branch.
 4. **Mode**: choose from the table above.
-5. **Region (Public cloud only)**: one region; default West US 2.
+5. **Integration gate region**: one Public cloud test-cluster region; default West US 2.
 6. **Skip integration tests**: leave unchecked. Checking it is an explicit
    waiver that skips only integration; it is recorded in the candidate and
    receipt.
