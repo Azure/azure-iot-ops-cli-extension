@@ -4,9 +4,10 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-"""Fail scheduled health preparation when an older run of this definition is still active."""
+"""Reject scheduled health overlap at preparation and provisioning, with stricter retries."""
 
 import os
+import re
 from urllib.parse import urlencode
 
 from release_pipeline import ado, environment, identifier
@@ -17,6 +18,10 @@ def check_scheduled_overlap():
         return
     definition = identifier(environment("SYSTEM_DEFINITIONID"))
     current = identifier(environment("BUILD_BUILDID"))
+    attempts = [environment(name) for name in ("SYSTEM_STAGEATTEMPT", "SYSTEM_JOBATTEMPT")]
+    if any(not re.fullmatch(r"[1-9][0-9]*", attempt) for attempt in attempts):
+        raise ValueError("Scheduled overlap preflight requires positive stage and job attempts.")
+    retry = any(int(attempt) > 1 for attempt in attempts)
     active_statuses = {"inProgress", "notStarted", "postponed", "cancelling"}
     result = ado("build/builds?" + urlencode({
         "definitions": definition, "statusFilter": ",".join(sorted(active_statuses)),
@@ -38,11 +43,18 @@ def check_scheduled_overlap():
         seen.add(build_id)
     if current not in seen:
         raise ValueError("Scheduled overlap preflight could not establish this run in the active-build inventory.")
-    older = sorted((value for value in seen if int(value) < int(current)), key=int)
-    if older:
+    conflicts = sorted(
+        (value for value in seen if value != current and (retry or int(value) < int(current))), key=int,
+    )
+    relation = "other" if retry else "older"
+    if conflicts:
         raise RuntimeError(
-            f"Scheduled run {current} refused: definition {definition} has older active build(s) "
-            f"{', '.join(older)}. Provisioning is blocked; inspect those runs before retrying."
+            f"Scheduled run {current} refused: definition {definition} has {relation} active build(s) "
+            f"{', '.join(conflicts)}. Provisioning is blocked; inspect those runs before retrying."
         )
-    print(f"Scheduled overlap preflight passed for definition {definition}, build {current}: no older active builds.",
-          flush=True)
+    print(f"Scheduled overlap preflight passed for definition {definition}, build {current}: "
+          f"no {relation} active builds.", flush=True)
+
+
+if __name__ == "__main__":
+    check_scheduled_overlap()

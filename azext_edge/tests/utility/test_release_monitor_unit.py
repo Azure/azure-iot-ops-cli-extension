@@ -10,6 +10,7 @@ import importlib
 import io
 import json
 from pathlib import Path
+import runpy
 import shutil
 import subprocess
 import tarfile
@@ -275,6 +276,7 @@ def scheduled(monitor, monkeypatch):
     for key, value in {
         "BUILD_REASON": "Schedule", "BUILD_BUILDID": "123", "SYSTEM_DEFINITIONID": "200",
         "SYSTEM_ACCESSTOKEN": "offline-schedule-token",
+        "SYSTEM_STAGEATTEMPT": "1", "SYSTEM_JOBATTEMPT": "1",
     }.items():
         monkeypatch.setenv(key, value)
     helper = importlib.import_module("ado_schedule")
@@ -290,6 +292,8 @@ def test_manual_health_runs_do_not_query_scheduled_overlap(scheduled, monkeypatc
     helper, api = scheduled
     monkeypatch.setenv("BUILD_REASON", reason)
     monkeypatch.delenv("SYSTEM_ACCESSTOKEN")
+    monkeypatch.delenv("SYSTEM_STAGEATTEMPT")
+    monkeypatch.delenv("SYSTEM_JOBATTEMPT")
     helper.check_scheduled_overlap()
     api.assert_not_called()
 
@@ -319,6 +323,65 @@ def test_scheduled_preflight_refuses_every_older_active_build_status(scheduled, 
     with pytest.raises(RuntimeError, match="older active build\\(s\\) 122"):
         helper.check_scheduled_overlap()
     assert "passed" not in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("attempt", ["SYSTEM_STAGEATTEMPT", "SYSTEM_JOBATTEMPT"])
+@pytest.mark.parametrize("status", ["inProgress", "notStarted", "postponed", "cancelling"])
+def test_scheduled_retry_refuses_newer_active_build(scheduled, monkeypatch, attempt, status):
+    helper, api = scheduled
+    monkeypatch.setenv(attempt, "2")
+    api.return_value["value"].append({"id": 124, "definition": {"id": 200}, "status": status})
+    api.return_value["count"] = 2
+    with pytest.raises(RuntimeError, match="other active build\\(s\\) 124"):
+        helper.check_scheduled_overlap()
+
+
+@pytest.mark.parametrize("attempt", ["SYSTEM_STAGEATTEMPT", "SYSTEM_JOBATTEMPT"])
+def test_scheduled_retry_allows_only_the_current_build(scheduled, monkeypatch, attempt):
+    helper, api = scheduled
+    monkeypatch.setenv(attempt, "2")
+    helper.check_scheduled_overlap()
+    api.assert_called_once()
+
+
+@pytest.mark.parametrize("attempt", ["SYSTEM_STAGEATTEMPT", "SYSTEM_JOBATTEMPT"])
+@pytest.mark.parametrize("value", [None, "0", "-1", "$(System.JobAttempt)"])
+def test_scheduled_guard_rejects_missing_or_invalid_attempts(scheduled, monkeypatch, attempt, value):
+    helper, api = scheduled
+    if value is None:
+        monkeypatch.delenv(attempt)
+    else:
+        monkeypatch.setenv(attempt, value)
+    with pytest.raises(ValueError):
+        helper.check_scheduled_overlap()
+    api.assert_not_called()
+
+
+def test_standalone_provisioning_check_uses_retry_policy(scheduled, monkeypatch):
+    _, api = scheduled
+    monkeypatch.setenv("SYSTEM_STAGEATTEMPT", "2")
+    api.return_value["value"].append({"id": 124, "definition": {"id": 200}, "status": "inProgress"})
+    api.return_value["count"] = 2
+    with pytest.raises(RuntimeError, match="other active build\\(s\\) 124"):
+        runpy.run_path(str(ROOT / "tools/ado_schedule.py"), run_name="__main__")
+
+
+def test_health_scenario_retries_recheck_before_provisioning_without_gating_cleanup():
+    template = yaml.safe_load((ROOT / ".azure-devops/templates/integration-scenario.yml").read_text())
+    steps = template["jobs"][0]["steps"]
+    run_index = next(index for index, step in enumerate(steps) if step.get("name") == "runScenario")
+    conditional = steps[run_index - 1]
+    assert list(conditional) == ["${{ if parameters.monitor }}"]
+    guard, = conditional["${{ if parameters.monitor }}"]
+    assert guard["bash"] == "python tools/ado_schedule.py"
+    assert guard["workingDirectory"] == "$(Build.SourcesDirectory)"
+    assert guard["env"] == {"SYSTEM_ACCESSTOKEN": "$(System.AccessToken)"}
+    assert "condition" not in guard and "continueOnError" not in guard
+    assert steps[run_index].get("condition", "succeeded()") == "succeeded()"
+    proof = next(step for step in steps if step.get("name") == "cleanupProof")
+    cleanup = next(step for step in steps if step.get("displayName") == "Clean up")
+    assert proof["condition"] == "always()"
+    assert cleanup["condition"] == "and(always(), or(canceled(), ne(variables['cleanupProof.complete'], 'true')))"
 
 
 @pytest.mark.parametrize("failure", [

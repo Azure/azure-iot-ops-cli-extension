@@ -152,12 +152,16 @@ Historical source-health runs retained on definition 167 are not released-versio
 
 Public schedules include only `dev`, use `always: true`, and default to full
 **Integration tests**. `batch: true` is not relied on with `always: true`.
-Before selection or provisioning, scheduled Prepare jobs use their job token to
-query older active builds of the same ADO definition. Overlap, unavailable API/auth
-or ambiguous evidence explicitly fails Prepare; it is not a passed validation.
-Grant the Build Service scoped **View builds** access for this lookup. Manual runs
-are unchanged. This check is a point-in-time preflight, not a cross-definition lock:
-retain the shared Public TrustBundle environment's Exclusive Lock check.
+Prepare and each health scenario job immediately before provisioning use their
+job token to query active builds of the same ADO definition. First attempts reject
+older active builds. If either `System.StageAttempt` or `System.JobAttempt` is
+greater than 1, any other active build blocks the retry, including newer builds.
+Missing or invalid attempt counters, unavailable API/auth or ambiguous evidence
+fail closed, not as a passed validation. Grant the Build Service scoped **View builds**
+access for this lookup. Manual runs and existing ownership-checked cleanup remain
+unchanged. This is a point-in-time check, not an atomic lock or a guarantee against
+every race; retain the shared Public TrustBundle environment's Exclusive Lock check.
+Old runs retain their original automation and are not retroactively protected.
 
 ### Fixed-group isolation and recovery
 

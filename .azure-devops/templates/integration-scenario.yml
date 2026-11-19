@@ -101,6 +101,12 @@ jobs:
       - publish: attempt/state.json
         artifact: ops-manifest-$(row)-$(System.JobAttempt)
         displayName: Publish resource manifest
+      - ${{ if parameters.monitor }}:
+          - bash: python tools/ado_schedule.py
+            displayName: Recheck scheduled overlap before provisioning
+            workingDirectory: $(Build.SourcesDirectory)
+            env:
+              SYSTEM_ACCESSTOKEN: $(System.AccessToken)
       - task: AzureCLI@2
         name: runScenario
         displayName: Run tests
