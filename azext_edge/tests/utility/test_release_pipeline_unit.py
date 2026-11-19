@@ -47,6 +47,7 @@ def candidate(tmp_path, monkeypatch):
         "BUILD_REPOSITORY_NAME": release.REPOSITORY, "RELEASE_SOURCE_BRANCH": "dev",
         "RELEASE_SOURCE_COMMIT": SOURCE, "RELEASE_COHORT": COHORT, "RELEASE_MODE": "Release",
         "RELEASE_CREATE_INDEX_PR": "false", "RELEASE_SKIP_INTEGRATION_TESTS": "false",
+        "RELEASE_UPLOAD_WHEEL_TO_BLOB": "false",
         "RELEASE_GITHUB_TOKEN": "offline-placeholder", "RELEASE_CHILD_BUILD_ID": "901",
         "OPS_RELEASE_BUILD_ID": "0", "RELEASE_REGION": "westus2",
     }.items():
@@ -147,7 +148,7 @@ def public_release(value, draft=False):
     }
 
 
-@pytest.mark.parametrize("mode", ["Validate", "Upload wheel only", "Draft"])
+@pytest.mark.parametrize("mode", ["Validate", "Draft"])
 def test_nonrelease_modes_cannot_request_index_submission(candidate, monkeypatch, mode):
     monkeypatch.setenv("RELEASE_MODE", mode)
     monkeypatch.setenv("RELEASE_CREATE_INDEX_PR", "True")
@@ -158,11 +159,13 @@ def test_nonrelease_modes_cannot_request_index_submission(candidate, monkeypatch
 
 def test_release_defaults_to_validate_and_rejects_removed_plan(candidate, monkeypatch):
     monkeypatch.delenv("RELEASE_MODE")
+    monkeypatch.delenv("RELEASE_UPLOAD_WHEEL_TO_BLOB")
     assert release.release_options() == ("Validate", False)
-    for mode in ("Validate", "Upload wheel only", "Draft", "Release"):
+    assert release.upload_wheel_to_blob() is False
+    for mode in ("Validate", "Draft", "Release"):
         monkeypatch.setenv("RELEASE_MODE", mode)
         assert release.release_options() == (mode, False)
-    for mode in ("Plan", "upload wheel only", "Upload", "", "$(mode)"):
+    for mode in ("Plan", "Upload wheel only", "upload wheel only", "Upload", "", "$(mode)"):
         monkeypatch.setenv("RELEASE_MODE", mode)
         with pytest.raises(ValueError, match="Invalid release mode"):
             release.release_options()
@@ -170,7 +173,11 @@ def test_release_defaults_to_validate_and_rejects_removed_plan(candidate, monkey
 
 @pytest.fixture
 def storage(candidate, monkeypatch):
-    monkeypatch.setenv("RELEASE_MODE", "Upload wheel only")
+    monkeypatch.setenv("RELEASE_MODE", "Validate")
+    monkeypatch.setenv("RELEASE_UPLOAD_WHEEL_TO_BLOB", "true")
+    directory, value = candidate
+    value["uploadWheelToBlob"] = True
+    release.write(directory / "candidate.json", value)
     monkeypatch.delenv("RELEASE_GITHUB_TOKEN")
     monkeypatch.setattr(release.subprocess, "run", Mock(return_value=Mock(
         returncode=0, stdout='{"accessToken":"secret-offline-storage-token"}',
@@ -198,8 +205,11 @@ def blob_error(code):
 
 
 @pytest.mark.parametrize("skipped", [False, True])
-def test_blob_upload_only_exact_candidate_with_receipt_and_no_github(storage, monkeypatch, tmp_path, capsys, skipped):
+@pytest.mark.parametrize("mode", ["Validate", "Draft", "Release"])
+def test_blob_upload_only_exact_candidate_with_receipt_and_no_github(
+        storage, monkeypatch, tmp_path, capsys, skipped, mode):
     directory, value = storage
+    monkeypatch.setenv("RELEASE_MODE", mode)
     if skipped:
         monkeypatch.setenv("RELEASE_SKIP_INTEGRATION_TESTS", "true")
         value.update(skipIntegrationTests=True, cohorts={})
@@ -210,7 +220,7 @@ def test_blob_upload_only_exact_candidate_with_receipt_and_no_github(storage, mo
     result = release.upload_wheel(directory, receipt)
     assert release.read(receipt) == result
     assert result == {
-        "mode": "Upload wheel only", "status": "uploaded",
+        "mode": mode, "status": "uploaded",
         "wheelUrl": release.BLOB_CONTAINER + value["wheel"]["file"],
         "sha256": value["wheel"]["sha256"], "length": len(data), "candidate": value,
     }
@@ -277,7 +287,8 @@ def test_blob_create_race_verifies_bytes_with_bounded_reads(storage, monkeypatch
     ("BUILD_SOURCEBRANCH", "refs/pull/42/merge"),
     ("RELEASE_SOURCE_BRANCH", "feature/upload"),
     ("BUILD_REPOSITORY_NAME", "another/repo"),
-    ("RELEASE_MODE", "Validate"), ("RELEASE_MODE", "Draft"), ("RELEASE_MODE", "Release"),
+    ("RELEASE_MODE", "Upload wheel only"), ("RELEASE_MODE", "Plan"),
+    ("RELEASE_UPLOAD_WHEEL_TO_BLOB", "false"),
 ])
 def test_blob_production_guard_precedes_authentication(storage, monkeypatch, tmp_path, name, value):
     monkeypatch.setenv(name, value)
@@ -295,6 +306,27 @@ def test_blob_resolve_rejects_unprotected_source_before_checkout(storage, monkey
     monkeypatch.setenv(name, value)
     with pytest.raises(ValueError):
         release.checkout(tmp_path / "source", resolving=True)
+    release.subprocess.run.assert_not_called()
+
+
+@pytest.mark.parametrize("value", ["", "yes", "1", "$(uploadWheelToBlob)"])
+def test_blob_upload_option_rejects_invalid_values_before_side_effects(storage, monkeypatch, tmp_path, value):
+    monkeypatch.setenv("RELEASE_UPLOAD_WHEEL_TO_BLOB", value)
+    with pytest.raises(ValueError, match="uploadWheelToBlob"):
+        release.release_options()
+    with pytest.raises(ValueError, match="uploadWheelToBlob"):
+        release.upload_wheel(storage[0], tmp_path / "receipt.json")
+    release.subprocess.run.assert_not_called()
+    release.github.assert_not_called()
+
+
+@pytest.mark.parametrize("upload", [False, "true", 1])
+def test_blob_upload_intent_is_bound_to_candidate(storage, tmp_path, upload):
+    directory, value = storage
+    value["uploadWheelToBlob"] = upload
+    release.write(directory / "candidate.json", value)
+    with pytest.raises(ValueError, match="Blob upload option"):
+        release.upload_wheel(directory, tmp_path / "blob-upload.json")
     release.subprocess.run.assert_not_called()
 
 
@@ -518,10 +550,12 @@ def test_candidate_inventory_is_full_default_channel_matrix(candidate):
     ("2.11.1", False), ("2.0.0b1", False), ("2.0.0b1", True),
 ])
 @pytest.mark.parametrize("skipped", [False, True])
+@pytest.mark.parametrize("upload", [False, True])
 def test_candidate_creation_updates_title_from_wheel_once(
-        candidate, tmp_path, monkeypatch, capsys, version, already_versioned, skipped):
+        candidate, tmp_path, monkeypatch, capsys, version, already_versioned, skipped, upload):
     _, value = candidate
     monkeypatch.setenv("RELEASE_SKIP_INTEGRATION_TESTS", str(skipped))
+    monkeypatch.setenv("RELEASE_UPLOAD_WHEEL_TO_BLOB", str(upload))
     title = "aio-release-20261104.1"
     versioned_title = f"{title} ({version})"
     monkeypatch.setenv("BUILD_BUILDNUMBER", versioned_title if already_versioned else title)
@@ -544,6 +578,7 @@ def test_candidate_creation_updates_title_from_wheel_once(
     assert lines[0] == f"##vso[build.updatebuildnumber]{versioned_title}"
     assert set(json.loads(lines[-1].split("]", 1)[1])) == (set() if skipped else set(value["cohorts"]))
     assert generated["skipIntegrationTests"] is skipped
+    assert generated["uploadWheelToBlob"] is upload
     if skipped:
         release.source_cohorts.assert_not_called()
     assert generated["wheel"]["version"] == version
@@ -687,9 +722,12 @@ def test_internal_candidate_identity_fails_closed(candidate, variables):
         release.validate_integration(build, value)
 
 
-@pytest.mark.parametrize("mode", ["Validate", "Upload wheel only", "Draft", "Release"])
-def test_consumer_acquires_identical_candidate_without_rebuilding(candidate, monkeypatch, tmp_path, mode):
+@pytest.mark.parametrize("mode", ["Validate", "Draft", "Release"])
+@pytest.mark.parametrize("upload", [False, True])
+def test_consumer_acquires_identical_candidate_without_rebuilding(candidate, monkeypatch, tmp_path, mode, upload):
     directory, value = candidate
+    value["uploadWheelToBlob"] = upload
+    release.write(directory / "candidate.json", value)
     consumer_environment(candidate, monkeypatch)
     producer = parent()
     producer["templateParameters"]["mode"] = mode
@@ -785,16 +823,19 @@ def test_publication_without_index_credentials_reuses_exact_release(candidate, m
 
 @pytest.mark.parametrize("mode", ["Draft", "Release"])
 @pytest.mark.parametrize("skipped", [False, True])
-def test_draft_is_promoted_only_after_verified_uploads(candidate, monkeypatch, tmp_path, mode, skipped):
+@pytest.mark.parametrize("upload_blob", [False, True])
+def test_draft_is_promoted_only_after_verified_uploads(candidate, monkeypatch, tmp_path, mode, skipped, upload_blob):
     directory, value = candidate
     monkeypatch.setenv("RELEASE_MODE", mode)
     monkeypatch.setenv("RELEASE_SKIP_INTEGRATION_TESTS", str(skipped))
+    monkeypatch.setenv("RELEASE_UPLOAD_WHEEL_TO_BLOB", str(upload_blob))
+    value["uploadWheelToBlob"] = upload_blob
     if skipped:
         value.update(skipIntegrationTests=True, cohorts={})
-        release.write(directory / "candidate.json", value)
-        prepared = release.read(tmp_path / "publication.json")
-        prepared["candidate"] = value
-        release.write(tmp_path / "publication.json", prepared)
+    release.write(directory / "candidate.json", value)
+    prepared = release.read(tmp_path / "publication.json")
+    prepared["candidate"] = value
+    release.write(tmp_path / "publication.json", prepared)
     draft = public_release(value, draft=True)
     draft["assets"] = []
     events = []
@@ -819,7 +860,20 @@ def test_draft_is_promoted_only_after_verified_uploads(candidate, monkeypatch, t
 
     monkeypatch.setattr(release, "github", github)
     monkeypatch.setattr(release, "api", upload)
+    blob_receipt = tmp_path / "blob-upload.json"
+    if upload_blob:
+        monkeypatch.setattr(release, "storage_token", Mock(return_value="offline-storage-token"))
+        monkeypatch.setattr(release, "blob_request", Mock(return_value={
+            "status": 200, "sha256": value["wheel"]["sha256"],
+            "length": (directory / value["wheel"]["file"]).stat().st_size,
+        }))
+        assert release.upload_wheel(directory, blob_receipt)["status"] == "already-present"
+        assert events == []
     result = release.publish(directory, tmp_path / "release.json", tmp_path / "publication.json")
+    assert blob_receipt.exists() is upload_blob
+    if upload_blob:
+        assert release.read(blob_receipt)["candidate"] == release.read(tmp_path / "release.json")["candidate"]
+        assert release.read(blob_receipt)["status"] == "already-present"
     assert ("Integration tests skipped" in draft["body"]) is skipped
     if mode == "Draft":
         assert [event[0] for event in events] == ["POST", "GET"]
@@ -980,13 +1034,19 @@ def test_yaml_parallel_qualification_requires_all_gates_and_no_default_publicati
     parameters = {item["name"]: item for item in root["parameters"]}
     order = [item["name"] for item in root["parameters"]]
     region_index = order.index("clusterRegion")
-    assert order[region_index + 1:region_index + 3] == ["skipIntegrationTests", "createIndexPr"]
+    assert order[region_index + 1:region_index + 4] == [
+        "uploadWheelToBlob", "skipIntegrationTests", "createIndexPr",
+    ]
     assert parameters["mode"]["default"] == "Validate"
     assert parameters["createIndexPr"]["default"] is False
-    assert "uploadWheel" not in parameters
+    assert parameters["uploadWheelToBlob"]["default"] is False
     assert parameters["skipIntegrationTests"]["default"] is False
-    assert parameters["mode"]["values"] == ["Validate", "Upload wheel only", "Draft", "Release"]
+    assert parameters["mode"]["values"] == ["Validate", "Draft", "Release"]
     assert root["variables"]["RELEASE_SKIP_INTEGRATION_TESTS"] == "${{ parameters.skipIntegrationTests }}"
+    assert root["variables"]["RELEASE_UPLOAD_WHEEL_TO_BLOB"] == "${{ parameters.uploadWheelToBlob }}"
+    assert root["extends"]["parameters"]["stages"][0]["parameters"]["uploadWheelToBlob"] == (
+        "${{ parameters.uploadWheelToBlob }}"
+    )
     template = yaml.safe_load((ROOT / ".azure-devops/templates/release-stages.yml").read_text(encoding="utf-8"))
     stages = {"Resolve": template["stages"][0]}
     for conditional in template["stages"][1:]:
@@ -1007,7 +1067,9 @@ def test_yaml_parallel_qualification_requires_all_gates_and_no_default_publicati
         {"${{ if not(parameters.skipIntegrationTests) }}": ["Integration"]},
     ]
     assert list(template["stages"][-3]) == ["${{ if not(parameters.skipIntegrationTests) }}"]
-    assert list(template["stages"][-2]) == ["${{ if eq(parameters.mode, 'Upload wheel only') }}"]
+    assert list(template["stages"][-2]) == [
+        "${{ if and(eq(parameters.mode, 'Validate'), parameters.uploadWheelToBlob) }}"
+    ]
     assert list(template["stages"][-1]) == ["${{ if in(parameters.mode, 'Draft', 'Release') }}"]
     assert "or(${{ parameters.skipIntegrationTests }}, eq(dependencies.Integration.result, 'Succeeded'))" in (
         stages["Publish"]["condition"]
@@ -1016,7 +1078,7 @@ def test_yaml_parallel_qualification_requires_all_gates_and_no_default_publicati
                   if "${{ if not(parameters.skipIntegrationTests) }}" in step)
     assert " release_pipeline.py access" in json.dumps(access).replace("tools/", "")
     assert "ReleaseStorageServiceConnection" not in json.dumps(template)
-    assert "uploadWheel" not in json.dumps(template)
+    assert "Upload wheel only" not in json.dumps(template)
     assert "eq(dependencies.Unit.result, 'Succeeded')" in stages["Publish"]["condition"]
     assert "candidate.matrix" in strategy["matrix"]
     job = stages["Publish"]["jobs"][0]
@@ -1044,15 +1106,31 @@ def test_yaml_parallel_qualification_requires_all_gates_and_no_default_publicati
     assert upload["templateContext"] == job["templateContext"]
     assert [step["checkout"] for step in upload["steps"] if "checkout" in step] == ["none"]
     assert "ManualValidation" not in json.dumps(upload)
-    storage = next(step for step in upload["steps"] if step.get("task") == "AzureCLI@2")
+    upload_steps = yaml.safe_load((ROOT / ".azure-devops/templates/release-upload.yml").read_text())["steps"]
+    assert upload["steps"][-1] == {
+        "template": "release-upload.yml", "parameters": {
+            "mode": "${{ parameters.mode }}", "sourceBranch": "${{ parameters.sourceBranch }}",
+            "uploadWheelToBlob": "${{ parameters.uploadWheelToBlob }}",
+        },
+    }
+    upload_index = next(i for i, step in enumerate(job["steps"]) if "${{ if parameters.uploadWheelToBlob }}" in step)
+    assert job["steps"][upload_index]["${{ if parameters.uploadWheelToBlob }}"] == [upload["steps"][-1]]
+    assert job["steps"][upload_index + 1]["displayName"] == "Stage draft or publish release"
+    assert job["steps"][upload_index + 1].get("condition", "succeeded()") == "succeeded()"
+    storage = upload_steps[0]
     assert storage["inputs"]["azureSubscription"] == "sc-cli-release-storage"
     assert "release-tooling/release_pipeline.py" in storage["inputs"]["inlineScript"]
     assert '" upload ' in storage["inputs"]["inlineScript"]
     assert "RELEASE_GITHUB_TOKEN" not in storage["env"]
+    assert storage["env"]["RELEASE_UPLOAD_WHEEL_TO_BLOB"] == "${{ parameters.uploadWheelToBlob }}"
+    assert "blob-upload.json" in storage["inputs"]["inlineScript"]
+    assert storage.get("condition", "succeeded()") == "succeeded()"
+    assert not storage.get("continueOnError", False)
     for release_job in (upload, job):
         assert "outputs" not in release_job["templateContext"]
-        receipt = next(step for step in release_job["steps"] if "task.uploadfile" in step.get("bash", ""))
-        assert receipt["env"]["RELEASE_RECEIPT"] == "$(Agent.TempDirectory)/publication/release.json"
+    for steps, filename in ((upload_steps, "blob-upload.json"), (job["steps"], "release.json")):
+        receipt = next(step for step in steps if "task.uploadfile" in step.get("bash", ""))
+        assert receipt["env"]["RELEASE_RECEIPT"] == "$(Agent.TempDirectory)/publication/" + filename
         assert 'if [ ! -s "$RELEASE_RECEIPT" ]' in receipt["bash"]
         assert "task.logissue type=error" in receipt["bash"] and "exit 1" in receipt["bash"]
         assert receipt.get("condition", "succeeded()") == "succeeded()"
@@ -1060,7 +1138,7 @@ def test_yaml_parallel_qualification_requires_all_gates_and_no_default_publicati
         i for i, step in enumerate(job["steps"]) if "${{ if parameters.createIndexPr }}" in step
     )
     preparation = next(step for step in stages["Build"]["jobs"][0]["steps"]
-                       if "${{ if eq(parameters.mode, 'Upload wheel only') }}" in step)
+                       if "${{ if and(eq(parameters.mode, 'Validate'), parameters.uploadWheelToBlob) }}" in step)
     assert "prepare-upload" in json.dumps(preparation)
     assert "pip install" not in json.dumps(preparation)
     unit = yaml.safe_load((ROOT / ".azure-devops/templates/release-unit.yml").read_text(encoding="utf-8"))
@@ -1079,7 +1157,7 @@ def test_yaml_parallel_qualification_requires_all_gates_and_no_default_publicati
 
 def test_security_stages_verified_engine_before_scanning_without_reducing_coverage():
     template = yaml.safe_load((ROOT / ".azure-devops/templates/release-stages.yml").read_text(encoding="utf-8"))
-    stages = template["stages"][1]["${{ if in(parameters.mode, 'Validate', 'Upload wheel only', 'Draft', 'Release') }}"]
+    stages = template["stages"][1]["${{ if in(parameters.mode, 'Validate', 'Draft', 'Release') }}"]
     steps = next(stage for stage in stages if stage["stage"] == "Security")["jobs"][0]["steps"]
     bootstrap = next(step for step in steps if step.get("name") == "stageMsdo")
     scanner = next(step for step in steps if step.get("task") == "MicrosoftSecurityDevOps@1")

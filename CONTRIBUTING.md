@@ -74,6 +74,21 @@ manual inputs. Pipeline 164 defines the queue-time variable `ReleaseCandidateBui
 Release automation overrides it to select its exact candidate; ordinary users do
 not enter a release build ID.
 
+Release pipeline **165** offers **Validate** (default), **Draft** and **Release**.
+The **Upload wheel to Blob** checkbox (`uploadWheelToBlob`, default `false`) is
+the first checkbox below **Integration gate region**, before **Skip integration tests**
+and **Create index PR**. It replaces the former **Upload wheel only** mode:
+use Validate with the checkbox selected for an approval-free Blob upload after
+qualification. Draft/Release with upload selected wait for their existing approval
+before either write, then upload the same qualified wheel to Blob before GitHub.
+A failed Blob upload stops GitHub publication. A later GitHub failure does not roll
+back Blob; retry the same candidate rather than rebuilding it.
+Duplicate handling is unchanged: identical content is a no-op, conflicting content
+is never overwritten. Download logs for `blob-upload.json` (Blob) and `release.json`
+(GitHub); both retain candidate provenance. With upload unchecked, Validate publishes
+nothing. Publication still requires official-repository `dev` automation and product
+source; integration waivers and index-PR rules are unchanged.
+
 Each run verifies GitHub's wheel SHA256, metadata, runtime profile and exact
 released source. It uses that release's scenario configuration, tests and fixtures
 with current native orchestration. The deployed AIO extension version/train must

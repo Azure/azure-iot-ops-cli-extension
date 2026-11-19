@@ -9,7 +9,7 @@ parameters:
     displayName: Mode
     type: string
     default: Validate
-    values: [Validate, Upload wheel only, Draft, Release]
+    values: [Validate, Draft, Release]
   - name: sourceBranch
     displayName: Release branch
     type: string
@@ -28,6 +28,10 @@ parameters:
       - West Europe
       - North Europe
       - Germany West Central
+  - name: uploadWheelToBlob
+    displayName: Upload wheel to Blob
+    type: boolean
+    default: false
   - name: skipIntegrationTests
     displayName: Skip integration tests
     type: boolean
@@ -40,6 +44,7 @@ parameters:
 variables:
   RELEASE_REGION: ${{ lower(replace(parameters.clusterRegion, ' ', '')) }}
   RELEASE_SKIP_INTEGRATION_TESTS: ${{ parameters.skipIntegrationTests }}
+  RELEASE_UPLOAD_WHEEL_TO_BLOB: ${{ parameters.uploadWheelToBlob }}
 
 resources:
   repositories:
@@ -67,3 +72,4 @@ extends:
           sourceBranch: ${{ parameters.sourceBranch }}
           createIndexPr: ${{ parameters.createIndexPr }}
           skipIntegrationTests: ${{ parameters.skipIntegrationTests }}
+          uploadWheelToBlob: ${{ parameters.uploadWheelToBlob }}
