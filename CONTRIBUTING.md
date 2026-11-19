@@ -2,8 +2,6 @@
 
 This guide will assist you in setting up a local development environment for this extension.
 
-For build qualification and publication, follow the [Ops release pipeline guide](docs/release-pipeline.md).
-
 ## Fairfax ADO integrations
 
 Use the existing integration pipeline with **Cloud: Fairfax** and
