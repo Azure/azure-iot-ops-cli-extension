@@ -28,7 +28,7 @@ from azext_edge.edge.providers.orchestration.template_preview import TEMPLATE_BL
 EXPECTED_PREVIEW_RESOURCE_KEYS = frozenset({
     "cluster", "aioExtension", "customLocation", "aioInstance", "broker", "brokerAuthn", "brokerListener",
     "dataflowProfile", "dataflowEndpoint", "artifactRegistryEndpoint", "opcUaConnectorTemplate", "mcpDefaultPolicy",
-    "mcpAioConnection",
+    "mcpAioConnection", "edgeRegistry",
 })
 EXTENSION_KEYS = {"cluster", "aioExtension"}
 INSTANCE_KEYS = EXTENSION_KEYS | {"customLocation", "aioInstance"}
@@ -43,8 +43,8 @@ def qualification_profile():
     # Exercise the actual generated artifact without registering it for CLI operations.
     return RuntimeProfile(
         channel=RuntimeChannel.PREVIEW,
-        release="prev2610",
-        source_ref="preview/v1.6.x/2610",
+        release="prev2612",
+        source_ref="preview/v1.6.x/2612",
         source_commit="test-commit",
         instance_blueprint=TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW,
     )
@@ -53,16 +53,16 @@ def qualification_profile():
 def test_preview_source_identity_and_contract(qualification_profile):
     blueprint = TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW
     content = blueprint.content
-    assert blueprint.commit_id == "f2b270da385ddb544e7c1e96521ebd79eea045d7"
+    assert blueprint.commit_id == "ef4019a9411168b529fb7f1482936246ee7f0429"
     assert content
-    assert content["variables"]["VERSIONS"] == {"iotOperations": "1.6.0-preview.60", "connectors": "1.5.22"}
-    assert content["variables"]["TRAINS"] == {"iotOperations": "preview"}
-    assert qualification_profile.identity.train == "preview"
+    assert content["variables"]["VERSIONS"] == {"iotOperations": "1.6.0-preview.100", "connectors": "1.5.100"}
+    assert content["variables"]["TRAINS"] == {"iotOperations": "integration"}
+    assert qualification_profile.identity.train == "integration"
     assert qualification_profile.identity.channel == RuntimeChannel.PREVIEW
     assert set(content["resources"]) == EXPECTED_PREVIEW_RESOURCE_KEYS
     aio_resources = [r for r in content["resources"].values() if r["type"].startswith("Microsoft.IoTOperations/")]
-    assert len(aio_resources) == 10
-    assert {r["apiVersion"] for r in aio_resources} == {"2026-11-01-preview"}
+    assert len(aio_resources) == 11
+    assert {r["apiVersion"] for r in aio_resources} == {"2026-11-01-preview", "2026-11-02-preview"}
     assert content["resources"]["aioExtension"]["properties"]["autoUpgradeMinorVersion"] is False
     assert "disableOpcUaFeature" not in content["parameters"]
     assert content["definitions"]["_1.InstanceFeature"]["properties"]["settings"]["nullable"] is True
@@ -82,9 +82,12 @@ def test_preview_keeps_approved_scalars_without_loaded_source_blob():
         "type": "string", "nullable": True,
     }
     for variable, key, value in (
-        ("CONNECTORS_CHART_REGISTRY", "registry", "aioconnectorsdev.azurecr.io"),
-        ("CONNECTORS_CHART_REPOSITORY", "repository", "aio-connectors/helmchart/microsoft-aio-connectors"),
-        ("CONNECTORS_IMAGE_REGISTRY", "imageRegistry", "aioconnectorsdev.azurecr.io"),
+        ("CONNECTORS_CHART_REGISTRY", "registry", "mcr.microsoft.com"),
+        (
+            "CONNECTORS_CHART_REPOSITORY", "repository",
+            "azureiotoperations/aio-connectors/helmchart/microsoft-aio-connectors",
+        ),
+        ("CONNECTORS_IMAGE_REGISTRY", "imageRegistry", "mcr.microsoft.com"),
     ):
         assert content["variables"][variable] == (
             "[coalesce(tryGet(tryGet(parameters('advancedConfig'), 'connectors'), '"
@@ -125,12 +128,8 @@ def test_preview_persistence_sku_and_endpoint_defaults():
         "[_2.buildBrokerPersistence(parameters('enablePersistence'), "
         "tryGet(parameters('brokerConfig'), 'persistence'))]"
     )
-    assert content["parameters"]["sku"] == {
-        "type": "string", "allowedValues": ["Essentials", "Standard"], "nullable": True,
-    }
-    assert content["resources"]["aioInstance"]["sku"] == (
-        "[if(not(equals(parameters('sku'), null())), createObject('name', parameters('sku')), null())]"
-    )
+    assert "sku" not in content["parameters"]
+    assert "sku" not in content["resources"]["aioInstance"]
     assert content["resources"]["opcUaConnectorTemplate"]["properties"]["deviceInboundEndpointTypes"] == [
         {"endpointType": "Microsoft.OpcUa"}, {"endpointType": "Microsoft.OpcUa.WoT"},
     ]
@@ -190,7 +189,7 @@ def test_preview_mcp_policy_preserves_source_contract(qualification_profile, ins
     assert policy["properties"]["policies"] == "[_2.mcpDefaultPolicies()]"
     rules = template["functions"][0]["members"]["mcpDefaultPolicies"]["output"]["value"]
     assert {rule["principal"]["role"]: rule["action"] for rule in rules} == {
-        "Reader": "ToolCall", "DataReader": "ToolCall", "Admin": "ToolCall",
+        "Reader": "tool-call", "DataReader": "tool-call", "Admin": "tool-call",
     }
     if instance_name:
         source["name"] = "my-instance/aio-mcp-policy-v1"
@@ -223,7 +222,7 @@ def test_preview_mcp_connection_preserves_source_contract(qualification_profile,
 def test_preview_extension_versions_exclude_connector_metadata(qualification_profile):
     targets = InitTargets("cluster", "rg", runtime_profile=qualification_profile)
     assert targets.get_extension_versions(False) == {
-        "iotOperations": {"version": "1.6.0-preview.60", "train": "preview"},
+        "iotOperations": {"version": "1.6.0-preview.100", "train": "integration"},
     }
 
 
@@ -245,7 +244,7 @@ def test_preview_features_use_source_contract(qualification_profile, mode):
     assert template["resources"]["aioInstance"]["properties"]["features"] == EXPECTED_PREVIEW_FEATURES
     assert ("opcUaConnectorTemplate" in template["resources"]) == (mode != "Disabled")
     assert "effectiveFeatures" not in template["variables"]
-    assert template["variables"]["TRAINS"]["iotOperations"] == "preview"
+    assert template["variables"]["TRAINS"]["iotOperations"] == "integration"
 
 
 def test_preview_explicit_configuration_overlays_preserve_other_defaults(qualification_profile):
@@ -298,14 +297,14 @@ def test_bundled_preview_registered_without_changing_default_or_train():
     assert catalog.for_create().channel == RuntimeChannel.STABLE
     profile = catalog.for_create(use_preview=True)
     assert profile is PREVIEW_PROFILE
-    assert profile.source_commit == "f845faae950ff57c519a1a870109c163e6751758"
+    assert profile.source_commit == "767bdc63913fb41b16b1d2b025d9b13b12d20dae"
     assert profile.iotops_api_version == "2026-11-01-preview"
     assert profile.copy_instance_blueprint() == TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW
     assert resolve_runtime_identity(
         profile.identity.version, profile.identity.train, catalog.qualification_identities
     ) == profile.identity
     assert catalog.for_upgrade(profile.identity) is profile
-    assert profile.require_opcua_connector_version() == "1.5.22"
+    assert profile.require_opcua_connector_version() == "1.5.100"
     assert profile.require_opcua_connector_version() == (
         TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW.content["variables"]["VERSIONS"]["connectors"]
     )

@@ -8,24 +8,22 @@
 """Generated preview-channel instance blueprint.
 
 The source GDS parameter and configuration reader are removed before compiling.
-The upstream integration train is promoted to preview before compilation.
+The upstream integration train is retained for alpha qualification.
 MCP defaults to Preview; explicit feature modes override that generated default.
 """
 
-# selected source preview/v1.6.x/2610 @ f845faae950ff57c519a1a870109c163e6751758
-# source release prev2610
+# selected source preview/v1.6.x/2612 @ 767bdc63913fb41b16b1d2b025d9b13b12d20dae
+# source release prev2612
 # no loaded-source redactions required
 from .template import TemplateBlueprint
 
 TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW = TemplateBlueprint(
-    commit_id="f2b270da385ddb544e7c1e96521ebd79eea045d7",
+    commit_id="ef4019a9411168b529fb7f1482936246ee7f0429",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "languageVersion": "2.0",
         "contentVersion": "1.0.0.0",
-        "metadata": {
-            "_generator": {"name": "bicep", "version": "0.48.1.52935", "templateHash": "18334372290429470434"}
-        },
+        "metadata": {"_generator": {"name": "bicep", "version": "0.49.2.45890", "templateHash": "1017110746375674109"}},
         "definitions": {
             "_1.AdvancedConfig": {
                 "type": "object",
@@ -723,7 +721,7 @@ TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW = TemplateBlueprint(
                             "value": "[if(or(empty(parameters('identities')), equals(length(filter(parameters('identities'), lambda('id', not(empty(lambdaVariables('id')))))), 0)), createObject('type', 'None'), createObject('type', 'UserAssigned', 'userAssignedIdentities', toObject(filter(parameters('identities'), lambda('identity', not(empty(lambdaVariables('identity'))))), lambda('identity', lambdaVariables('identity')), lambda('identity', createObject()))))]",
                         },
                         "metadata": {
-                            "description": 'Builds a UserAssigned identity object for the given array of identities.\nIf the list is empty, it will return {type: \'None\'}\ne.g\n```bicep\nvar identites = [\'/subscriptions/.../id1\', \'/subscriptions/.../id2\']\noutput userIdentities object = buildUserIdentities(identites)\n// The output will be:\n// {\n//   "type": "UserAssigned",\n//   "userAssignedIdentities": {\n//     "/subscriptions/.../id1": {},\n//     "/subscriptions/.../id2": {}\n//   }\n// }\n}\n',
+                            "description": 'Builds a UserAssigned identity object for the given array of identities.\nIf the list is empty, it will return {type: \'None\'}\ne.g.\n```bicep\nvar identities = [\'/subscriptions/.../id1\', \'/subscriptions/.../id2\']\noutput userIdentities object = buildIdentity(identities)\n// The output will be:\n// {\n//   "type": "UserAssigned",\n//   "userAssignedIdentities": {\n//     "/subscriptions/.../id1": {},\n//     "/subscriptions/.../id2": {}\n//   }\n// }\n```\n',
                             "__bicep_imported_from!": {"sourceTemplate": "utils.bicep"},
                         },
                     },
@@ -734,7 +732,7 @@ TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW = TemplateBlueprint(
                             "items": {"type": "object"},
                             "value": [
                                 {
-                                    "action": "ToolCall",
+                                    "action": "tool-call",
                                     "principal": {"principalType": "Role", "role": "Reader"},
                                     "resources": [
                                         "documentation_overview",
@@ -768,12 +766,12 @@ TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW = TemplateBlueprint(
                                     ],
                                 },
                                 {
-                                    "action": "ToolCall",
+                                    "action": "tool-call",
                                     "principal": {"principalType": "Role", "role": "DataReader"},
                                     "resources": ["mq_messages", "dss_get"],
                                 },
                                 {
-                                    "action": "ToolCall",
+                                    "action": "tool-call",
                                     "principal": {"principalType": "Role", "role": "Admin"},
                                     "resources": ["*"],
                                 },
@@ -798,16 +796,16 @@ TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW = TemplateBlueprint(
             "schemaRegistryId": {"type": "string"},
             "adrNamespaceId": {"type": "string", "nullable": True},
             "features": {"$ref": "#/definitions/_1.Features", "nullable": True},
-            "sku": {"type": "string", "allowedValues": ["Essentials", "Standard"], "nullable": True},
             "brokerConfig": {"$ref": "#/definitions/_1.BrokerConfig", "nullable": True},
             "enablePersistence": {"type": "bool", "defaultValue": True},
             "trustConfig": {"$ref": "#/definitions/_1.TrustConfig", "defaultValue": {"source": "SelfSigned"}},
             "defaultDataflowInstanceCount": {"type": "int", "defaultValue": 1},
+            "enableEdgeRegistry": {"type": "bool", "defaultValue": False},
             "advancedConfig": {"$ref": "#/definitions/_1.AdvancedConfig", "defaultValue": {}},
         },
         "variables": {
-            "VERSIONS": {"iotOperations": "1.6.0-preview.60", "connectors": "1.5.22"},
-            "TRAINS": {"iotOperations": "preview"},
+            "VERSIONS": {"iotOperations": "1.6.0-preview.100", "connectors": "1.5.100"},
+            "TRAINS": {"iotOperations": "integration"},
             "HASH": "[coalesce(tryGet(parameters('advancedConfig'), 'resourceSuffix'), take(uniqueString(resourceGroup().id, parameters('clusterName'), parameters('clusterNamespace')), 5))]",
             "AIO_EXTENSION_SUFFIX": "[take(uniqueString(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName'))), 5)]",
             "CUSTOM_LOCATION_NAMESPACE": "[parameters('clusterNamespace')]",
@@ -817,9 +815,9 @@ TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW = TemplateBlueprint(
             "TRUST_CONFIG_MAP": "[if(variables('customerManagedTrust'), parameters('trustConfig').settings.configMapName, format('{0}-aio-ca-trust-bundle', parameters('clusterNamespace')))]",
             "TRUST_CONFIG_MAP_KEY": "[if(variables('customerManagedTrust'), parameters('trustConfig').settings.configMapKey, 'ca.crt')]",
             "OPCUA_CONNECTOR_VERSION": "[coalesce(tryGet(tryGet(parameters('advancedConfig'), 'connectors'), 'version'), variables('VERSIONS').connectors)]",
-            "CONNECTORS_CHART_REGISTRY": "[coalesce(tryGet(tryGet(parameters('advancedConfig'), 'connectors'), 'registry'), 'aioconnectorsdev.azurecr.io')]",
-            "CONNECTORS_CHART_REPOSITORY": "[coalesce(tryGet(tryGet(parameters('advancedConfig'), 'connectors'), 'repository'), 'aio-connectors/helmchart/microsoft-aio-connectors')]",
-            "CONNECTORS_IMAGE_REGISTRY": "[coalesce(tryGet(tryGet(parameters('advancedConfig'), 'connectors'), 'imageRegistry'), 'aioconnectorsdev.azurecr.io')]",
+            "CONNECTORS_CHART_REGISTRY": "[coalesce(tryGet(tryGet(parameters('advancedConfig'), 'connectors'), 'registry'), 'mcr.microsoft.com')]",
+            "CONNECTORS_CHART_REPOSITORY": "[coalesce(tryGet(tryGet(parameters('advancedConfig'), 'connectors'), 'repository'), 'azureiotoperations/aio-connectors/helmchart/microsoft-aio-connectors')]",
+            "CONNECTORS_IMAGE_REGISTRY": "[coalesce(tryGet(tryGet(parameters('advancedConfig'), 'connectors'), 'imageRegistry'), 'mcr.microsoft.com')]",
             "MQTT_SETTINGS": {
                 "brokerListenerServiceName": "aio-broker",
                 "brokerListenerPort": 18883,
@@ -910,7 +908,6 @@ TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW = TemplateBlueprint(
                 "location": "[parameters('clusterLocation')]",
                 "extendedLocation": "[variables('extendedLocation')]",
                 "identity": "[_2.buildIdentity(createArray(parameters('userAssignedIdentity')))]",
-                "sku": "[if(not(equals(parameters('sku'), null())), createObject('name', parameters('sku')), null())]",
                 "properties": {
                     "description": "An AIO instance.",
                     "schemaRegistryRef": {"resourceId": "[parameters('schemaRegistryId')]"},
@@ -1059,6 +1056,15 @@ TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW = TemplateBlueprint(
                         {"endpointType": "Microsoft.OpcUa.WoT"},
                     ],
                 },
+                "dependsOn": ["aioInstance", "customLocation"],
+            },
+            "edgeRegistry": {
+                "condition": "[parameters('enableEdgeRegistry')]",
+                "type": "Microsoft.IoTOperations/instances/edgeRegistries",
+                "apiVersion": "2026-11-02-preview",
+                "name": "[format('{0}/{1}', coalesce(parameters('aioInstanceName'), format('aio-{0}', variables('HASH'))), 'default')]",
+                "extendedLocation": "[variables('extendedLocation')]",
+                "properties": {},
                 "dependsOn": ["aioInstance", "customLocation"],
             },
             "mcpDefaultPolicy": {

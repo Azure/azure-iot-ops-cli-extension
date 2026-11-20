@@ -161,7 +161,7 @@ EXTENSION_CONFIGS = {
         (EXTENSION_TYPE_SSC, "1.6.1", "stable"),
     ],
     "instance": [
-        (EXTENSION_TYPE_OPS, "1.5.45", "stable"),
+        (EXTENSION_TYPE_OPS, "1.5.78", "integration"),
     ],
 }
 
