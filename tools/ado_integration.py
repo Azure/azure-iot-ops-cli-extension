@@ -140,7 +140,7 @@ def release_build_id():
     return value
 
 
-def plan(output, scenario_source=ROOT):
+def plan(output, scenario_source=ROOT, skip_unavailable=False):
     cloud = cloud_name()
     parent = release_build_id()
     if cloud == "AzureUSGovernment" and (required("OPS_CHANNELS") != "stable" or parent != "0"):
@@ -156,7 +156,12 @@ def plan(output, scenario_source=ROOT):
     selection = required("OPS_SCENARIOS").split(",")
     if "Default scenarios" in selection and selection != ["Default scenarios"]:
         raise ValueError("Select Default scenarios alone, or select individual scenarios.")
-    if selection != ["Default scenarios"] and set(selection) - {item["name"] for item in config}:
+    unavailable = set(selection) - {item["name"] for item in config} - {"Default scenarios"}
+    if unavailable and skip_unavailable:
+        # Older released CLIs ship fewer scenarios; health runs what each release supports.
+        print(f"##vso[task.logissue type=warning]Release has no scenarios: {', '.join(sorted(unavailable))}")
+        selection = [name for name in selection if name not in unavailable]
+    elif selection != ["Default scenarios"] and unavailable:
         raise ValueError("Unknown ops scenario selection.")
     if len(selection) != len(set(selection)):
         raise ValueError("Duplicate scenario selection.")

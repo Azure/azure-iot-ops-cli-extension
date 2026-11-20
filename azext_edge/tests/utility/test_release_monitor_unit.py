@@ -147,8 +147,8 @@ def test_branch_adapter_plans_the_selected_tests_not_the_automation_checkout(
     catalog.write_text("scenarios:\n  - name: source-only\n")
     mocker.patch.object(adapter, "bundle_manifest", return_value=manifest)
 
-    def plan(output, scenario_source):
-        assert scenario_source == tmp_path / "source"
+    def plan(output, scenario_source, skip_unavailable):
+        assert scenario_source == tmp_path / "source" and skip_unavailable
         monitor.write_json(output / "plan.json", {
             "producer": adapter.native.producer(), "locations": {"clusterRegion": "westus2"},
             "rows": [{"scenario": {"name": "source-only-stable", "channel": "stable"}}],
@@ -518,7 +518,7 @@ def test_health_overrides_preserve_selection_and_retry_identity(
     monkeypatch.setenv("MONITORTRACK", "v1")
     for key, value in selected.items():
         monkeypatch.setenv("TEST" + key.removeprefix("Monitor").upper(), value)
-    monkeypatch.setenv("TESTSERVICES", "edge" if override == "services" else "Default scenarios")
+    monkeypatch.setenv("TESTSERVICES", "edge" if override == "services" else ",".join(monitor.default_scenarios()))
     if override == "region":
         monkeypatch.setenv("TESTREGION", "eastus")
     monitor.bind_profile(manifest, config)
@@ -620,7 +620,7 @@ def test_blocked_fairfax_selection_is_retained_before_runtime_acquisition(
     for key, value in item["variables"].items():
         monkeypatch.setenv(key.upper(), value)
         monkeypatch.setenv("TEST" + key.removeprefix("Monitor").upper(), value)
-    monkeypatch.setenv("TESTSERVICES", "Default scenarios")
+    monkeypatch.setenv("TESTSERVICES", ",".join(monitor.default_scenarios()))
     monkeypatch.setenv("TESTCHANNELS", "stable")
     mocker.patch.object(monitor, "resolve", return_value=result)
     output = tmp_path / "manifest.json"
@@ -773,7 +773,7 @@ def test_configured_slot_resolves_its_milestone_and_labels_the_actual_versions(
     for key, value in item["variables"].items():
         monkeypatch.setenv(key.upper(), value)
         monkeypatch.setenv("TEST" + key.removeprefix("Monitor").upper(), value)
-    monkeypatch.setenv("TESTSERVICES", "Default scenarios")
+    monkeypatch.setenv("TESTSERVICES", ",".join(monitor.default_scenarios()))
     discovery = mocker.patch.object(monitor, "resolve", return_value=manifest)
     output = tmp_path / "manifest.json"
     monitor.main([
@@ -797,7 +797,7 @@ def test_dedicated_preview_uses_v1_cli_and_freezes_preview_on_retry(
     for key, value in item["variables"].items():
         monkeypatch.setenv(key.upper(), value)
         monkeypatch.setenv("TEST" + key.removeprefix("Monitor").upper(), value)
-    monkeypatch.setenv("TESTSERVICES", "Default scenarios")
+    monkeypatch.setenv("TESTSERVICES", ",".join(monitor.default_scenarios()))
     monkeypatch.setenv("TESTCHANNELS", "preview")
     preview = monitor.parse_runtime_profile(
         "{'VERSIONS': {'iotOperations': '1.6.0-preview.60'}, 'TRAINS': {'iotOperations': 'preview'}}",
@@ -836,7 +836,7 @@ def test_dedicated_preview_rejects_nonpreview_selection(monitor, manifest, monke
     for key, value in selected.items():
         monkeypatch.setenv(key.upper(), value)
         monkeypatch.setenv("TEST" + key.removeprefix("Monitor").upper(), value)
-    monkeypatch.setenv("TESTSERVICES", "Default scenarios")
+    monkeypatch.setenv("TESTSERVICES", ",".join(monitor.default_scenarios()))
     monkeypatch.setenv("TESTCHANNELS", channels)
     runtime = mocker.patch.object(monitor, "runtime_profile")
     with pytest.raises(ValueError, match="requires only the preview runtime channel"):
@@ -906,10 +906,6 @@ def test_definition_generation_cannot_enable_runs_or_copy_secrets(monitor):
             if preview and expected["name"] == "runtimeChannels":
                 expected = {**expected, "values": ["Preview"]}
             actual = parameters[expected["name"]]
-            if expected["name"] == "testScenarios":
-                # 164 lists only default-eligible scenarios; upgrade-path follows its Upgrade source.
-                opt_in = {"Default scenarios", "upgrade-path", "broker-diagnostics-removal"}
-                actual = {**actual, "values": [value for value in actual["values"] if value not in opt_in]}
             assert {k: v for k, v in actual.items() if k != "default"} == {
                 k: v for k, v in expected.items() if k != "default"
             }
@@ -917,7 +913,8 @@ def test_definition_generation_cannot_enable_runs_or_copy_secrets(monitor):
         profile = next(value for value in pipeline["variables"] if "template" in value)
         assert profile["parameters"]["version"] == item["variables"]["MonitorTrack"]["value"]
         assert parameters["clusterRegion"]["default"] == "West US 2"
-        assert parameters["testScenarios"]["default"] == ["Default scenarios"]
+        assert parameters["testScenarios"]["default"] == parameters["testScenarios"]["values"]
+        assert sorted(parameters["testScenarios"]["default"]) == monitor.default_scenarios()
         assert parameters["runtimeChannels"]["default"] == ["Preview" if preview else "Stable"]
         channels = next(value for value in pipeline["variables"] if value.get("name") == "TestChannels")
         assert channels["value"] == "${{ lower(join(',', parameters.runtimeChannels)) }}"

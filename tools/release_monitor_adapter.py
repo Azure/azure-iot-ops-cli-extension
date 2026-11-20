@@ -43,7 +43,7 @@ def plan(bundle):
     manifest = bundle_manifest(bundle)
     if manifest["blockers"]:
         raise ValueError("; ".join(manifest["blockers"]))
-    native.plan(bundle, scenario_source=bundle / "source")
+    native.plan(bundle, scenario_source=bundle / "source", skip_unavailable=True)
     native.candidate(bundle)
     for filename in ("plan.json", "candidate.json"):
         value = native.read(bundle / filename)

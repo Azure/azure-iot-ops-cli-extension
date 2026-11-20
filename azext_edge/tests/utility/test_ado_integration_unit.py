@@ -419,6 +419,15 @@ def test_upgrade_baseline_adds_upgrade_path(monkeypatch, tmp_path):
     assert names == ["edge-stable", "upgrade-path-stable"]
 
 
+def test_health_skips_scenarios_missing_from_older_release(monkeypatch, tmp_path, capsys):
+    monkeypatch.setenv("OPS_SCENARIOS", "edge,not-in-release")
+    with pytest.raises(ValueError, match="Unknown ops scenario"):
+        pipeline.plan(tmp_path)
+    pipeline.plan(tmp_path, skip_unavailable=True)
+    assert [row["scenario"]["name"] for row in pipeline.read(tmp_path / "plan.json")["rows"]] == ["edge-stable"]
+    assert "Release has no scenarios: not-in-release" in capsys.readouterr().out
+
+
 def test_upgrade_requires_pinned_baseline(monkeypatch, tmp_path):
     monkeypatch.setenv("OPS_SCENARIOS", "upgrade-path")
     with pytest.raises(ValueError, match="baseline"):
