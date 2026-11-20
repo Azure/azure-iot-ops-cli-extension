@@ -140,6 +140,25 @@ def release_build_id():
     return value
 
 
+def select_scenarios(scenario_source=ROOT):
+    matrix_tools = runpy.run_path(str(ROOT / ".github/actions/build-int-test-matrix/build_matrix.py"))
+    config = yaml.safe_load((scenario_source / ".github/test-scenarios.yml").read_text(encoding="utf-8"))["scenarios"]
+    selection = required("OPS_SCENARIOS").split(",")
+    if "Default scenarios" in selection and selection != ["Default scenarios"]:
+        raise ValueError("Select Default scenarios alone, or select individual scenarios.")
+    if selection != ["Default scenarios"] and set(selection) - {item["name"] for item in config}:
+        raise ValueError("Unknown ops scenario selection.")
+    if len(selection) != len(set(selection)):
+        raise ValueError("Duplicate scenario selection.")
+    scenarios = matrix_tools["process_scenarios"](
+        config, "" if selection == ["Default scenarios"] else ",".join(selection),
+    )
+    baselines = json.loads(required("OPS_BASELINES"))
+    if not isinstance(baselines, dict):
+        raise ValueError("Upgrade baselines must be a JSON object.")
+    return matrix_tools["expand_channels"](scenarios, required("OPS_CHANNELS"), baselines)
+
+
 def plan(output, scenario_source=ROOT):
     cloud = cloud_name()
     parent = release_build_id()
@@ -151,30 +170,13 @@ def plan(output, scenario_source=ROOT):
     if os.environ.get("OPS_HEALTH_HISTORY"):
         from integration_health import resolve
         health = resolve(required("OPS_HEALTH_HISTORY"))
-    matrix_tools = runpy.run_path(str(ROOT / ".github/actions/build-int-test-matrix/build_matrix.py"))
-    config = yaml.safe_load((scenario_source / ".github/test-scenarios.yml").read_text(encoding="utf-8"))["scenarios"]
-    selection = required("OPS_SCENARIOS").split(",")
-    if "Default scenarios" in selection and selection != ["Default scenarios"]:
-        raise ValueError("Select Default scenarios alone, or select individual scenarios.")
-    if selection != ["Default scenarios"] and set(selection) - {item["name"] for item in config}:
-        raise ValueError("Unknown ops scenario selection.")
-    if len(selection) != len(set(selection)):
-        raise ValueError("Duplicate scenario selection.")
+    scenarios = select_scenarios(scenario_source)
     versions = required("OPS_PYTHONS").split(",")
     if set(versions) - PYTHONS or len(versions) != len(set(versions)):
         raise ValueError("Select distinct supported Python versions.")
     group = required("OPS_RESOURCE_GROUP")
     if not re.fullmatch(r"[A-Za-z0-9_().-]{1,90}", group) or group.endswith("."):
         raise ValueError("Invalid resource group name.")
-    scenarios = matrix_tools["process_scenarios"](
-        config, "" if selection == ["Default scenarios"] else ",".join(selection),
-    )
-    baselines = json.loads(required("OPS_BASELINES"))
-    if not isinstance(baselines, dict):
-        raise ValueError("Upgrade baselines must be a JSON object.")
-    scenarios = matrix_tools["expand_channels"](
-        scenarios, required("OPS_CHANNELS"), baselines,
-    )
     rows = []
     for scenario in scenarios:
         for version in versions:
