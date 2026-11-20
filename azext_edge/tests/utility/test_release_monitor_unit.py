@@ -1195,7 +1195,7 @@ def branch_compatibility_source(adapter, monkeypatch, tmp_path):
         pytest.skip("Reviewed compatibility baseline is unavailable in this shallow checkout.")
     source = tmp_path / "source"
     archived = subprocess.check_output([
-        "git", "archive", compat.FAIRFAX_TEST_SOURCE,
+        "git", "-c", "core.autocrlf=false", "-c", "core.eol=lf", "archive", compat.FAIRFAX_TEST_SOURCE,
         "azext_edge/tests", ".github/test-scenarios.yml", "azext_edge/edge/util/az_client.py",
     ], cwd=ROOT)
     with tarfile.open(fileobj=io.BytesIO(archived)) as archive:
@@ -1215,6 +1215,27 @@ def branch_compatibility_source(adapter, monkeypatch, tmp_path):
         "testSourceCommit": SOURCE, "automationCommit": AUTOMATION, "sourceSha256": "d" * 64,
     }
     return compat, source, manifest
+
+
+@pytest.mark.parametrize("autocrlf,eol", [("true", "lf"), ("false", "crlf")])
+def test_branch_compatibility_archive_preserves_reviewed_bytes_despite_git_eol_settings(
+        monkeypatch, request, monitor, autocrlf, eol):
+    import os
+
+    count = int(os.environ.get("GIT_CONFIG_COUNT", "0"))
+    for index, (key, value) in enumerate(
+            (("core.autocrlf", autocrlf), ("core.eol", eol)), start=count):
+        monkeypatch.setenv(f"GIT_CONFIG_KEY_{index}", key)
+        monkeypatch.setenv(f"GIT_CONFIG_VALUE_{index}", value)
+    monkeypatch.setenv("GIT_CONFIG_COUNT", str(count + 2))
+    compat, source, manifest = request.getfixturevalue("branch_compatibility_source")
+
+    files = monitor.source_files(source)
+    assert compat.source_tree_digest(files) == compat.REVIEWED_TEST_TREE
+    for name, expected in compat.FAIRFAX_EXCLUSION_FILES.items():
+        assert files[name] == expected
+    plan = compat.source_compatibility(manifest, source, files)
+    assert plan["baseTestSourceCommit"] == compat.FAIRFAX_TEST_SOURCE
 
 
 @pytest.mark.parametrize("change", ["none", "one-fixture", "fixed-fixtures", "unit-only", "scenario"])
@@ -1576,10 +1597,11 @@ def test_source_patches_match_real_frozen_git_blobs_and_tolerate_missing_metrics
         capture_output=True,
         check=False,
     )
-    if check.returncode == 0:
-        for rel_path, expected_sha in compat.BASE_FILES.items():
-            blob = subprocess.check_output(
-                ["git", "show", f"{compat.FAIRFAX_TEST_SOURCE}:{compat.PREFIX}{rel_path}"],
-                cwd=compat.ROOT,
-            )
-            assert hashlib.sha256(blob).hexdigest() == expected_sha
+    if check.returncode != 0:
+        pytest.skip(f"Frozen commit {compat.FAIRFAX_TEST_SOURCE} not present in shallow clone.")
+    for rel_path, expected_sha in compat.BASE_FILES.items():
+        blob = subprocess.check_output(
+            ["git", "show", f"{compat.FAIRFAX_TEST_SOURCE}:{compat.PREFIX}{rel_path}"],
+            cwd=compat.ROOT,
+        )
+        assert hashlib.sha256(blob).hexdigest() == expected_sha

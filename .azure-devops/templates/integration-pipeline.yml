@@ -210,6 +210,8 @@ stages:
           - job: Unit
             timeoutInMinutes: 60
             steps:
+              - checkout: self
+                fetchDepth: 0
               - task: UsePythonVersion@0
                 displayName: Select Python
                 inputs:
