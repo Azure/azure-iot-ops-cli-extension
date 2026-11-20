@@ -27,6 +27,7 @@ from zipfile import ZipFile
 import yaml
 
 import release_pipeline as release
+from pipeline_title import format_title, wheel_runtimes
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -217,15 +218,12 @@ def plan(output, scenario_source=ROOT):
     output_variable("artifact", f"ops-plan-{required('SYSTEM_JOBATTEMPT')}")
 
 
-def run_title(value, mode):
+def run_title(value, mode, version=None, runtimes=(), scenario_source=None):
     if value["producer"] != producer() or mode not in {"Dry run", "Integration tests"}:
         raise ValueError("Run title requires this run's plan and an explicit mode.")
     if "health" in value:
         if mode != "Integration tests":
             raise ValueError("Health run titles require live integration mode.")
-        kind = "health"
-    else:
-        kind = "integration"
     region = release.validate_cluster_region(value["locations"]["clusterRegion"], value.get("cloud", "AzureCloud"))
     names, channels = set(), set()
     for row in value["rows"]:
@@ -236,30 +234,29 @@ def run_title(value, mode):
             raise ValueError("Run title requires channel-qualified scenario names.")
         names.add(scenario["name"][:-len(suffix)])
         channels.add(channel)
-    catalog = yaml.safe_load((ROOT / ".github/test-scenarios.yml").read_text(encoding="utf-8"))["scenarios"]
+    catalog_root = ROOT if scenario_source is None else Path(scenario_source)
+    catalog = yaml.safe_load((catalog_root / ".github/test-scenarios.yml").read_text(encoding="utf-8"))["scenarios"]
     ordered = [scenario["name"] for scenario in catalog if scenario["name"] in names]
     if not names or set(ordered) != names:
         raise ValueError("Run title requires a nonempty supported scenario selection.")
-    for count in range(len(ordered), 0, -1):
-        scope = ",".join(ordered[:count]) + (f" +{len(ordered) - count}" if count < len(ordered) else "")
-        if len(scope) <= 70:
-            break
-    else:
-        scope = f"{len(ordered)} scenarios"
-    modes = []
-    if mode == "Dry run":
-        modes.append("dry-run")
-    modes.extend(channel for channel in ("stable", "preview") if channel in channels)
-    prefix = "aio" if kind == "integration" else "ops"
-    title = f"{prefix}-{kind}-{value['producer']['build']} ({region}) ({scope}) ({','.join(modes)})"
-    if len(title) > 255 or not re.fullmatch(r"[A-Za-z0-9 (),+-]+", title):
-        raise ValueError("Run title exceeds Azure Pipelines length or character limits.")
-    return title
+    return format_title(
+        "ops", value["producer"]["build"], version, scopes=ordered, regions=[region],
+        runtimes=runtimes, channels=channels,
+    )
 
 
-def title(output):
+def title(output, candidate_dir=None):
     value = read(output / "plan.json")
-    print(f"##vso[build.updatebuildnumber]{run_title(value, required('OPS_MODE'))}", flush=True)
+    version, runtimes = None, ()
+    if candidate_dir is not None:
+        candidate_value = read(candidate_dir / "candidate.json")
+        wheel = verified_candidate(candidate_dir, candidate_value["wheel"]["sha256"])
+        version = release.wheel_metadata(wheel)
+        runtimes = wheel_runtimes(
+            wheel, [row["scenario"]["channel"] for row in value["rows"]], value.get("cloud", "AzureCloud"),
+        )
+    name = run_title(value, required("OPS_MODE"), version, runtimes)
+    print(f"##vso[build.updatebuildnumber]{name}", flush=True)
     print("Title location is the explicitly selected cluster region recorded in the frozen plan.")
     if "health" in value:
         print("Resource and namespace regions remain separately recorded in the frozen plan.")
@@ -638,9 +635,12 @@ def main():
     ])
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--extension-dir", type=Path)
+    parser.add_argument("--candidate", type=Path)
     args = parser.parse_args()
     if args.operation == "inventory":
         inventory(args.output.resolve(), args.extension_dir)
+    elif args.operation == "title":
+        title(args.output.resolve(), args.candidate)
     else:
         globals()[args.operation.replace("-", "_")](args.output.resolve())
 

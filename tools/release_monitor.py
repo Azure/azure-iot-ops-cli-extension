@@ -7,7 +7,6 @@
 """Resolve and acquire published CLI releases without Azure credentials or live tests."""
 
 import argparse
-import ast
 from email.parser import Parser
 import hashlib
 import json
@@ -24,6 +23,7 @@ from zipfile import ZipFile
 from packaging.version import InvalidVersion, Version
 
 from ado_schedule import check_scheduled_overlap
+from pipeline_title import format_title, runtime_identity
 
 
 REPOSITORIES = {
@@ -132,33 +132,14 @@ def parse_runtime_profile(source, cloud, channel="stable"):
     if channel not in {"stable", "preview"} or cloud != "public" and channel != "stable":
         raise ValueError("The selected cloud has no supported runtime channel.")
     suffix = "_preview" if channel == "preview" else "_fairfax" if cloud == "fairfax" else ""
-    profiles = []
-    for node in ast.walk(ast.parse(source)):
-        if not isinstance(node, ast.Dict):
-            continue
-        values = {key.value: value for key, value in zip(node.keys, node.values)
-                  if isinstance(key, ast.Constant) and isinstance(key.value, str)}
-        if "VERSIONS" not in values or "TRAINS" not in values:
-            continue
-        versions, trains = ast.literal_eval(values["VERSIONS"]), ast.literal_eval(values["TRAINS"])
-        if "iotOperations" not in versions:
-            continue
-        version = Version(versions["iotOperations"])
-        train = trains.get("iotOperations")
-        if not isinstance(train, str) or not train:
-            raise ValueError("The bundled runtime is missing its release train.")
-        profiles.append({
-            "milestone": f"{version.major}.{version.minor}", "version": versions["iotOperations"],
-            "train": train, "template": TEMPLATE.format(suffix),
-        })
-    if len(profiles) != 1:
-        raise ValueError("The release does not contain one unambiguous runtime profile.")
-    version = Version(profiles[0]["version"])
-    if channel == "stable" and (version.is_prerelease or version.is_devrelease or profiles[0]["train"] != "stable"):
+    profile = runtime_identity(source)
+    version = Version(profile["version"])
+    profile.update(milestone=f"{version.major}.{version.minor}", template=TEMPLATE.format(suffix))
+    if channel == "stable" and (version.is_prerelease or version.is_devrelease or profile["train"] != "stable"):
         raise NonStableRuntime("A monitored milestone must have a stable bundled runtime.")
-    if channel == "preview" and profiles[0]["train"] != "preview":
+    if channel == "preview" and profile["train"] != "preview":
         raise ValueError("The preview runtime must declare its preview release train.")
-    return profiles[0]
+    return profile
 
 
 def runtime_profile(repository, source_commit, cloud, channel="stable"):
@@ -630,24 +611,28 @@ def run_title(manifest, build):
     validate_manifest(manifest)
     if not re.fullmatch(r"[1-9][0-9]*", build):
         raise ValueError("A positive ADO build ID is required for the release-health run title.")
-    prefix = "iot" if manifest["extension"] == "azure-iot" else "aio"
-    preview_health = manifest["extension"] == "azure-iot-ops" and manifest.get("slot") == "preview"
-    track = "preview" if preview_health else manifest["track"]
-    title = f"{prefix}-health-{manifest['cloudKey']}-{track}-cli{manifest['release']['version']}"
-    if manifest["extension"] == "azure-iot-ops":
-        selected_runtime = manifest["runtimes"].get("preview") if preview_health else manifest["runtime"]
-        if preview_health and selected_runtime is None:
-            raise ValueError("Dedicated Preview health has no frozen preview runtime.")
-        runtime = selected_runtime["version"] if selected_runtime else "unavailable"
-        title += f"-runtime{runtime}"
-    title += f"-b{build}"
-    if "profile" in manifest and manifest["profile"]["configured"] != manifest["profile"]["selected"]:
-        title += "-manual"
-    if manifest.get("profile", {}).get("selected", {}).get("mode") == "Dry run":
-        title += "-dryrun"
-    if len(title) > 255:
-        raise ValueError("The resolved release-health run title exceeds the ADO name limit.")
-    return title
+    prefix = "iot" if manifest["extension"] == "azure-iot" else "ops"
+    if (manifest["extension"] == "azure-iot-ops" and manifest.get("slot") == "preview"
+            and not manifest["runtimes"].get("preview")):
+        raise ValueError("Dedicated Preview health has no frozen preview runtime.")
+    selected = manifest.get("profile", {}).get("selected")
+    scopes = selected["services"] if selected else ()
+    if scopes == ["Default scenarios"]:
+        scopes = ()
+    regions = selected["region"].split(",") if selected else ()
+    channels = selected["channels"] if selected else []
+    if not channels and manifest.get("slot") == "preview":
+        channels = ["preview"]
+    elif not channels and manifest.get("runtime"):
+        channels = [manifest["runtime"]["train"]]
+    runtimes = [
+        manifest["runtimes"][channel]["version"] for channel in ("stable", "preview")
+        if channel in channels and manifest["runtimes"][channel] is not None
+    ]
+    return format_title(
+        prefix, build, manifest["release"]["version"], scopes=scopes, regions=regions,
+        runtimes=runtimes, channels=channels,
+    )
 
 
 def main(argv=None):
