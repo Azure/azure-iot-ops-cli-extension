@@ -54,9 +54,6 @@ with no Version selector, and defaults to integration mode. **Dry run** resolves
 the plan without deploying resources.
 **Upgrade source** supplies the pinned older runtime and matching CLI wheel for
 `upgrade-path`; leave `{}` for other scenarios, including same-version `upgrade`.
-Pipeline 164 lists only individual scenarios (default `edge`), so any combination is
-valid; it has no `Default scenarios` or `upgrade-path` entry, and a non-empty
-**Upgrade source** adds `upgrade-path`. Health definitions keep both entries.
 Manual overrides use the selected
 cloud's reviewed connection and resource group, subject to pipeline authorization.
 They retain published-wheel testing, are frozen with the release selection, and

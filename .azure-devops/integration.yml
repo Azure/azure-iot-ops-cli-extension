@@ -42,7 +42,6 @@ parameters:
       - edge
     values:
       - edge
-      - broker-diagnostics-removal
       - insecure-listener
       - rpsaas
       - runtime-channel

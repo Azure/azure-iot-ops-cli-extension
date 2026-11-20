@@ -907,10 +907,9 @@ def test_definition_generation_cannot_enable_runs_or_copy_secrets(monitor):
                 expected = {**expected, "values": ["Preview"]}
             actual = parameters[expected["name"]]
             if expected["name"] == "testScenarios":
-                # Monitors keep the Default/upgrade-path entries that 164 replaces with defaults/baselines.
-                actual = {**actual, "values": [
-                    value for value in actual["values"] if value not in {"Default scenarios", "upgrade-path"}
-                ]}
+                # 164 lists only default-eligible scenarios; upgrade-path follows its Upgrade source.
+                opt_in = {"Default scenarios", "upgrade-path", "broker-diagnostics-removal"}
+                actual = {**actual, "values": [value for value in actual["values"] if value not in opt_in]}
             assert {k: v for k, v in actual.items() if k != "default"} == {
                 k: v for k, v in expected.items() if k != "default"
             }
