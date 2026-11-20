@@ -45,6 +45,10 @@ stages:
                 displayName: Check queue access
                 env:
                   SYSTEM_ACCESSTOKEN: $(System.AccessToken)
+          - ${{ if not(parameters.skipIntegrationTests) }}:
+              - template: release-feed.yml
+              - script: python -m pip install PyYAML
+                displayName: Install title dependencies
           - script: python tools/release_pipeline.py resolve --source "$(Agent.TempDirectory)/release-source"
             name: source
             displayName: Resolve source

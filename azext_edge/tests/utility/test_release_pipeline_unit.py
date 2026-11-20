@@ -348,6 +348,14 @@ def test_resolve_freezes_any_upstream_branch_and_rejects_nonexistent_branches(
         path = repository / relative
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("ReleaseCandidateBuildId clusterRegion\n", encoding="utf-8")
+    (repository / "azext_edge").mkdir()
+    (repository / "azext_edge/constants.py").write_text('VERSION = "2.11.2"\n', encoding="utf-8")
+    profiles = repository / "azext_edge/edge/providers/orchestration"
+    profiles.mkdir(parents=True)
+    for suffix, runtime, train in [("", "1.4.99", "stable"), ("_preview", "1.6.0-preview.60", "preview")]:
+        (profiles / f"template{suffix}.py").write_text(
+            repr({"VERSIONS": {"iotOperations": runtime}, "TRAINS": {"iotOperations": train}}), encoding="utf-8")
+    monkeypatch.setattr(release, "source_cohorts", Mock(return_value=candidate[1]["cohorts"]))
     subprocess.run(["git", "add", "."], cwd=repository, check=True)
     commit_command = [
         "git", "-c", "user.name=Release Test", "-c", "user.email=release-test@example.invalid",
@@ -370,7 +378,12 @@ def test_resolve_freezes_any_upstream_branch_and_rejects_nonexistent_branches(
 
     monkeypatch.setattr(release.subprocess, "run", local_run)
     assert release.checkout(tmp_path / "resolve", resolving=True) == initial
-    assert f"##vso[task.setvariable variable=commit;isOutput=true]{initial}" in capsys.readouterr().out
+    output = capsys.readouterr().out
+    assert f"##vso[task.setvariable variable=commit;isOutput=true]{initial}" in output
+    assert (
+        "##vso[build.updatebuildnumber]ops-900 (2.11.2) (edge, insecure-listener, rpsaas +7) (westus2)"
+        f" (runtime 1.4.99, 1.6.0-preview.60) (stable, preview) ({mode.lower()})"
+    ) in output.splitlines()
     (repository / "tools/release_pipeline.py").write_text("new tip\n", encoding="utf-8")
     subprocess.run(["git", "add", "."], cwd=repository, check=True)
     subprocess.run(commit_command, cwd=repository, check=True)

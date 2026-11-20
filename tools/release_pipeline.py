@@ -201,7 +201,28 @@ def checkout(destination, resolving=False):
             if "clusterRegion" not in integration:
                 raise ValueError("The selected source does not support explicit integration cluster regions.")
         print(f"##vso[task.setvariable variable=commit;isOutput=true]{selected}", flush=True)
+        # Early title from source; Record candidate re-sets it from the built wheel.
+        constants = destination / "azext_edge/constants.py"
+        version = constants.is_file() and re.search(
+            r'^VERSION = "([^"]+)"$', constants.read_text(encoding="utf-8"), re.MULTILINE)
+        if version:
+            cohorts = {} if skip_integration_tests() else source_cohorts(destination)
+            channels = [item["row"]["scenario"]["channel"] for item in cohorts.values()]
+            naming = runpy.run_path(str(Path(__file__).with_name("pipeline_title.py")))
+            runtimes = naming["source_runtimes"](destination, channels) if channels else ()
+            print(f"##vso[build.updatebuildnumber]{release_title(version.group(1), cohorts, runtimes)}", flush=True)
     return selected
+
+
+def release_title(version, cohorts, runtimes):
+    naming = runpy.run_path(str(Path(__file__).with_name("pipeline_title.py")))
+    return naming["format_title"](
+        "ops", identifier(environment("BUILD_BUILDID")), version,
+        scopes=[item["selection"] for item in cohorts.values()],
+        regions=[environment("RELEASE_REGION")] if cohorts else (),
+        runtimes=runtimes, channels=[item["row"]["scenario"]["channel"] for item in cohorts.values()],
+        action=release_options()[0].lower(),
+    )
 
 
 def wheel_metadata(path):
@@ -414,14 +435,8 @@ def create_candidate(source, directory):
     verify_candidate(directory)
     naming = runpy.run_path(str(Path(__file__).with_name("pipeline_title.py")))
     channels = [item["row"]["scenario"]["channel"] for item in value["cohorts"].values()]
-    mode = release_options()[0]
-    title = naming["format_title"](
-        "ops", value["producer"]["build"], value["wheel"]["version"],
-        scopes=[item["selection"] for item in value["cohorts"].values()],
-        regions=[value["region"]] if value["cohorts"] else (),
-        runtimes=naming["wheel_runtimes"](wheel, channels) if channels else (),
-        channels=channels, action=mode.lower(),
-    )
+    runtimes = naming["wheel_runtimes"](wheel, channels) if channels else ()
+    title = release_title(value["wheel"]["version"], value["cohorts"], runtimes)
     print(f"##vso[build.updatebuildnumber]{title}", flush=True)
     print("##vso[task.setvariable variable=matrix;isOutput=true]" + json.dumps({
         key: {"cohort": key} for key in value["cohorts"]
