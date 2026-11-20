@@ -155,9 +155,10 @@ def select_scenarios(scenario_source=ROOT, skip_unavailable=False):
         raise ValueError("Unknown ops scenario selection.")
     if len(selection) != len(set(selection)):
         raise ValueError("Duplicate scenario selection.")
+    # An empty selection must stay empty; process_scenarios treats "" as the default set.
     scenarios = matrix_tools["process_scenarios"](
         config, "" if selection == ["Default scenarios"] else ",".join(selection),
-    )
+    ) if selection else []
     baselines = json.loads(required("OPS_BASELINES"))
     if not isinstance(baselines, dict):
         raise ValueError("Upgrade baselines must be a JSON object.")

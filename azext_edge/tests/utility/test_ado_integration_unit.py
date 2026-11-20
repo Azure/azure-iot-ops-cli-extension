@@ -426,6 +426,9 @@ def test_health_skips_scenarios_missing_from_older_release(monkeypatch, tmp_path
     pipeline.plan(tmp_path, skip_unavailable=True)
     assert [row["scenario"]["name"] for row in pipeline.read(tmp_path / "plan.json")["rows"]] == ["edge-stable"]
     assert "Release has no scenarios: not-in-release" in capsys.readouterr().out
+    monkeypatch.setenv("OPS_SCENARIOS", "not-in-release")
+    with pytest.raises(ValueError, match="matrix is empty"):
+        pipeline.plan(tmp_path, skip_unavailable=True)
 
 
 def test_upgrade_requires_pinned_baseline(monkeypatch, tmp_path):
