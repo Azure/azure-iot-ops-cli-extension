@@ -779,7 +779,7 @@ TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
     },
 )
 
-# Source releases/v1.5.x/2610 @ 97933f54e677de0354b5b6ff144d153b8aff72f2, release 2610.
+# Source releases/v1.5.x/2612 @ 561705b317b857f4bb0d491ecca8dc09b77e5718, release 2612.
 # The upstream integration train is retained for alpha qualification.
 # GDS Manager input and reader are excluded in exported source before compilation.
 TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
