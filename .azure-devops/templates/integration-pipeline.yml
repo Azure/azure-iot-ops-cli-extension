@@ -97,14 +97,12 @@ stages:
           - publish: plan
             displayName: Publish plan
             artifact: ops-plan-$(System.JobAttempt)
-          - bash: python tools/ado_integration.py title --output plan
-            displayName: Set run title
-            env:
-              OPS_MODE: ${{ parameters.mode }}
   - ${{ if eq(parameters.mode, 'Integration tests') }}:
       - stage: Build
         displayName: Build
         dependsOn: Plan
+        variables:
+          planArtifact: $[ stageDependencies.Plan.Plan.outputs['plan.artifact'] ]
         jobs:
           - job: Build
             timeoutInMinutes: 30
@@ -162,6 +160,19 @@ stages:
               - publish: dist
                 displayName: Publish immutable wheel before validation
                 artifact: ops-wheel-$(System.JobAttempt)
+              - task: DownloadPipelineArtifact@2
+                displayName: Download frozen title plan
+                inputs:
+                  buildType: current
+                  artifactName: $(planArtifact)
+                  targetPath: $(Pipeline.Workspace)/title-plan
+              - bash: >-
+                  python tools/ado_integration.py title
+                  --output "$(Pipeline.Workspace)/title-plan" --candidate dist
+                displayName: Name run from frozen candidate
+                env:
+                  OPS_MODE: ${{ parameters.mode }}
+                  OPS_RELEASE_BUILD_ID: ${{ parameters.releaseBuildId }}
               - bash: >-
                   python tools/ado_integration.py inventory
                   --output "$(Build.SourcesDirectory)/dependency-inventory/build"

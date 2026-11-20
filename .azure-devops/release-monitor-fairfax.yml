@@ -4,7 +4,7 @@ trigger: none
 pr: none
 # Held: planned daily cron "0 2 * * *" (UTC); sovereign scheduling is not authorized.
 schedules: []
-name: aio-health-$(TestCloud)-$(Date:yyyyMMdd).$(Rev:r)
+name: ops-$(Build.BuildId)
 appendCommitMessageToRunName: false
 parameters:
   - name: mode

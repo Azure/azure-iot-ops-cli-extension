@@ -8,7 +8,7 @@ schedules:
     branches:
       include: [dev]
     always: true
-name: aio-branch-health-public-preview-$(Date:yyyyMMdd).$(Rev:r)
+name: ops-$(Build.BuildId)
 appendCommitMessageToRunName: false
 pool:
   vmImage: ubuntu-24.04

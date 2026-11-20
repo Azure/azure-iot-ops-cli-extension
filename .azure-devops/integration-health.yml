@@ -2,7 +2,7 @@
 
 trigger: none
 pr: none
-name: ops-health-$(Date:yyyyMMdd).$(Rev:r)
+name: ops-$(Build.BuildId)
 appendCommitMessageToRunName: false
 pool:
   vmImage: ubuntu-24.04

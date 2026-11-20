@@ -271,15 +271,30 @@ def test_title_uses_frozen_scenarios_channels_and_selected_region(monkeypatch, t
     pipeline.plan(tmp_path)
     capsys.readouterr()
     original = (tmp_path / "plan.json").read_bytes()
+    candidate_dir = tmp_path / "candidate"
+    candidate_dir.mkdir()
+    wheel = candidate_dir / "azure_iot_ops-2.11.2-py3-none-any.whl"
+    with ZipFile(wheel, "w") as archive:
+        archive.writestr("azext_edge/__init__.py", "")
+        archive.writestr("azure_iot_ops-2.11.2.dist-info/METADATA", "Name: azure-iot-ops\nVersion: 2.11.2\n")
+        for suffix, version, train in [("", "1.4.99", "stable"), ("_preview", "1.6.0-preview.60", "preview")]:
+            archive.writestr(
+                f"azext_edge/edge/providers/orchestration/template{suffix}.py",
+                repr({"VERSIONS": {"iotOperations": version}, "TRAINS": {"iotOperations": train}}),
+            )
+    pipeline.write(candidate_dir / "candidate.json", {
+        "schema": 1, "producer": pipeline.producer(),
+        "wheel": {"file": wheel.name, "sha256": pipeline.digest(wheel)},
+    })
     monkeypatch.setenv("OPS_SCENARIOS", "trustbundle")
     monkeypatch.setenv("OPS_CHANNELS", "stable")
     monkeypatch.setenv("OPS_CLUSTER_REGION", "westeurope")
     for current in ("aio-integration-20261031.1", "already renamed"):
         monkeypatch.setenv("BUILD_BUILDNUMBER", current)
-        pipeline.title(tmp_path)
+        pipeline.title(tmp_path, candidate_dir)
         assert capsys.readouterr().out.splitlines()[0] == (
-            f"##vso[build.updatebuildnumber]aio-integration-123 ({region}) "
-            "(edge,runtime-channel) (dry-run,stable,preview)"
+            f"##vso[build.updatebuildnumber]ops-123 (2.11.2) (edge, runtime-channel) ({region}) "
+            "(runtime 1.4.99, 1.6.0-preview.60) (stable, preview)"
         )
         assert (tmp_path / "plan.json").read_bytes() == original
 
@@ -293,10 +308,9 @@ def test_title_compacts_large_selection_without_release_label(monkeypatch, tmp_p
     value = pipeline.read(tmp_path / "plan.json")
     if release_build_id:
         value["releaseBuildId"] = release_build_id
-    result = pipeline.run_title(value, "Integration tests")
+    result = pipeline.run_title(value, "Integration tests", version="2.11.2")
     assert result == (
-        "aio-integration-123 (westus2) "
-        "(edge,broker-diagnostics-removal,insecure-listener,rpsaas +7) (stable)"
+        "ops-123 (2.11.2) (edge, broker-diagnostics-removal, insecure-listener +8) (westus2) (stable)"
     )
     assert len(result) <= 255
 
@@ -1629,7 +1643,7 @@ def test_yaml_exposes_installed_dependencies_even_after_test_failure():
 
 def test_yaml_keeps_dry_run_separate_and_reuses_existing_tests():
     value = yaml.safe_load((ROOT / ".azure-devops/integration.yml").read_text())
-    assert value["name"] == "aio-integration-$(Date:yyyyMMdd).$(Rev:r)"
+    assert value["name"] == "ops-$(Build.BuildId)"
     assert value["trigger"] == "none" and value["pr"] == "none" and "schedules" not in value
     assert value["appendCommitMessageToRunName"] is False
     assert next(param for param in value["parameters"] if param["name"] == "mode")["default"] == "Dry run"
@@ -1663,9 +1677,17 @@ def test_yaml_keeps_dry_run_separate_and_reuses_existing_tests():
     plan_step = next(step for step in value["stages"][0]["jobs"][0]["steps"] if step.get("name") == "plan")
     assert plan_step["env"]["OPS_CLUSTER_REGION"] == "${{ parameters.clusterRegion }}"
     assert plan_step["env"]["OPS_CHANNELS"] == "${{ lower(join(',', parameters.runtimeChannels)) }}"
-    title_step = value["stages"][0]["jobs"][0]["steps"][-1]
-    assert title_step["bash"] == "python tools/ado_integration.py title --output plan"
-    assert title_step["env"] == {"OPS_MODE": "${{ parameters.mode }}"}
+    assert not any("ado_integration.py title" in step.get("bash", "")
+                   for step in value["stages"][0]["jobs"][0]["steps"])
+    build = next(stage for stage in value["stages"][1]["${{ if eq(parameters.mode, 'Integration tests') }}"]
+                 if stage["stage"] == "Build")
+    assert build["variables"]["planArtifact"] == "$[ stageDependencies.Plan.Plan.outputs['plan.artifact'] ]"
+    title_step = next(step for step in build["jobs"][0]["steps"]
+                      if step.get("displayName") == "Name run from frozen candidate")
+    assert "ado_integration.py title" in title_step["bash"] and "--candidate dist" in title_step["bash"]
+    assert title_step["env"] == {
+        "OPS_MODE": "${{ parameters.mode }}", "OPS_RELEASE_BUILD_ID": "${{ parameters.releaseBuildId }}",
+    }
     live = value["stages"][1]["${{ if eq(parameters.mode, 'Integration tests') }}"]
     assert [stage["stage"] for stage in live] == ["Build", "Lint", "Unit", "Integration", "TrustBundle", "Qualify"]
     integration = next(stage for stage in live if stage["stage"] == "Integration")

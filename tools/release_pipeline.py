@@ -412,8 +412,16 @@ def create_candidate(source, directory):
     }
     write(directory / "candidate.json", value)
     verify_candidate(directory)
-    suffix = f" ({value['wheel']['version']})"
-    title = environment("BUILD_BUILDNUMBER").removesuffix(suffix) + suffix
+    naming = runpy.run_path(str(Path(__file__).with_name("pipeline_title.py")))
+    channels = [item["row"]["scenario"]["channel"] for item in value["cohorts"].values()]
+    mode = release_options()[0]
+    title = naming["format_title"](
+        "ops", value["producer"]["build"], value["wheel"]["version"],
+        scopes=[item["selection"] for item in value["cohorts"].values()],
+        regions=[value["region"]] if value["cohorts"] else (),
+        runtimes=naming["wheel_runtimes"](wheel, channels) if channels else (),
+        channels=channels, action=mode.lower(),
+    )
     print(f"##vso[build.updatebuildnumber]{title}", flush=True)
     print("##vso[task.setvariable variable=matrix;isOutput=true]" + json.dumps({
         key: {"cohort": key} for key in value["cohorts"]
