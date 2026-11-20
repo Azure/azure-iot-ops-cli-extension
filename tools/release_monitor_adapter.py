@@ -49,6 +49,15 @@ def plan(bundle):
         value = native.read(bundle / filename)
         value["monitor"] = manifest
         native.write(bundle / filename, value)
+    value = native.read(bundle / "plan.json")
+    channels = {row["scenario"]["channel"] for row in value["rows"]}
+    runtimes = [manifest["runtimes"][channel]["version"] for channel in ("stable", "preview") if channel in channels]
+    name = native.run_title(
+        value, native.required("OPS_MODE"),
+        native.release.wheel_metadata(bundle / manifest["wheel"]["name"]),
+        runtimes, scenario_source=bundle / "source",
+    )
+    print(f"##vso[build.updatebuildnumber]{name}", flush=True)
 
 
 def prepare(output):

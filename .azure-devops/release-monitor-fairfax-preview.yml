@@ -4,7 +4,7 @@
 trigger: none
 pr: none
 schedules: []
-name: aio-health-$(TestCloud)-preview-$(Date:yyyyMMdd).$(Rev:r)
+name: ops-$(Build.BuildId)
 appendCommitMessageToRunName: false
 parameters:
   - name: mode

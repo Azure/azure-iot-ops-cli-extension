@@ -99,8 +99,9 @@ def test_ops_rerun_pins_original_library_configuration(setup_health, tmp_path, m
     monkeypatch.setattr(health, "build_metadata", lookup)
     pipeline.plan(tmp_path / "second")
     assert pipeline.read(tmp_path / "second/plan.json") == original
-    assert pipeline.run_title(original, "Integration tests") == (
-        "ops-health-123 (westus2) (runtime-channel) (stable)"
+    assert pipeline.run_title(original, "Integration tests") == "ops-123"
+    assert pipeline.run_title(original, "Integration tests", version="2.11.2") == (
+        "ops-123 (2.11.2) (runtime-channel) (westus2) (stable)"
     )
     lookup.assert_not_called()
 

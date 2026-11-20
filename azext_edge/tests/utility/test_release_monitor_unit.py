@@ -135,13 +135,24 @@ def test_branch_build_requires_the_original_artifact_on_retry(branch, monitor, m
 
 
 def test_branch_adapter_plans_the_selected_tests_not_the_automation_checkout(
-        branch, adapter, monitor, mocker, tmp_path):
+        branch, adapter, monitor, mocker, tmp_path, capsys, monkeypatch):
+    monkeypatch.setenv("OPS_MODE", "Integration tests")
     manifest = branch_selection(branch, monitor, mocker, tmp_path)
+    manifest["wheel"] = {"name": "azure_iot_ops-2.12.0b1-py3-none-any.whl"}
+    with ZipFile(tmp_path / manifest["wheel"]["name"], "w") as archive:
+        archive.writestr("azext_edge/__init__.py", "")
+        archive.writestr("azure_iot_ops-2.12.0b1.dist-info/METADATA", "Name: azure-iot-ops\nVersion: 2.12.0b1\n")
+    catalog = tmp_path / "source/.github/test-scenarios.yml"
+    catalog.parent.mkdir(parents=True)
+    catalog.write_text("scenarios:\n  - name: source-only\n")
     mocker.patch.object(adapter, "bundle_manifest", return_value=manifest)
 
     def plan(output, scenario_source):
         assert scenario_source == tmp_path / "source"
-        monitor.write_json(output / "plan.json", {"producer": "automation"})
+        monitor.write_json(output / "plan.json", {
+            "producer": adapter.native.producer(), "locations": {"clusterRegion": "westus2"},
+            "rows": [{"scenario": {"name": "source-only-stable", "channel": "stable"}}],
+        })
 
     mocker.patch.object(adapter.native, "plan", side_effect=plan)
     mocker.patch.object(adapter.native, "candidate", side_effect=lambda output: monitor.write_json(
@@ -150,6 +161,9 @@ def test_branch_adapter_plans_the_selected_tests_not_the_automation_checkout(
     adapter.plan(tmp_path)
     for name in ("plan", "candidate"):
         assert monitor.read_json(tmp_path / f"{name}.json")["monitor"] == manifest
+    assert capsys.readouterr().out.splitlines()[-1] == (
+        "##vso[build.updatebuildnumber]ops-123 (2.12.0b1) (source-only) (westus2) (runtime 1.5.45) (stable)"
+    )
 
 
 def test_fixed_branch_wrappers_cannot_override_source_cloud_or_runtime():
@@ -509,7 +523,11 @@ def test_health_overrides_preserve_selection_and_retry_identity(
         monkeypatch.setenv("TESTREGION", "eastus")
     monitor.bind_profile(manifest, config)
     if override:
-        assert monitor.run_title(manifest, "123").endswith("-manual")
+        assert manifest["profile"]["configured"] != manifest["profile"]["selected"]
+    title = monitor.run_title(manifest, "123")
+    assert title.startswith(f"ops-123 ({manifest['release']['version']})")
+    assert f"({manifest['profile']['selected']['region']})" in title
+    assert "manual" not in title
     monkeypatch.setenv("TESTREGION", "westus3")
     with pytest.raises(ValueError, match="changed between attempts"):
         monitor.bind_profile(manifest, config)
@@ -582,6 +600,40 @@ def test_missing_fairfax_profile_stays_blocked_and_mooncake_is_rejected(monitor,
     monitor.validate_manifest(result)
     with pytest.raises(ValueError, match="not supported"):
         monitor.resolve("azure-iot-ops", "mooncake", "1.5", AUTOMATION, releases)
+
+
+def test_blocked_fairfax_selection_is_retained_before_runtime_acquisition(
+        monitor, releases, mocker, monkeypatch, tmp_path, capsys):
+    public = monitor.runtime_profile.side_effect
+    mocker.patch.object(
+        monitor, "runtime_profile",
+        side_effect=lambda repository, source, cloud: None if cloud == "fairfax" else public(repository, source, cloud),
+    )
+    config = monitor.read_json(ROOT / ".azure-devops/release-monitors.json")
+    result = monitor.resolve("azure-iot-ops", "fairfax", config["tracks"]["v1"], AUTOMATION, releases)
+    assert result["runtimes"] == {"stable": None}
+    item = next(item for item in monitor.configurations(config)
+                if item["variables"]["MonitorCloud"] == "fairfax" and item["variables"]["MonitorTrack"] == "v1")
+    monkeypatch.setenv("BUILD_DEFINITIONNAME", item["name"])
+    monkeypatch.setenv("BUILD_REPOSITORY_NAME", monitor.REPOSITORIES[config["extension"]])
+    monkeypatch.setenv("BUILD_BUILDID", "123")
+    for key, value in item["variables"].items():
+        monkeypatch.setenv(key.upper(), value)
+        monkeypatch.setenv("TEST" + key.removeprefix("Monitor").upper(), value)
+    monkeypatch.setenv("TESTSERVICES", "Default scenarios")
+    monkeypatch.setenv("TESTCHANNELS", "stable")
+    mocker.patch.object(monitor, "resolve", return_value=result)
+    output = tmp_path / "manifest.json"
+    monitor.main([
+        "resolve", "--configuration", str(ROOT / ".azure-devops/release-monitors.json"),
+        "--extension", "azure-iot-ops", "--cloud", "fairfax", "--track", "v1",
+        "--automation-commit", AUTOMATION, "--output", str(output),
+    ])
+    frozen = monitor.read_json(output)
+    assert frozen["blockers"] == result["blockers"] and frozen["blockers"]
+    assert frozen["runtimes"] == {"stable": None}
+    assert frozen["profile"]["selected"]["channels"] == ["stable"]
+    assert "##vso[build.updatebuildnumber]ops-123 (2.11.1) (usgovvirginia) (stable)" in capsys.readouterr().out
 
 
 def test_runtime_metadata_is_parsed_without_executing_release_code(monitor):
@@ -730,7 +782,7 @@ def test_configured_slot_resolves_its_milestone_and_labels_the_actual_versions(
     ])
     discovery.assert_called_once_with("azure-iot-ops", "public", milestone, AUTOMATION)
     assert monitor.read_json(output)["slot"] == "v1"
-    title = f"aio-health-public-{milestone}-cli2.11.1-runtime{milestone}.45-b123"
+    title = f"ops-123 (2.11.1) ({manifest['profile']['selected']['region']}) (runtime {milestone}.45) (stable)"
     assert f"##vso[build.updatebuildnumber]{title}" in capsys.readouterr().out
 
 
@@ -765,7 +817,7 @@ def test_dedicated_preview_uses_v1_cli_and_freezes_preview_on_retry(
     assert frozen["profile"]["configured"] == frozen["profile"]["selected"]
     assert frozen["profile"]["selected"]["channels"] == ["preview"]
     assert frozen["runtimes"]["preview"] == preview
-    title = "aio-health-public-preview-cli2.11.1-runtime1.6.0-preview.60-b123"
+    title = f"ops-123 (2.11.1) ({frozen['profile']['selected']['region']}) (runtime 1.6.0-preview.60) (preview)"
     assert f"##vso[build.updatebuildnumber]{title}" in capsys.readouterr().out
     monitor.write_json(tmp_path / "release-selection-1/manifest.json", frozen)
     monitor.main([*arguments, "--history", str(tmp_path), "--attempt", "2"])
@@ -792,6 +844,19 @@ def test_dedicated_preview_rejects_nonpreview_selection(monitor, manifest, monke
     runtime.assert_not_called()
     with pytest.raises(ValueError, match="no frozen preview runtime"):
         monitor.run_title(manifest, "123")
+
+
+def test_health_title_orders_runtime_versions_with_their_frozen_channels(monitor, manifest):
+    manifest["runtimes"]["preview"] = monitor.parse_runtime_profile(
+        "{'VERSIONS': {'iotOperations': '1.6.0-preview.60'}, 'TRAINS': {'iotOperations': 'preview'}}",
+        "public", "preview",
+    )
+    manifest["profile"] = {
+        "selected": {"services": ["edge"], "region": "westus2", "channels": ["preview", "stable"]},
+    }
+    assert monitor.run_title(manifest, "123") == (
+        "ops-123 (2.11.1) (edge) (westus2) (runtime 1.5.45, 1.6.0-preview.60) (stable, preview)"
+    )
 
 
 def test_fairfax_preview_definition_is_blocked_before_discovery(monitor, monkeypatch, mocker, tmp_path):
@@ -1195,7 +1260,7 @@ def branch_compatibility_source(adapter, monkeypatch, tmp_path):
         pytest.skip("Reviewed compatibility baseline is unavailable in this shallow checkout.")
     source = tmp_path / "source"
     archived = subprocess.check_output([
-        "git", "archive", compat.FAIRFAX_TEST_SOURCE,
+        "git", "-c", "core.autocrlf=false", "-c", "core.eol=lf", "archive", compat.FAIRFAX_TEST_SOURCE,
         "azext_edge/tests", ".github/test-scenarios.yml", "azext_edge/edge/util/az_client.py",
     ], cwd=ROOT)
     with tarfile.open(fileobj=io.BytesIO(archived)) as archive:
@@ -1215,6 +1280,27 @@ def branch_compatibility_source(adapter, monkeypatch, tmp_path):
         "testSourceCommit": SOURCE, "automationCommit": AUTOMATION, "sourceSha256": "d" * 64,
     }
     return compat, source, manifest
+
+
+@pytest.mark.parametrize("autocrlf,eol", [("true", "lf"), ("false", "crlf")])
+def test_branch_compatibility_archive_preserves_reviewed_bytes_despite_git_eol_settings(
+        monkeypatch, request, monitor, autocrlf, eol):
+    import os
+
+    count = int(os.environ.get("GIT_CONFIG_COUNT", "0"))
+    for index, (key, value) in enumerate(
+            (("core.autocrlf", autocrlf), ("core.eol", eol)), start=count):
+        monkeypatch.setenv(f"GIT_CONFIG_KEY_{index}", key)
+        monkeypatch.setenv(f"GIT_CONFIG_VALUE_{index}", value)
+    monkeypatch.setenv("GIT_CONFIG_COUNT", str(count + 2))
+    compat, source, manifest = request.getfixturevalue("branch_compatibility_source")
+
+    files = monitor.source_files(source)
+    assert compat.source_tree_digest(files) == compat.REVIEWED_TEST_TREE
+    for name, expected in compat.FAIRFAX_EXCLUSION_FILES.items():
+        assert files[name] == expected
+    plan = compat.source_compatibility(manifest, source, files)
+    assert plan["baseTestSourceCommit"] == compat.FAIRFAX_TEST_SOURCE
 
 
 @pytest.mark.parametrize("change", ["none", "one-fixture", "fixed-fixtures", "unit-only", "scenario"])
@@ -1576,10 +1662,11 @@ def test_source_patches_match_real_frozen_git_blobs_and_tolerate_missing_metrics
         capture_output=True,
         check=False,
     )
-    if check.returncode == 0:
-        for rel_path, expected_sha in compat.BASE_FILES.items():
-            blob = subprocess.check_output(
-                ["git", "show", f"{compat.FAIRFAX_TEST_SOURCE}:{compat.PREFIX}{rel_path}"],
-                cwd=compat.ROOT,
-            )
-            assert hashlib.sha256(blob).hexdigest() == expected_sha
+    if check.returncode != 0:
+        pytest.skip(f"Frozen commit {compat.FAIRFAX_TEST_SOURCE} not present in shallow clone.")
+    for rel_path, expected_sha in compat.BASE_FILES.items():
+        blob = subprocess.check_output(
+            ["git", "show", f"{compat.FAIRFAX_TEST_SOURCE}:{compat.PREFIX}{rel_path}"],
+            cwd=compat.ROOT,
+        )
+        assert hashlib.sha256(blob).hexdigest() == expected_sha

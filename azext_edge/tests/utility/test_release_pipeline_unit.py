@@ -629,11 +629,13 @@ def test_candidate_inventory_is_full_default_channel_matrix(candidate):
 ])
 @pytest.mark.parametrize("skipped", [False, True])
 @pytest.mark.parametrize("upload", [False, True])
+@pytest.mark.parametrize("mode", ["Validate", "Draft", "Release"])
 def test_candidate_creation_updates_title_from_wheel_once(
-        candidate, tmp_path, monkeypatch, capsys, version, already_versioned, skipped, upload):
+        candidate, tmp_path, monkeypatch, capsys, version, already_versioned, skipped, upload, mode):
     _, value = candidate
     monkeypatch.setenv("RELEASE_SKIP_INTEGRATION_TESTS", str(skipped))
     monkeypatch.setenv("RELEASE_UPLOAD_WHEEL_TO_BLOB", str(upload))
+    monkeypatch.setenv("RELEASE_MODE", mode)
     title = "aio-release-20261104.1"
     versioned_title = f"{title} ({version})"
     monkeypatch.setenv("BUILD_BUILDNUMBER", versioned_title if already_versioned else title)
@@ -647,13 +649,24 @@ def test_candidate_creation_updates_title_from_wheel_once(
         archive.writestr("azext_edge/__init__.py", "")
         archive.writestr(f"azure_iot_ops-{version}.dist-info/METADATA",
                          f"Name: azure-iot-ops\nVersion: {version}\n")
+        for suffix, runtime, train in [("", "1.4.99", "stable"), ("_preview", "1.6.0-preview.60", "preview")]:
+            archive.writestr(
+                f"azext_edge/edge/providers/orchestration/template{suffix}.py",
+                repr({"VERSIONS": {"iotOperations": runtime}, "TRAINS": {"iotOperations": train}}),
+            )
     monkeypatch.setattr(release, "command", Mock(return_value=SOURCE))
     monkeypatch.setattr(release.subprocess, "run", Mock())
     monkeypatch.setattr(release, "source_cohorts", Mock(return_value=value["cohorts"]))
     output = tmp_path / "generated"
     generated = release.create_candidate(source, output)
     lines = capsys.readouterr().out.splitlines()
-    assert lines[0] == f"##vso[build.updatebuildnumber]{versioned_title}"
+    expected = f"ops-900 ({version})"
+    if not skipped:
+        expected += (
+            " (edge, insecure-listener, rpsaas +7) (westus2)"
+            " (runtime 1.4.99, 1.6.0-preview.60) (stable, preview)"
+        )
+    assert lines[0] == f"##vso[build.updatebuildnumber]{expected} ({mode.lower()})"
     assert set(json.loads(lines[-1].split("]", 1)[1])) == (set() if skipped else set(value["cohorts"]))
     assert generated["skipIntegrationTests"] is skipped
     assert generated["uploadWheelToBlob"] is upload
@@ -1117,7 +1130,8 @@ def test_unit_dependency_versions_are_logged_before_checking(monkeypatch, tmp_pa
 
 def test_yaml_parallel_qualification_requires_all_gates_and_no_default_publication():
     root = yaml.safe_load((ROOT / ".azure-devops/release.yml").read_text(encoding="utf-8"))
-    assert root["name"] == "aio-release-$(Date:yyyyMMdd).$(Rev:r)"
+    assert root["name"] == "ops-$(Build.BuildId)"
+    assert root["appendCommitMessageToRunName"] is False
     parameters = {item["name"]: item for item in root["parameters"]}
     order = [item["name"] for item in root["parameters"]]
     region_index = order.index("clusterRegion")
