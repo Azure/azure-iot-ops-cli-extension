@@ -409,6 +409,16 @@ def test_default_selection_excludes_explicit_scenarios(monkeypatch, tmp_path):
     assert not any(name.startswith(("upgrade-path", "broker-diagnostics-removal")) for name in names)
 
 
+def test_upgrade_baseline_adds_upgrade_path(monkeypatch, tmp_path):
+    monkeypatch.setenv("OPS_BASELINES", json.dumps({"stable": {
+        "wheel_url": "https://example.com/azure_iot_ops-1.0.0-py3-none-any.whl", "sha256": "c" * 64,
+        "version": "1.0.0", "train": "stable", "create_args": "",
+    }}))
+    pipeline.plan(tmp_path)
+    names = [row["scenario"]["name"] for row in pipeline.read(tmp_path / "plan.json")["rows"]]
+    assert names == ["edge-stable", "upgrade-path-stable"]
+
+
 def test_upgrade_requires_pinned_baseline(monkeypatch, tmp_path):
     monkeypatch.setenv("OPS_SCENARIOS", "upgrade-path")
     with pytest.raises(ValueError, match="baseline"):

@@ -172,6 +172,9 @@ def plan(output, scenario_source=ROOT):
     baselines = json.loads(required("OPS_BASELINES"))
     if not isinstance(baselines, dict):
         raise ValueError("Upgrade baselines must be a JSON object.")
+    if baselines and "upgrade-path" not in selection:
+        # Pipeline 164 has no upgrade-path checkbox; an upgrade source opts in.
+        scenarios += matrix_tools["process_scenarios"](config, "upgrade-path")
     scenarios = matrix_tools["expand_channels"](
         scenarios, required("OPS_CHANNELS"), baselines,
     )
