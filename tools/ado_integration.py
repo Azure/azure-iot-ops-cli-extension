@@ -140,17 +140,7 @@ def release_build_id():
     return value
 
 
-def plan(output, scenario_source=ROOT, skip_unavailable=False):
-    cloud = cloud_name()
-    parent = release_build_id()
-    if cloud == "AzureUSGovernment" and (required("OPS_CHANNELS") != "stable" or parent != "0"):
-        raise ValueError("Fairfax integrations require stable runtime and standalone validation.")
-    if parent != "0" and required("OPS_MODE") != "Integration tests":
-        raise ValueError("A release candidate requires live integration, not a dry run.")
-    health = None
-    if os.environ.get("OPS_HEALTH_HISTORY"):
-        from integration_health import resolve
-        health = resolve(required("OPS_HEALTH_HISTORY"))
+def select_scenarios(scenario_source=ROOT, skip_unavailable=False):
     matrix_tools = runpy.run_path(str(ROOT / ".github/actions/build-int-test-matrix/build_matrix.py"))
     config = yaml.safe_load((scenario_source / ".github/test-scenarios.yml").read_text(encoding="utf-8"))["scenarios"]
     selection = required("OPS_SCENARIOS").split(",")
@@ -165,12 +155,6 @@ def plan(output, scenario_source=ROOT, skip_unavailable=False):
         raise ValueError("Unknown ops scenario selection.")
     if len(selection) != len(set(selection)):
         raise ValueError("Duplicate scenario selection.")
-    versions = required("OPS_PYTHONS").split(",")
-    if set(versions) - PYTHONS or len(versions) != len(set(versions)):
-        raise ValueError("Select distinct supported Python versions.")
-    group = required("OPS_RESOURCE_GROUP")
-    if not re.fullmatch(r"[A-Za-z0-9_().-]{1,90}", group) or group.endswith("."):
-        raise ValueError("Invalid resource group name.")
     scenarios = matrix_tools["process_scenarios"](
         config, "" if selection == ["Default scenarios"] else ",".join(selection),
     )
@@ -180,9 +164,27 @@ def plan(output, scenario_source=ROOT, skip_unavailable=False):
     if baselines and "upgrade-path" not in selection:
         # Pipeline 164 has no upgrade-path checkbox; an upgrade source opts in.
         scenarios += matrix_tools["process_scenarios"](config, "upgrade-path")
-    scenarios = matrix_tools["expand_channels"](
-        scenarios, required("OPS_CHANNELS"), baselines,
-    )
+    return matrix_tools["expand_channels"](scenarios, required("OPS_CHANNELS"), baselines)
+
+
+def plan(output, scenario_source=ROOT, skip_unavailable=False):
+    cloud = cloud_name()
+    parent = release_build_id()
+    if cloud == "AzureUSGovernment" and (required("OPS_CHANNELS") != "stable" or parent != "0"):
+        raise ValueError("Fairfax integrations require stable runtime and standalone validation.")
+    if parent != "0" and required("OPS_MODE") != "Integration tests":
+        raise ValueError("A release candidate requires live integration, not a dry run.")
+    health = None
+    if os.environ.get("OPS_HEALTH_HISTORY"):
+        from integration_health import resolve
+        health = resolve(required("OPS_HEALTH_HISTORY"))
+    scenarios = select_scenarios(scenario_source, skip_unavailable)
+    versions = required("OPS_PYTHONS").split(",")
+    if set(versions) - PYTHONS or len(versions) != len(set(versions)):
+        raise ValueError("Select distinct supported Python versions.")
+    group = required("OPS_RESOURCE_GROUP")
+    if not re.fullmatch(r"[A-Za-z0-9_().-]{1,90}", group) or group.endswith("."):
+        raise ValueError("Invalid resource group name.")
     rows = []
     for scenario in scenarios:
         for version in versions:

@@ -166,6 +166,26 @@ def test_branch_adapter_plans_the_selected_tests_not_the_automation_checkout(
     )
 
 
+def test_branch_adapter_titles_the_run_from_acquired_source_before_the_wheel(
+        branch, adapter, monitor, mocker, tmp_path, capsys, monkeypatch):
+    for name, value in (("OPS_MODE", "Integration tests"), ("OPS_SCENARIOS", "Default scenarios"),
+                        ("OPS_CHANNELS", "stable"), ("OPS_BASELINES", "{}"), ("OPS_CLUSTER_REGION", "westus2")):
+        monkeypatch.setenv(name, value)
+    manifest = branch_selection(branch, monitor, mocker, tmp_path)
+    catalog = tmp_path / "source/.github/test-scenarios.yml"
+    catalog.parent.mkdir(parents=True)
+    catalog.write_text("scenarios:\n  - name: source-only\n  - name: held\n    manual_only: true\n")
+    bundle_manifest = mocker.patch.object(adapter, "bundle_manifest", return_value=manifest)
+    adapter.main(["title", "--output", str(tmp_path)])
+    bundle_manifest.assert_called_once_with(tmp_path, require_wheel=False)
+    assert capsys.readouterr().out.splitlines()[-1] == (
+        "##vso[build.updatebuildnumber]ops-123 (2.12.0b1) (source-only) (westus2) (runtime 1.5.45) (stable)"
+    )
+    steps = yaml.safe_load((ROOT / ".azure-devops/templates/branch-health-stages.yml").read_text())[
+        "stages"][0]["jobs"][0]["steps"]
+    assert any("release_monitor_adapter.py title" in step.get("bash", "") for step in steps)
+
+
 def test_fixed_branch_wrappers_cannot_override_source_cloud_or_runtime():
     config = json.loads((ROOT / ".azure-devops/branch-health.json").read_text())
     assert len(config["definitions"]) == 3
