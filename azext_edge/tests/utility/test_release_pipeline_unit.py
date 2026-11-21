@@ -37,6 +37,8 @@ PROJECT = "9c543948-e573-4146-832a-bf16b1531204"
 SOURCE = "a" * 40
 AUTOMATION = "b" * 40
 COHORT = "edge_stable_py313"
+JOB = "44444444-4444-4444-8444-444444444444"
+OWNERSHIP_READER = release.publication_ownership
 
 
 @pytest.fixture
@@ -44,6 +46,7 @@ def candidate(tmp_path, monkeypatch):
     for name, value in {
         "SYSTEM_DEFINITIONID": "165", "BUILD_BUILDID": "900", "BUILD_SOURCEVERSION": AUTOMATION,
         "SYSTEM_TEAMPROJECTID": PROJECT, "SYSTEM_JOBATTEMPT": "1", "BUILD_SOURCEBRANCH": "refs/heads/dev",
+        "SYSTEM_JOBID": JOB,
         "BUILD_REPOSITORY_NAME": release.REPOSITORY, "RELEASE_SOURCE_BRANCH": "dev",
         "RELEASE_SOURCE_COMMIT": SOURCE, "RELEASE_COHORT": COHORT, "RELEASE_MODE": "Release",
         "RELEASE_CREATE_INDEX_PR": "false", "RELEASE_SKIP_INTEGRATION_TESTS": "false",
@@ -54,6 +57,12 @@ def candidate(tmp_path, monkeypatch):
         monkeypatch.setenv(name, value)
     monkeypatch.setattr(release, "ado", Mock(side_effect=AssertionError("Unexpected ADO request")))
     monkeypatch.setattr(release, "github", Mock(side_effect=AssertionError("Unexpected GitHub request")))
+    ownership = Mock(return_value=None)
+    monkeypatch.setattr(release, "publication_ownership", ownership)
+    # Never emit a real ADO attachment command from a test, including under ADO CI.
+    monkeypatch.setattr(release, "attach_publication_receipt", Mock(
+        side_effect=lambda path: setattr(ownership, "return_value", release.read(path)),
+    ))
     directory = tmp_path / "candidate"
     directory.mkdir()
     wheel = directory / "azure_iot_ops-2.0.0b1-py3-none-any.whl"
@@ -146,6 +155,10 @@ def public_release(value, draft=False):
         "assets": [{"name": item["file"], "digest": "sha256:" + item["sha256"]}
                    for item in (value["wheel"], value["sbom"])],
     }
+
+
+def owned_release(value, release_id=10):
+    release.publication_ownership.return_value = release.ownership_record(value, release_id, JOB)
 
 
 @pytest.mark.parametrize("value", [
@@ -920,6 +933,7 @@ def test_qualification_preserves_provenance_and_parent_reverifies_bytes(candidat
 
 def test_publication_without_index_credentials_reuses_exact_release(candidate, monkeypatch, tmp_path):
     directory, value = candidate
+    owned_release(value)
     monkeypatch.delenv("INDEX_FORK_REPOSITORY", raising=False)
     monkeypatch.setattr(release, "tag_commit", Mock(return_value=SOURCE))
     monkeypatch.setattr(release, "find_release", Mock(return_value=public_release(value)))
@@ -965,6 +979,10 @@ def test_draft_is_promoted_only_after_verified_uploads(
         return draft
 
     def upload(_url, _token, **kwargs):
+        release.attach_publication_receipt.assert_called_once()
+        assert release.read(release.attach_publication_receipt.call_args.args[0]) == (
+            release.ownership_record(value, draft["id"], JOB)
+        )
         item = next(item for item in (value["wheel"], value["sbom"])
                     if release.hashlib.sha256(kwargs["data"]).hexdigest() == item["sha256"])
         asset = {"name": item["file"], "digest": "sha256:" + item["sha256"]}
@@ -1008,6 +1026,7 @@ def test_draft_is_promoted_only_after_verified_uploads(
 @pytest.mark.parametrize("mode", ["Draft", "Release"])
 def test_bad_upload_never_promotes_draft(candidate, tmp_path, monkeypatch, mode):
     monkeypatch.setenv("RELEASE_MODE", mode)
+    owned_release(candidate[1])
     draft = public_release(candidate[1], draft=True)
     draft["assets"] = []
     monkeypatch.setattr(release, "find_release", Mock(return_value=draft))
@@ -1037,6 +1056,7 @@ def test_waiver_updates_existing_draft_notes_but_never_public_notes(candidate, t
     prepared = release.read(tmp_path / "publication.json")
     prepared["candidate"] = value
     release.write(tmp_path / "publication.json", prepared)
+    owned_release(value)
     staged = public_release(value, draft=draft)
     staged["body"] = "Existing notes."
     monkeypatch.setattr(release, "tag_commit", Mock(return_value=SOURCE))
@@ -1061,9 +1081,12 @@ def test_waiver_updates_existing_draft_notes_but_never_public_notes(candidate, t
         network.assert_not_called()
 
 
-@pytest.mark.parametrize("change", [{"draft": False}, {"target_commitish": "f" * 40}, {"assets": []}])
+@pytest.mark.parametrize("change", [
+    {"draft": False}, {"target_commitish": "f" * 40}, {"assets": []}, {"tag_name": "v9.9.9"},
+])
 def test_draft_requires_fresh_identity_and_asset_verification(candidate, tmp_path, monkeypatch, change):
     monkeypatch.setenv("RELEASE_MODE", "Draft")
+    owned_release(candidate[1])
     staged = public_release(candidate[1], draft=True)
     monkeypatch.setattr(release, "find_release", Mock(return_value=staged))
     monkeypatch.setattr(release, "tag_commit", Mock(return_value=None))
@@ -1075,18 +1098,220 @@ def test_draft_requires_fresh_identity_and_asset_verification(candidate, tmp_pat
     assert all("method" not in call.kwargs for call in network.call_args_list)
 
 
-@pytest.mark.parametrize("conflict", ["tag", "digest", "missing"])
+@pytest.mark.parametrize("conflict", ["tag", "release-tag", "digest", "missing"])
 def test_publication_never_overwrites_conflicting_assets(candidate, monkeypatch, tmp_path, conflict):
+    owned_release(candidate[1])
     published = public_release(candidate[1])
     if conflict == "digest":
         published["assets"][0]["digest"] = "sha256:wrong"
     elif conflict == "missing":
         published["assets"] = []
+    elif conflict == "release-tag":
+        published["tag_name"] = "v9.9.9"
     monkeypatch.setattr(release, "tag_commit", Mock(return_value=AUTOMATION if conflict == "tag" else SOURCE))
     monkeypatch.setattr(release, "find_release", Mock(return_value=published))
     with pytest.raises(ValueError):
         release.publish(candidate[0], tmp_path / "receipt", tmp_path / "publication.json")
     release.github.assert_not_called()
+
+
+@pytest.mark.parametrize("mode,draft", [("Draft", True), ("Release", True), ("Release", False)])
+@pytest.mark.parametrize("assets", [0, 1, 2])
+def test_new_run_cannot_adopt_an_existing_version_even_when_assets_match(
+        candidate, tmp_path, monkeypatch, mode, draft, assets):
+    directory, value = candidate
+    monkeypatch.setenv("RELEASE_MODE", mode)
+    existing = public_release(value, draft=draft)
+    existing["assets"] = existing["assets"][:assets]
+    monkeypatch.setattr(release, "find_release", Mock(return_value=existing))
+    monkeypatch.setattr(release, "tag_commit", Mock(return_value=None if draft else SOURCE))
+    writes = Mock(side_effect=AssertionError("No API writes permitted"))
+    monkeypatch.setattr(release, "api", writes)
+    with pytest.raises(ValueError, match="another run or ownership is unknown") as error:
+        release.publish(directory, tmp_path / "receipt.json", tmp_path / "publication.json")
+    assert f"https://github.com/{release.REPOSITORY}/releases/tag/v{value['wheel']['version']}" in str(error.value)
+    release.github.assert_not_called()
+    release.attach_publication_receipt.assert_not_called()
+    writes.assert_not_called()
+
+
+@pytest.mark.parametrize("assets", [0, 1, 2])
+def test_original_run_can_resume_partial_draft_without_replacing_assets(
+        candidate, tmp_path, monkeypatch, assets):
+    directory, value = candidate
+    monkeypatch.setenv("RELEASE_MODE", "Draft")
+    owned_release(value)
+    staged = public_release(value, draft=True)
+    staged["assets"] = staged["assets"][:assets]
+    monkeypatch.setattr(release, "find_release", Mock(return_value=staged))
+    monkeypatch.setattr(release, "tag_commit", Mock(return_value=None))
+    monkeypatch.setattr(release, "github", Mock(return_value=staged))
+
+    def upload(_url, _token, **kwargs):
+        item = next(item for item in (value["wheel"], value["sbom"])
+                    if release.hashlib.sha256(kwargs["data"]).hexdigest() == item["sha256"])
+        asset = {"name": item["file"], "digest": "sha256:" + item["sha256"]}
+        staged["assets"].append(asset)
+        return asset
+
+    transport = Mock(side_effect=upload)
+    monkeypatch.setattr(release, "api", transport)
+    assert release.publish(directory, tmp_path / "receipt.json", tmp_path / "publication.json")["draft"]
+    assert transport.call_count == 2 - assets
+    assert all("method" not in call.kwargs for call in release.github.call_args_list)
+    release.attach_publication_receipt.assert_not_called()
+
+
+@pytest.mark.parametrize("existing", [None, 11])
+def test_owned_release_cannot_be_replaced_or_silently_recreated(candidate, tmp_path, monkeypatch, existing):
+    owned_release(candidate[1])
+    found = {**public_release(candidate[1], draft=True), "id": existing} if existing else None
+    monkeypatch.setattr(release, "find_release", Mock(return_value=found))
+    monkeypatch.setattr(release, "tag_commit", Mock(return_value=None))
+    with pytest.raises(ValueError, match="no longer present|another run"):
+        release.publish(candidate[0], tmp_path / "receipt.json", tmp_path / "publication.json")
+    release.github.assert_not_called()
+    release.attach_publication_receipt.assert_not_called()
+
+
+def test_existing_matching_tag_without_release_is_not_a_duplicate(candidate, tmp_path, monkeypatch):
+    directory, value = candidate
+    staged = public_release(value, draft=True)
+    staged["assets"] = []
+    monkeypatch.setattr(release, "tag_commit", Mock(return_value=SOURCE))
+    monkeypatch.setattr(release, "find_release", Mock(return_value=None))
+
+    def github(resource, method="GET", data=None):
+        assert not resource.endswith("/git/refs")
+        if method in ("POST", "PATCH"):
+            staged.update(data)
+        return staged
+
+    def upload(_url, _token, **kwargs):
+        item = next(item for item in (value["wheel"], value["sbom"])
+                    if release.hashlib.sha256(kwargs["data"]).hexdigest() == item["sha256"])
+        asset = {"name": item["file"], "digest": "sha256:" + item["sha256"]}
+        staged["assets"].append(asset)
+        return asset
+
+    monkeypatch.setattr(release, "github", Mock(side_effect=github))
+    monkeypatch.setattr(release, "api", Mock(side_effect=upload))
+    assert release.publish(directory, tmp_path / "receipt.json", tmp_path / "publication.json")["draft"] is False
+    release.attach_publication_receipt.assert_called_once()
+
+
+def ownership_timeline(start, attempt):
+    ids = [str(release.UUID(int=value)) for value in range(start, start + 5)]
+    timeline, stage, phase, job, task = ids
+    return {
+        "id": timeline, "records": [
+            {"id": stage, "type": "Stage", "identifier": "Publish", "previousAttempts": []},
+            {"id": phase, "type": "Phase", "parentId": stage},
+            {"id": job, "type": "Job", "identifier": release.PUBLICATION_JOB,
+             "parentId": phase, "attempt": attempt, "state": "completed", "previousAttempts": []},
+            {"id": task, "type": "Task", "name": release.PUBLICATION_TASK, "parentId": job},
+        ],
+    }
+
+
+@pytest.mark.parametrize("history", ["current", "job-retry", "stage-retry"])
+@pytest.mark.parametrize("problem", [
+    None, "missing", "foreign-producer", "candidate", "wrong-task", "wrong-stage",
+    "foreign-build", "conflicting-receipts", "previous-active", "foreign-task",
+])
+def test_ownership_receipts_are_bound_to_this_run_and_protected_task(
+        candidate, monkeypatch, history, problem):
+    value = candidate[1]
+    current, previous = ownership_timeline(1, 2), ownership_timeline(20, 1)
+    current_job, current_task = current["records"][2:]
+    current_job["state"] = "inProgress"
+    monkeypatch.setenv("SYSTEM_JOBID", current_job["id"])
+    monkeypatch.setenv("SYSTEM_JOBATTEMPT", "2")
+    if history == "job-retry":
+        current_job["previousAttempts"] = [{
+            "timelineId": previous["id"], "recordId": previous["records"][2]["id"], "attempt": 1,
+        }]
+    elif history == "stage-retry":
+        current["records"][0]["previousAttempts"] = [{
+            "timelineId": previous["id"], "recordId": previous["records"][0]["id"], "attempt": 1,
+        }]
+    origin = current if history == "current" else previous
+    origin_job, origin_task = origin["records"][2:]
+    evidence = release.ownership_record(deepcopy(value), 10, origin_job["id"])
+    if problem == "foreign-producer":
+        evidence["candidate"]["producer"]["build"] = "899"
+    elif problem == "candidate":
+        evidence["candidate"]["wheel"]["sha256"] = "d" * 64
+    elif problem == "wrong-task":
+        origin_task["name"] = "Untrusted qualification output"
+    elif problem == "wrong-stage":
+        origin["records"][0]["identifier"] = "Unit"
+    elif problem == "previous-active":
+        previous["records"][2]["state"] = "inProgress"
+
+    def attachment_path(timeline, task):
+        return (f"build/builds/900/{timeline['id']}/{task['id']}/attachments/"
+                f"{release.OWNERSHIP_ATTACHMENT}/{release.OWNERSHIP_FILE}")
+
+    attachments = {} if problem == "missing" else {attachment_path(origin, origin_task): evidence}
+    if problem == "foreign-task":
+        foreign = ownership_timeline(40, 1)
+        foreign["records"][0]["identifier"] = "Unit"
+        foreign["records"][2]["identifier"] = "Unit.Unit.__default"
+        origin["records"].extend(foreign["records"])
+        attachments = {attachment_path(origin, foreign["records"][3]): evidence}
+    if problem == "conflicting-receipts":
+        current_job["previousAttempts"] = [{
+            "timelineId": previous["id"], "recordId": previous["records"][2]["id"], "attempt": 1,
+        }]
+        attachments[attachment_path(current, current_task)] = release.ownership_record(value, 10, current_job["id"])
+        attachments[attachment_path(previous, previous["records"][3])] = release.ownership_record(
+            value, 11, previous["records"][2]["id"],
+        )
+
+    def ado(resource, **kwargs):
+        if resource == "build/builds/900":
+            return {
+                "id": 899 if problem == "foreign-build" else 900,
+                "definition": {"id": int(value["producer"]["definition"])},
+                "project": {"id": PROJECT}, "repository": {"id": release.REPOSITORY, "type": "GitHub"},
+                "sourceVersion": AUTOMATION, "sourceBranch": "refs/heads/dev",
+            }
+        if resource == "build/builds/900/timeline":
+            return current
+        if resource == f"build/builds/900/timeline/{previous['id']}":
+            return previous
+        assert resource.endswith("/" + release.OWNERSHIP_FILE) and kwargs == {"missing": True}
+        return deepcopy(attachments.get(resource))
+
+    network = Mock(side_effect=ado)
+    monkeypatch.setattr(release, "ado", network)
+    if (problem in ("foreign-producer", "candidate", "wrong-stage", "foreign-build", "conflicting-receipts")
+            or problem == "wrong-task" and history == "current"
+            or problem == "previous-active" and history != "current"):
+        with pytest.raises(ValueError):
+            OWNERSHIP_READER(value)
+    elif problem in ("missing", "wrong-task", "foreign-task"):
+        assert OWNERSHIP_READER(value) is None
+    else:
+        assert OWNERSHIP_READER(value) == evidence
+    assert all("method" not in call.kwargs for call in network.call_args_list)
+    release.github.assert_not_called()
+    release.attach_publication_receipt.assert_not_called()
+
+
+def test_ownership_attachment_file_is_never_overwritten(candidate, tmp_path):
+    directory, value = candidate
+    receipt = tmp_path / "receipt.json"
+    release.retain_publication_ownership(value, 10, receipt)
+    path = release.attach_publication_receipt.call_args.args[0]
+    original = path.read_bytes()
+    release.attach_publication_receipt.reset_mock()
+    with pytest.raises(ValueError, match="different evidence"):
+        release.retain_publication_ownership(value, 11, receipt)
+    assert path.read_bytes() == original
+    assert path not in directory.iterdir()
+    release.attach_publication_receipt.assert_not_called()
 
 
 def test_index_rejects_draft_before_fork_access(candidate, monkeypatch, tmp_path):
