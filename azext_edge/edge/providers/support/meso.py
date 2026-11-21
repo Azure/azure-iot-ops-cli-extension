@@ -25,8 +25,10 @@ from .common import NAME_LABEL_FORMAT, RESOURCE_NAME_FIELD_FORMAT
 
 logger = get_logger(__name__)
 
-MESO_NAME_LABEL = NAME_LABEL_FORMAT.format(label="microsoft-iotoperations-observability")
-MESO_CLUSTER_METRICS_LABEL = NAME_LABEL_FORMAT.format(label="microsoft-iotoperations-observability-cluster-metrics")
+MESO_NAME_LABEL = NAME_LABEL_FORMAT.format(label="microsoft-iotoperations-observability,meso-gateway")
+MESO_CLUSTER_METRICS_LABEL = NAME_LABEL_FORMAT.format(
+    label="microsoft-iotoperations-observability-cluster-metrics,meso-node"
+)
 MESO_OPERATOR_MANAGER_FIELD_SELECTOR = RESOURCE_NAME_FIELD_FORMAT.format(name="aio-observability-operator-manager-role")
 MESO_DIRECTORY_PATH = "meso"
 
