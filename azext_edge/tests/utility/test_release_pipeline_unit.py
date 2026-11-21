@@ -12,6 +12,7 @@ import importlib
 from io import BytesIO
 import json
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 from unittest.mock import MagicMock, Mock
@@ -48,7 +49,7 @@ def candidate(tmp_path, monkeypatch):
         "SYSTEM_TEAMPROJECTID": PROJECT, "SYSTEM_JOBATTEMPT": "1", "BUILD_SOURCEBRANCH": "refs/heads/dev",
         "SYSTEM_JOBID": JOB,
         "BUILD_REPOSITORY_NAME": release.REPOSITORY, "RELEASE_SOURCE_BRANCH": "dev",
-        "RELEASE_SOURCE_COMMIT": SOURCE, "RELEASE_COHORT": COHORT, "RELEASE_MODE": "Release",
+        "RELEASE_SOURCE_COMMIT": SOURCE, "RELEASE_MODE": "Release",
         "RELEASE_CREATE_INDEX_PR": "false", "RELEASE_SKIP_INTEGRATION_TESTS": "false",
         "RELEASE_UPLOAD_WHEEL_TO_BLOB": "false",
         "RELEASE_GITHUB_TOKEN": "offline-placeholder", "RELEASE_CHILD_BUILD_ID": "901",
@@ -89,7 +90,7 @@ def candidate(tmp_path, monkeypatch):
     return directory, value
 
 
-def child(value, cohort=COHORT):
+def child(value):
     return {
         "id": 901, "definition": {"id": 164}, "project": {"id": PROJECT},
         "repository": {"id": release.REPOSITORY, "type": "GitHub"},
@@ -98,7 +99,7 @@ def child(value, cohort=COHORT):
         "parameters": json.dumps({"ReleaseCandidateBuildId": value["producer"]["build"]}),
         "templateParameters": {
             key: item if isinstance(item, str) else json.dumps(item)
-            for key, item in release.integration_parameters(value, cohort).items() if key != "releaseBuildId"
+            for key, item in release.integration_parameters(value).items() if key != "releaseBuildId"
         },
     }
 
@@ -120,14 +121,16 @@ def test_release_region_is_frozen_and_child_drift_is_rejected(candidate, monkeyp
         release.validate_integration(build, value)
 
 
-@pytest.mark.parametrize("channel", ["stable", "preview"])
-def test_release_runtime_selection_uses_display_values_and_validates(candidate, channel):
+def test_one_child_request_covers_every_release_cohort(candidate):
     _, value = candidate
-    cohort = next(key for key, selected in value["cohorts"].items()
-                  if selected["row"]["scenario"]["channel"] == channel)
-    build = child(value, cohort)
-    assert json.loads(build["templateParameters"]["runtimeChannels"]) == [channel.capitalize()]
-    release.validate_integration(build, value, cohort)
+    build = child(value)
+    scenarios = json.loads(build["templateParameters"]["testScenarios"])
+    assert scenarios == list(dict.fromkeys(item["selection"] for item in value["cohorts"].values()))
+    assert json.loads(build["templateParameters"]["runtimeChannels"]) == ["Stable", "Preview"]
+    root = yaml.safe_load((ROOT / ".azure-devops/integration.yml").read_text(encoding="utf-8"))
+    choices = next(item["values"] for item in root["parameters"] if item["name"] == "testScenarios")
+    assert set(scenarios) <= set(choices)
+    release.validate_integration(build, value)
 
 
 def test_candidate_verifier_remains_standalone_for_publication(candidate, tmp_path):
@@ -693,7 +696,7 @@ def test_candidate_creation_updates_title_from_wheel_once(
             " (runtime 1.4.99, 1.6.0-preview.60) (stable, preview)"
         )
     assert lines[0] == f"##vso[build.updatebuildnumber]{expected} ({mode.lower()})"
-    assert set(json.loads(lines[-1].split("]", 1)[1])) == (set() if skipped else set(value["cohorts"]))
+    assert not any("variable=matrix" in line for line in lines)
     assert generated["skipIntegrationTests"] is skipped
     assert generated["uploadWheelToBlob"] is upload
     if skipped:
@@ -740,16 +743,18 @@ def test_queue_uses_exact_parameters_without_waiting_for_cleanup(candidate, monk
         "parameters": json.dumps({"ReleaseCandidateBuildId": "900"}),
         "templateParameters": child(value)["templateParameters"],
     }
-    assert release.read(tmp_path / "record")["cohort"] == COHORT
+    assert release.read(tmp_path / "record") == {"id": "901", "producer": value["producer"]}
     assert network.call_count == 2
     assert network.call_args_list[1].args == ("build/builds/901",)
     release.time.sleep.assert_not_called()
 
 
-def test_retry_finds_only_its_own_cohort(candidate, monkeypatch, tmp_path):
+def test_retry_reattaches_to_the_owned_child(candidate, monkeypatch, tmp_path):
     directory, value = candidate
     monkeypatch.setenv("SYSTEM_JOBATTEMPT", "2")
-    builds = [child(value, "edge_preview_py313"), child(value)]
+    other = child(value)
+    other["parameters"] = json.dumps({"ReleaseCandidateBuildId": "899"})
+    builds = [other, child(value)]
     network = Mock(side_effect=[parent(), {"value": builds}, child(value)])
     monkeypatch.setattr(release, "ado", network)
     assert release.integrate(directory, tmp_path / "record") == "901"
@@ -764,10 +769,19 @@ def test_uncertain_retry_never_requeues(candidate, monkeypatch, tmp_path):
     release.ado.assert_not_called()
 
 
-def test_duplicate_owned_cohort_is_rejected(candidate, monkeypatch):
+def test_duplicate_owned_child_is_rejected(candidate, monkeypatch):
     value = candidate[1]
     monkeypatch.setattr(release, "ado", Mock(side_effect=[parent(), {"value": [child(value), child(value)]}]))
     with pytest.raises(ValueError, match="Multiple children"):
+        release.existing_integration(value)
+
+
+def test_owned_per_cohort_child_is_rejected(candidate, monkeypatch):
+    value = candidate[1]
+    build = child(value)
+    build["templateParameters"].update(testScenarios='["edge"]', runtimeChannels='["Stable"]')
+    monkeypatch.setattr(release, "ado", Mock(side_effect=[parent(), {"value": [build]}]))
+    with pytest.raises(ValueError, match="unexpected release request"):
         release.existing_integration(value)
 
 
@@ -801,11 +815,9 @@ def test_non_succeeded_child_blocks_release(candidate, monkeypatch, tmp_path, re
         release.integrate(candidate[0], tmp_path / "record")
 
 
-def test_cancel_cannot_target_another_cohort(candidate, tmp_path):
+def test_cancel_cannot_target_another_release(candidate, tmp_path):
     directory, value = candidate
-    release.write(tmp_path / "record", {
-        "id": "901", "producer": value["producer"], "cohort": "edge_preview_py313",
-    })
+    release.write(tmp_path / "record", {"id": "901", "producer": dict(value["producer"], build="899")})
     with pytest.raises(ValueError, match="another release"):
         release.cancel_integration(tmp_path / "record", directory)
     release.ado.assert_not_called()
@@ -817,7 +829,8 @@ def consumer_environment(candidate, monkeypatch):
     for name, value in {
         "SYSTEM_DEFINITIONID": "164", "BUILD_BUILDID": "901", "BUILD_SOURCEVERSION": SOURCE,
         "OPS_RELEASE_BUILD_ID": "900", "OPS_RELEASE_INPUT": str(directory), "OPS_MODE": "Integration tests",
-        "OPS_SCENARIOS": "edge", "OPS_CHANNELS": "stable", "OPS_PYTHONS": "3.13", "OPS_BASELINES": "{}",
+        "OPS_SCENARIOS": ",".join(dict.fromkeys(item["selection"] for item in candidate[1]["cohorts"].values())),
+        "OPS_CHANNELS": "stable,preview", "OPS_PYTHONS": "3.13", "OPS_BASELINES": "{}",
         "OPS_SUBSCRIPTION": profile["MonitorSubscription"],
         "OPS_RESOURCE_GROUP": profile["MonitorResourceGroup"],
         "OPS_CLUSTER_REGION": profile["MonitorRegion"],
@@ -916,16 +929,34 @@ def test_qualification_preserves_provenance_and_parent_reverifies_bytes(candidat
     monkeypatch.setenv("OPS_PLAN", str(tmp_path / "plan/plan.json"))
     monkeypatch.setenv("OPS_CANDIDATE", str(wheel_dir))
     monkeypatch.setenv("OPS_CANDIDATE_DIGEST", value["wheel"]["sha256"])
-    receipt = tmp_path / f"ops-attempt-{COHORT}-1/receipt.json"
-    evidence = integration.read(receipt)
-    evidence["sha256"] = value["wheel"]["sha256"]
-    integration.write(receipt, evidence)
+    monkeypatch.delenv("OPS_UNIT_COVERAGE")
+    seeded = integration.read(tmp_path / f"ops-attempt-{COHORT}-1/receipt.json")
+    rows = integration.read(tmp_path / "plan/plan.json")["rows"]
+    assert rows == integration.release_rows(wheel_dir)
+    for row in rows:
+        attempt = tmp_path / f"ops-attempt-{row['key']}-1"
+        phases = integration.expected_phases(row)
+        integration.write(attempt / "receipt.json", dict(
+            seeded, row=row["key"], sha256=value["wheel"]["sha256"], phases=dict.fromkeys(phases, "passed"),
+        ))
+        for phase in phases:
+            (attempt / "junit").mkdir(exist_ok=True)
+            (attempt / "junit" / f"{phase}.xml").write_text('<testsuite><testcase name="passed"/></testsuite>')
+        (attempt / "coverage.dat").write_bytes(b"offline coverage")
     integration.gate(tmp_path / "ops-qualification-1")
+    proof = integration.read(tmp_path / "ops-qualification-1/qualification.json")
+    assert proof["coverageScope"] == "selected ops scenarios"
+    assert not (tmp_path / "ops-qualification-1/coverage/.coverage.unit").exists()
     monkeypatch.setenv("SYSTEM_DEFINITIONID", "165")
     monkeypatch.setenv("BUILD_BUILDID", "900")
     monkeypatch.setenv("BUILD_SOURCEVERSION", AUTOMATION)
     monkeypatch.setattr(release, "ado", Mock(return_value=child(value)))
     release.verify_integration_artifacts(directory, tmp_path)
+    partial = dict(proof, scenarios=proof["scenarios"][1:])
+    integration.write(tmp_path / "ops-qualification-2/qualification.json", partial)
+    with pytest.raises(ValueError, match="Incomplete release cohort"):
+        release.verify_integration_artifacts(directory, tmp_path)
+    shutil.rmtree(tmp_path / "ops-qualification-2")
     (wheel_dir / value["wheel"]["file"]).write_bytes(b"rebuilt")
     with pytest.raises(ValueError, match="exact candidate"):
         release.verify_integration_artifacts(directory, tmp_path)
@@ -1395,9 +1426,11 @@ def test_yaml_parallel_qualification_requires_all_gates_and_no_default_publicati
             if isinstance(dependency, dict):
                 continue
             assert f"eq(dependencies.{dependency}.result, 'Succeeded')" in stages[name]["condition"]
-    assert "$(" not in stages["Integration"]["jobs"][0]["displayName"]
-    strategy = stages["Integration"]["jobs"][0]["strategy"]
-    assert strategy["maxParallel"] == 0
+    job, = stages["Integration"]["jobs"]
+    assert "$(" not in job["displayName"]
+    assert "strategy" not in job
+    assert job["templateContext"]["outputs"][0]["artifact"] == "release-integration-$(System.JobAttempt)"
+    assert "cohort" not in json.dumps(job).lower()
     assert stages["Unit"]["dependsOn"] == "Resolve"
     assert stages["Integration"]["dependsOn"] == ["Resolve", "Build", "Security", "CommandLint", "IndexCompatibility"]
     assert "dependencies.Unit" not in stages["Integration"]["condition"]
@@ -1419,7 +1452,6 @@ def test_yaml_parallel_qualification_requires_all_gates_and_no_default_publicati
     assert "ReleaseStorageServiceConnection" not in json.dumps(template)
     assert "Upload wheel only" not in json.dumps(template)
     assert "eq(dependencies.Unit.result, 'Succeeded')" in stages["Publish"]["condition"]
-    assert "candidate.matrix" in strategy["matrix"]
     job = stages["Publish"]["jobs"][0]
     assert job["templateContext"]["type"] == "releaseJob"
     assert job["templateContext"]["isProduction"] is True

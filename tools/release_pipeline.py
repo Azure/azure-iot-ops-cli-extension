@@ -398,13 +398,11 @@ def verify_runtime_inventory(source, inventory):
         raise ValueError("SBOM has no resolved dependency graph; source-only fallback is not sufficient.")
 
 
-def integration_parameters(candidate, cohort=None):
-    key = cohort or environment("RELEASE_COHORT")
-    selection = candidate["cohorts"][key]
+def integration_parameters(candidate):
+    scenarios = list(dict.fromkeys(item["selection"] for item in candidate["cohorts"].values()))
     return dict(INTEGRATION_PARAMETERS, clusterRegion=CLUSTER_REGIONS[candidate["region"]],
                 releaseBuildId=candidate["producer"]["build"],
-                testScenarios=[selection["selection"]],
-                runtimeChannels=[selection["row"]["scenario"]["channel"].capitalize()])
+                testScenarios=scenarios, runtimeChannels=["Stable", "Preview"])
 
 
 def create_candidate(source, directory):
@@ -443,9 +441,6 @@ def create_candidate(source, directory):
     runtimes = naming["wheel_runtimes"](wheel, channels) if channels else ()
     title = release_title(value["wheel"]["version"], value["cohorts"], runtimes)
     print(f"##vso[build.updatebuildnumber]{title}", flush=True)
-    print("##vso[task.setvariable variable=matrix;isOutput=true]" + json.dumps({
-        key: {"cohort": key} for key in value["cohorts"]
-    }), flush=True)
     return value
 
 
@@ -495,9 +490,7 @@ def verify_candidate(directory, *, expected_producer=None, source_branch=None, s
     if consumer is not None:
         expected_files.add("handoff.json")
         handoff = read(directory / "handoff.json")
-        if (handoff["cohort"] not in cohorts or handoff != {
-                "consumer": consumer, "cohort": handoff["cohort"],
-                "candidateSha256": digest(directory / "candidate.json")}):
+        if handoff != {"consumer": consumer, "candidateSha256": digest(directory / "candidate.json")}:
             raise ValueError("Candidate handoff does not match this consumer.")
     if (directory.is_symlink() or {path.name for path in files} != expected_files
             or any(path.is_symlink() or not path.is_file() for path in files)):
@@ -526,7 +519,7 @@ def queued_release_build_id(build):
     return value
 
 
-def validate_integration(build, candidate, cohort=None):
+def validate_integration(build, candidate):
     parameters = build.get("templateParameters")
     if isinstance(parameters, str):
         parameters = json.loads(parameters)
@@ -538,7 +531,7 @@ def validate_integration(build, candidate, cohort=None):
             parameters[key] = json.loads(parameters[key])
     parameters["releaseBuildId"] = identifier(queued_release_build_id(build))
     parameters["scenarioTimeoutMinutes"] = int(parameters["scenarioTimeoutMinutes"])
-    expected = integration_parameters(candidate, cohort)
+    expected = integration_parameters(candidate)
     repository = build["repository"]
     if (build["definition"]["id"] != 164 or repository.get("id") != REPOSITORY
             or repository.get("type") != "GitHub" or repository.get("name") not in (None, REPOSITORY)
@@ -560,22 +553,14 @@ def existing_integration(candidate) -> dict | None:
     builds = ado("build/builds?" + query)["value"]
     if len(builds) >= 1000:
         raise ValueError("Too many child builds to prove unique ownership; inspect pipeline 164 before retrying.")
-    matches = []
-    for build in builds:
-        if queued_release_build_id(build) == candidate["producer"]["build"]:
-            scopes = []
-            for key in candidate["cohorts"]:
-                try:
-                    validate_integration(build, candidate, key)
-                    scopes.append(key)
-                except ValueError:
-                    continue
-            if len(scopes) != 1:
-                raise ValueError("An owned child has an unexpected release cohort or source.")
-            if scopes[0] == environment("RELEASE_COHORT"):
-                matches.append(build)
+    matches = [build for build in builds if queued_release_build_id(build) == candidate["producer"]["build"]]
+    for build in matches:
+        try:
+            validate_integration(build, candidate)
+        except ValueError as error:
+            raise ValueError("An owned child has an unexpected release request or source.") from error
     if len(matches) > 1:
-        raise ValueError("Multiple children reference this release; resolve the duplicate cohorts before proceeding.")
+        raise ValueError("Multiple children reference this release; resolve the duplicates before proceeding.")
     return matches[0] if matches else None
 
 
@@ -586,11 +571,10 @@ def cancel_integration(record, directory):
         if existing is None:
             print("No child of this release was found; no cancellation request was sent.", flush=True)
             return
-        run = {"id": identifier(existing.get("id")), "producer": candidate["producer"],
-               "cohort": environment("RELEASE_COHORT")}
+        run = {"id": identifier(existing.get("id")), "producer": candidate["producer"]}
     else:
         run = read(record)
-    if run["producer"] != candidate["producer"] or run["cohort"] != environment("RELEASE_COHORT"):
+    if run["producer"] != candidate["producer"]:
         raise ValueError("Refusing to cancel a child owned by another release.")
     build = ado(f"build/builds/{identifier(run['id'])}")
     validate_integration(build, candidate)
@@ -618,7 +602,7 @@ def integrate(directory, record, timeout=25200):
             raise ValueError("No child found on a retried job; do not risk requeuing an uncertain prior request.")
         run = ado("build/builds", method="POST", data=payload)
     run_id = identifier(run["id"])
-    write(record, {"id": run_id, "producer": candidate["producer"], "cohort": environment("RELEASE_COHORT")})
+    write(record, {"id": run_id, "producer": candidate["producer"]})
     print(f"##vso[task.setvariable variable=integrationBuildId]{run_id}", flush=True)
     print(f"Integration: https://dev.azure.com/azureiotdevxp/aziotcli/_build/results?buildId={run_id}", flush=True)
 
@@ -650,7 +634,6 @@ def integrate(directory, record, timeout=25200):
 
 def verify_integration_artifacts(directory, artifacts):
     candidate = verify_candidate(directory)
-    key = environment("RELEASE_COHORT")
     child = ado(f"build/builds/{identifier(environment('RELEASE_CHILD_BUILD_ID'))}")
     validate_integration(child, candidate)
     if child["status"] != "completed" or child["result"] != "succeeded":
@@ -664,7 +647,7 @@ def verify_integration_artifacts(directory, artifacts):
         handoff = read(path.parent / "handoff.json")
         if (read(path) != candidate or digest(wheel) != candidate["wheel"]["sha256"]
                 or digest(path.parent / "SBOM.zip") != candidate["sbom"]["sha256"]
-                or handoff != {"consumer": consumer, "cohort": key, "candidateSha256": digest(path)}):
+                or handoff != {"consumer": consumer, "candidateSha256": digest(path)}):
             raise ValueError("Integration did not retain the exact candidate and consumer binding.")
     qualifications = list(artifacts.glob("ops-qualification-*/qualification.json"))
     if not qualifications:
@@ -672,20 +655,22 @@ def verify_integration_artifacts(directory, artifacts):
     latest = max(qualifications, key=lambda path: int(path.parent.name.removeprefix("ops-qualification-")))
     proof = read(latest)
     rows = proof["scenarios"]
-    expected_phases = {"init", "smoke"}
-    scenario = candidate["cohorts"][key]["row"]["scenario"]
-    if scenario["tox_env"]:
-        expected_phases.add("scenario")
-    if scenario["test_redeploy"]:
-        expected_phases.add("redeploy")
     if (proof.get("producer") != consumer or proof.get("sha256") != candidate["wheel"]["sha256"]
             or proof.get("releaseCandidate") != candidate
-            or len(rows) != 1 or rows[0].get("row") != key
-            or rows[0].get("producer") != consumer or rows[0].get("sha256") != candidate["wheel"]["sha256"]
-            or rows[0].get("cleanup") != "passed" or rows[0].get("status") != "passed"
-            or any(rows[0].get("phases", {}).get(phase) != "passed" for phase in expected_phases)):
+            or sorted(str(row.get("row")) for row in rows) != sorted(candidate["cohorts"])):
         raise ValueError("Incomplete release cohort evidence or cleanup.")
-    print(f"Qualified {key} against wheel SHA-256 {candidate['wheel']['sha256']}.", flush=True)
+    for row in rows:
+        scenario = candidate["cohorts"][row["row"]]["row"]["scenario"]
+        expected_phases = {"init", "smoke"}
+        if scenario["tox_env"]:
+            expected_phases.add("scenario")
+        if scenario["test_redeploy"]:
+            expected_phases.add("redeploy")
+        if (row.get("producer") != consumer or row.get("sha256") != candidate["wheel"]["sha256"]
+                or row.get("cleanup") != "passed" or row.get("status") != "passed"
+                or any(row.get("phases", {}).get(phase) != "passed" for phase in expected_phases)):
+            raise ValueError("Incomplete release cohort evidence or cleanup.")
+    print(f"Qualified {len(rows)} cohorts against wheel SHA-256 {candidate['wheel']['sha256']}.", flush=True)
 
 
 def automation_allowed():

@@ -333,25 +333,20 @@ def acquire(output):
     )
     if value["cohorts"] != release.source_cohorts(ROOT):
         raise ValueError("Release cohort inventory differs from the pinned integration source.")
-    child = release.ado(f"build/builds/{producer()['build']}")
-    matches = []
-    for key in value["cohorts"]:
-        try:
-            release.validate_integration(child, value, key)
-            matches.append(key)
-        except ValueError:
-            continue
-    if len(matches) != 1:
-        raise ValueError("Child parameters do not identify exactly one declared release cohort.")
+    release.validate_integration(release.ado(f"build/builds/{producer()['build']}"), value)
     output.mkdir(parents=True, exist_ok=False)
     for name in ("candidate.json", "SBOM.zip", value["wheel"]["file"]):
         shutil.copyfile(source / name, output / name)
     write(output / "handoff.json", {
-        "consumer": producer(), "cohort": matches[0], "candidateSha256": digest(output / "candidate.json"),
+        "consumer": producer(), "candidateSha256": digest(output / "candidate.json"),
     })
     verified_candidate(output, value["wheel"]["sha256"])
     output_variable("digest", value["wheel"]["sha256"])
     output_variable("artifact", f"ops-wheel-{required('SYSTEM_JOBATTEMPT')}")
+
+
+def release_rows(directory):
+    return [item["row"] for item in read(directory / "candidate.json")["cohorts"].values()]
 
 
 def verified_candidate(directory, expected_digest):
@@ -395,11 +390,8 @@ def prepare(output):
     wheel = verified_candidate(Path(required("OPS_CANDIDATE")), required("OPS_CANDIDATE_DIGEST"))
     if release_build_id() != "0":
         directory = Path(required("OPS_CANDIDATE"))
-        release_candidate = read(directory / "candidate.json")
-        handoff = read(directory / "handoff.json")
-        if (value.get("releaseBuildId") != release_build_id()
-                or value["rows"] != [release_candidate["cohorts"][handoff["cohort"]]["row"]]):
-            raise ValueError("Execution plan does not match the exact release cohort.")
+        if value.get("releaseBuildId") != release_build_id() or value["rows"] != release_rows(directory):
+            raise ValueError("Execution plan does not match the exact release cohorts.")
     suffix = uuid4().hex[:15]
     prefix = f"/subscriptions/{value['subscription']}/resourceGroups/{value['resourceGroup']}/providers"
     cluster, storage = f"opado{suffix}", f"initstore{suffix}"
@@ -608,18 +600,18 @@ def gate(output):
         candidate_directory = Path(required("OPS_CANDIDATE"))
         verified_candidate(candidate_directory, required("OPS_CANDIDATE_DIGEST"))
         release_candidate = read(candidate_directory / "candidate.json")
-        handoff = read(candidate_directory / "handoff.json")
-        if value["rows"] != [release_candidate["cohorts"][handoff["cohort"]]["row"]]:
-            raise ValueError("Selected integration rows differ from the release cohort.")
+        if value["rows"] != release_rows(candidate_directory):
+            raise ValueError("Selected integration rows differ from the release cohorts.")
     history = Path(required("OPS_HISTORY"))
     verified = []
     output.mkdir(parents=True, exist_ok=False)
     coverage = output / "coverage"
     coverage.mkdir()
-    unit_coverage = Path(required("OPS_UNIT_COVERAGE"))
-    if not unit_coverage.is_file():
-        raise ValueError("Missing unit coverage.")
-    shutil.copyfile(unit_coverage, coverage / ".coverage.unit")
+    if parent == "0":
+        unit_coverage = Path(required("OPS_UNIT_COVERAGE"))
+        if not unit_coverage.is_file():
+            raise ValueError("Missing unit coverage.")
+        shutil.copyfile(unit_coverage, coverage / ".coverage.unit")
     for row, path, receipt in scenario_evidence(value, history):
         source = path.parent / "coverage.dat"
         if not source.is_file():
@@ -631,7 +623,8 @@ def gate(output):
     qualification = {
         "schema": 1, "producer": producer(), "sha256": required("OPS_CANDIDATE_DIGEST"),
         "scope": "selected ops scenarios", "scenarios": verified, "releaseQualified": False,
-        "coverageScope": "unit tests plus selected ops scenarios",
+        # Release children skip Unit; the release's own Unit stage gates publication.
+        "coverageScope": "unit tests plus selected ops scenarios" if parent == "0" else "selected ops scenarios",
     }
     if release_candidate:
         qualification["releaseCandidate"] = release_candidate

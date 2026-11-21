@@ -56,6 +56,8 @@ Integration (164) and Health share these options, in this order:
 
 - `templates/integration-profile.yml` sets connection, subscription, resource group and custom-locations ID. They are not inputs.
 - Release automation sets 164's queue-time variable `ReleaseCandidateBuildId` (default `0`). Users don't set it.
+- Each release queues one 164 run with every default scenario on Stable and Preview. That run skips Lint and Unit; the release's Unit stage and PR CI cover them.
+- In 164, Trust Bundle runs alongside the other scenarios.
 - `broker-diagnostics-removal` runs only from the GitHub `int_test.yml` workflow.
 
 ### What each run checks

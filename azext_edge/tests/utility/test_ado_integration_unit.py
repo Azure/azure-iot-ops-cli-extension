@@ -1369,7 +1369,7 @@ def test_assertion_request_is_scoped_and_never_redirects(monkeypatch):
     assert "azureiotdevxp" in post.call_args.args[0]
 
 
-def test_trust_bundle_stage_serializes_after_integration_in_pipeline_templates():
+def test_trust_bundle_serializes_only_for_frozen_release_monitor_wheels():
     import yaml
 
     def find_stage(node, name):
@@ -1397,10 +1397,10 @@ def test_trust_bundle_stage_serializes_after_integration_in_pipeline_templates()
     release_tb = find_stage(release_doc, "TrustBundle")
     int_tb = find_stage(int_doc, "TrustBundle")
     assert release_tb is not None and "Integration" in release_tb["dependsOn"]
-    assert int_tb is not None and "Integration" in int_tb["dependsOn"]
+    assert int_tb is not None and int_tb["dependsOn"] == ["Plan", "Build", "Lint"]
     expected_cond = "in(dependencies.Integration.result, 'Succeeded', 'Failed', 'Skipped')"
     assert expected_cond in release_tb["condition"]
-    assert expected_cond in int_tb["condition"]
+    assert "dependencies.Integration" not in int_tb["condition"]
 
 
 @pytest.mark.parametrize("mode", ["recover", "non_retryable", "exhausted"])
@@ -1725,6 +1725,16 @@ def test_yaml_keeps_dry_run_separate_and_reuses_existing_tests():
     assert "maxParallel" not in trust["jobs"][0]["parameters"]
     assert all("environment" not in job and "deployment" not in job for stage in live for job in stage["jobs"])
     assert "hasTrustBundle" in trust["condition"] and "hasParallel" in integration["condition"]
+    standalone = "eq(coalesce(variables['ReleaseCandidateBuildId'], '0'), '0')"
+    released = "ne(coalesce(variables['ReleaseCandidateBuildId'], '0'), '0')"
+    lint = next(stage for stage in live if stage["stage"] == "Lint")
+    assert lint["condition"] == unit["condition"] == f"and(succeeded(), {standalone})"
+    for stage in (integration, trust):
+        assert f"and({released}, eq(dependencies.Lint.result, 'Skipped'))" in stage["condition"]
+        assert "dependencies.Unit" not in stage["condition"]
+    assert (f"or(and(eq(dependencies.Lint.result, 'Succeeded'), eq(dependencies.Unit.result, 'Succeeded')), "
+            f"and({released}, eq(dependencies.Lint.result, 'Skipped'), eq(dependencies.Unit.result, 'Skipped')))"
+            ) in qualify["condition"]
     scenario_template = yaml.safe_load((ROOT / ".azure-devops/templates/integration-scenario.yml").read_text())
     assert next(item for item in scenario_template["parameters"] if item["name"] == "maxParallel")["default"] == 0
     job = scenario_template["jobs"][0]
