@@ -45,6 +45,10 @@ stages:
                 displayName: Check queue access
                 env:
                   SYSTEM_ACCESSTOKEN: $(System.AccessToken)
+          - ${{ if not(parameters.skipIntegrationTests) }}:
+              - template: release-feed.yml
+              - script: python -m pip install PyYAML
+                displayName: Install title dependencies
           - script: python tools/release_pipeline.py resolve --source "$(Agent.TempDirectory)/release-source"
             name: source
             displayName: Resolve source
@@ -375,14 +379,11 @@ stages:
             displayName: Integration
             timeoutInMinutes: 1080
             cancelTimeoutInMinutes: 5
-            strategy:
-              maxParallel: 0
-              matrix: $[ stageDependencies.Build.Build.outputs['candidate.matrix'] ]
             templateContext:
               outputs:
                 - output: pipelineArtifact
                   path: $(Agent.TempDirectory)/integration-run.json
-                  artifact: release-integration-$(cohort)-$(System.JobAttempt)
+                  artifact: release-integration-$(System.JobAttempt)
                   isProduction: false
                   condition: and(always(), ne(variables['integrationBuildId'], ''))
             steps:
@@ -407,7 +408,6 @@ stages:
                   SYSTEM_ACCESSTOKEN: $(System.AccessToken)
                   RELEASE_SOURCE_BRANCH: ${{ parameters.sourceBranch }}
                   RELEASE_SOURCE_COMMIT: $(sourceCommit)
-                  RELEASE_COHORT: $(cohort)
               - task: DownloadPipelineArtifact@2
                 displayName: Download artifacts
                 inputs:
@@ -428,7 +428,6 @@ stages:
                 env:
                   RELEASE_SOURCE_BRANCH: ${{ parameters.sourceBranch }}
                   RELEASE_SOURCE_COMMIT: $(sourceCommit)
-                  RELEASE_COHORT: $(cohort)
                   RELEASE_CHILD_BUILD_ID: $(integrationBuildId)
                   SYSTEM_ACCESSTOKEN: $(System.AccessToken)
               - script: >-
@@ -441,7 +440,6 @@ stages:
                   SYSTEM_ACCESSTOKEN: $(System.AccessToken)
                   RELEASE_SOURCE_BRANCH: ${{ parameters.sourceBranch }}
                   RELEASE_SOURCE_COMMIT: $(sourceCommit)
-                  RELEASE_COHORT: $(cohort)
 
   - ${{ if and(eq(parameters.mode, 'Validate'), parameters.uploadWheelToBlob) }}:
       - stage: Upload
@@ -543,6 +541,7 @@ stages:
                   --prepared "$(Pipeline.Workspace)/release-tooling/publication.json"
                 displayName: Stage draft or publish release
                 env:
+                  SYSTEM_ACCESSTOKEN: $(System.AccessToken)
                   RELEASE_SOURCE_BRANCH: ${{ parameters.sourceBranch }}
                   RELEASE_SOURCE_COMMIT: $(sourceCommit)
                   RELEASE_GITHUB_TOKEN: $(ReleaseGitHubToken)

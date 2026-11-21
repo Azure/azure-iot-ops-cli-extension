@@ -41,14 +41,11 @@ parameters:
     default:
       - edge
     values:
-      - Default scenarios
       - edge
-      - broker-diagnostics-removal
       - insecure-listener
       - rpsaas
       - runtime-channel
       - upgrade
-      - upgrade-path
       - mgmtactions
       - livedata
       - redeploy
