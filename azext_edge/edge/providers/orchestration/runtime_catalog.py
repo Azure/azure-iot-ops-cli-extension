@@ -22,11 +22,11 @@ from .template_fairfax import TEMPLATE_BLUEPRINT_INSTANCE_FAIRFAX
 
 PREVIEW_PROFILE: Optional[RuntimeProfile] = RuntimeProfile(
     channel=RuntimeChannel.PREVIEW,
-    release="prev2610",
-    source_ref="preview/v1.6.x/2610",
-    source_commit="f845faae950ff57c519a1a870109c163e6751758",
+    release="prev2612",
+    source_ref="preview/v1.6.x/2612",
+    source_commit="767bdc63913fb41b16b1d2b025d9b13b12d20dae",
     instance_blueprint=TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW,
-    opcua_connector_version="1.5.22",
+    opcua_connector_version="1.5.100",
     iotops_api_version=IoTOpsMgmtApiVersion.V20261101_preview.value,
 )
 QUALIFICATION_IDENTITIES: Tuple[RuntimeIdentity, ...] = ()
@@ -43,7 +43,7 @@ def get_runtime_catalog(cloud_name: str = CLOUD_AZURE_PUBLIC) -> RuntimeProfileC
         blueprint = TEMPLATE_BLUEPRINT_INSTANCE_FAIRFAX
         return RuntimeProfileCatalog([RuntimeProfile(
             channel=RuntimeChannel.STABLE,
-            release=str(AIO_RELEASE),
+            release="2610",
             source_ref="releases/v1.5.x/2610-ff",
             source_commit="91e541f3b2767cd227aeaf3b8dd51ff9c54af6ce",
             instance_blueprint=blueprint,
@@ -53,8 +53,8 @@ def get_runtime_catalog(cloud_name: str = CLOUD_AZURE_PUBLIC) -> RuntimeProfileC
     stable = RuntimeProfile(
         channel=RuntimeChannel.STABLE,
         release=str(AIO_RELEASE),
-        source_ref="releases/v1.5.x/2610",
-        source_commit="87c6c83e945c318ebf76a3189e8212c3dd17fbc6",
+        source_ref="releases/v1.5.x/2612",
+        source_commit="561705b317b857f4bb0d491ecca8dc09b77e5718",
         instance_blueprint=TEMPLATE_BLUEPRINT_INSTANCE,
         opcua_connector_version=OPCUA_CONNECTOR_VERSION,
     )

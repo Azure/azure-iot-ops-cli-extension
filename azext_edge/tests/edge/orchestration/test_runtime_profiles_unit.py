@@ -65,17 +65,17 @@ def test_bundled_profiles_select_management_api_without_changing_preview_bluepri
 
 @pytest.mark.parametrize("channel,release,source_ref,source_commit,version,blueprint_commit", [
     (
-        RuntimeChannel.STABLE, "2610", "releases/v1.5.x/2610",
-        "87c6c83e945c318ebf76a3189e8212c3dd17fbc6", "1.5.45",
-        "97933f54e677de0354b5b6ff144d153b8aff72f2",
+        RuntimeChannel.STABLE, "2612", "releases/v1.5.x/2612",
+        "561705b317b857f4bb0d491ecca8dc09b77e5718", "1.5.78",
+        "0840df6d63936e9f2c0c02044cd65c2e29b94386",
     ),
     (
-        RuntimeChannel.PREVIEW, "prev2610", "preview/v1.6.x/2610",
-        "f845faae950ff57c519a1a870109c163e6751758", "1.6.0-preview.60",
-        "f2b270da385ddb544e7c1e96521ebd79eea045d7",
+        RuntimeChannel.PREVIEW, "prev2612", "preview/v1.6.x/2612",
+        "767bdc63913fb41b16b1d2b025d9b13b12d20dae", "1.6.0-preview.100",
+        "ef4019a9411168b529fb7f1482936246ee7f0429",
     ),
 ])
-def test_bundled_release_inputs_use_published_trains(
+def test_bundled_release_inputs_preserve_integration_trains(
     channel, release, source_ref, source_commit, version, blueprint_commit,
 ):
     from azext_edge.edge.providers.orchestration.runtime_catalog import get_runtime_catalog
@@ -83,20 +83,23 @@ def test_bundled_release_inputs_use_published_trains(
     catalog = get_runtime_catalog()
     profile = catalog.get(channel)
     assert (profile.release, profile.source_ref, profile.source_commit) == (release, source_ref, source_commit)
-    assert profile.identity == RuntimeIdentity(channel, version, channel.value)
-    assert profile.require_opcua_connector_version() == "1.5.22"
-    assert resolve_runtime_identity(version, channel.value) == profile.identity
-    assert profile.identity not in catalog.qualification_identities
+    assert profile.identity == RuntimeIdentity(channel, version, "integration")
+    assert profile.require_opcua_connector_version() == "1.5.100"
+    assert resolve_runtime_identity(version, channel.value) == RuntimeIdentity(channel, version, channel.value)
+    assert profile.identity in catalog.qualification_identities
+    assert resolve_runtime_identity(version, "integration", catalog.qualification_identities) == profile.identity
     with pytest.raises(ValidationError, match="integration"):
-        resolve_runtime_identity(version, "integration", catalog.qualification_identities)
+        resolve_runtime_identity(version, "integration")
     blueprint = profile.copy_instance_blueprint()
     assert blueprint.commit_id == blueprint_commit
-    assert blueprint.content["variables"]["VERSIONS"] == {"iotOperations": version, "connectors": "1.5.22"}
+    assert blueprint.content["variables"]["VERSIONS"] == {"iotOperations": version, "connectors": "1.5.100"}
     assert blueprint.content["resources"]["aioExtension"]["properties"]["autoUpgradeMinorVersion"] is False
     override = "1.5.44" if channel == RuntimeChannel.STABLE else "1.6.0-preview.59"
-    assert profile.validate_overrides(version=override) == RuntimeIdentity(channel, override, channel.value)
+    assert profile.validate_overrides(version=version) == profile.identity
+    with pytest.raises(ValidationError, match="integration version override"):
+        profile.validate_overrides(version=override)
     with pytest.raises(ValidationError, match="deployment train"):
-        profile.validate_overrides(train="integration")
+        profile.validate_overrides(train=channel.value)
 
 
 def test_catalog_missing_and_duplicate_profiles_fail(profiles):
