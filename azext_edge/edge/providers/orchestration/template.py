@@ -6,7 +6,7 @@
 
 """Bundled Public blueprints from releases/v1.5.x/2612.
 
-Selected source: 561705b317b857f4bb0d491ecca8dc09b77e5718.
+Selected source: 3542da1961157e38ccac600f88cbd2ca127c4faa.
 The instance retains the upstream integration train and excludes GDS before compilation.
 """
 
@@ -783,12 +783,14 @@ TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
 # The upstream integration train is retained for alpha qualification.
 # GDS Manager input and reader are excluded in exported source before compilation.
 TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
-    commit_id="0840df6d63936e9f2c0c02044cd65c2e29b94386",
+    commit_id="3542da1961157e38ccac600f88cbd2ca127c4faa",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "languageVersion": "2.0",
         "contentVersion": "1.0.0.0",
-        "metadata": {"_generator": {"name": "bicep", "version": "0.49.2.45890", "templateHash": "5046910796997785501"}},
+        "metadata": {
+            "_generator": {"name": "bicep", "version": "0.49.2.45890", "templateHash": "18286292354827482394"}
+        },
         "definitions": {
             "_1.AdvancedConfig": {
                 "type": "object",
@@ -1493,7 +1495,7 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
             "advancedConfig": {"$ref": "#/definitions/_1.AdvancedConfig", "defaultValue": {}},
         },
         "variables": {
-            "VERSIONS": {"iotOperations": "1.5.78", "connectors": "1.5.100"},
+            "VERSIONS": {"iotOperations": "1.5.82", "connectors": "1.5.103"},
             "TRAINS": {"iotOperations": "integration"},
             "FAIRFAX_VERSIONS": {"iotOperations": "1.5.77"},
             "FAIRFAX_TRAINS": {"iotOperations": "stable"},

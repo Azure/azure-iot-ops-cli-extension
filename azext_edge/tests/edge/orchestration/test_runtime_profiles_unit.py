@@ -63,20 +63,20 @@ def test_bundled_profiles_select_management_api_without_changing_preview_bluepri
     assert preview.copy_instance_blueprint().content["resources"]["aioInstance"]["apiVersion"] == "2026-11-01-preview"
 
 
-@pytest.mark.parametrize("channel,release,source_ref,source_commit,version,blueprint_commit", [
+@pytest.mark.parametrize("channel,release,source_ref,source_commit,version,blueprint_commit,connector_version", [
     (
         RuntimeChannel.STABLE, "2612", "releases/v1.5.x/2612",
-        "561705b317b857f4bb0d491ecca8dc09b77e5718", "1.5.78",
-        "0840df6d63936e9f2c0c02044cd65c2e29b94386",
+        "3542da1961157e38ccac600f88cbd2ca127c4faa", "1.5.82",
+        "3542da1961157e38ccac600f88cbd2ca127c4faa", "1.5.103",
     ),
     (
         RuntimeChannel.PREVIEW, "prev2612", "preview/v1.6.x/2612",
-        "767bdc63913fb41b16b1d2b025d9b13b12d20dae", "1.6.0-preview.100",
-        "ef4019a9411168b529fb7f1482936246ee7f0429",
+        "94ad9f812b962343275bd3610d744b494defa2ef", "1.6.0-preview.103",
+        "94ad9f812b962343275bd3610d744b494defa2ef", "1.6.1-preview.4",
     ),
 ])
 def test_bundled_release_inputs_preserve_integration_trains(
-    channel, release, source_ref, source_commit, version, blueprint_commit,
+    channel, release, source_ref, source_commit, version, blueprint_commit, connector_version,
 ):
     from azext_edge.edge.providers.orchestration.runtime_catalog import get_runtime_catalog
 
@@ -84,7 +84,7 @@ def test_bundled_release_inputs_preserve_integration_trains(
     profile = catalog.get(channel)
     assert (profile.release, profile.source_ref, profile.source_commit) == (release, source_ref, source_commit)
     assert profile.identity == RuntimeIdentity(channel, version, "integration")
-    assert profile.require_opcua_connector_version() == "1.5.100"
+    assert profile.require_opcua_connector_version() == connector_version
     assert resolve_runtime_identity(version, channel.value) == RuntimeIdentity(channel, version, channel.value)
     assert profile.identity in catalog.qualification_identities
     assert resolve_runtime_identity(version, "integration", catalog.qualification_identities) == profile.identity
@@ -92,7 +92,7 @@ def test_bundled_release_inputs_preserve_integration_trains(
         resolve_runtime_identity(version, "integration")
     blueprint = profile.copy_instance_blueprint()
     assert blueprint.commit_id == blueprint_commit
-    assert blueprint.content["variables"]["VERSIONS"] == {"iotOperations": version, "connectors": "1.5.100"}
+    assert blueprint.content["variables"]["VERSIONS"] == {"iotOperations": version, "connectors": connector_version}
     assert blueprint.content["resources"]["aioExtension"]["properties"]["autoUpgradeMinorVersion"] is False
     override = "1.5.44" if channel == RuntimeChannel.STABLE else "1.6.0-preview.59"
     assert profile.validate_overrides(version=version) == profile.identity

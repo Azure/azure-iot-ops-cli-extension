@@ -12,18 +12,18 @@ The upstream integration train is retained for alpha qualification.
 MCP defaults to Preview; explicit feature modes override that generated default.
 """
 
-# selected source preview/v1.6.x/2612 @ 767bdc63913fb41b16b1d2b025d9b13b12d20dae
+# selected source preview/v1.6.x/2612 @ 94ad9f812b962343275bd3610d744b494defa2ef
 # source release prev2612
 # no loaded-source redactions required
 from .template import TemplateBlueprint
 
 TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW = TemplateBlueprint(
-    commit_id="ef4019a9411168b529fb7f1482936246ee7f0429",
+    commit_id="94ad9f812b962343275bd3610d744b494defa2ef",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "languageVersion": "2.0",
         "contentVersion": "1.0.0.0",
-        "metadata": {"_generator": {"name": "bicep", "version": "0.49.2.45890", "templateHash": "1017110746375674109"}},
+        "metadata": {"_generator": {"name": "bicep", "version": "0.49.2.45890", "templateHash": "2493426023266026501"}},
         "definitions": {
             "_1.AdvancedConfig": {
                 "type": "object",
@@ -757,6 +757,7 @@ TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW = TemplateBlueprint(
                                         "list_brokers",
                                         "get_broker",
                                         "broker_details",
+                                        "broker_metadata",
                                         "list_dataflows",
                                         "get_dataflow",
                                         "dataflow_details",
@@ -796,6 +797,7 @@ TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW = TemplateBlueprint(
             "schemaRegistryId": {"type": "string"},
             "adrNamespaceId": {"type": "string", "nullable": True},
             "features": {"$ref": "#/definitions/_1.Features", "nullable": True},
+            "sku": {"type": "string", "allowedValues": ["Essentials", "Standard"], "nullable": True},
             "brokerConfig": {"$ref": "#/definitions/_1.BrokerConfig", "nullable": True},
             "enablePersistence": {"type": "bool", "defaultValue": True},
             "trustConfig": {"$ref": "#/definitions/_1.TrustConfig", "defaultValue": {"source": "SelfSigned"}},
@@ -804,7 +806,7 @@ TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW = TemplateBlueprint(
             "advancedConfig": {"$ref": "#/definitions/_1.AdvancedConfig", "defaultValue": {}},
         },
         "variables": {
-            "VERSIONS": {"iotOperations": "1.6.0-preview.100", "connectors": "1.5.100"},
+            "VERSIONS": {"iotOperations": "1.6.0-preview.103", "connectors": "1.6.1-preview.4"},
             "TRAINS": {"iotOperations": "integration"},
             "HASH": "[coalesce(tryGet(parameters('advancedConfig'), 'resourceSuffix'), take(uniqueString(resourceGroup().id, parameters('clusterName'), parameters('clusterNamespace')), 5))]",
             "AIO_EXTENSION_SUFFIX": "[take(uniqueString(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName'))), 5)]",
@@ -908,6 +910,7 @@ TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW = TemplateBlueprint(
                 "location": "[parameters('clusterLocation')]",
                 "extendedLocation": "[variables('extendedLocation')]",
                 "identity": "[_2.buildIdentity(createArray(parameters('userAssignedIdentity')))]",
+                "sku": "[if(not(equals(parameters('sku'), null())), createObject('name', parameters('sku')), null())]",
                 "properties": {
                     "description": "An AIO instance.",
                     "schemaRegistryRef": {"resourceId": "[parameters('schemaRegistryId')]"},

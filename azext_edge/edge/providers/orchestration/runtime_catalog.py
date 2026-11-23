@@ -24,9 +24,9 @@ PREVIEW_PROFILE: Optional[RuntimeProfile] = RuntimeProfile(
     channel=RuntimeChannel.PREVIEW,
     release="prev2612",
     source_ref="preview/v1.6.x/2612",
-    source_commit="767bdc63913fb41b16b1d2b025d9b13b12d20dae",
+    source_commit="94ad9f812b962343275bd3610d744b494defa2ef",
     instance_blueprint=TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW,
-    opcua_connector_version="1.5.100",
+    opcua_connector_version="1.6.1-preview.4",
     iotops_api_version=IoTOpsMgmtApiVersion.V20261101_preview.value,
 )
 QUALIFICATION_IDENTITIES: Tuple[RuntimeIdentity, ...] = ()
@@ -54,7 +54,7 @@ def get_runtime_catalog(cloud_name: str = CLOUD_AZURE_PUBLIC) -> RuntimeProfileC
         channel=RuntimeChannel.STABLE,
         release=str(AIO_RELEASE),
         source_ref="releases/v1.5.x/2612",
-        source_commit="561705b317b857f4bb0d491ecca8dc09b77e5718",
+        source_commit="3542da1961157e38ccac600f88cbd2ca127c4faa",
         instance_blueprint=TEMPLATE_BLUEPRINT_INSTANCE,
         opcua_connector_version=OPCUA_CONNECTOR_VERSION,
     )

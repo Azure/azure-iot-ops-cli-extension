@@ -131,8 +131,6 @@ class InitTargets:
             runtime_profile.copy_instance_blueprint()
             if runtime_profile is not None else TEMPLATE_BLUEPRINT_INSTANCE.copy()
         )
-        if sku is not None and "sku" not in self._instance_blueprint.parameters:
-            raise InvalidArgumentValueError("The selected AIO runtime does not support --sku.")
         self.cluster_name = cluster_name
         self.resource_group_name = resource_group_name
         self.schema_registry_resource_id = ensure_resource_id(
