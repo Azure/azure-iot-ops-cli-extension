@@ -48,6 +48,18 @@ stages:
               python tools/branch_health.py acquire --source manifest.json
               --output "$(Pipeline.Workspace)/branch-source"
             displayName: Acquire selected dev product and matching tests
+          - bash: python tools/release_monitor_adapter.py title --output "$(Pipeline.Workspace)/branch-source"
+            displayName: Set run title
+            env:
+              MONITOR_KIND: branch
+              MONITOR_CLOUD: ${{ parameters.cloud }}
+              MONITOR_TRACK: ${{ parameters.track }}
+              OPS_MODE: ${{ parameters.mode }}
+              OPS_SCENARIOS: Default scenarios
+              OPS_CHANNELS: $(TestChannels)
+              OPS_BASELINES: '{}'
+              OPS_CLOUD: $(TestAzureCloud)
+              OPS_CLUSTER_REGION: $(TestRegion)
           - publish: $(Pipeline.Workspace)/branch-source
             artifact: branch-source-$(System.StageAttempt)-$(System.JobAttempt)
             displayName: Publish immutable source bundle

@@ -12,6 +12,7 @@ import importlib
 from io import BytesIO
 import json
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 from unittest.mock import MagicMock, Mock
@@ -37,6 +38,8 @@ PROJECT = "9c543948-e573-4146-832a-bf16b1531204"
 SOURCE = "a" * 40
 AUTOMATION = "b" * 40
 COHORT = "edge_stable_py313"
+JOB = "44444444-4444-4444-8444-444444444444"
+OWNERSHIP_READER = release.publication_ownership
 
 
 @pytest.fixture
@@ -44,8 +47,9 @@ def candidate(tmp_path, monkeypatch):
     for name, value in {
         "SYSTEM_DEFINITIONID": "165", "BUILD_BUILDID": "900", "BUILD_SOURCEVERSION": AUTOMATION,
         "SYSTEM_TEAMPROJECTID": PROJECT, "SYSTEM_JOBATTEMPT": "1", "BUILD_SOURCEBRANCH": "refs/heads/dev",
+        "SYSTEM_JOBID": JOB,
         "BUILD_REPOSITORY_NAME": release.REPOSITORY, "RELEASE_SOURCE_BRANCH": "dev",
-        "RELEASE_SOURCE_COMMIT": SOURCE, "RELEASE_COHORT": COHORT, "RELEASE_MODE": "Release",
+        "RELEASE_SOURCE_COMMIT": SOURCE, "RELEASE_MODE": "Release",
         "RELEASE_CREATE_INDEX_PR": "false", "RELEASE_SKIP_INTEGRATION_TESTS": "false",
         "RELEASE_UPLOAD_WHEEL_TO_BLOB": "false",
         "RELEASE_GITHUB_TOKEN": "offline-placeholder", "RELEASE_CHILD_BUILD_ID": "901",
@@ -54,6 +58,12 @@ def candidate(tmp_path, monkeypatch):
         monkeypatch.setenv(name, value)
     monkeypatch.setattr(release, "ado", Mock(side_effect=AssertionError("Unexpected ADO request")))
     monkeypatch.setattr(release, "github", Mock(side_effect=AssertionError("Unexpected GitHub request")))
+    ownership = Mock(return_value=None)
+    monkeypatch.setattr(release, "publication_ownership", ownership)
+    # Never emit a real ADO attachment command from a test, including under ADO CI.
+    monkeypatch.setattr(release, "attach_publication_receipt", Mock(
+        side_effect=lambda path: setattr(ownership, "return_value", release.read(path)),
+    ))
     directory = tmp_path / "candidate"
     directory.mkdir()
     wheel = directory / "azure_iot_ops-2.0.0b1-py3-none-any.whl"
@@ -80,7 +90,7 @@ def candidate(tmp_path, monkeypatch):
     return directory, value
 
 
-def child(value, cohort=COHORT):
+def child(value):
     return {
         "id": 901, "definition": {"id": 164}, "project": {"id": PROJECT},
         "repository": {"id": release.REPOSITORY, "type": "GitHub"},
@@ -89,7 +99,7 @@ def child(value, cohort=COHORT):
         "parameters": json.dumps({"ReleaseCandidateBuildId": value["producer"]["build"]}),
         "templateParameters": {
             key: item if isinstance(item, str) else json.dumps(item)
-            for key, item in release.integration_parameters(value, cohort).items() if key != "releaseBuildId"
+            for key, item in release.integration_parameters(value).items() if key != "releaseBuildId"
         },
     }
 
@@ -111,14 +121,16 @@ def test_release_region_is_frozen_and_child_drift_is_rejected(candidate, monkeyp
         release.validate_integration(build, value)
 
 
-@pytest.mark.parametrize("channel", ["stable", "preview"])
-def test_release_runtime_selection_uses_display_values_and_validates(candidate, channel):
+def test_one_child_request_covers_every_release_cohort(candidate):
     _, value = candidate
-    cohort = next(key for key, selected in value["cohorts"].items()
-                  if selected["row"]["scenario"]["channel"] == channel)
-    build = child(value, cohort)
-    assert json.loads(build["templateParameters"]["runtimeChannels"]) == [channel.capitalize()]
-    release.validate_integration(build, value, cohort)
+    build = child(value)
+    scenarios = json.loads(build["templateParameters"]["testScenarios"])
+    assert scenarios == list(dict.fromkeys(item["selection"] for item in value["cohorts"].values()))
+    assert json.loads(build["templateParameters"]["runtimeChannels"]) == ["Stable", "Preview"]
+    root = yaml.safe_load((ROOT / ".azure-devops/integration.yml").read_text(encoding="utf-8"))
+    choices = next(item["values"] for item in root["parameters"] if item["name"] == "testScenarios")
+    assert set(scenarios) <= set(choices)
+    release.validate_integration(build, value)
 
 
 def test_candidate_verifier_remains_standalone_for_publication(candidate, tmp_path):
@@ -146,6 +158,10 @@ def public_release(value, draft=False):
         "assets": [{"name": item["file"], "digest": "sha256:" + item["sha256"]}
                    for item in (value["wheel"], value["sbom"])],
     }
+
+
+def owned_release(value, release_id=10):
+    release.publication_ownership.return_value = release.ownership_record(value, release_id, JOB)
 
 
 @pytest.mark.parametrize("value", [
@@ -348,6 +364,14 @@ def test_resolve_freezes_any_upstream_branch_and_rejects_nonexistent_branches(
         path = repository / relative
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("ReleaseCandidateBuildId clusterRegion\n", encoding="utf-8")
+    (repository / "azext_edge").mkdir()
+    (repository / "azext_edge/constants.py").write_text('VERSION = "2.11.2"\n', encoding="utf-8")
+    profiles = repository / "azext_edge/edge/providers/orchestration"
+    profiles.mkdir(parents=True)
+    for suffix, runtime, train in [("", "1.4.99", "stable"), ("_preview", "1.6.0-preview.60", "preview")]:
+        (profiles / f"template{suffix}.py").write_text(
+            repr({"VERSIONS": {"iotOperations": runtime}, "TRAINS": {"iotOperations": train}}), encoding="utf-8")
+    monkeypatch.setattr(release, "source_cohorts", Mock(return_value=candidate[1]["cohorts"]))
     subprocess.run(["git", "add", "."], cwd=repository, check=True)
     commit_command = [
         "git", "-c", "user.name=Release Test", "-c", "user.email=release-test@example.invalid",
@@ -370,7 +394,12 @@ def test_resolve_freezes_any_upstream_branch_and_rejects_nonexistent_branches(
 
     monkeypatch.setattr(release.subprocess, "run", local_run)
     assert release.checkout(tmp_path / "resolve", resolving=True) == initial
-    assert f"##vso[task.setvariable variable=commit;isOutput=true]{initial}" in capsys.readouterr().out
+    output = capsys.readouterr().out
+    assert f"##vso[task.setvariable variable=commit;isOutput=true]{initial}" in output
+    assert (
+        "##vso[build.updatebuildnumber]ops-900 (2.11.2) (edge, insecure-listener, rpsaas +7) (westus2)"
+        f" (runtime 1.4.99, 1.6.0-preview.60) (stable, preview) ({mode.lower()})"
+    ) in output.splitlines()
     (repository / "tools/release_pipeline.py").write_text("new tip\n", encoding="utf-8")
     subprocess.run(["git", "add", "."], cwd=repository, check=True)
     subprocess.run(commit_command, cwd=repository, check=True)
@@ -667,7 +696,7 @@ def test_candidate_creation_updates_title_from_wheel_once(
             " (runtime 1.4.99, 1.6.0-preview.60) (stable, preview)"
         )
     assert lines[0] == f"##vso[build.updatebuildnumber]{expected} ({mode.lower()})"
-    assert set(json.loads(lines[-1].split("]", 1)[1])) == (set() if skipped else set(value["cohorts"]))
+    assert not any("variable=matrix" in line for line in lines)
     assert generated["skipIntegrationTests"] is skipped
     assert generated["uploadWheelToBlob"] is upload
     if skipped:
@@ -714,16 +743,18 @@ def test_queue_uses_exact_parameters_without_waiting_for_cleanup(candidate, monk
         "parameters": json.dumps({"ReleaseCandidateBuildId": "900"}),
         "templateParameters": child(value)["templateParameters"],
     }
-    assert release.read(tmp_path / "record")["cohort"] == COHORT
+    assert release.read(tmp_path / "record") == {"id": "901", "producer": value["producer"]}
     assert network.call_count == 2
     assert network.call_args_list[1].args == ("build/builds/901",)
     release.time.sleep.assert_not_called()
 
 
-def test_retry_finds_only_its_own_cohort(candidate, monkeypatch, tmp_path):
+def test_retry_reattaches_to_the_owned_child(candidate, monkeypatch, tmp_path):
     directory, value = candidate
     monkeypatch.setenv("SYSTEM_JOBATTEMPT", "2")
-    builds = [child(value, "edge_preview_py313"), child(value)]
+    other = child(value)
+    other["parameters"] = json.dumps({"ReleaseCandidateBuildId": "899"})
+    builds = [other, child(value)]
     network = Mock(side_effect=[parent(), {"value": builds}, child(value)])
     monkeypatch.setattr(release, "ado", network)
     assert release.integrate(directory, tmp_path / "record") == "901"
@@ -738,10 +769,19 @@ def test_uncertain_retry_never_requeues(candidate, monkeypatch, tmp_path):
     release.ado.assert_not_called()
 
 
-def test_duplicate_owned_cohort_is_rejected(candidate, monkeypatch):
+def test_duplicate_owned_child_is_rejected(candidate, monkeypatch):
     value = candidate[1]
     monkeypatch.setattr(release, "ado", Mock(side_effect=[parent(), {"value": [child(value), child(value)]}]))
     with pytest.raises(ValueError, match="Multiple children"):
+        release.existing_integration(value)
+
+
+def test_owned_per_cohort_child_is_rejected(candidate, monkeypatch):
+    value = candidate[1]
+    build = child(value)
+    build["templateParameters"].update(testScenarios='["edge"]', runtimeChannels='["Stable"]')
+    monkeypatch.setattr(release, "ado", Mock(side_effect=[parent(), {"value": [build]}]))
+    with pytest.raises(ValueError, match="unexpected release request"):
         release.existing_integration(value)
 
 
@@ -775,11 +815,9 @@ def test_non_succeeded_child_blocks_release(candidate, monkeypatch, tmp_path, re
         release.integrate(candidate[0], tmp_path / "record")
 
 
-def test_cancel_cannot_target_another_cohort(candidate, tmp_path):
+def test_cancel_cannot_target_another_release(candidate, tmp_path):
     directory, value = candidate
-    release.write(tmp_path / "record", {
-        "id": "901", "producer": value["producer"], "cohort": "edge_preview_py313",
-    })
+    release.write(tmp_path / "record", {"id": "901", "producer": dict(value["producer"], build="899")})
     with pytest.raises(ValueError, match="another release"):
         release.cancel_integration(tmp_path / "record", directory)
     release.ado.assert_not_called()
@@ -791,7 +829,8 @@ def consumer_environment(candidate, monkeypatch):
     for name, value in {
         "SYSTEM_DEFINITIONID": "164", "BUILD_BUILDID": "901", "BUILD_SOURCEVERSION": SOURCE,
         "OPS_RELEASE_BUILD_ID": "900", "OPS_RELEASE_INPUT": str(directory), "OPS_MODE": "Integration tests",
-        "OPS_SCENARIOS": "edge", "OPS_CHANNELS": "stable", "OPS_PYTHONS": "3.13", "OPS_BASELINES": "{}",
+        "OPS_SCENARIOS": ",".join(dict.fromkeys(item["selection"] for item in candidate[1]["cohorts"].values())),
+        "OPS_CHANNELS": "stable,preview", "OPS_PYTHONS": "3.13", "OPS_BASELINES": "{}",
         "OPS_SUBSCRIPTION": profile["MonitorSubscription"],
         "OPS_RESOURCE_GROUP": profile["MonitorResourceGroup"],
         "OPS_CLUSTER_REGION": profile["MonitorRegion"],
@@ -890,16 +929,34 @@ def test_qualification_preserves_provenance_and_parent_reverifies_bytes(candidat
     monkeypatch.setenv("OPS_PLAN", str(tmp_path / "plan/plan.json"))
     monkeypatch.setenv("OPS_CANDIDATE", str(wheel_dir))
     monkeypatch.setenv("OPS_CANDIDATE_DIGEST", value["wheel"]["sha256"])
-    receipt = tmp_path / f"ops-attempt-{COHORT}-1/receipt.json"
-    evidence = integration.read(receipt)
-    evidence["sha256"] = value["wheel"]["sha256"]
-    integration.write(receipt, evidence)
+    monkeypatch.delenv("OPS_UNIT_COVERAGE")
+    seeded = integration.read(tmp_path / f"ops-attempt-{COHORT}-1/receipt.json")
+    rows = integration.read(tmp_path / "plan/plan.json")["rows"]
+    assert rows == integration.release_rows(wheel_dir)
+    for row in rows:
+        attempt = tmp_path / f"ops-attempt-{row['key']}-1"
+        phases = integration.expected_phases(row)
+        integration.write(attempt / "receipt.json", dict(
+            seeded, row=row["key"], sha256=value["wheel"]["sha256"], phases=dict.fromkeys(phases, "passed"),
+        ))
+        for phase in phases:
+            (attempt / "junit").mkdir(exist_ok=True)
+            (attempt / "junit" / f"{phase}.xml").write_text('<testsuite><testcase name="passed"/></testsuite>')
+        (attempt / "coverage.dat").write_bytes(b"offline coverage")
     integration.gate(tmp_path / "ops-qualification-1")
+    proof = integration.read(tmp_path / "ops-qualification-1/qualification.json")
+    assert proof["coverageScope"] == "selected ops scenarios"
+    assert not (tmp_path / "ops-qualification-1/coverage/.coverage.unit").exists()
     monkeypatch.setenv("SYSTEM_DEFINITIONID", "165")
     monkeypatch.setenv("BUILD_BUILDID", "900")
     monkeypatch.setenv("BUILD_SOURCEVERSION", AUTOMATION)
     monkeypatch.setattr(release, "ado", Mock(return_value=child(value)))
     release.verify_integration_artifacts(directory, tmp_path)
+    partial = dict(proof, scenarios=proof["scenarios"][1:])
+    integration.write(tmp_path / "ops-qualification-2/qualification.json", partial)
+    with pytest.raises(ValueError, match="Incomplete release cohort"):
+        release.verify_integration_artifacts(directory, tmp_path)
+    shutil.rmtree(tmp_path / "ops-qualification-2")
     (wheel_dir / value["wheel"]["file"]).write_bytes(b"rebuilt")
     with pytest.raises(ValueError, match="exact candidate"):
         release.verify_integration_artifacts(directory, tmp_path)
@@ -907,6 +964,7 @@ def test_qualification_preserves_provenance_and_parent_reverifies_bytes(candidat
 
 def test_publication_without_index_credentials_reuses_exact_release(candidate, monkeypatch, tmp_path):
     directory, value = candidate
+    owned_release(value)
     monkeypatch.delenv("INDEX_FORK_REPOSITORY", raising=False)
     monkeypatch.setattr(release, "tag_commit", Mock(return_value=SOURCE))
     monkeypatch.setattr(release, "find_release", Mock(return_value=public_release(value)))
@@ -952,6 +1010,10 @@ def test_draft_is_promoted_only_after_verified_uploads(
         return draft
 
     def upload(_url, _token, **kwargs):
+        release.attach_publication_receipt.assert_called_once()
+        assert release.read(release.attach_publication_receipt.call_args.args[0]) == (
+            release.ownership_record(value, draft["id"], JOB)
+        )
         item = next(item for item in (value["wheel"], value["sbom"])
                     if release.hashlib.sha256(kwargs["data"]).hexdigest() == item["sha256"])
         asset = {"name": item["file"], "digest": "sha256:" + item["sha256"]}
@@ -995,6 +1057,7 @@ def test_draft_is_promoted_only_after_verified_uploads(
 @pytest.mark.parametrize("mode", ["Draft", "Release"])
 def test_bad_upload_never_promotes_draft(candidate, tmp_path, monkeypatch, mode):
     monkeypatch.setenv("RELEASE_MODE", mode)
+    owned_release(candidate[1])
     draft = public_release(candidate[1], draft=True)
     draft["assets"] = []
     monkeypatch.setattr(release, "find_release", Mock(return_value=draft))
@@ -1024,6 +1087,7 @@ def test_waiver_updates_existing_draft_notes_but_never_public_notes(candidate, t
     prepared = release.read(tmp_path / "publication.json")
     prepared["candidate"] = value
     release.write(tmp_path / "publication.json", prepared)
+    owned_release(value)
     staged = public_release(value, draft=draft)
     staged["body"] = "Existing notes."
     monkeypatch.setattr(release, "tag_commit", Mock(return_value=SOURCE))
@@ -1048,9 +1112,12 @@ def test_waiver_updates_existing_draft_notes_but_never_public_notes(candidate, t
         network.assert_not_called()
 
 
-@pytest.mark.parametrize("change", [{"draft": False}, {"target_commitish": "f" * 40}, {"assets": []}])
+@pytest.mark.parametrize("change", [
+    {"draft": False}, {"target_commitish": "f" * 40}, {"assets": []}, {"tag_name": "v9.9.9"},
+])
 def test_draft_requires_fresh_identity_and_asset_verification(candidate, tmp_path, monkeypatch, change):
     monkeypatch.setenv("RELEASE_MODE", "Draft")
+    owned_release(candidate[1])
     staged = public_release(candidate[1], draft=True)
     monkeypatch.setattr(release, "find_release", Mock(return_value=staged))
     monkeypatch.setattr(release, "tag_commit", Mock(return_value=None))
@@ -1062,18 +1129,220 @@ def test_draft_requires_fresh_identity_and_asset_verification(candidate, tmp_pat
     assert all("method" not in call.kwargs for call in network.call_args_list)
 
 
-@pytest.mark.parametrize("conflict", ["tag", "digest", "missing"])
+@pytest.mark.parametrize("conflict", ["tag", "release-tag", "digest", "missing"])
 def test_publication_never_overwrites_conflicting_assets(candidate, monkeypatch, tmp_path, conflict):
+    owned_release(candidate[1])
     published = public_release(candidate[1])
     if conflict == "digest":
         published["assets"][0]["digest"] = "sha256:wrong"
     elif conflict == "missing":
         published["assets"] = []
+    elif conflict == "release-tag":
+        published["tag_name"] = "v9.9.9"
     monkeypatch.setattr(release, "tag_commit", Mock(return_value=AUTOMATION if conflict == "tag" else SOURCE))
     monkeypatch.setattr(release, "find_release", Mock(return_value=published))
     with pytest.raises(ValueError):
         release.publish(candidate[0], tmp_path / "receipt", tmp_path / "publication.json")
     release.github.assert_not_called()
+
+
+@pytest.mark.parametrize("mode,draft", [("Draft", True), ("Release", True), ("Release", False)])
+@pytest.mark.parametrize("assets", [0, 1, 2])
+def test_new_run_cannot_adopt_an_existing_version_even_when_assets_match(
+        candidate, tmp_path, monkeypatch, mode, draft, assets):
+    directory, value = candidate
+    monkeypatch.setenv("RELEASE_MODE", mode)
+    existing = public_release(value, draft=draft)
+    existing["assets"] = existing["assets"][:assets]
+    monkeypatch.setattr(release, "find_release", Mock(return_value=existing))
+    monkeypatch.setattr(release, "tag_commit", Mock(return_value=None if draft else SOURCE))
+    writes = Mock(side_effect=AssertionError("No API writes permitted"))
+    monkeypatch.setattr(release, "api", writes)
+    with pytest.raises(ValueError, match="another run or ownership is unknown") as error:
+        release.publish(directory, tmp_path / "receipt.json", tmp_path / "publication.json")
+    assert f"https://github.com/{release.REPOSITORY}/releases/tag/v{value['wheel']['version']}" in str(error.value)
+    release.github.assert_not_called()
+    release.attach_publication_receipt.assert_not_called()
+    writes.assert_not_called()
+
+
+@pytest.mark.parametrize("assets", [0, 1, 2])
+def test_original_run_can_resume_partial_draft_without_replacing_assets(
+        candidate, tmp_path, monkeypatch, assets):
+    directory, value = candidate
+    monkeypatch.setenv("RELEASE_MODE", "Draft")
+    owned_release(value)
+    staged = public_release(value, draft=True)
+    staged["assets"] = staged["assets"][:assets]
+    monkeypatch.setattr(release, "find_release", Mock(return_value=staged))
+    monkeypatch.setattr(release, "tag_commit", Mock(return_value=None))
+    monkeypatch.setattr(release, "github", Mock(return_value=staged))
+
+    def upload(_url, _token, **kwargs):
+        item = next(item for item in (value["wheel"], value["sbom"])
+                    if release.hashlib.sha256(kwargs["data"]).hexdigest() == item["sha256"])
+        asset = {"name": item["file"], "digest": "sha256:" + item["sha256"]}
+        staged["assets"].append(asset)
+        return asset
+
+    transport = Mock(side_effect=upload)
+    monkeypatch.setattr(release, "api", transport)
+    assert release.publish(directory, tmp_path / "receipt.json", tmp_path / "publication.json")["draft"]
+    assert transport.call_count == 2 - assets
+    assert all("method" not in call.kwargs for call in release.github.call_args_list)
+    release.attach_publication_receipt.assert_not_called()
+
+
+@pytest.mark.parametrize("existing", [None, 11])
+def test_owned_release_cannot_be_replaced_or_silently_recreated(candidate, tmp_path, monkeypatch, existing):
+    owned_release(candidate[1])
+    found = {**public_release(candidate[1], draft=True), "id": existing} if existing else None
+    monkeypatch.setattr(release, "find_release", Mock(return_value=found))
+    monkeypatch.setattr(release, "tag_commit", Mock(return_value=None))
+    with pytest.raises(ValueError, match="no longer present|another run"):
+        release.publish(candidate[0], tmp_path / "receipt.json", tmp_path / "publication.json")
+    release.github.assert_not_called()
+    release.attach_publication_receipt.assert_not_called()
+
+
+def test_existing_matching_tag_without_release_is_not_a_duplicate(candidate, tmp_path, monkeypatch):
+    directory, value = candidate
+    staged = public_release(value, draft=True)
+    staged["assets"] = []
+    monkeypatch.setattr(release, "tag_commit", Mock(return_value=SOURCE))
+    monkeypatch.setattr(release, "find_release", Mock(return_value=None))
+
+    def github(resource, method="GET", data=None):
+        assert not resource.endswith("/git/refs")
+        if method in ("POST", "PATCH"):
+            staged.update(data)
+        return staged
+
+    def upload(_url, _token, **kwargs):
+        item = next(item for item in (value["wheel"], value["sbom"])
+                    if release.hashlib.sha256(kwargs["data"]).hexdigest() == item["sha256"])
+        asset = {"name": item["file"], "digest": "sha256:" + item["sha256"]}
+        staged["assets"].append(asset)
+        return asset
+
+    monkeypatch.setattr(release, "github", Mock(side_effect=github))
+    monkeypatch.setattr(release, "api", Mock(side_effect=upload))
+    assert release.publish(directory, tmp_path / "receipt.json", tmp_path / "publication.json")["draft"] is False
+    release.attach_publication_receipt.assert_called_once()
+
+
+def ownership_timeline(start, attempt):
+    ids = [str(release.UUID(int=value)) for value in range(start, start + 5)]
+    timeline, stage, phase, job, task = ids
+    return {
+        "id": timeline, "records": [
+            {"id": stage, "type": "Stage", "identifier": "Publish", "previousAttempts": []},
+            {"id": phase, "type": "Phase", "parentId": stage},
+            {"id": job, "type": "Job", "identifier": release.PUBLICATION_JOB,
+             "parentId": phase, "attempt": attempt, "state": "completed", "previousAttempts": []},
+            {"id": task, "type": "Task", "name": release.PUBLICATION_TASK, "parentId": job},
+        ],
+    }
+
+
+@pytest.mark.parametrize("history", ["current", "job-retry", "stage-retry"])
+@pytest.mark.parametrize("problem", [
+    None, "missing", "foreign-producer", "candidate", "wrong-task", "wrong-stage",
+    "foreign-build", "conflicting-receipts", "previous-active", "foreign-task",
+])
+def test_ownership_receipts_are_bound_to_this_run_and_protected_task(
+        candidate, monkeypatch, history, problem):
+    value = candidate[1]
+    current, previous = ownership_timeline(1, 2), ownership_timeline(20, 1)
+    current_job, current_task = current["records"][2:]
+    current_job["state"] = "inProgress"
+    monkeypatch.setenv("SYSTEM_JOBID", current_job["id"])
+    monkeypatch.setenv("SYSTEM_JOBATTEMPT", "2")
+    if history == "job-retry":
+        current_job["previousAttempts"] = [{
+            "timelineId": previous["id"], "recordId": previous["records"][2]["id"], "attempt": 1,
+        }]
+    elif history == "stage-retry":
+        current["records"][0]["previousAttempts"] = [{
+            "timelineId": previous["id"], "recordId": previous["records"][0]["id"], "attempt": 1,
+        }]
+    origin = current if history == "current" else previous
+    origin_job, origin_task = origin["records"][2:]
+    evidence = release.ownership_record(deepcopy(value), 10, origin_job["id"])
+    if problem == "foreign-producer":
+        evidence["candidate"]["producer"]["build"] = "899"
+    elif problem == "candidate":
+        evidence["candidate"]["wheel"]["sha256"] = "d" * 64
+    elif problem == "wrong-task":
+        origin_task["name"] = "Untrusted qualification output"
+    elif problem == "wrong-stage":
+        origin["records"][0]["identifier"] = "Unit"
+    elif problem == "previous-active":
+        previous["records"][2]["state"] = "inProgress"
+
+    def attachment_path(timeline, task):
+        return (f"build/builds/900/{timeline['id']}/{task['id']}/attachments/"
+                f"{release.OWNERSHIP_ATTACHMENT}/{release.OWNERSHIP_FILE}")
+
+    attachments = {} if problem == "missing" else {attachment_path(origin, origin_task): evidence}
+    if problem == "foreign-task":
+        foreign = ownership_timeline(40, 1)
+        foreign["records"][0]["identifier"] = "Unit"
+        foreign["records"][2]["identifier"] = "Unit.Unit.__default"
+        origin["records"].extend(foreign["records"])
+        attachments = {attachment_path(origin, foreign["records"][3]): evidence}
+    if problem == "conflicting-receipts":
+        current_job["previousAttempts"] = [{
+            "timelineId": previous["id"], "recordId": previous["records"][2]["id"], "attempt": 1,
+        }]
+        attachments[attachment_path(current, current_task)] = release.ownership_record(value, 10, current_job["id"])
+        attachments[attachment_path(previous, previous["records"][3])] = release.ownership_record(
+            value, 11, previous["records"][2]["id"],
+        )
+
+    def ado(resource, **kwargs):
+        if resource == "build/builds/900":
+            return {
+                "id": 899 if problem == "foreign-build" else 900,
+                "definition": {"id": int(value["producer"]["definition"])},
+                "project": {"id": PROJECT}, "repository": {"id": release.REPOSITORY, "type": "GitHub"},
+                "sourceVersion": AUTOMATION, "sourceBranch": "refs/heads/dev",
+            }
+        if resource == "build/builds/900/timeline":
+            return current
+        if resource == f"build/builds/900/timeline/{previous['id']}":
+            return previous
+        assert resource.endswith("/" + release.OWNERSHIP_FILE) and kwargs == {"missing": True}
+        return deepcopy(attachments.get(resource))
+
+    network = Mock(side_effect=ado)
+    monkeypatch.setattr(release, "ado", network)
+    if (problem in ("foreign-producer", "candidate", "wrong-stage", "foreign-build", "conflicting-receipts")
+            or problem == "wrong-task" and history == "current"
+            or problem == "previous-active" and history != "current"):
+        with pytest.raises(ValueError):
+            OWNERSHIP_READER(value)
+    elif problem in ("missing", "wrong-task", "foreign-task"):
+        assert OWNERSHIP_READER(value) is None
+    else:
+        assert OWNERSHIP_READER(value) == evidence
+    assert all("method" not in call.kwargs for call in network.call_args_list)
+    release.github.assert_not_called()
+    release.attach_publication_receipt.assert_not_called()
+
+
+def test_ownership_attachment_file_is_never_overwritten(candidate, tmp_path):
+    directory, value = candidate
+    receipt = tmp_path / "receipt.json"
+    release.retain_publication_ownership(value, 10, receipt)
+    path = release.attach_publication_receipt.call_args.args[0]
+    original = path.read_bytes()
+    release.attach_publication_receipt.reset_mock()
+    with pytest.raises(ValueError, match="different evidence"):
+        release.retain_publication_ownership(value, 11, receipt)
+    assert path.read_bytes() == original
+    assert path not in directory.iterdir()
+    release.attach_publication_receipt.assert_not_called()
 
 
 def test_index_rejects_draft_before_fork_access(candidate, monkeypatch, tmp_path):
@@ -1157,9 +1426,11 @@ def test_yaml_parallel_qualification_requires_all_gates_and_no_default_publicati
             if isinstance(dependency, dict):
                 continue
             assert f"eq(dependencies.{dependency}.result, 'Succeeded')" in stages[name]["condition"]
-    assert "$(" not in stages["Integration"]["jobs"][0]["displayName"]
-    strategy = stages["Integration"]["jobs"][0]["strategy"]
-    assert strategy["maxParallel"] == 0
+    job, = stages["Integration"]["jobs"]
+    assert "$(" not in job["displayName"]
+    assert "strategy" not in job
+    assert job["templateContext"]["outputs"][0]["artifact"] == "release-integration-$(System.JobAttempt)"
+    assert "cohort" not in json.dumps(job).lower()
     assert stages["Unit"]["dependsOn"] == "Resolve"
     assert stages["Integration"]["dependsOn"] == ["Resolve", "Build", "Security", "CommandLint", "IndexCompatibility"]
     assert "dependencies.Unit" not in stages["Integration"]["condition"]
@@ -1181,7 +1452,6 @@ def test_yaml_parallel_qualification_requires_all_gates_and_no_default_publicati
     assert "ReleaseStorageServiceConnection" not in json.dumps(template)
     assert "Upload wheel only" not in json.dumps(template)
     assert "eq(dependencies.Unit.result, 'Succeeded')" in stages["Publish"]["condition"]
-    assert "candidate.matrix" in strategy["matrix"]
     job = stages["Publish"]["jobs"][0]
     assert job["templateContext"]["type"] == "releaseJob"
     assert job["templateContext"]["isProduction"] is True

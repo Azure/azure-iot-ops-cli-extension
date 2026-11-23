@@ -27,116 +27,85 @@ We also regularly utilize GitHub Codespaces, and have automated this environment
 
 ## Released-version monitors
 
-Thin cloud/track `release-monitor*.yml` entry points share health stages for eight definitions:
-`Azure IoT Operations CLI - Release Health (<Public|Fairfax> <v1|v2|v3|Preview>)`.
-The slots mean newest, previous and third explicitly supported milestone, not CLI
-version numbers. `.azure-devops/release-monitors.json` currently maps `v1` to `1.5`,
-`v2` to `1.4` and `v3` to `1.3`. Update that reviewed mapping when support changes;
-pipeline IDs, names, dashboard references and configured resource groups stay stable.
-Discovery selects the newest published CLI patch for each configured stable runtime
-family. A newer milestone does not automatically move or invalidate the selected
-support window. Manifests retain the internal slot; run titles show the configured
-runtime family and actual CLI/runtime versions instead of `v1`/`v2`/`v3`.
-Updating the JSON support mapping changes the resolved run titles without editing
-pipeline YAML. The pre-run form cannot display a JSON-derived version label.
+Release Health runs integration tests against **published** CLI wheels. Eight ADO
+definitions, `Azure IoT Operations CLI - Release Health (<Public|Fairfax> <v1|v2|v3|Preview>)`,
+share one template through thin `release-monitor*.yml` files. They default to `dev`.
 
-The dedicated `Preview` slot follows the `v1` released CLI selection, but tests
-only that wheel's bundled Preview runtime. It is not a separate preview CLI package.
-`release-monitor-preview.yml` and `release-monitor-fairfax-preview.yml` default to
-**Integration tests**, **Default scenarios**, **Python 3.13** and **Runtime: Preview**;
-Stable is not selectable in these definitions. Their run titles show `preview`
-and the actual frozen Preview runtime version, not the wheel's Stable runtime.
+| Slot | Tests | Configured in |
+| --- | --- | --- |
+| v1 / v2 / v3 | Newest published CLI patch for runtime `1.5` / `1.4` / `1.3` | `.azure-devops/release-monitors.json` |
+| Preview | Only the v1 CLI's bundled Preview runtime | Follows v1 |
 
-Integration and health share **Mode**, **Cloud**, **Public region**, **Scenarios**,
-**Python**, **Channels**, **Upgrade source (only for upgrade-path test)** and
-**Timeout (min)**, in that order. Health keeps its assigned support slot internally,
-with no Version selector, and defaults to integration mode. **Dry run** resolves
-the plan without deploying resources.
-**Upgrade source** supplies the pinned older runtime and matching CLI wheel for
-`upgrade-path`; leave `{}` for other scenarios, including same-version `upgrade`.
-Manual overrides use the selected
-cloud's reviewed connection and resource group, subject to pipeline authorization.
-They retain published-wheel testing, are frozen with the release selection, and
-are marked `-manual`; their result follows the selected tests and required evidence,
-not whether the selections match scheduled defaults. Each selected runtime channel
-is frozen from the published release and verified against the deployed runtime.
-Release **Public region** controls the integration cluster region and is bound into the
-candidate and child-run validation. Resource and namespace locations remain
-separately controlled by the scenario/cloud configuration.
-All three pipelines use named dropdowns for the supported Arc/AIO public cluster
-regions, retaining **West US 2** as the default. **Cloud** choices are **Public**
-and **Fairfax**. Fairfax always uses **US Gov Virginia**; the **Public region**
-dropdown remains visible but is ignored because ADO cannot dynamically hide it.
+- Update `release-monitors.json` when the support window changes. IDs, names and resource groups stay the same.
+- Run titles show the actual CLI and runtime versions, not the slot.
 
-`templates/integration-profile.yml` supplies reviewed infrastructure settings;
-connection, subscription, resource group and custom-locations identity are not
-manual inputs. Pipeline 164 defines the queue-time variable `ReleaseCandidateBuildId=0`.
-Release automation overrides it to select its exact candidate; ordinary users do
-not enter a release build ID.
+### Run options
 
-Each run verifies GitHub's wheel SHA256, metadata, runtime profile and exact
-released source. It uses that release's scenario configuration, tests and fixtures
-with current native orchestration. The deployed AIO extension version/train must
-match the selected cloud's bundled runtime. All planned scenarios, their latest
-attempts, JUnit and cleanup must pass; monitor evidence cannot qualify a release.
-No AIO Mooncake definitions are generated. Older releases without Fairfax profiles
-are explicitly blocked, never redirected to the Public profile. Fairfax currently
-supports only `v1`; `v2`, `v3` and `Preview` stay disabled and are rejected before acquisition.
-CLI 2.11.2 bundles Public Preview 1.6.0-preview.60, but its Fairfax profile supports
-only Stable 1.5.46 and explicitly rejects Preview deployment. Do not enable Fairfax
-Preview, authorize additional infrastructure, or substitute a Public/Stable profile
-until the published CLI and service support a reviewed Fairfax Preview runtime.
-The released Fairfax test-helper catalog is bound to the active cloud in every
-pytest worker, without modifying product files or weakening runtime assertions.
+Integration (164) and Health share these options, in this order:
 
-Generate disabled definition payloads using an existing same-repository definition:
+| Option | Notes |
+| --- | --- |
+| Mode | **Dry run** plans without deploying. 164 defaults to Dry run; Health to **Integration tests**. |
+| Cloud | Public or Fairfax. Fairfax always uses US Gov Virginia and ignores Region. |
+| Region (Public cloud only) | Cluster region, default **West US 2**. Resource locations come from scenario/cloud config. |
+| Scenarios | The same 10 default scenarios. 164 defaults to `edge`; Health selects all. Health skips scenarios an older release lacks. |
+| Python | Default 3.13. |
+| Runtime | Stable and/or Preview, default Stable. Preview definitions allow only Preview. |
+| Upgrade source (only for upgrade-path test) | Pinned older runtime and CLI wheel (JSON). A non-empty value adds `upgrade-path`; otherwise leave `{}`. |
+| Timeout (min) | 90, 180 or 360 per scenario, default 360. |
+
+- `templates/integration-profile.yml` sets connection, subscription, resource group and custom-locations ID. They are not inputs.
+- Release automation sets 164's queue-time variable `ReleaseCandidateBuildId` (default `0`). Users don't set it.
+- Each release queues one 164 run with every default scenario on Stable and Preview. That run skips Lint and Unit; the release's Unit stage and PR CI cover them.
+- In 164, Trust Bundle runs alongside the other scenarios.
+- `broker-diagnostics-removal` runs only from the GitHub `int_test.yml` workflow.
+
+### What each run checks
+
+- The wheel SHA256, metadata, runtime profile and exact released source.
+- That release's scenarios, tests and fixtures, with current orchestration.
+- The deployed AIO version and train match the CLI's bundled runtime.
+- Every planned scenario, JUnit result and cleanup passes. Health results cannot qualify a release.
+- Retries reuse the first attempt's release selection.
+
+### Fairfax
+
+- Only `v1` is supported. `v2`, `v3` and `Preview` stay disabled and fail before acquisition.
+- Releases without a Fairfax profile are blocked, never redirected to Public.
+- CLI 2.11.2's Fairfax profile supports only Stable 1.5.46. Don't enable Fairfax Preview until a reviewed Fairfax Preview runtime ships.
+- Fairfax needs its own ARM connection, subscription and custom-locations ID.
+- Released test helpers use the active cloud's catalog in every pytest worker; product files are not modified.
+- There are no Mooncake definitions.
+
+### Create or update definitions
 
 ```bash
 az pipelines build definition show --id 167 --org https://dev.azure.com/azureiotdevxp \
   --project 9c543948-e573-4146-832a-bf16b1531204 > baseline.json
 python tools/release_monitor.py definitions \
   --configuration .azure-devops/release-monitors.json --baseline baseline.json \
-  --branch refs/heads/<reviewed-automation-branch> --output definitions.json
+  --branch refs/heads/dev --output definitions.json
 ```
 
-Apply each payload through the ADO build-definitions API after the reviewed branch
-exists. Reuse definition **167** for Public v1; update matching definitions rather
-than creating duplicates. Integration **164** and Release **165** stay separate.
-Payloads use `\official\release-health`,
-disabled queueing, no triggers/schedules, and non-overridable variables. The runner
-also checks definition name, repository and every configured target variable.
-Never store personal account passwords or tokens in these files.
+- Apply each payload with the ADO build-definitions API. Reuse **167** for Public v1; update existing definitions, don't duplicate them.
+- Payloads are disabled, under `\official\release-health`, with no triggers and non-overridable variables.
+- The runner checks definition name, repository and every target variable.
+- Integration **164** and Release **165** stay separate.
+- Never store personal passwords or tokens in these files.
 
-Before enabling the reviewed Public schedules, an owner must approve automation
-connections, resource scopes/RBAC, capacity and live qualification. Public tests use
-the WIF connection `sc-iot-ops-cli-public-it`; the client identity is read from the
-connection, not hard-coded in test configuration. Each scenario attempt uses
-the configured, pre-created resource group. Released Trust Bundle tests reuse
-fixed SecretSync names. Public Release Health and Branch Health TrustBundle stages
-use `maxParallel: 1` and `lockBehavior: sequential` with the shared environment
-`ops-wlif-a386d5ea-ea90-441a-8263-d816368c84a1-ops-cli-int-test-rg` to serialize
-participating stages across runs and tracks through cleanup. An administrator must
-configure and retain that environment's **Exclusive Lock** check; `lockBehavior`
-alone does not provide a lock.
+### Before enabling schedules
 
-This shared lock does not cover Fairfax, native ADO integration, or GitHub/local
-executions. Do not overlap executions that still use fixed SecretSync names in
-the same group unless they participate in equivalent serialization or use isolated
-groups. For those unprotected legacy tests, use one Python version and one runtime
-channel per invocation. Current source tests using per-instance SecretSync names
-have separate isolation, as described in [Workload identity scheduling](docs/integration-tests.md#workload-identity-scheduling).
-The runner never creates or deletes a resource group. Cleanup must target only the attempt's
-owned resources, including resources created by its test fixtures.
-An administrator must provision the configured groups once and grant the service
-identity the resource-specific deployment and RBAC operations needed within them;
-do not grant subscription-wide Owner merely to make the pipeline pass.
-Then enable queueing. Every health run executes the selected integration scenarios
-and requires their results and cleanup evidence. Retries reuse
-the first published release selection. Public daily schedules below take effect only
-after the reviewed YAML reaches `dev` and operational rollout is completed.
-Fairfax schedules are **held**, not authorized for activation. Fairfax needs its own ARM connection, subscription and
-tenant-specific custom-locations object ID; a source PR does not qualify older wheels.
-Historical source-health runs retained on definition 167 are not released-version evidence.
+- An owner approves connections, RBAC scopes, capacity and a live run.
+- Public uses the WIF connection `sc-iot-ops-cli-public-it`. The client ID comes from the connection.
+- Provision resource groups once. Grant only resource-scoped deployment and RBAC rights, never subscription Owner.
+- The runner never creates or deletes resource groups. Cleanup removes only the attempt's own resources.
+- Public Release and Branch Health TrustBundle stages share the environment
+  `ops-wlif-a386d5ea-ea90-441a-8263-d816368c84a1-ops-cli-int-test-rg`
+  (`maxParallel: 1`, `lockBehavior: sequential`). An admin must keep its **Exclusive Lock** check; `lockBehavior` alone is not a lock.
+- That lock doesn't cover Fairfax, pipeline 164, or GitHub/local runs. Don't overlap runs that use fixed SecretSync names in the same group; use one Python and one runtime per run. See [Workload identity scheduling](docs/integration-tests.md#workload-identity-scheduling).
+- Older source-health runs on definition 167 are not released-version evidence.
+
+### Schedules
 
 | Definition | Health target | Planned daily UTC cron | YAML status |
 | --- | --- | --- | --- |
@@ -150,18 +119,10 @@ Historical source-health runs retained on definition 167 are not released-versio
 | 187 | Branch Fairfax GA | `0 14 * * *` | Held; `schedules: []` |
 | 178 / 179 / 181 | Unsupported Fairfax v2 / v3 / Preview | None | Off; `schedules: []` |
 
-Public schedules include only `dev`, use `always: true`, and default to full
-**Integration tests**. `batch: true` is not relied on with `always: true`.
-Prepare and each health scenario job immediately before provisioning use their
-job token to query active builds of the same ADO definition. First attempts reject
-older active builds. If either `System.StageAttempt` or `System.JobAttempt` is
-greater than 1, any other active build blocks the retry, including newer builds.
-Missing or invalid attempt counters, unavailable API/auth or ambiguous evidence
-fail closed, not as a passed validation. Grant the Build Service scoped **View builds**
-access for this lookup. Manual runs and existing ownership-checked cleanup remain
-unchanged. This is a point-in-time check, not an atomic lock or a guarantee against
-every race; retain the shared Public TrustBundle environment's Exclusive Lock check.
-Old runs retain their original automation and are not retroactively protected.
+- Public schedules run only from `dev`, use `always: true`, and run full **Integration tests**. Fairfax schedules are held.
+- Before provisioning, each run checks for other active builds of the same definition. First attempts reject older active builds; retries are blocked by any other active build.
+- Missing attempt counters, API or auth failures fail closed. Grant the Build Service scoped **View builds** access.
+- This is a point-in-time check, not a lock; keep the Exclusive Lock check. Old runs are not protected retroactively.
 
 ### Fixed-group isolation and recovery
 

@@ -504,6 +504,16 @@ def health_yaml(extension, cloud, track):
     return f".azure-devops/release-monitor{suffix}.yml"
 
 
+def default_scenarios():
+    import yaml
+
+    catalog = Path(__file__).resolve().parents[1] / ".github/test-scenarios.yml"
+    scenarios = yaml.safe_load(catalog.read_text(encoding="utf-8"))["scenarios"]
+    return sorted(
+        item["name"] for item in scenarios if not item.get("manual_only") and not item.get("requires_baseline")
+    )
+
+
 def bind_profile(manifest, config):
     configured_cloud = os.environ["MONITORCLOUD"]
     configured_track = os.environ["MONITORTRACK"]
@@ -538,7 +548,8 @@ def bind_profile(manifest, config):
         raise ValueError("Selected services are unsupported in the selected cloud.")
     expected = {
         "cloud": configured_cloud, "version": configured_track, "region": configured["MonitorRegion"],
-        "services": sorted(configured.get("MonitorServices", "Default scenarios").split(",")),
+        "services": sorted(configured["MonitorServices"].split(",")) if "MonitorServices" in configured
+        else default_scenarios(),
         "python": ["3.13"], "mode": "Integration tests",
     }
     actual = {
@@ -617,7 +628,7 @@ def run_title(manifest, build):
         raise ValueError("Dedicated Preview health has no frozen preview runtime.")
     selected = manifest.get("profile", {}).get("selected")
     scopes = selected["services"] if selected else ()
-    if scopes == ["Default scenarios"]:
+    if manifest["extension"] == "azure-iot-ops" and sorted(scopes) == default_scenarios():
         scopes = ()
     regions = selected["region"].split(",") if selected else ()
     channels = selected["channels"] if selected else []
