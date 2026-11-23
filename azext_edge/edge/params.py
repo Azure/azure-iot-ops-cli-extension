@@ -1560,7 +1560,8 @@ def load_iotops_arguments(self, _):
             options_list=["--force"],
             arg_type=get_three_state_flag(),
             help="Bypass version compatibility checks for stable-to-stable upgrades. "
-            "Does not bypass preview, cross-train or upgrade ownership restrictions.",
+            "Internal integration/dev trains may be used within the same runtime channel. "
+            "Does not bypass GA/preview boundaries, preview version checks or upgrade ownership restrictions.",
             arg_group="Extension Config",
             deprecate_info=context.deprecate(hide=True),
         )

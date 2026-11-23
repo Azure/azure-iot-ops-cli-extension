@@ -6,10 +6,12 @@
 
 import random
 import os
+import shlex
 from copy import deepcopy
 from typing import Any, Dict, List
 
 import pytest
+from azure.cli.core import get_default_cli
 
 from azext_edge.edge.providers.orchestration.common import (
     EXTENSION_ALIAS_TO_TYPE_MAP,
@@ -17,10 +19,13 @@ from azext_edge.edge.providers.orchestration.common import (
     EXTENSION_TYPE_PLATFORM,
 )
 from azext_edge.edge.util import parse_kvp_nargs
+from azext_edge.edge.providers.orchestration.runtime_profiles import (
+    RuntimeChannel, parse_runtime_version, resolve_runtime_identity,
+)
 
 from ...generators import generate_random_string
 from ...helpers import process_additional_args, run, strip_quotes
-from ...runtime_checks import assert_runtime, configured_baseline
+from ...runtime_checks import assert_runtime, configured_baseline, read_runtime
 
 EXTENSION_TYPE_TO_ALIAS_MAP = {
     val: key
@@ -52,6 +57,8 @@ def upgrade_int_setup(settings):
 
 @pytest.mark.upgrade
 def test_upgrade(upgrade_int_setup):
+    if os.environ.get("azext_edge_internal_upgrade_versions"):
+        pytest.skip("Dedicated internal-upgrade validation is configured.")
     additional_args = upgrade_int_setup["additionalUpgradeArgs"] or ""
     resource_group = upgrade_int_setup["resourceGroup"]
     instance_name = upgrade_int_setup["instanceName"]
@@ -112,6 +119,44 @@ def test_upgrade(upgrade_int_setup):
     assert_extensions(cluster_id=cluster_id, original_ext_map=original_ext_map, additional_args=additional_args)
     if channel:
         assert_runtime(instance_name, resource_group, channel)
+
+
+@pytest.mark.upgrade
+@pytest.mark.serial
+def test_internal_dev_upgrades(upgrade_int_setup):
+    versions = os.environ.get("azext_edge_internal_upgrade_versions")
+    if not versions:
+        pytest.skip("Set azext_edge_internal_upgrade_versions to two ascending dev build versions.")
+    assert not os.environ.get("azext_edge_runtime_channel"), (
+        "Internal upgrades require a dedicated instance outside bundled runtime qualification."
+    )
+    assert get_default_cli().cloud.name == "AzureCloud", "Dev upgrade validation requires Public Azure."
+    assert not upgrade_int_setup["additionalUpgradeArgs"], "Do not override dedicated internal-upgrade arguments."
+    versions = [version.strip() for version in versions.split(",")]
+    assert len(versions) == 2, "Supply exactly two ascending dev build versions."
+    targets = [
+        resolve_runtime_identity(version, "dev", allow_unbundled_dev=True) for version in versions
+    ]
+    name, group = upgrade_int_setup["instanceName"], upgrade_int_setup["resourceGroup"]
+    source, _, _ = read_runtime(name, group, allow_unbundled_integration=True, allow_unbundled_dev=True)
+    source.require_ready()
+    assert source.identity.channel == RuntimeChannel.STABLE and source.identity.train in {"stable", "integration"}, (
+        "Start internal-upgrade validation from a GA stable/integration baseline."
+    )
+    assert source.auto_upgrade_minor_version is False, "Disable automatic upgrades on the dedicated instance."
+    assert parse_runtime_version(source.identity.version) < parse_runtime_version(targets[0].version)
+    assert parse_runtime_version(targets[0].version) < parse_runtime_version(targets[1].version)
+    for target in targets:
+        run(shlex.join([
+            "az", "iot", "ops", "upgrade", "-n", name, "-g", group,
+            "--ops-version", target.version, "--ops-train", target.train,
+            "--force", "--yes", "--no-progress",
+        ]))
+        observed, _, _ = read_runtime(name, group, allow_unbundled_integration=True, allow_unbundled_dev=True)
+        observed.require_ready()
+        assert observed.instance_id == source.instance_id
+        assert observed.identity == target, f"Expected {target}, observed {observed.identity}."
+        assert observed.auto_upgrade_minor_version is False
 
 
 def assert_extensions(cluster_id: str, original_ext_map: Dict[str, Any], additional_args: str = ""):
