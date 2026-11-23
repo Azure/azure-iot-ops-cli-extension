@@ -28,9 +28,9 @@ def target_track():
     return tracks[slot]
 
 
-def bundle_manifest(bundle):
+def bundle_manifest(bundle, require_wheel=True):
     manifest = verify_bundle(
-        bundle, extension="azure-iot-ops", cloud=os.environ["MONITOR_CLOUD"],
+        bundle, require_wheel=require_wheel, extension="azure-iot-ops", cloud=os.environ["MONITOR_CLOUD"],
         slot=os.environ["MONITOR_TRACK"], track=target_track(), automation_commit=native.producer()["commit"],
     )
     if (manifest.get("kind") == "branch") != (os.environ.get("MONITOR_KIND") == "branch"):
@@ -43,20 +43,34 @@ def plan(bundle):
     manifest = bundle_manifest(bundle)
     if manifest["blockers"]:
         raise ValueError("; ".join(manifest["blockers"]))
-    native.plan(bundle, scenario_source=bundle / "source")
+    native.plan(bundle, scenario_source=bundle / "source", skip_unavailable=True)
     native.candidate(bundle)
     for filename in ("plan.json", "candidate.json"):
         value = native.read(bundle / filename)
         value["monitor"] = manifest
         native.write(bundle / filename, value)
-    value = native.read(bundle / "plan.json")
+    announce(
+        native.read(bundle / "plan.json"), manifest, bundle,
+        native.release.wheel_metadata(bundle / manifest["wheel"]["name"]),
+    )
+
+
+def title(bundle):
+    """Title a Branch Health run from its acquired source before the wheel exists."""
+    bundle = Path(bundle).resolve()
+    manifest = bundle_manifest(bundle, require_wheel=False)
+    value = {
+        "producer": native.producer(), "cloud": native.cloud_name(),
+        "rows": [{"scenario": scenario} for scenario in native.select_scenarios(bundle / "source")],
+        "locations": {"clusterRegion": native.required("OPS_CLUSTER_REGION")},
+    }
+    announce(value, manifest, bundle, manifest["source"]["version"])
+
+
+def announce(value, manifest, bundle, version):
     channels = {row["scenario"]["channel"] for row in value["rows"]}
     runtimes = [manifest["runtimes"][channel]["version"] for channel in ("stable", "preview") if channel in channels]
-    name = native.run_title(
-        value, native.required("OPS_MODE"),
-        native.release.wheel_metadata(bundle / manifest["wheel"]["name"]),
-        runtimes, scenario_source=bundle / "source",
-    )
+    name = native.run_title(value, native.required("OPS_MODE"), version, runtimes, scenario_source=bundle / "source")
     print(f"##vso[build.updatebuildnumber]{name}", flush=True)
 
 
@@ -154,11 +168,13 @@ def gate(output):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command", choices=["plan", "prepare", "gate"])
+    parser.add_argument("command", choices=["plan", "title", "prepare", "gate"])
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args(argv)
     if args.command == "plan":
         plan(args.output)
+    elif args.command == "title":
+        title(args.output)
     elif args.command == "prepare":
         prepare(args.output.resolve())
     else:

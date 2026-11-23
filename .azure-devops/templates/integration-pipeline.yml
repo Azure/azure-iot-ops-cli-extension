@@ -183,8 +183,10 @@ stages:
                   condition: succeededOrFailed()
             variables:
               releaseBuildId: ${{ parameters.releaseBuildId }}
+      # Release children skip source checks; the release's Unit stage and PR CI cover them.
       - stage: Lint
         dependsOn: Plan
+        condition: and(succeeded(), eq(coalesce(variables['ReleaseCandidateBuildId'], '0'), '0'))
         jobs:
           - job: Lint
             timeoutInMinutes: 30
@@ -217,6 +219,7 @@ stages:
       - stage: Unit
         displayName: Unit
         dependsOn: Plan
+        condition: and(succeeded(), eq(coalesce(variables['ReleaseCandidateBuildId'], '0'), '0'))
         jobs:
           - job: Unit
             timeoutInMinutes: 60
@@ -261,7 +264,12 @@ stages:
       - stage: Integration
         displayName: Integration
         dependsOn: [Plan, Build, Lint]
-        condition: and(succeeded(), eq(dependencies.Plan.outputs['Plan.plan.hasParallel'], 'true'))
+        condition: >-
+          and(not(canceled()), eq(dependencies.Plan.result, 'Succeeded'),
+          eq(dependencies.Build.result, 'Succeeded'),
+          or(eq(dependencies.Lint.result, 'Succeeded'),
+          and(ne(coalesce(variables['ReleaseCandidateBuildId'], '0'), '0'), eq(dependencies.Lint.result, 'Skipped'))),
+          eq(dependencies.Plan.outputs['Plan.plan.hasParallel'], 'true'))
         variables:
           planArtifact: $[ stageDependencies.Plan.Plan.outputs['plan.artifact'] ]
           candidateArtifact: $[ stageDependencies.Build.Build.outputs['candidate.artifact'] ]
@@ -273,11 +281,12 @@ stages:
               matrix: $[ stageDependencies.Plan.Plan.outputs['plan.parallelMatrix'] ]
       - stage: TrustBundle
         displayName: Trust Bundle
-        dependsOn: [Plan, Build, Lint, Integration]
+        dependsOn: [Plan, Build, Lint]
         condition: >-
           and(not(canceled()), eq(dependencies.Plan.result, 'Succeeded'),
-          eq(dependencies.Build.result, 'Succeeded'), eq(dependencies.Lint.result, 'Succeeded'),
-          in(dependencies.Integration.result, 'Succeeded', 'Failed', 'Skipped'),
+          eq(dependencies.Build.result, 'Succeeded'),
+          or(eq(dependencies.Lint.result, 'Succeeded'),
+          and(ne(coalesce(variables['ReleaseCandidateBuildId'], '0'), '0'), eq(dependencies.Lint.result, 'Skipped'))),
           eq(dependencies.Plan.outputs['Plan.plan.hasTrustBundle'], 'true'))
         variables:
           planArtifact: $[ stageDependencies.Plan.Plan.outputs['plan.artifact'] ]
@@ -293,8 +302,10 @@ stages:
         dependsOn: [Plan, Build, Lint, Unit, Integration, TrustBundle]
         condition: >-
           and(not(canceled()), eq(dependencies.Plan.result, 'Succeeded'),
-          eq(dependencies.Build.result, 'Succeeded'), eq(dependencies.Lint.result, 'Succeeded'),
-          eq(dependencies.Unit.result, 'Succeeded'),
+          eq(dependencies.Build.result, 'Succeeded'),
+          or(and(eq(dependencies.Lint.result, 'Succeeded'), eq(dependencies.Unit.result, 'Succeeded')),
+          and(ne(coalesce(variables['ReleaseCandidateBuildId'], '0'), '0'), eq(dependencies.Lint.result, 'Skipped'),
+          eq(dependencies.Unit.result, 'Skipped'))),
           in(dependencies.Integration.result, 'Succeeded', 'Skipped'),
           in(dependencies.TrustBundle.result, 'Succeeded', 'Skipped'))
         variables:
