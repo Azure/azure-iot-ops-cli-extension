@@ -99,7 +99,7 @@ def test_per_instance_names_isolate_certificate_lifecycle(
         settings = extension["properties"]["configurationSettings"]
         assert settings[f"connectors.values.securityPki.{setting}"] == sync_name
         assert settings["unrelated"] == "preserved"
-        assert order == ["sync", "reference"]
+        assert order == (["sync", "reference"] if kind == "client" else ["reference", "sync"])
         cluster.get_cl_resources_by_type.return_value = {SECRET_SYNC_RESOURCE_TYPE: [record]}
         shown = getattr(commands_connector, f"show_connector_opcua_{kind}")(**common)
         assert shown["name"] == sync_name
@@ -142,6 +142,11 @@ def test_list_add_failed_secretsync_put_preserves_active_reference(
     setup_mock_common_responses(
         mocked_responses, spc, record, "new-list", "mock-rg", "certificate-der", "default-spc",
     )
+
+    def update_reference(**kwargs):
+        settings.update(kwargs["properties"]["configurationSettings"])
+
+    cluster.update_aio_extension.side_effect = update_reference
     mocked_responses.add(
         responses.PUT, get_secretsync_endpoint("new-list", "mock-rg"),
         status=403, json={"error": {"code": "Forbidden"}},
@@ -150,7 +155,10 @@ def test_list_add_failed_secretsync_put_preserves_active_reference(
         getattr(commands_connector, f"add_connector_opcua_{kind}")(
             mocked_cmd, "instance-a", "mock-rg", file="/fake/certificate.der", secret_sync_name="new-list",
         )
-    cluster.update_aio_extension.assert_not_called()
+    assert [
+        call.kwargs["properties"]["configurationSettings"]
+        for call in cluster.update_aio_extension.call_args_list
+    ] == [{key: "new-list"}, {key: "active-list"}]
     assert settings == {key: "active-list", "unrelated": "preserved"}
 
 

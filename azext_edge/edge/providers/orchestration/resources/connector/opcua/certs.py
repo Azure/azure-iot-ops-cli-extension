@@ -10,9 +10,9 @@ from cryptography import x509
 from pathlib import Path
 from typing import List, Optional, Tuple, Union, cast
 
-from azure.core.exceptions import ResourceNotFoundError, HttpResponseError
+from azure.core.exceptions import AzureError, ResourceNotFoundError, HttpResponseError
 from azure.core.pipeline.transport import HttpTransport
-from azure.cli.core.azclierror import InvalidArgumentValueError, ValidationError
+from azure.cli.core.azclierror import AzureResponseError, InvalidArgumentValueError, ValidationError
 from knack.log import get_logger
 from rich.console import Console
 import yaml
@@ -147,18 +147,14 @@ class OpcUACerts(Queryable):
             resource_name=secret_sync_name,
         )
 
-        result = self._add_secrets_to_secret_sync(
+        return self._update_list_reference_then_add_secret_sync(
             secrets=[(secret_name, file_name)],
             secret_sync=opcua_secret_sync,
-            resource_group=self.resource_group_name,
             spc_name=spc_name,
             secret_sync_name=secret_sync_name,
+            reference_setting="connectors.values.securityPki.trustedCerts",
+            default_reference=OPCUA_TRUST_LIST_SECRET_SYNC_NAME,
         )
-        self._update_extension_configuration(
-            {"connectors.values.securityPki.trustedCerts": secret_sync_name},
-            f"Updating IoT Operations extension to use {secret_sync_name}...",
-        )
-        return result
 
     def issuer_add(
         self,
@@ -252,18 +248,14 @@ class OpcUACerts(Queryable):
             resource_group=self.resource_group_name,
         )
 
-        result = self._add_secrets_to_secret_sync(
+        return self._update_list_reference_then_add_secret_sync(
             secrets=[(secret_name, file_name)],
             secret_sync=opcua_secret_sync,
-            resource_group=self.resource_group_name,
             spc_name=spc_name,
             secret_sync_name=secret_sync_name,
+            reference_setting="connectors.values.securityPki.issuerCerts",
+            default_reference=OPCUA_ISSUER_LIST_SECRET_SYNC_NAME,
         )
-        self._update_extension_configuration(
-            {"connectors.values.securityPki.issuerCerts": secret_sync_name},
-            f"Updating IoT Operations extension to use {secret_sync_name}...",
-        )
-        return result
 
     def client_add(
         self,
@@ -811,6 +803,46 @@ class OpcUACerts(Queryable):
                 resource=spc,
             )
             wait_for_terminal_state(poller)
+
+    def _update_list_reference_then_add_secret_sync(
+        self,
+        *,
+        secrets: List[Tuple[str, str]],
+        secret_sync: dict,
+        spc_name: str,
+        secret_sync_name: str,
+        reference_setting: str,
+        default_reference: str,
+    ) -> dict:
+        """Update the trust/issuer reference before SecretSync and restore it on failure."""
+        extensions = self.resource_map.connected_cluster.get_extensions_by_type(EXTENSION_TYPE_OPS)
+        aio_extension = extensions.get(EXTENSION_TYPE_OPS)
+        if not aio_extension:
+            raise ResourceNotFoundError("IoT Operations extension not found.")
+        previous_reference = aio_extension["properties"].get("configurationSettings", {}).get(
+            reference_setting, default_reference
+        )
+        try:
+            # Helm must create the target trust/issuer secret before SecretSync can populate it.
+            self._update_extension_configuration(
+                {reference_setting: secret_sync_name},
+                f"Updating IoT Operations extension to use {secret_sync_name}...",
+            )
+            return self._add_secrets_to_secret_sync(
+                secrets=secrets,
+                secret_sync=secret_sync,
+                resource_group=self.resource_group_name,
+                spc_name=spc_name,
+                secret_sync_name=secret_sync_name,
+            )
+        except (AzureError, AzureResponseError):
+            self._update_extension_configuration(
+                {reference_setting: previous_reference},
+                "Restoring the previous IoT Operations extension certificate reference...",
+                removed_secret_name=secret_sync_name,
+                reference_setting=reference_setting,
+            )
+            raise
 
     def _add_secrets_to_secret_sync(
         self,
