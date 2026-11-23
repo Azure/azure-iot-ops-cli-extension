@@ -26,6 +26,7 @@ from ......util.cloud_config import CloudConfig
 from ......util.az_client import (
     get_keyvault_client,
     get_ssc_mgmt_client,
+    OperationTimeoutError,
     wait_for_terminal_state,
 )
 from ......util.common import should_continue_prompt
@@ -835,13 +836,18 @@ class OpcUACerts(Queryable):
                 spc_name=spc_name,
                 secret_sync_name=secret_sync_name,
             )
+        except OperationTimeoutError:
+            raise
         except (AzureError, AzureResponseError):
-            self._update_extension_configuration(
-                {reference_setting: previous_reference},
-                "Restoring the previous IoT Operations extension certificate reference...",
-                removed_secret_name=secret_sync_name,
-                reference_setting=reference_setting,
-            )
+            try:
+                self._update_extension_configuration(
+                    {reference_setting: previous_reference},
+                    "Restoring the previous IoT Operations extension certificate reference...",
+                    removed_secret_name=secret_sync_name,
+                    reference_setting=reference_setting,
+                )
+            except (AzureError, AzureResponseError) as rollback_error:
+                logger.error("Failed to restore the previous certificate reference: %s", rollback_error)
             raise
 
     def _add_secrets_to_secret_sync(
