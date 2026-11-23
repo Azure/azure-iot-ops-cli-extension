@@ -2124,6 +2124,9 @@ def load_iotops_help():
                       and `az iot ops create`.
                       Version-pinned upgrades and repairs require `autoUpgradeMinorVersion=false`.
                       Disable Arc automatic upgrades explicitly before proceeding.
+                      A connectors.image.tag extension config override pins the OPC UA connector image
+                      independently of the AIO release. The command warns when this pin remains.
+                      Use --clear-connector-tag (--cct) to remove only this override during upgrade.
         examples:
         - name: Upgrade the instance with minimal inputs.
           text: >
@@ -2131,6 +2134,9 @@ def load_iotops_help():
         - name: Skip the confirmation prompt for instance upgrade. Useful for CI scenarios.
           text: >
             az iot ops upgrade --name myinstance -g myresourcegroup -y
+        - name: Clear an OPC UA connector image hotfix pin while upgrading, preserving unrelated settings.
+          text: >
+            az iot ops upgrade --name myinstance -g myresourcegroup --clear-connector-tag
         - name: Set extension config settings that apply should be during upgrade.
            To remove a setting provide the key with no value.
           text: >

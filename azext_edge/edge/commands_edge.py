@@ -302,6 +302,7 @@ def upgrade_instance(
     cm_config_sync_mode: Optional[str] = None,
     no_cm_install: Optional[bool] = None,
     force: Optional[bool] = None,
+    clear_connector_tag: Optional[bool] = None,
     **kwargs,
 ) -> Optional[List[dict]]:
     from .providers.orchestration.upgrade2 import upgrade_ops_instance
@@ -327,6 +328,7 @@ def upgrade_instance(
         cm_config_sync_mode=cm_config_sync_mode,
         no_cm_install=no_cm_install,
         force=force,
+        clear_connector_tag=clear_connector_tag,
         **kwargs,
     )
 

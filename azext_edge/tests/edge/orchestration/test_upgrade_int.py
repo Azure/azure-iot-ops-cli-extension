@@ -10,17 +10,20 @@ from copy import deepcopy
 from typing import Any, Dict, List
 
 import pytest
+from azure.cli.core import get_default_cli
 
 from azext_edge.edge.providers.orchestration.common import (
     EXTENSION_ALIAS_TO_TYPE_MAP,
     EXTENSION_TYPE_ACS,
+    EXTENSION_TYPE_OPS,
     EXTENSION_TYPE_PLATFORM,
 )
+from azext_edge.edge.providers.orchestration.runtime_catalog import get_runtime_catalog
 from azext_edge.edge.util import parse_kvp_nargs
 
 from ...generators import generate_random_string
 from ...helpers import process_additional_args, run, strip_quotes
-from ...runtime_checks import assert_runtime, configured_baseline
+from ...runtime_checks import assert_runtime, configured_baseline, read_runtime
 
 EXTENSION_TYPE_TO_ALIAS_MAP = {
     val: key
@@ -110,6 +113,34 @@ def test_upgrade(upgrade_int_setup):
 
     run(f"{command} {additional_args}")
     assert_extensions(cluster_id=cluster_id, original_ext_map=original_ext_map, additional_args=additional_args)
+
+    runtime, _, extensions = read_runtime(instance_name, resource_group)
+    profile = get_runtime_catalog(get_default_cli().cloud.name).for_upgrade(runtime.identity)
+    assert runtime.identity == profile.identity, "Pin-clear coverage requires the bundled runtime to be installed."
+    ops_extension = next(
+        ext for ext in extensions if ext["properties"]["extensionType"].lower() == EXTENSION_TYPE_OPS
+    )
+    original_config = deepcopy(ops_extension["properties"].get("configurationSettings") or {})
+    assert "connectors.image.tag" not in original_config, "Do not replace an existing customer image pin."
+    try:
+        run(f"{command} --ops-config connectors.image.tag={profile.require_opcua_connector_version()}")
+        pinned_ext_map = {
+            EXTENSION_TYPE_TO_ALIAS_MAP[ext["properties"]["extensionType"].lower()]: ext
+            for ext in get_extensions(cluster_id)
+            if ext["properties"]["extensionType"].lower() in EXTENSION_TYPE_TO_ALIAS_MAP
+        }
+        assert pinned_ext_map["ops"]["properties"]["configurationSettings"]["connectors.image.tag"] == (
+            profile.require_opcua_connector_version()
+        )
+        run(f"{command} --cct")
+        assert_extensions(cluster_id, pinned_ext_map, "--cct")
+    finally:
+        current_ops = next(
+            ext for ext in get_extensions(cluster_id)
+            if ext["properties"]["extensionType"].lower() == EXTENSION_TYPE_OPS
+        )
+        if "connectors.image.tag" in current_ops["properties"].get("configurationSettings", {}):
+            run(f"{command} --ops-config connectors.image.tag")
     if channel:
         assert_runtime(instance_name, resource_group, channel)
 
@@ -121,6 +152,10 @@ def assert_extensions(cluster_id: str, original_ext_map: Dict[str, Any], additio
     # update the original extensions to the correct value
     for arg, value in additional_args_dict.items():
         arg = arg.strip("-").lower()
+        if arg in {"clear_connector_tag", "cct"}:
+            if value:
+                original_ext_map["ops"]["properties"]["configurationSettings"].pop("connectors.image.tag", None)
+            continue
         ext, _, operation = arg.partition("_")
         original_ext = original_ext_map[ext]
         if operation == "config":

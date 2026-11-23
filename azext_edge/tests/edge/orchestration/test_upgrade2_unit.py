@@ -3674,6 +3674,131 @@ def test_stale_cli_check_is_best_effort_on_a_malformed_version(bad_version):
     assert ext.is_cli_behind_cluster() is False
 
 
+@pytest.mark.parametrize(
+    "pinned,clear,ops_config,upgrade,expect_warning,expected_config",
+    [
+        (True, False, None, False, True, None),
+        (True, False, None, True, True, None),
+        (True, True, None, False, False, {"connectors.image.tag": None}),
+        (True, True, ["custom.setting=new"], True, False,
+         {"custom.setting": "new", "connectors.image.tag": None}),
+        (False, True, None, False, False, None),
+        (True, False, ["connectors.image.tag"], False, False, {"connectors.image.tag": None}),
+    ],
+)
+def test_connector_image_tag_override(
+    mocked_cmd, mocked_responses, mocked_logger, mocked_sleep, mocked_upgrade_manager,
+    pinned, clear, ops_config, upgrade, expect_warning, expected_config,
+):
+    from azext_edge.edge.commands_edge import upgrade_instance
+
+    configuration = {"custom.setting": "keep"}
+    if pinned:
+        configuration["connectors.image.tag"] = "1.4.8"
+    scenario = UpgradeScenario().set_extension(
+        EXTENSION_TYPE_OPS, config_settings=configuration,
+    )
+    kwargs = {"clear_connector_tag": clear, "ops_config": ops_config}
+    if upgrade:
+        scenario.set_extension(EXTENSION_TYPE_OPS, ext_vers="1.4.8", config_settings=configuration)
+    scenario.set_instance_mock(mocked_responses, instance_name="instance", resource_group_name="rg")
+
+    upgrade_instance(mocked_cmd, "rg", "instance", no_progress=True, confirm_yes=True, **kwargs)
+
+    warnings = [call.args[0] for call in mocked_logger.warning.call_args_list]
+    pin_warnings = [message for message in warnings if "pins the OPC UA connector" in message]
+    assert bool(pin_warnings) is expect_warning
+    if expect_warning:
+        assert "--clear-connector-tag" in pin_warnings[0]
+    patches = [
+        json.loads(call.request.body)["properties"] for call in mocked_responses.calls
+        if call.request.method == "PATCH" and f"/extensions/{EXTENSION_MONIKER_OPS}?" in call.request.url
+    ]
+    if expected_config is not None or upgrade:
+        assert len(patches) == 1
+        assert patches[0].get("configurationSettings") == expected_config
+        if upgrade:
+            assert patches[0]["version"] == scenario.init_version_map[EXTENSION_MONIKER_OPS]["version"]
+    else:
+        assert not patches
+    assert scenario.extensions[EXTENSION_TYPE_OPS]["properties"]["configurationSettings"] == configuration
+
+
+def test_clear_connector_tag_rejects_repinning(
+    mocked_cmd, mocked_responses, mocked_upgrade_manager,
+):
+    from azext_edge.edge.commands_edge import upgrade_instance
+
+    scenario = UpgradeScenario()
+    scenario.set_instance_mock(mocked_responses, instance_name="instance", resource_group_name="rg")
+    with pytest.raises(ValidationError, match="cannot be combined"):
+        upgrade_instance(
+            mocked_cmd, "rg", "instance", no_progress=True, confirm_yes=True,
+            clear_connector_tag=True, ops_config=["connectors.image.tag=1.4.8"],
+        )
+    assert not [call for call in mocked_responses.calls if call.request.method in {"PUT", "PATCH", "DELETE"}]
+
+
+@pytest.mark.parametrize("option", ["--clear-connector-tag", "--cct"])
+def test_connector_tag_clear_option_parsing(option, tmp_path, mocker):
+    from azure.cli.core import AzCli
+    from azure.cli.core.commands.parameters import resource_group_name_type
+    from azure.cli.core.parser import AzCliCommandParser
+    from knack.arguments import ignore_type
+    from knack.cli import CLI
+    from azext_edge import OpsExtensionCommandsLoader
+
+    cli = AzCli.__new__(AzCli)
+    CLI.__init__(cli, cli_name="az", config_dir=str(tmp_path))
+    cli.cloud = Mock(profile="latest")
+    cli.local_context = Mock(is_on=False)
+    cli.data["completer_active"] = False
+    cli.invocation = Mock(data={"command_string": "iot ops upgrade"})
+    loader = OpsExtensionCommandsLoader(cli)
+    cli.invocation.commands_loader = loader
+    mocker.patch("azext_edge.edge.util.version_check.check_latest")
+    loader.load_command_table([])
+    loader.command_name = "iot ops upgrade"
+    loader.command_table["iot ops upgrade"].load_arguments()
+    loader.load_arguments("iot ops upgrade")
+    loader._update_command_definitions()
+    loader.command_table["iot ops upgrade"].update_argument("cmd", ignore_type)
+    loader.command_table["iot ops upgrade"].update_argument("resource_group_name", resource_group_name_type)
+    help_handler = Mock()
+    help_handler.get_examples.return_value = []
+    parser = AzCliCommandParser(cli_ctx=cli, cli_help=help_handler, prog="az")
+    parser.load_command_table(loader)
+
+    arguments = parser.parse_args(["iot", "ops", "upgrade", "-n", "instance", "-g", "rg", option])
+
+    assert arguments.clear_connector_tag is True
+
+
+@pytest.mark.parametrize("option", ["--clear-connector-tag", "--cct"])
+def test_upgrade_integration_assertions_handle_connector_tag_clear(option, mocker):
+    from .test_upgrade_int import assert_extensions
+
+    original = {
+        "ops": {
+            "properties": {
+                "extensionType": EXTENSION_TYPE_OPS,
+                "configurationSettings": {"connectors.image.tag": "1.4.8", "custom.setting": "keep"},
+                "version": "1.5.0",
+                "releaseTrain": "stable",
+            },
+        },
+    }
+    after = deepcopy(original["ops"])
+    del after["properties"]["configurationSettings"]["connectors.image.tag"]
+    mocker.patch(
+        "azext_edge.tests.edge.orchestration.test_upgrade_int.get_extensions", return_value=[after],
+    )
+
+    assert_extensions("cluster-id", original, option)
+
+    assert original["ops"]["properties"]["configurationSettings"]["connectors.image.tag"] == "1.4.8"
+
+
 def test_stale_cli_warning_precedes_no_op_return(
     mocked_cmd: Mock,
     mocked_responses: responses,
