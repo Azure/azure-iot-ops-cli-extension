@@ -21,6 +21,7 @@ from azext_edge.edge.providers.orchestration.resources.connector.opcua.certs imp
     OpcUACerts,
 )
 from azext_edge.edge.providers.orchestration.resources.instances import SECRET_SYNC_RESOURCE_TYPE
+from azext_edge.edge.util.az_client import OperationTimeoutError
 from .conftest import (
     assemble_resource_map_mock,
     build_mock_cert,
@@ -160,6 +161,43 @@ def test_list_add_failed_secretsync_put_preserves_active_reference(
         for call in cluster.update_aio_extension.call_args_list
     ] == [{key: "new-list"}, {key: "active-list"}]
     assert settings == {key: "active-list", "unrelated": "preserved"}
+
+
+@pytest.mark.parametrize("kind,setting", [
+    ("trust", "connectors.values.securityPki.trustedCerts"),
+    ("issuer", "connectors.values.securityPki.issuerCerts"),
+])
+@pytest.mark.parametrize("timeout_stage", ["extension", "secret-sync"])
+def test_list_add_timeout_does_not_rollback(kind, setting, timeout_stage, mocker):
+    timeout = OperationTimeoutError("Operation is still running.")
+    provider = mocker.create_autospec(OpcUACerts, instance=True)
+    provider.resource_group_name = "mock-rg"
+    cluster = mocker.Mock()
+    cluster.get_extensions_by_type.return_value = {
+        EXTENSION_TYPE_OPS: {
+            "properties": {"configurationSettings": {setting: f"active-{kind}"}}
+        }
+    }
+    provider.resource_map = SimpleNamespace(connected_cluster=cluster)
+    if timeout_stage == "extension":
+        provider._update_extension_configuration.side_effect = timeout
+    else:
+        provider._add_secrets_to_secret_sync.side_effect = timeout
+
+    with pytest.raises(OperationTimeoutError) as caught:
+        OpcUACerts._update_list_reference_then_add_secret_sync(
+            provider,
+            secrets=[],
+            secret_sync={},
+            spc_name="default-spc",
+            secret_sync_name=f"new-{kind}",
+            reference_setting=setting,
+            default_reference=f"default-{kind}",
+        )
+
+    assert caught.value is timeout
+    assert provider._update_extension_configuration.call_count == 1
+    assert provider._add_secrets_to_secret_sync.call_count == (0 if timeout_stage == "extension" else 1)
 
 
 @pytest.mark.parametrize("reference", [
