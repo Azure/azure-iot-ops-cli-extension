@@ -121,7 +121,7 @@ def test_upgrade(upgrade_int_setup):
         ext for ext in extensions if ext["properties"]["extensionType"].lower() == EXTENSION_TYPE_OPS
     )
     original_config = deepcopy(ops_extension["properties"].get("configurationSettings") or {})
-    assert "connectors.image.tag" not in original_config, "Do not replace an existing customer image pin."
+    original_tag = original_config.get("connectors.image.tag")
     try:
         run(f"{command} --ops-config connectors.image.tag={profile.require_opcua_connector_version()}")
         pinned_ext_map = {
@@ -135,12 +135,13 @@ def test_upgrade(upgrade_int_setup):
         run(f"{command} --cct")
         assert_extensions(cluster_id, pinned_ext_map, "--cct")
     finally:
-        current_ops = next(
+        restore_config = f"connectors.image.tag={original_tag}" if original_tag is not None else "connectors.image.tag"
+        run(f"{command} --ops-config {restore_config}")
+        restored_ops = next(
             ext for ext in get_extensions(cluster_id)
             if ext["properties"]["extensionType"].lower() == EXTENSION_TYPE_OPS
         )
-        if "connectors.image.tag" in current_ops["properties"].get("configurationSettings", {}):
-            run(f"{command} --ops-config connectors.image.tag")
+        assert (restored_ops["properties"].get("configurationSettings") or {}) == original_config
     if channel:
         assert_runtime(instance_name, resource_group, channel)
 

@@ -3799,6 +3799,69 @@ def test_upgrade_integration_assertions_handle_connector_tag_clear(option, mocke
     assert original["ops"]["properties"]["configurationSettings"]["connectors.image.tag"] == "1.4.8"
 
 
+@pytest.mark.parametrize("original_tag", [None, "1.4.8"])
+@pytest.mark.parametrize("clear_fails", [False, True])
+def test_upgrade_integration_restores_original_connector_tag(original_tag, clear_fails, mocker):
+    from . import test_upgrade_int as upgrade_it
+
+    original_config = {"custom.setting": "keep"}
+    if original_tag is not None:
+        original_config["connectors.image.tag"] = original_tag
+    extension = {
+        "properties": {
+            "extensionType": EXTENSION_TYPE_OPS,
+            "configurationSettings": deepcopy(original_config),
+            "version": "1.5.0",
+            "releaseTrain": "stable",
+        },
+    }
+    configuration = extension["properties"]["configurationSettings"]
+    profile = Mock()
+    profile.require_opcua_connector_version.return_value = "1.5.22"
+    runtime = Mock(identity=profile.identity)
+    clear_attempts = []
+
+    def run_command(command):
+        if "--tree" in command:
+            return "cluster\n"
+        if command.startswith("az resource show"):
+            return {"id": "cluster-id"}
+        arguments = upgrade_it.process_additional_args(command)
+        if arguments.get("cct"):
+            clear_attempts.append(deepcopy(configuration))
+            if clear_fails:
+                raise RuntimeError("clear failed")
+            configuration.pop("connectors.image.tag", None)
+        if arguments.get("ops_config"):
+            for key, value in parse_kvp_nargs(arguments["ops_config"].split()).items():
+                if value is None:
+                    configuration.pop(key, None)
+                else:
+                    configuration[key] = value
+        return None
+
+    mocker.patch.dict(upgrade_it.os.environ, {"azext_edge_runtime_channel": ""})
+    mocker.patch.object(upgrade_it.random, "sample", return_value=[])
+    mocker.patch.object(upgrade_it, "configured_baseline", return_value=None)
+    mocker.patch.object(upgrade_it, "run", side_effect=run_command)
+    mocker.patch.object(
+        upgrade_it, "get_extensions", side_effect=lambda *args, **kwargs: [deepcopy(extension)],
+    )
+    mocker.patch.object(upgrade_it, "read_runtime", return_value=(runtime, None, [deepcopy(extension)]))
+    mocker.patch.object(upgrade_it, "get_default_cli")
+    mocker.patch.object(upgrade_it, "get_runtime_catalog").return_value.for_upgrade.return_value = profile
+    settings = {"resourceGroup": "rg", "instanceName": "instance", "additionalUpgradeArgs": ""}
+
+    if clear_fails:
+        with pytest.raises(RuntimeError, match="clear failed"):
+            upgrade_it.test_upgrade(settings)
+    else:
+        upgrade_it.test_upgrade(settings)
+
+    assert clear_attempts == [{"custom.setting": "keep", "connectors.image.tag": "1.5.22"}]
+    assert configuration == original_config
+
+
 def test_stale_cli_warning_precedes_no_op_return(
     mocked_cmd: Mock,
     mocked_responses: responses,
