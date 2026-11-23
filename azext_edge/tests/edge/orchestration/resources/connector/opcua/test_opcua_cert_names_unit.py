@@ -10,7 +10,7 @@ from types import SimpleNamespace
 import pytest
 import responses
 import yaml
-from azure.cli.core.azclierror import InvalidArgumentValueError
+from azure.cli.core.azclierror import AzureResponseError, InvalidArgumentValueError
 from azure.core.exceptions import HttpResponseError
 
 from azext_edge.edge import commands_connector
@@ -21,6 +21,7 @@ from azext_edge.edge.providers.orchestration.resources.connector.opcua.certs imp
     OpcUACerts,
 )
 from azext_edge.edge.providers.orchestration.resources.instances import SECRET_SYNC_RESOURCE_TYPE
+from azext_edge.edge.util.az_client import OperationTimeoutError
 from .conftest import (
     assemble_resource_map_mock,
     build_mock_cert,
@@ -121,9 +122,10 @@ def test_per_instance_names_isolate_certificate_lifecycle(
 
 
 @pytest.mark.parametrize("kind,setting", [("trust", "trustedCerts"), ("issuer", "issuerCerts")])
-def test_list_add_failed_secretsync_put_preserves_active_reference(
-    kind, setting, mocked_cmd, mocked_instance, mocked_responses,
-    mocked_read_file_content, mocked_decode_certificate,
+@pytest.mark.parametrize("failure", ["http", "timeout", "rollback"])
+def test_list_add_failure_handles_reference_safely(
+    kind, setting, failure, mocked_cmd, mocked_instance, mocked_responses,
+    mocked_read_file_content, mocked_decode_certificate, mocker, caplog,
 ):
     mocked_read_file_content.return_value = b"\x00\x01\x02\x03"
     mocked_decode_certificate.side_effect = lambda *_args, **_kwargs: [build_mock_cert()]
@@ -143,23 +145,37 @@ def test_list_add_failed_secretsync_put_preserves_active_reference(
         mocked_responses, spc, record, "new-list", "mock-rg", "certificate-der", "default-spc",
     )
 
+    attempted_references = []
+
     def update_reference(**kwargs):
+        reference = kwargs["properties"]["configurationSettings"][key]
+        attempted_references.append(reference)
+        if failure == "rollback" and reference == "active-list":
+            raise AzureResponseError("Rollback failed.")
         settings.update(kwargs["properties"]["configurationSettings"])
 
     cluster.update_aio_extension.side_effect = update_reference
-    mocked_responses.add(
-        responses.PUT, get_secretsync_endpoint("new-list", "mock-rg"),
-        status=403, json={"error": {"code": "Forbidden"}},
-    )
-    with pytest.raises(HttpResponseError):
+    timeout = OperationTimeoutError("SecretSync is still running.")
+    if failure == "timeout":
+        mocker.patch.object(OpcUACerts, "_add_secrets_to_secret_sync", side_effect=timeout)
+    else:
+        mocked_responses.add(
+            responses.PUT, get_secretsync_endpoint("new-list", "mock-rg"),
+            status=403, json={"error": {"code": "Forbidden"}},
+        )
+
+    expected_error = OperationTimeoutError if failure == "timeout" else HttpResponseError
+    with pytest.raises(expected_error) as caught:
         getattr(commands_connector, f"add_connector_opcua_{kind}")(
             mocked_cmd, "instance-a", "mock-rg", file="/fake/certificate.der", secret_sync_name="new-list",
         )
-    assert [
-        call.kwargs["properties"]["configurationSettings"]
-        for call in cluster.update_aio_extension.call_args_list
-    ] == [{key: "new-list"}, {key: "active-list"}]
-    assert settings == {key: "active-list", "unrelated": "preserved"}
+    if failure == "timeout":
+        assert caught.value is timeout
+    assert attempted_references == (["new-list"] if failure == "timeout" else ["new-list", "active-list"])
+    expected_reference = "active-list" if failure == "http" else "new-list"
+    assert settings == {key: expected_reference, "unrelated": "preserved"}
+    if failure == "rollback":
+        assert "Failed to restore the previous certificate reference" in caplog.text
 
 
 @pytest.mark.parametrize("reference", [
