@@ -121,7 +121,7 @@ def test_per_instance_names_isolate_certificate_lifecycle(
 
 
 @pytest.mark.parametrize("kind,setting", [("trust", "trustedCerts"), ("issuer", "issuerCerts")])
-def test_list_add_failed_secretsync_put_updates_reference_first(
+def test_list_add_failed_secretsync_put_preserves_active_reference(
     kind, setting, mocked_cmd, mocked_instance, mocked_responses,
     mocked_read_file_content, mocked_decode_certificate,
 ):
@@ -155,8 +155,11 @@ def test_list_add_failed_secretsync_put_updates_reference_first(
         getattr(commands_connector, f"add_connector_opcua_{kind}")(
             mocked_cmd, "instance-a", "mock-rg", file="/fake/certificate.der", secret_sync_name="new-list",
         )
-    cluster.update_aio_extension.assert_called_once()
-    assert settings == {key: "new-list", "unrelated": "preserved"}
+    assert [
+        call.kwargs["properties"]["configurationSettings"]
+        for call in cluster.update_aio_extension.call_args_list
+    ] == [{key: "new-list"}, {key: "active-list"}]
+    assert settings == {key: "active-list", "unrelated": "preserved"}
 
 
 @pytest.mark.parametrize("reference", [
