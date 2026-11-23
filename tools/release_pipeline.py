@@ -25,6 +25,7 @@ import time
 from urllib.error import HTTPError, URLError
 from urllib.parse import quote, unquote, urlencode, urlsplit
 from urllib.request import HTTPRedirectHandler, Request, build_opener
+from uuid import UUID
 import zipfile
 
 
@@ -35,6 +36,10 @@ PERMISSIONS = "https://dev.azure.com/azureiotdevxp/_apis/permissions"
 FEED = "https://pkgs.dev.azure.com/azureiotdevxp/aziotcli/_packaging/pip/pypi/simple/"
 BLOB_CONTAINER = "https://azedgecli.blob.core.windows.net/drop/"
 MAX_BLOB_BYTES = 256 * 1024 * 1024
+PUBLICATION_JOB = "Publish.Publish.__default"
+PUBLICATION_TASK = "Stage draft or publish release"
+OWNERSHIP_ATTACHMENT = "azure-cli.release-ownership"
+OWNERSHIP_FILE = "release-ownership.json"
 INTEGRATION_PARAMETERS = {
     "mode": "Integration tests", "pythonVersions": ["3.13"], "upgradeBaselines": "{}",
     "scenarioTimeoutMinutes": 360, "cloud": "Public",
@@ -201,7 +206,28 @@ def checkout(destination, resolving=False):
             if "clusterRegion" not in integration:
                 raise ValueError("The selected source does not support explicit integration cluster regions.")
         print(f"##vso[task.setvariable variable=commit;isOutput=true]{selected}", flush=True)
+        # Early title from source; Record candidate re-sets it from the built wheel.
+        constants = destination / "azext_edge/constants.py"
+        version = constants.is_file() and re.search(
+            r'^VERSION = "([^"]+)"$', constants.read_text(encoding="utf-8"), re.MULTILINE)
+        if version:
+            cohorts = {} if skip_integration_tests() else source_cohorts(destination)
+            channels = [item["row"]["scenario"]["channel"] for item in cohorts.values()]
+            naming = runpy.run_path(str(Path(__file__).with_name("pipeline_title.py")))
+            runtimes = naming["source_runtimes"](destination, channels) if channels else ()
+            print(f"##vso[build.updatebuildnumber]{release_title(version.group(1), cohorts, runtimes)}", flush=True)
     return selected
+
+
+def release_title(version, cohorts, runtimes):
+    naming = runpy.run_path(str(Path(__file__).with_name("pipeline_title.py")))
+    return naming["format_title"](
+        "ops", identifier(environment("BUILD_BUILDID")), version,
+        scopes=[item["selection"] for item in cohorts.values()],
+        regions=[environment("RELEASE_REGION")] if cohorts else (),
+        runtimes=runtimes, channels=[item["row"]["scenario"]["channel"] for item in cohorts.values()],
+        action=release_options()[0].lower(),
+    )
 
 
 def wheel_metadata(path):
@@ -372,13 +398,11 @@ def verify_runtime_inventory(source, inventory):
         raise ValueError("SBOM has no resolved dependency graph; source-only fallback is not sufficient.")
 
 
-def integration_parameters(candidate, cohort=None):
-    key = cohort or environment("RELEASE_COHORT")
-    selection = candidate["cohorts"][key]
+def integration_parameters(candidate):
+    scenarios = list(dict.fromkeys(item["selection"] for item in candidate["cohorts"].values()))
     return dict(INTEGRATION_PARAMETERS, clusterRegion=CLUSTER_REGIONS[candidate["region"]],
                 releaseBuildId=candidate["producer"]["build"],
-                testScenarios=[selection["selection"]],
-                runtimeChannels=[selection["row"]["scenario"]["channel"].capitalize()])
+                testScenarios=scenarios, runtimeChannels=["Stable", "Preview"])
 
 
 def create_candidate(source, directory):
@@ -414,18 +438,9 @@ def create_candidate(source, directory):
     verify_candidate(directory)
     naming = runpy.run_path(str(Path(__file__).with_name("pipeline_title.py")))
     channels = [item["row"]["scenario"]["channel"] for item in value["cohorts"].values()]
-    mode = release_options()[0]
-    title = naming["format_title"](
-        "ops", value["producer"]["build"], value["wheel"]["version"],
-        scopes=[item["selection"] for item in value["cohorts"].values()],
-        regions=[value["region"]] if value["cohorts"] else (),
-        runtimes=naming["wheel_runtimes"](wheel, channels) if channels else (),
-        channels=channels, action=mode.lower(),
-    )
+    runtimes = naming["wheel_runtimes"](wheel, channels) if channels else ()
+    title = release_title(value["wheel"]["version"], value["cohorts"], runtimes)
     print(f"##vso[build.updatebuildnumber]{title}", flush=True)
-    print("##vso[task.setvariable variable=matrix;isOutput=true]" + json.dumps({
-        key: {"cohort": key} for key in value["cohorts"]
-    }), flush=True)
     return value
 
 
@@ -475,9 +490,7 @@ def verify_candidate(directory, *, expected_producer=None, source_branch=None, s
     if consumer is not None:
         expected_files.add("handoff.json")
         handoff = read(directory / "handoff.json")
-        if (handoff["cohort"] not in cohorts or handoff != {
-                "consumer": consumer, "cohort": handoff["cohort"],
-                "candidateSha256": digest(directory / "candidate.json")}):
+        if handoff != {"consumer": consumer, "candidateSha256": digest(directory / "candidate.json")}:
             raise ValueError("Candidate handoff does not match this consumer.")
     if (directory.is_symlink() or {path.name for path in files} != expected_files
             or any(path.is_symlink() or not path.is_file() for path in files)):
@@ -506,7 +519,7 @@ def queued_release_build_id(build):
     return value
 
 
-def validate_integration(build, candidate, cohort=None):
+def validate_integration(build, candidate):
     parameters = build.get("templateParameters")
     if isinstance(parameters, str):
         parameters = json.loads(parameters)
@@ -518,7 +531,7 @@ def validate_integration(build, candidate, cohort=None):
             parameters[key] = json.loads(parameters[key])
     parameters["releaseBuildId"] = identifier(queued_release_build_id(build))
     parameters["scenarioTimeoutMinutes"] = int(parameters["scenarioTimeoutMinutes"])
-    expected = integration_parameters(candidate, cohort)
+    expected = integration_parameters(candidate)
     repository = build["repository"]
     if (build["definition"]["id"] != 164 or repository.get("id") != REPOSITORY
             or repository.get("type") != "GitHub" or repository.get("name") not in (None, REPOSITORY)
@@ -540,22 +553,14 @@ def existing_integration(candidate) -> dict | None:
     builds = ado("build/builds?" + query)["value"]
     if len(builds) >= 1000:
         raise ValueError("Too many child builds to prove unique ownership; inspect pipeline 164 before retrying.")
-    matches = []
-    for build in builds:
-        if queued_release_build_id(build) == candidate["producer"]["build"]:
-            scopes = []
-            for key in candidate["cohorts"]:
-                try:
-                    validate_integration(build, candidate, key)
-                    scopes.append(key)
-                except ValueError:
-                    continue
-            if len(scopes) != 1:
-                raise ValueError("An owned child has an unexpected release cohort or source.")
-            if scopes[0] == environment("RELEASE_COHORT"):
-                matches.append(build)
+    matches = [build for build in builds if queued_release_build_id(build) == candidate["producer"]["build"]]
+    for build in matches:
+        try:
+            validate_integration(build, candidate)
+        except ValueError as error:
+            raise ValueError("An owned child has an unexpected release request or source.") from error
     if len(matches) > 1:
-        raise ValueError("Multiple children reference this release; resolve the duplicate cohorts before proceeding.")
+        raise ValueError("Multiple children reference this release; resolve the duplicates before proceeding.")
     return matches[0] if matches else None
 
 
@@ -566,11 +571,10 @@ def cancel_integration(record, directory):
         if existing is None:
             print("No child of this release was found; no cancellation request was sent.", flush=True)
             return
-        run = {"id": identifier(existing.get("id")), "producer": candidate["producer"],
-               "cohort": environment("RELEASE_COHORT")}
+        run = {"id": identifier(existing.get("id")), "producer": candidate["producer"]}
     else:
         run = read(record)
-    if run["producer"] != candidate["producer"] or run["cohort"] != environment("RELEASE_COHORT"):
+    if run["producer"] != candidate["producer"]:
         raise ValueError("Refusing to cancel a child owned by another release.")
     build = ado(f"build/builds/{identifier(run['id'])}")
     validate_integration(build, candidate)
@@ -598,7 +602,7 @@ def integrate(directory, record, timeout=25200):
             raise ValueError("No child found on a retried job; do not risk requeuing an uncertain prior request.")
         run = ado("build/builds", method="POST", data=payload)
     run_id = identifier(run["id"])
-    write(record, {"id": run_id, "producer": candidate["producer"], "cohort": environment("RELEASE_COHORT")})
+    write(record, {"id": run_id, "producer": candidate["producer"]})
     print(f"##vso[task.setvariable variable=integrationBuildId]{run_id}", flush=True)
     print(f"Integration: https://dev.azure.com/azureiotdevxp/aziotcli/_build/results?buildId={run_id}", flush=True)
 
@@ -630,7 +634,6 @@ def integrate(directory, record, timeout=25200):
 
 def verify_integration_artifacts(directory, artifacts):
     candidate = verify_candidate(directory)
-    key = environment("RELEASE_COHORT")
     child = ado(f"build/builds/{identifier(environment('RELEASE_CHILD_BUILD_ID'))}")
     validate_integration(child, candidate)
     if child["status"] != "completed" or child["result"] != "succeeded":
@@ -644,7 +647,7 @@ def verify_integration_artifacts(directory, artifacts):
         handoff = read(path.parent / "handoff.json")
         if (read(path) != candidate or digest(wheel) != candidate["wheel"]["sha256"]
                 or digest(path.parent / "SBOM.zip") != candidate["sbom"]["sha256"]
-                or handoff != {"consumer": consumer, "cohort": key, "candidateSha256": digest(path)}):
+                or handoff != {"consumer": consumer, "candidateSha256": digest(path)}):
             raise ValueError("Integration did not retain the exact candidate and consumer binding.")
     qualifications = list(artifacts.glob("ops-qualification-*/qualification.json"))
     if not qualifications:
@@ -652,20 +655,22 @@ def verify_integration_artifacts(directory, artifacts):
     latest = max(qualifications, key=lambda path: int(path.parent.name.removeprefix("ops-qualification-")))
     proof = read(latest)
     rows = proof["scenarios"]
-    expected_phases = {"init", "smoke"}
-    scenario = candidate["cohorts"][key]["row"]["scenario"]
-    if scenario["tox_env"]:
-        expected_phases.add("scenario")
-    if scenario["test_redeploy"]:
-        expected_phases.add("redeploy")
     if (proof.get("producer") != consumer or proof.get("sha256") != candidate["wheel"]["sha256"]
             or proof.get("releaseCandidate") != candidate
-            or len(rows) != 1 or rows[0].get("row") != key
-            or rows[0].get("producer") != consumer or rows[0].get("sha256") != candidate["wheel"]["sha256"]
-            or rows[0].get("cleanup") != "passed" or rows[0].get("status") != "passed"
-            or any(rows[0].get("phases", {}).get(phase) != "passed" for phase in expected_phases)):
+            or sorted(str(row.get("row")) for row in rows) != sorted(candidate["cohorts"])):
         raise ValueError("Incomplete release cohort evidence or cleanup.")
-    print(f"Qualified {key} against wheel SHA-256 {candidate['wheel']['sha256']}.", flush=True)
+    for row in rows:
+        scenario = candidate["cohorts"][row["row"]]["row"]["scenario"]
+        expected_phases = {"init", "smoke"}
+        if scenario["tox_env"]:
+            expected_phases.add("scenario")
+        if scenario["test_redeploy"]:
+            expected_phases.add("redeploy")
+        if (row.get("producer") != consumer or row.get("sha256") != candidate["wheel"]["sha256"]
+                or row.get("cleanup") != "passed" or row.get("status") != "passed"
+                or any(row.get("phases", {}).get(phase) != "passed" for phase in expected_phases)):
+            raise ValueError("Incomplete release cohort evidence or cleanup.")
+    print(f"Qualified {len(rows)} cohorts against wheel SHA-256 {candidate['wheel']['sha256']}.", flush=True)
 
 
 def automation_allowed():
@@ -847,6 +852,125 @@ def find_release(tag):
         page += 1
 
 
+def timeline_guid(value):
+    if not isinstance(value, str) or str(UUID(value)) != value.lower():
+        raise ValueError("Expected a canonical ADO timeline or record ID.")
+    return value.lower()
+
+
+def ownership_record(candidate, release_id, job_id):
+    return {
+        "schema": 1, "candidate": candidate, "release": int(identifier(release_id)),
+        "tag": f"v{candidate['wheel']['version']}", "job": timeline_guid(job_id),
+    }
+
+
+def previous_publication_records(build_id, record, kind, timelines):
+    pending = []
+    for reference in record.get("previousAttempts", []):
+        timeline_id = timeline_guid(reference["timelineId"])
+        if timeline_id not in timelines:
+            if len(timelines) >= 100:
+                raise ValueError("Publication retry history exceeds the bounded ownership inventory.")
+            timelines[timeline_id] = ado(f"build/builds/{build_id}/timeline/{timeline_id}")
+            if timeline_guid(timelines[timeline_id]["id"]) != timeline_id:
+                raise ValueError("Publication retry timeline identity changed.")
+        pending.append((timelines[timeline_id], timeline_guid(reference["recordId"]), kind))
+    return pending
+
+
+def publication_ownership(candidate):
+    """Read receipts only from this run's protected publisher task and its retries."""
+    origin = candidate["producer"]
+    build_id = identifier(origin["build"])
+    build = ado(f"build/builds/{build_id}")
+    if (str(build.get("id")) != build_id or str(build.get("definition", {}).get("id")) != origin["definition"]
+            or build.get("project", {}).get("id") != environment("SYSTEM_TEAMPROJECTID")
+            or build.get("sourceVersion") != origin["commit"] or build.get("sourceBranch") != "refs/heads/dev"
+            or build.get("repository", {}).get("type") != "GitHub"
+            or build.get("repository", {}).get("id") != REPOSITORY):
+        raise ValueError("Publication ownership must belong to this approved automation run.")
+    current = ado(f"build/builds/{build_id}/timeline")
+    jobs = [row for row in current["records"] if row["type"] == "Job" and row.get("identifier") == PUBLICATION_JOB]
+    if (len(jobs) != 1 or timeline_guid(jobs[0]["id"]) != timeline_guid(environment("SYSTEM_JOBID"))
+            or str(jobs[0]["attempt"]) != identifier(environment("SYSTEM_JOBATTEMPT"))):
+        raise ValueError("Cannot identify the current protected publication job.")
+    if len([row for row in current["records"] if row["type"] == "Task"
+            and row.get("parentId") == jobs[0]["id"] and row.get("name") == PUBLICATION_TASK]) != 1:
+        raise ValueError("Cannot identify the current protected publisher task.")
+
+    pending = [(current, jobs[0]["id"], "Job")]
+    visited, timelines, receipts = set(), {timeline_guid(current["id"]): current}, []
+    stages = [row for row in current["records"] if row["type"] == "Stage" and row.get("identifier") == "Publish"]
+    if len(stages) != 1:
+        raise ValueError("Cannot identify the protected publication stage.")
+
+    pending.extend(previous_publication_records(build_id, stages[0], "Stage", timelines))
+    while pending:
+        timeline, record_id, kind = pending.pop()
+        timeline_id, record_id = timeline_guid(timeline["id"]), timeline_guid(record_id)
+        key = (timeline_id, record_id, kind)
+        if key in visited:
+            continue
+        visited.add(key)
+        records = {timeline_guid(row["id"]): row for row in timeline["records"]}
+        record = records.get(record_id)
+        expected = "Publish" if kind == "Stage" else PUBLICATION_JOB
+        if record is None or record["type"] != kind or record.get("identifier") != expected:
+            raise ValueError("Publication retry history does not identify a protected publisher.")
+        pending.extend(previous_publication_records(build_id, record, kind, timelines))
+        if kind == "Stage":
+            for row in records.values():
+                if row["type"] == "Job" and row.get("identifier") == PUBLICATION_JOB:
+                    pending.append((timeline, row["id"], "Job"))
+            continue
+        if record_id != timeline_guid(jobs[0]["id"]) and record.get("state") != "completed":
+            raise ValueError("A previous publication job is still active; refusing concurrent recovery.")
+        phase = records.get(timeline_guid(record["parentId"]))
+        stage = records.get(timeline_guid(phase["parentId"])) if phase and phase["type"] == "Phase" else None
+        if stage is None or stage["type"] != "Stage" or stage.get("identifier") != "Publish":
+            raise ValueError("Publication job is outside the protected Publish stage.")
+        tasks = [row for row in records.values() if row["type"] == "Task"
+                 and row.get("parentId") == record["id"] and row.get("name") == PUBLICATION_TASK]
+        if len(tasks) > 1:
+            raise ValueError("Publication retry has ambiguous publisher task records.")
+        for task in tasks:
+            task_id = timeline_guid(task["id"])
+            receipt = ado(
+                f"build/builds/{build_id}/{timeline_id}/{task_id}/attachments/"
+                f"{OWNERSHIP_ATTACHMENT}/{OWNERSHIP_FILE}", missing=True,
+            )
+            if receipt is None:
+                continue
+            if (not isinstance(receipt, dict) or type(receipt.get("schema")) is not int
+                    or receipt != ownership_record(candidate, receipt.get("release"), record_id)):
+                raise ValueError("Publication ownership receipt belongs to a different run or candidate.")
+            receipts.append(receipt)
+    if len({receipt["release"] for receipt in receipts}) > 1:
+        raise ValueError("This run has conflicting GitHub publication ownership receipts.")
+    return receipts[0] if receipts else None
+
+
+def attach_publication_receipt(path):
+    # The agent retains this on the emitting publisher task, including failed attempts.
+    escaped = str(path.resolve()).replace("%", "%AZP25").replace("\r", "%0D").replace("\n", "%0A")
+    print(f"##vso[task.addattachment type={OWNERSHIP_ATTACHMENT};name={OWNERSHIP_FILE}]{escaped}", flush=True)
+
+
+def retain_publication_ownership(candidate, release_id, receipt):
+    job_id = timeline_guid(environment("SYSTEM_JOBID"))
+    value = ownership_record(candidate, release_id, job_id)
+    path = Path(receipt).parent / "ownership" / job_id / OWNERSHIP_FILE
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if path.exists():
+        if path.is_symlink() or read(path) != value:
+            raise ValueError("Publication ownership file already contains different evidence.")
+    else:
+        with path.open("x", encoding="utf-8") as stream:
+            stream.write(json.dumps(value, indent=2) + "\n")
+    attach_publication_receipt(path)
+
+
 def verify_public_assets(release, candidate):
     if release["draft"]:
         raise ValueError("The qualified release is not public.")
@@ -941,6 +1065,46 @@ def verify_publication_inputs(directory, prepared):
     return candidate, value
 
 
+def publication_release(candidate, preparation, receipt, draft_only):
+    waiver = "Integration tests skipped by release waiver." if candidate.get("skipIntegrationTests") else ""
+    version = candidate["wheel"]["version"]
+    tag = f"v{version}"
+    existing_tag = tag_commit(tag)
+    release = find_release(tag)
+    if release is not None:
+        state = "draft" if release["draft"] else "published release"
+        url = release.get("html_url") or f"https://github.com/{REPOSITORY}/releases/tag/{quote(tag, safe='')}"
+        if not isinstance(url, str) or not url.startswith(f"https://github.com/{REPOSITORY}/releases/") or any(
+                char in url for char in ("\r", "\n")):
+            raise ValueError("Existing release has an unexpected GitHub URL.")
+        print(f"Existing {state} for {tag}: {url}", flush=True)
+        if draft_only and not release["draft"]:
+            raise ValueError(f"Draft cannot reuse or modify an already published release: {url}")
+    if existing_tag is not None and existing_tag != candidate["sourceCommit"]:
+        raise ValueError("Existing release tag points to another commit; it will not be moved.")
+    owned = publication_ownership(candidate)
+    if release is not None and (not isinstance(owned, dict) or owned.get("release") != int(identifier(release["id"]))):
+        raise ValueError(
+            f"{tag} already exists as a {state}: {url}. It belongs to another run or ownership is unknown. "
+            "A new publication run cannot reuse or promote it. Review the existing release in GitHub; "
+            "retry the original Publish job only when its ownership receipt is available."
+        )
+    if release is None and owned is not None:
+        raise ValueError("This run already owns a GitHub release that is no longer present; inspect it manually.")
+    if release is None:
+        release = github(f"repos/{REPOSITORY}/releases", method="POST", data={
+            "tag_name": tag, "target_commitish": candidate["sourceCommit"],
+            "name": f"azure-iot-ops {version}", "draft": True,
+            "prerelease": preparation["prerelease"], "generate_release_notes": True, "body": waiver,
+        })
+        retain_publication_ownership(candidate, release["id"], receipt)
+    if (release.get("tag_name") != tag
+            or release["target_commitish"] != candidate["sourceCommit"] and existing_tag != candidate["sourceCommit"]
+            or release["prerelease"] != preparation["prerelease"]):
+        raise ValueError("Existing release has different tag, source or prerelease metadata.")
+    return release
+
+
 def publish(directory, receipt, prepared):
     draft_only = release_options()[0] == "Draft"
     publication_allowed(draft=draft_only)
@@ -948,21 +1112,7 @@ def publish(directory, receipt, prepared):
     waiver = "Integration tests skipped by release waiver." if candidate.get("skipIntegrationTests") else ""
     version = candidate["wheel"]["version"]
     tag = f"v{version}"
-    existing_tag = tag_commit(tag)
-    if existing_tag is not None and existing_tag != candidate["sourceCommit"]:
-        raise ValueError("Existing release tag points to another commit; it will not be moved.")
-    release = find_release(tag)
-    if release is None:
-        release = github(f"repos/{REPOSITORY}/releases", method="POST", data={
-            "tag_name": tag, "target_commitish": candidate["sourceCommit"],
-            "name": f"azure-iot-ops {version}", "draft": True,
-            "prerelease": preparation["prerelease"], "generate_release_notes": True, "body": waiver,
-        })
-    if draft_only and not release["draft"]:
-        raise ValueError("Draft cannot reuse or modify an already published release.")
-    if (release["target_commitish"] != candidate["sourceCommit"] and existing_tag != candidate["sourceCommit"]
-            or release["prerelease"] != preparation["prerelease"]):
-        raise ValueError("Existing release has different source or prerelease metadata.")
+    release = publication_release(candidate, preparation, receipt, draft_only)
     for asset in (candidate["wheel"], candidate["sbom"]):
         matches = [item for item in release["assets"] if item["name"] == asset["file"]]
         if len(matches) > 1:
@@ -988,7 +1138,8 @@ def publish(directory, receipt, prepared):
                data={"body": waiver + "\n\n" + (release.get("body") or "")})
     if draft_only:
         staged = github(f"repos/{REPOSITORY}/releases/{release['id']}")
-        if (not staged["draft"] or staged["target_commitish"] != candidate["sourceCommit"]
+        if (not staged["draft"] or staged.get("tag_name") != tag
+                or staged["target_commitish"] != candidate["sourceCommit"]
                 or staged["prerelease"] != preparation["prerelease"]
                 or waiver and waiver not in (staged.get("body") or "")
                 or tag_commit(tag) not in (None, candidate["sourceCommit"])):
@@ -1007,6 +1158,8 @@ def publish(directory, receipt, prepared):
             raise ValueError("Tag changed during staging; release remains a draft.")
         github(f"repos/{REPOSITORY}/releases/{release['id']}", method="PATCH", data={"draft": False})
     published = github(f"repos/{REPOSITORY}/releases/{release['id']}")
+    if published.get("tag_name") != tag or published.get("prerelease") != preparation["prerelease"]:
+        raise ValueError("Published release identity changed.")
     verify_public_assets(published, candidate)
     if waiver and waiver not in (published.get("body") or ""):
         raise ValueError("Published release is missing its integration waiver.")

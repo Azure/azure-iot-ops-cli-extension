@@ -123,6 +123,16 @@ def wheel_runtimes(path, channels, cloud="AzureCloud"):
     return result
 
 
+def source_runtimes(root, channels):
+    channels = _values(channels, r"stable|preview", "channel")
+    profiles = Path(root) / "azext_edge/edge/providers/orchestration"
+    return [
+        runtime_identity((profiles / f"template{'_preview' if channel == 'preview' else ''}.py").read_text(
+            encoding="utf-8"))["version"]
+        for channel in ("stable", "preview") if channel in channels
+    ]
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--prefix", choices=["ops", "clean"], required=True)
