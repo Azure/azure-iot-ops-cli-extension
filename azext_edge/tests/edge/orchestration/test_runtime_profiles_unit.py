@@ -75,7 +75,7 @@ def test_bundled_profiles_select_management_api_without_changing_preview_bluepri
         "94ad9f812b962343275bd3610d744b494defa2ef", "1.6.1-preview.4",
     ),
 ])
-def test_bundled_release_inputs_preserve_integration_trains(
+def test_bundled_release_inputs_use_published_trains(
     channel, release, source_ref, source_commit, version, blueprint_commit, connector_version,
 ):
     from azext_edge.edge.providers.orchestration.runtime_catalog import get_runtime_catalog
@@ -83,23 +83,20 @@ def test_bundled_release_inputs_preserve_integration_trains(
     catalog = get_runtime_catalog()
     profile = catalog.get(channel)
     assert (profile.release, profile.source_ref, profile.source_commit) == (release, source_ref, source_commit)
-    assert profile.identity == RuntimeIdentity(channel, version, "integration")
+    assert profile.identity == RuntimeIdentity(channel, version, channel.value)
     assert profile.require_opcua_connector_version() == connector_version
-    assert resolve_runtime_identity(version, channel.value) == RuntimeIdentity(channel, version, channel.value)
-    assert profile.identity in catalog.qualification_identities
-    assert resolve_runtime_identity(version, "integration", catalog.qualification_identities) == profile.identity
+    assert resolve_runtime_identity(version, channel.value) == profile.identity
+    assert profile.identity not in catalog.qualification_identities
     with pytest.raises(ValidationError, match="integration"):
-        resolve_runtime_identity(version, "integration")
+        resolve_runtime_identity(version, "integration", catalog.qualification_identities)
     blueprint = profile.copy_instance_blueprint()
     assert blueprint.commit_id == blueprint_commit
     assert blueprint.content["variables"]["VERSIONS"] == {"iotOperations": version, "connectors": connector_version}
     assert blueprint.content["resources"]["aioExtension"]["properties"]["autoUpgradeMinorVersion"] is False
     override = "1.5.44" if channel == RuntimeChannel.STABLE else "1.6.0-preview.59"
-    assert profile.validate_overrides(version=version) == profile.identity
-    with pytest.raises(ValidationError, match="integration version override"):
-        profile.validate_overrides(version=override)
+    assert profile.validate_overrides(version=override) == RuntimeIdentity(channel, override, channel.value)
     with pytest.raises(ValidationError, match="deployment train"):
-        profile.validate_overrides(train=channel.value)
+        profile.validate_overrides(train="integration")
 
 
 def test_catalog_missing_and_duplicate_profiles_fail(profiles):

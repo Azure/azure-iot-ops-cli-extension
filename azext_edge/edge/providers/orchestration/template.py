@@ -779,8 +779,8 @@ TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
     },
 )
 
-# Source releases/v1.5.x/2612 @ 561705b317b857f4bb0d491ecca8dc09b77e5718, release 2612.
-# The upstream integration train is retained for alpha qualification.
+# Source releases/v1.5.x/2612 @ 3542da1961157e38ccac600f88cbd2ca127c4faa, release 2612.
+# The upstream integration train is promoted to stable in exported source before compilation.
 # GDS Manager input and reader are excluded in exported source before compilation.
 TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
     commit_id="3542da1961157e38ccac600f88cbd2ca127c4faa",
@@ -788,9 +788,7 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "languageVersion": "2.0",
         "contentVersion": "1.0.0.0",
-        "metadata": {
-            "_generator": {"name": "bicep", "version": "0.49.2.45890", "templateHash": "18286292354827482394"}
-        },
+        "metadata": {"_generator": {"name": "bicep", "version": "0.49.2.45890", "templateHash": "5776225021146259754"}},
         "definitions": {
             "_1.AdvancedConfig": {
                 "type": "object",
@@ -1496,7 +1494,7 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
         },
         "variables": {
             "VERSIONS": {"iotOperations": "1.5.82", "connectors": "1.5.103"},
-            "TRAINS": {"iotOperations": "integration"},
+            "TRAINS": {"iotOperations": "stable"},
             "FAIRFAX_VERSIONS": {"iotOperations": "1.5.77"},
             "FAIRFAX_TRAINS": {"iotOperations": "stable"},
             "FAIRFAX_AIO_CONFIGURATION_SETTINGS": {
