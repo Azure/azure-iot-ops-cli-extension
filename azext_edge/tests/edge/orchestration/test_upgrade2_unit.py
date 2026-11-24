@@ -2984,7 +2984,7 @@ def test_preview_upgrade_routes_instance_and_backfills_to_profile_api(
     from azext_edge.edge.providers.orchestration.runtime_profiles import RuntimeChannel, RuntimeProfileCatalog
     from .test_runtime_profiles_unit import make_profile
 
-    # Keep this historical preview-train API fixture independent of bundled release targets.
+    # Keep this historical preview-train API fixture independent of bundled integration targets.
     catalog = RuntimeProfileCatalog([
         make_profile(
             RuntimeChannel.PREVIEW, "1.6.0-preview.57", opcua_connector_version=OPCUA_CONNECTOR_VERSION,
