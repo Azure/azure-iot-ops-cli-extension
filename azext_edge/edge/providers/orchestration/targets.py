@@ -336,6 +336,9 @@ class InitTargets:
             if mcp_aio_connection is not None:
                 mcp_aio_connection["name"] = f"{self.instance_name}/aio"
                 mcp_aio_connection["properties"]["service"]["name"] = f"{self.instance_name}-mcp"
+            edge_registry = template.content["resources"].get("edgeRegistry")
+            if edge_registry is not None:
+                edge_registry["name"] = f"{self.instance_name}/default"
 
             template.content["outputs"]["aio"]["value"]["name"] = self.instance_name
 
