@@ -1355,6 +1355,7 @@ def test_run_without_admission_still_cleans_after_provision_failure(monkeypatch,
     identity.terminate.assert_called_once()
 
 
+@pytest.mark.skipif(sys.platform != "linux", reason="Requires POSIX process groups.")
 def test_cancel_stops_resource_creation_before_cleanup(monkeypatch, tmp_path):
     pipeline.write(tmp_path / "state.json", make_state())
     monkeypatch.setattr(cluster, "start_auth", Mock(return_value=Mock(poll=Mock(return_value=None))))
