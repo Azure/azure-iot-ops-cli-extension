@@ -12,7 +12,7 @@ from uuid import uuid4
 from azure.cli.core.azclierror import CLIInternalError
 
 from ...generators import generate_random_string
-from ...helpers import run
+from ...helpers import run, wait_for_expected_count
 
 logger = get_logger(__name__)
 
@@ -33,6 +33,7 @@ def secretsync_secret_int_setup(settings, tracked_resources: List[str]):
     settings.add_to_config(EnvironmentVariables.rg.value)
     settings.add_to_config(EnvironmentVariables.instance.value)
     settings.add_to_config(EnvironmentVariables.kv.value)
+    settings.add_to_config(EnvironmentVariables.user_assigned_mi_id.value)
 
     if not all([settings.env.azext_edge_instance, settings.env.azext_edge_rg]):
         pytest.skip("Cannot run secretsync secret tests without an instance and resource group.")
@@ -44,8 +45,16 @@ def secretsync_secret_int_setup(settings, tracked_resources: List[str]):
     kv_id = settings.env.azext_edge_kv
     kv_name = kv_id.rsplit("/", maxsplit=1)[-1]
 
-    # Verify secretsync is enabled
-    list_result = run(f"az iot ops secretsync list -n {instance_name} -g {resource_group}")
+    # Verify secretsync is enabled; enable it with the provided identity when it is not.
+    list_cmd = f"az iot ops secretsync list -n {instance_name} -g {resource_group}"
+    list_result = run(list_cmd)
+    mi_id = settings.env.azext_edge_user_assigned_mi_id
+    if not list_result and mi_id:
+        run(
+            f"az iot ops secretsync enable -n {instance_name} -g {resource_group} "
+            f"--mi-user-assigned {mi_id} --kv-resource-id {kv_id} --skip-ra"
+        )
+        list_result = wait_for_expected_count(list_cmd, expected_count=1, max_retries=20, initial_interval=5)
     if not list_result:
         pytest.skip("Secretsync is not enabled on the instance. Enable it first.")
 

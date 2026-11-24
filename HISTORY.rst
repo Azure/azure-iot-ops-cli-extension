@@ -14,3 +14,5 @@ unreleased
   because the diagnostics pod is absent, as expected in AIO 2610 GA/preview and later.
   Other resources and pod logs are still collected. Legacy trace collection remains supported,
   and trace collection failures are now visible as warnings.
+* Long-running Azure operations are first checked after 2, 3, 5 and 10 seconds, then every 15 seconds,
+  so quick operations complete sooner. The number of checks is unchanged.

@@ -82,3 +82,10 @@ scenarios:
     init_args: "--user-trust"
     create_args: "--trust-settings configMapName=example-bundle configMapKey=trust-bundle.pem issuerKind=Issuer issuerName=selfsigned-issuer"
     parallel: false
+    # ADO runs each shard on its own cluster, in the listed file order. The first shard
+    # also runs the full smoke suite; the others run a quick check.
+    shards:
+      secretsync: [test_secretsync_int.py, test_secretsync_secret_int.py]
+      client: [test_opcua_certs_client_int.py]
+      issuer: [test_opcua_certs_issuer_int.py]
+      trust: [test_opcua_certs_trust_int.py]

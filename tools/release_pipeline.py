@@ -363,10 +363,13 @@ def source_cohorts(source):
     matrix = runpy.run_path(str(source / ".github/actions/build-int-test-matrix/build_matrix.py"))
     selected = matrix["process_scenarios"](config, "")
     rows = matrix["expand_channels"](selected, "stable,preview", {})
+    # Sources before trust-bundle shards have neither helper; their rows and keys are unchanged.
+    rows = matrix.get("shard_rows", list)(rows)
+    row_key = matrix.get("row_key", lambda row, python: f"{row['name'].replace('-', '_')}_py{python.replace('.', '')}")
     return {
-        f"{row['name'].replace('-', '_')}_py313": {
+        row_key(row, "3.13"): {
             "selection": row["name"].removesuffix("-" + row["channel"]),
-            "row": {"key": f"{row['name'].replace('-', '_')}_py313", "python": "3.13", "scenario": row},
+            "row": {"key": row_key(row, "3.13"), "python": "3.13", "scenario": row},
         } for row in rows
     }
 
@@ -465,16 +468,19 @@ def verify_candidate(directory, *, expected_producer=None, source_branch=None, s
     cohorts = value["cohorts"]
     if not isinstance(cohorts, dict) or (bool(cohorts) == skipped):
         raise ValueError("Missing full release cohort inventory.")
-    selections = set()
+    channels = {}
     for key, cohort in cohorts.items():
         row = cohort["row"]
         name, channel = cohort["selection"], row["scenario"]["channel"]
+        shard = row["scenario"].get("shard")
+        suffix = f"_{shard}" if shard else ""
         if (not re.fullmatch(r"[a-z][a-z0-9-]*", name) or channel not in {"stable", "preview"}
-                or key != f"{name.replace('-', '_')}_{channel}_py313" or row["key"] != key
+                or (shard is not None and not re.fullmatch(r"[a-z][a-z0-9]*", shard))
+                or key != f"{name.replace('-', '_')}_{channel}{suffix}_py313" or row["key"] != key
                 or row["python"] != "3.13" or row["scenario"]["name"] != f"{name}-{channel}"):
             raise ValueError("Invalid release cohort inventory.")
-        selections.add(name)
-    if len(cohorts) != len(selections) * 2:
+        channels.setdefault((name, shard), set()).add(channel)
+    if any(found != {"stable", "preview"} for found in channels.values()):
         raise ValueError("Every release scenario must cover stable and preview.")
     wheel = value["wheel"]
     if not re.fullmatch(r"azure_iot_ops-[A-Za-z0-9_.+!-]+\.whl", wheel["file"]):
