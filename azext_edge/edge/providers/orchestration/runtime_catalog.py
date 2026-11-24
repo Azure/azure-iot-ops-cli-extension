@@ -43,7 +43,7 @@ def get_runtime_catalog(cloud_name: str = CLOUD_AZURE_PUBLIC) -> RuntimeProfileC
         blueprint = TEMPLATE_BLUEPRINT_INSTANCE_FAIRFAX
         return RuntimeProfileCatalog([RuntimeProfile(
             channel=RuntimeChannel.STABLE,
-            release="2610",
+            release=str(AIO_RELEASE),
             source_ref="releases/v1.5.x/2610-ff",
             source_commit="91e541f3b2767cd227aeaf3b8dd51ff9c54af6ce",
             instance_blueprint=blueprint,
