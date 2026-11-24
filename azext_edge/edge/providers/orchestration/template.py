@@ -7,7 +7,8 @@
 """Bundled Public blueprints from releases/v1.5.x/2612.
 
 Selected source: 3542da1961157e38ccac600f88cbd2ca127c4faa.
-The instance retains the upstream integration train and excludes GDS before compilation.
+The upstream integration train is promoted to stable in exported source before compilation.
+The GDS Manager input and reader are excluded before compilation.
 """
 
 from copy import deepcopy
