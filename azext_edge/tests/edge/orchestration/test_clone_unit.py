@@ -1308,6 +1308,14 @@ def test_clone_deploy_subjects(
     assert deploy_body_payload["properties"]["parameters"] == expected_deploy_params
     assert deploy_body_payload["properties"]["template"]
 
+    namespace = clone_scenario.resource_configs["customLocation"]["properties"]["namespace"]
+    federated_subjects = {
+        json.loads(call.request.body)["properties"]["subject"]
+        for call in mocked_responses.calls
+        if call.request.method == responses.PUT and "federatedIdentityCredentials" in call.request.url
+    }
+    assert federated_subjects == {f"system:serviceaccount:{namespace}:{sa}" for sa in cred_state["subjects"]}
+
 
 def test_clone_resolves_oidc_issuer(
     mocker,

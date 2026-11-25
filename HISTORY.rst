@@ -7,9 +7,10 @@ Release History
 unreleased
 ==========
 
-* ``iot ops identity assign --usage schema``: Federate the ``aio-edge-registry`` service account on preview runtimes,
-  which run the schema registry as ``aio-edge-registry``. GA runtimes still use ``adr-schema-registry``.
-  ``iot ops clone`` also replicates existing ``aio-edge-registry`` federated credentials.
+* ``iot ops identity assign --usage schema``: Federate the ``aio-edge-registry`` service account on AIO 1.6 and later,
+  including previews. AIO 1.5 and earlier still use ``adr-schema-registry``. Users who already ran the command
+  on AIO 1.6 should run it again; the existing ``adr-schema-registry`` credential is left in place.
+  ``iot ops clone`` now also copies ``aio-edge-registry`` federated credentials.
 
 * Prepare CLI ``2.12.0a1`` with AIO 2612 GA-channel and preview-channel qualification inputs.
   Both bundled Public runtimes retain the upstream integration train. The existing Fairfax 2610 inputs are unchanged.

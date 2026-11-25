@@ -67,7 +67,7 @@ from ..permissions import (
 )
 from ..resource_map import IoTOperationsResourceMap
 from ..runtime import RuntimeContext, get_runtime_cluster_id, resolve_runtime
-from ..runtime_profiles import RuntimeChannel, RuntimeIdentity, RuntimeProfile
+from ..runtime_profiles import RuntimeIdentity, RuntimeProfile, parse_runtime_version
 from ..runtime_catalog import get_runtime_catalog
 from ..runtime_requirements import get_runtime_requirements, requested_selections, validate_runtime_requirements
 
@@ -179,6 +179,15 @@ def get_fc_name(cluster_name: str, oidc_issuer: str, subject: str) -> str:
 
 def get_cred_subject(namespace: str, service_account_name: str):
     return f"system:serviceaccount:{namespace}:{service_account_name}"
+
+
+def get_schema_service_account(runtime_version: str) -> str:
+    # AIO 1.6 and later, including 1.6 previews, run the schema registry as aio-edge-registry.
+    # Compare major.minor only: semver orders 1.6.0-preview.N before 1.6.0.
+    version = parse_runtime_version(runtime_version)
+    if (version.major, version.minor) >= (1, 6):
+        return SERVICE_ACCOUNT_EDGE_REGISTRY
+    return SERVICE_ACCOUNT_SCHEMA
 
 
 def oidc_issuers_match(first: str, second: str) -> bool:
@@ -703,15 +712,29 @@ class Instances(Queryable):
         instance["identity"] = identity
         return self._update(name=name, resource_group_name=resource_group_name, instance=instance, **kwargs)
 
-    def _get_schema_service_account(self, instance: dict) -> str:
-        # Preview runtimes run the schema registry as aio-edge-registry; GA runtimes use adr-schema-registry.
+    def _get_schema_service_account(self, instance: dict, name: str, namespace: str) -> str:
         catalog = get_runtime_catalog(CloudConfig(self.cmd).name)
-        runtime = self.get_runtime_context(
-            instance, catalog.qualification_identities, allow_unbundled_integration=True
-        )
-        if runtime.identity.channel == RuntimeChannel.PREVIEW:
-            return SERVICE_ACCOUNT_EDGE_REGISTRY
-        return SERVICE_ACCOUNT_SCHEMA
+        try:
+            # Any installed build may receive an identity, including unbundled integration builds.
+            runtime = self.get_runtime_context(
+                instance, catalog.qualification_identities, allow_unbundled_integration=True
+            )
+            logger.debug(
+                "Detected AIO runtime version '%s' (%s channel) for instance '%s'.",
+                runtime.identity.version,
+                runtime.identity.channel.value,
+                name,
+            )
+            return get_schema_service_account(runtime.identity.version)
+        except (ValidationError, HttpResponseError) as ex:
+            raise ValidationError(
+                f"Unable to determine the AIO runtime version of instance '{name}', which is needed to select "
+                f"the schema registry service account.\nError: {ex}\n\n"
+                "Resolve the error and retry. Alternatively, create the federated credential manually with subject "
+                f"'{get_cred_subject(namespace, SERVICE_ACCOUNT_EDGE_REGISTRY)}' for AIO 1.6 and later, or "
+                f"'{get_cred_subject(namespace, SERVICE_ACCOUNT_SCHEMA)}' for AIO 1.5 and earlier, then add the "
+                "identity to the instance and grant it access to the schema registry."
+            ) from ex
 
     def add_mi_user_assigned(
         self,
@@ -740,7 +763,7 @@ class Instances(Queryable):
         namespace = custom_location["properties"]["namespace"]
 
         if usage_type == IdentityUsageType.SCHEMA.value:
-            service_account_name = self._get_schema_service_account(instance)
+            service_account_name = self._get_schema_service_account(instance, name, namespace)
         elif usage_type == IdentityUsageType.WASM_GRAPH.value:
             service_account_name = SERVICE_ACCOUNT_WASM
         else:
@@ -768,37 +791,57 @@ class Instances(Queryable):
 
         instance["identity"] = identity
         updated_instance = self._update(name=name, resource_group_name=resource_group_name, instance=instance, **kwargs)
-        if usage_type == IdentityUsageType.SCHEMA.value and not skip_sr_ra:
-            schema_registry_id = instance.get("properties", {}).get("schemaRegistryRef", {}).get("resourceId")
-            if not schema_registry_id:
-                logger.warning("There is no schema registry associated with the instance.")
-                return updated_instance
+        if usage_type != IdentityUsageType.SCHEMA.value:
+            return updated_instance
 
-            try:
-                schema_registry_id_parts = parse_resource_id(schema_registry_id)
-                self.permission_manager.apply_role_assignment(
-                    scope=schema_registry_id,
-                    principal_id=mi_resource["properties"]["principalId"],
-                    role_def_id=custom_sr_role_id
-                    or ROLE_DEF_FORMAT_STR.format(
-                        subscription_id=schema_registry_id_parts.subscription_id,
-                        role_id=AZURE_DEVICE_REGISTRY_ADMINISTRATOR_ROLE_ID,
-                    ),
-                    principal_type=PrincipalType.SERVICE_PRINCIPAL.value,
-                )
-            except HttpResponseError as http_exc:
-                raise AzureResponseError(
-                    get_ra_user_error_msg(
-                        error_str=str(http_exc),
-                        sp_name=mi_resource_id_container.resource_name,
-                        sp_id=mi_resource["properties"]["principalId"],
-                        expected_role=custom_sr_role_id
-                        if custom_sr_role_id
-                        else "Azure Device Registry Administrator",
-                        scope=schema_registry_id,
-                    )
-                )
+        if not skip_sr_ra:
+            self._apply_schema_registry_role(instance, mi_resource, mi_resource_id_container, custom_sr_role_id)
+        logger.warning(
+            "Federated the identity with schema registry service account '%s'. The change may take several "
+            "minutes to apply. If the schema registry does not pick up the identity, restart it with "
+            "'kubectl rollout restart statefulset %s -n %s'.",
+            service_account_name,
+            service_account_name,
+            namespace,
+        )
         return updated_instance
+
+    def _apply_schema_registry_role(
+        self,
+        instance: dict,
+        mi_resource: dict,
+        mi_resource_id_container: ResourceIdContainer,
+        custom_sr_role_id: Optional[str] = None,
+    ):
+        schema_registry_id = instance.get("properties", {}).get("schemaRegistryRef", {}).get("resourceId")
+        if not schema_registry_id:
+            logger.warning("There is no schema registry associated with the instance.")
+            return
+
+        try:
+            schema_registry_id_parts = parse_resource_id(schema_registry_id)
+            self.permission_manager.apply_role_assignment(
+                scope=schema_registry_id,
+                principal_id=mi_resource["properties"]["principalId"],
+                role_def_id=custom_sr_role_id
+                or ROLE_DEF_FORMAT_STR.format(
+                    subscription_id=schema_registry_id_parts.subscription_id,
+                    role_id=AZURE_DEVICE_REGISTRY_ADMINISTRATOR_ROLE_ID,
+                ),
+                principal_type=PrincipalType.SERVICE_PRINCIPAL.value,
+            )
+        except HttpResponseError as http_exc:
+            raise AzureResponseError(
+                get_ra_user_error_msg(
+                    error_str=str(http_exc),
+                    sp_name=mi_resource_id_container.resource_name,
+                    sp_id=mi_resource["properties"]["principalId"],
+                    expected_role=custom_sr_role_id
+                    if custom_sr_role_id
+                    else "Azure Device Registry Administrator",
+                    scope=schema_registry_id,
+                )
+            )
 
     def enable_secretsync(
         self,
