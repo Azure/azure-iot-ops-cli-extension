@@ -124,6 +124,7 @@ def test_cross_channel_upgrade_rejected_without_mutation(channel_target):
     ]
     if get_default_cli().cloud.name != "AzureUSGovernment":
         target = expected_runtime(opposite)
+        arguments[arguments.index("--ops-train") + 1] = target.train
         arguments.extend(["--ops-version", target.version])
     result = subprocess.run(
         arguments, capture_output=True, text=True, check=False,
