@@ -70,6 +70,7 @@ from .connected_cluster import ConnectedCluster
 from .resources import Instances
 from .resources.instances import (
     SERVICE_ACCOUNT_DATAFLOW,
+    SERVICE_ACCOUNT_EDGE_REGISTRY,
     SERVICE_ACCOUNT_SECRETSYNC,
     SERVICE_ACCOUNT_SCHEMA,
     get_fc_name,
@@ -511,6 +512,7 @@ class InstanceRestore:
                 (oidc_issuer, SERVICE_ACCOUNT_SECRETSYNC),
                 (oidc_issuer, SERVICE_ACCOUNT_DATAFLOW),
                 (oidc_issuer, SERVICE_ACCOUNT_SCHEMA),
+                (oidc_issuer, SERVICE_ACCOUNT_EDGE_REGISTRY),
             ]
             for cred in credentials:
                 svc_acct = cred["properties"]["subject"].split(":")[-1]

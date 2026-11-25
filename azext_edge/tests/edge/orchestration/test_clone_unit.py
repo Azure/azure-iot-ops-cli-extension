@@ -33,6 +33,7 @@ from azext_edge.edge.common import (
 from azext_edge.edge.providers.orchestration.clone import (
     DEPLOYMENT_CHUNK_LEN,
     SERVICE_ACCOUNT_DATAFLOW,
+    SERVICE_ACCOUNT_EDGE_REGISTRY,
     SERVICE_ACCOUNT_SCHEMA,
     SERVICE_ACCOUNT_SECRETSYNC,
     TEMPLATE_PARAMS_SET,
@@ -1246,6 +1247,7 @@ def test_clone_instance_feature_capture(
         {"subjects": {SERVICE_ACCOUNT_SECRETSYNC}},
         {"subjects": {SERVICE_ACCOUNT_DATAFLOW}},
         {"subjects": {SERVICE_ACCOUNT_SCHEMA}},
+        {"subjects": {SERVICE_ACCOUNT_EDGE_REGISTRY}},
         {"subjects": {SERVICE_ACCOUNT_DATAFLOW, SERVICE_ACCOUNT_SECRETSYNC, SERVICE_ACCOUNT_SCHEMA}},
     ],
 )
@@ -1305,6 +1307,14 @@ def test_clone_deploy_subjects(
 
     assert deploy_body_payload["properties"]["parameters"] == expected_deploy_params
     assert deploy_body_payload["properties"]["template"]
+
+    namespace = clone_scenario.resource_configs["customLocation"]["properties"]["namespace"]
+    federated_subjects = {
+        json.loads(call.request.body)["properties"]["subject"]
+        for call in mocked_responses.calls
+        if call.request.method == responses.PUT and "federatedIdentityCredentials" in call.request.url
+    }
+    assert federated_subjects == {f"system:serviceaccount:{namespace}:{sa}" for sa in cred_state["subjects"]}
 
 
 def test_clone_resolves_oidc_issuer(

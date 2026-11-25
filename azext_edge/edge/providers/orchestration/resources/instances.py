@@ -6,6 +6,7 @@
 
 import json
 import re
+import shlex
 import time
 from copy import deepcopy
 from contextlib import nullcontext
@@ -19,7 +20,13 @@ from azure.cli.core.azclierror import (
     InvalidArgumentValueError,
     ValidationError,
 )
-from azure.core.exceptions import HttpResponseError, ResourceNotFoundError, ServiceRequestError, ServiceResponseError
+from azure.core.exceptions import (
+    AzureError,
+    HttpResponseError,
+    ResourceNotFoundError,
+    ServiceRequestError,
+    ServiceResponseError,
+)
 from azure.core.pipeline import PipelineResponse
 from azure.core.pipeline.policies import RetryPolicy
 from azure.core.rest import HttpResponse as RestHttpResponse
@@ -66,8 +73,8 @@ from ..permissions import (
     get_ra_user_error_msg,
 )
 from ..resource_map import IoTOperationsResourceMap
-from ..runtime import RuntimeContext, get_runtime_cluster_id, resolve_runtime
-from ..runtime_profiles import RuntimeIdentity, RuntimeProfile
+from ..runtime import RuntimeContext, get_runtime_cluster_id, resolve_runtime, resolve_runtime_extension
+from ..runtime_profiles import RuntimeIdentity, RuntimeProfile, parse_runtime_version
 from ..runtime_catalog import get_runtime_catalog
 from ..runtime_requirements import get_runtime_requirements, requested_selections, validate_runtime_requirements
 
@@ -81,6 +88,9 @@ SECRET_SYNC_RESOURCE_TYPE = "microsoft.secretsynccontroller/secretsyncs"
 SERVICE_ACCOUNT_DATAFLOW = "aio-dataflow"
 SERVICE_ACCOUNT_SECRETSYNC = "aio-ssc-sa"
 SERVICE_ACCOUNT_SCHEMA = "adr-schema-registry"
+SERVICE_ACCOUNT_EDGE_REGISTRY = "aio-edge-registry"
+# AIO core runs the schema registry as aio-edge-registry from 1.6 (chart branches preview/v1.6.x and main).
+EDGE_REGISTRY_MIN_VERSION = (1, 6)
 SERVICE_ACCOUNT_WASM = "aio-wasm-graph-controller"
 KEYVAULT_ROLE_ID_SECRETS_USER = "4633458b-17de-408a-b874-0445c86b69e6"
 KEYVAULT_ROLE_ID_READER = "21090545-7ca7-4776-b22c-e363652d74d2"
@@ -178,6 +188,14 @@ def get_fc_name(cluster_name: str, oidc_issuer: str, subject: str) -> str:
 
 def get_cred_subject(namespace: str, service_account_name: str):
     return f"system:serviceaccount:{namespace}:{service_account_name}"
+
+
+def get_schema_service_account(runtime_version: str) -> str:
+    # Compare major.minor only: semver orders 1.6.0-preview.N before 1.6.0.
+    version = parse_runtime_version(runtime_version)
+    if (version.major, version.minor) >= EDGE_REGISTRY_MIN_VERSION:
+        return SERVICE_ACCOUNT_EDGE_REGISTRY
+    return SERVICE_ACCOUNT_SCHEMA
 
 
 def oidc_issuers_match(first: str, second: str) -> bool:
@@ -483,6 +501,17 @@ class Instances(Queryable):
         No global client defaults change. Independent ADR and diagnostic operations need
         not perform this discovery; mutation/capability entry points can opt in explicitly.
         """
+        custom_location, cluster_record, extensions = self._get_runtime_records(instance)
+        return resolve_runtime(
+            instance, custom_location, cluster_record, extensions, qualification_identities,
+            allow_unbundled_integration=allow_unbundled_integration,
+        )
+
+    def get_installed_extension(self, instance: dict) -> dict:
+        """Read the AIO extension backing the instance, without release train or channel checks."""
+        return resolve_runtime_extension(instance, *self._get_runtime_records(instance))
+
+    def _get_runtime_records(self, instance: dict) -> Tuple[dict, dict, Iterable[dict]]:
         custom_location = self.get_associated_cl(instance)
         cluster_id = get_runtime_cluster_id(instance, custom_location)
         cluster = parse_resource_id(cluster_id)
@@ -498,10 +527,7 @@ class Instances(Queryable):
             cluster_resource_name="connectedClusters",
             cluster_name=cluster.resource_name,
         )
-        return resolve_runtime(
-            instance, custom_location, cluster_record, extensions, qualification_identities,
-            allow_unbundled_integration=allow_unbundled_integration,
-        )
+        return custom_location, cluster_record, extensions
 
     def get_resource_map(self, instance: dict) -> IoTOperationsResourceMap:
         custom_location = self.get_associated_cl(instance)
@@ -702,6 +728,112 @@ class Instances(Queryable):
         instance["identity"] = identity
         return self._update(name=name, resource_group_name=resource_group_name, instance=instance, **kwargs)
 
+    def _get_schema_service_account(self, instance: dict, name: str) -> str:
+        # Only the installed version matters, so release train and channel are not validated here.
+        properties = self.get_installed_extension(instance).get("properties") or {}
+        version = properties.get("currentVersion")
+        if not version:
+            raise ValidationError("The AIO extension currentVersion is missing.")
+        logger.debug(
+            "Detected AIO version '%s' (train '%s') for instance '%s'.", version, properties.get("releaseTrain"), name
+        )
+        return get_schema_service_account(version)
+
+    def _get_schema_manual_steps(
+        self,
+        instance: dict,
+        namespace: str,
+        oidc_issuer: str,
+        federated_credential_name: Optional[str],
+        cluster_name: str,
+        mi_user_assigned: str,
+        mi_resource_id_container: ResourceIdContainer,
+        principal_id: str,
+        skip_sr_ra: Optional[bool],
+        custom_sr_role_id: Optional[str],
+    ) -> str:
+        subject = get_cred_subject(namespace, SERVICE_ACCOUNT_EDGE_REGISTRY)
+        fc_name = federated_credential_name or get_fc_name(
+            cluster_name=cluster_name, oidc_issuer=oidc_issuer, subject=subject
+        )
+        # Same identity payload that add_mi_user_assigned writes, without read-only fields.
+        current = instance.get("identity") or {}
+        if current.get("type") in (None, "None"):
+            current = {"type": "UserAssigned"}
+        identity = {
+            "type": current["type"],
+            "userAssignedIdentities": {
+                **{key: {} for key in current.get("userAssignedIdentities") or {}}, mi_user_assigned: {}
+            },
+        }
+        steps = [
+            [
+                "az", "identity", "federated-credential", "create",
+                "--subscription", mi_resource_id_container.subscription_id,
+                "-g", mi_resource_id_container.resource_group_name,
+                "--identity-name", mi_resource_id_container.resource_name,
+                "-n", fc_name,
+                "--issuer", oidc_issuer,
+                "--subject", subject,
+                "--audiences", "api://AzureADTokenExchange",
+            ],
+            [
+                "az", "resource", "update",
+                "--ids", instance["id"],
+                "--api-version", self.iotops_api_version,
+                "--set", f"identity={json.dumps(identity, separators=(',', ':'))}",
+            ],
+        ]
+        schema_registry_id = instance.get("properties", {}).get("schemaRegistryRef", {}).get("resourceId")
+        if not skip_sr_ra and schema_registry_id:
+            steps.append(
+                [
+                    "az", "role", "assignment", "create",
+                    "--assignee-object-id", principal_id,
+                    "--assignee-principal-type", "ServicePrincipal",
+                    "--role", custom_sr_role_id or AZURE_DEVICE_REGISTRY_ADMINISTRATOR_ROLE_ID,
+                    "--scope", schema_registry_id,
+                ]
+            )
+        return (
+            "Resolve the error and retry, or run these commands. On AIO 1.5 and earlier, replace "
+            f"'{SERVICE_ACCOUNT_EDGE_REGISTRY}' with '{SERVICE_ACCOUNT_SCHEMA}' in the subject.\n  "
+            + "\n  ".join(shlex.join(step) for step in steps)
+        )
+
+    def _warn_unused_schema_credential(
+        self, mi_resource_id_container: ResourceIdContainer, oidc_issuer: str, namespace: str
+    ):
+        try:
+            stale_cred = self._find_federated_cred(
+                mi_resource_id_container=mi_resource_id_container,
+                issuer_url=oidc_issuer,
+                subject=get_cred_subject(namespace, SERVICE_ACCOUNT_SCHEMA),
+                match_trailing_slash=True,
+            )
+        except AzureError as ex:
+            logger.debug("Unable to check for an unused schema registry federated credential: %s", ex)
+            return
+        if stale_cred:
+            delete_command = shlex.join(
+                [
+                    "az", "identity", "federated-credential", "delete",
+                    "--subscription", mi_resource_id_container.subscription_id,
+                    "-g", mi_resource_id_container.resource_group_name,
+                    "--identity-name", mi_resource_id_container.resource_name,
+                    "-n", stale_cred["name"],
+                    "--yes",
+                ]
+            )
+            logger.warning(
+                "Identity '%s' still has federated credential '%s' for service account '%s', which AIO 1.6 and "
+                "later do not use. To remove it, run: %s",
+                mi_resource_id_container.resource_name,
+                stale_cred["name"],
+                SERVICE_ACCOUNT_SCHEMA,
+                delete_command,
+            )
+
     def add_mi_user_assigned(
         self,
         name: str,
@@ -729,7 +861,25 @@ class Instances(Queryable):
         namespace = custom_location["properties"]["namespace"]
 
         if usage_type == IdentityUsageType.SCHEMA.value:
-            service_account_name = SERVICE_ACCOUNT_SCHEMA
+            try:
+                service_account_name = self._get_schema_service_account(instance, name)
+            except (ValidationError, AzureError) as ex:
+                manual_steps = self._get_schema_manual_steps(
+                    instance=instance,
+                    namespace=namespace,
+                    oidc_issuer=oidc_issuer,
+                    federated_credential_name=federated_credential_name,
+                    cluster_name=cluster_resource["name"],
+                    mi_user_assigned=mi_user_assigned,
+                    mi_resource_id_container=mi_resource_id_container,
+                    principal_id=mi_resource["properties"]["principalId"],
+                    skip_sr_ra=skip_sr_ra,
+                    custom_sr_role_id=custom_sr_role_id,
+                )
+                raise ValidationError(
+                    f"Unable to determine the AIO version of instance '{name}', which is needed to select the "
+                    f"schema registry service account.\nError: {ex}\n\n{manual_steps}"
+                ) from ex
         elif usage_type == IdentityUsageType.WASM_GRAPH.value:
             service_account_name = SERVICE_ACCOUNT_WASM
         else:
@@ -757,37 +907,63 @@ class Instances(Queryable):
 
         instance["identity"] = identity
         updated_instance = self._update(name=name, resource_group_name=resource_group_name, instance=instance, **kwargs)
-        if usage_type == IdentityUsageType.SCHEMA.value and not skip_sr_ra:
-            schema_registry_id = instance.get("properties", {}).get("schemaRegistryRef", {}).get("resourceId")
-            if not schema_registry_id:
-                logger.warning("There is no schema registry associated with the instance.")
-                return updated_instance
+        if usage_type != IdentityUsageType.SCHEMA.value:
+            return updated_instance
 
-            try:
-                schema_registry_id_parts = parse_resource_id(schema_registry_id)
-                self.permission_manager.apply_role_assignment(
-                    scope=schema_registry_id,
-                    principal_id=mi_resource["properties"]["principalId"],
-                    role_def_id=custom_sr_role_id
-                    or ROLE_DEF_FORMAT_STR.format(
-                        subscription_id=schema_registry_id_parts.subscription_id,
-                        role_id=AZURE_DEVICE_REGISTRY_ADMINISTRATOR_ROLE_ID,
-                    ),
-                    principal_type=PrincipalType.SERVICE_PRINCIPAL.value,
-                )
-            except HttpResponseError as http_exc:
-                raise AzureResponseError(
-                    get_ra_user_error_msg(
-                        error_str=str(http_exc),
-                        sp_name=mi_resource_id_container.resource_name,
-                        sp_id=mi_resource["properties"]["principalId"],
-                        expected_role=custom_sr_role_id
-                        if custom_sr_role_id
-                        else "Azure Device Registry Administrator",
-                        scope=schema_registry_id,
-                    )
-                )
+        if skip_sr_ra:
+            role_note = " Role assignment was skipped; make sure the identity can access the schema registry."
+        else:
+            role_note = ""
+            self._apply_schema_registry_role(instance, mi_resource, mi_resource_id_container, custom_sr_role_id)
+        logger.warning(
+            "Federated the identity with schema registry service account '%s'.%s The change may take several "
+            "minutes to apply. If the schema registry does not pick up the identity, restart it with "
+            "'kubectl rollout restart statefulset %s -n %s'.",
+            service_account_name,
+            role_note,
+            service_account_name,
+            namespace,
+        )
+        if service_account_name == SERVICE_ACCOUNT_EDGE_REGISTRY:
+            self._warn_unused_schema_credential(mi_resource_id_container, oidc_issuer, namespace)
         return updated_instance
+
+    def _apply_schema_registry_role(
+        self,
+        instance: dict,
+        mi_resource: dict,
+        mi_resource_id_container: ResourceIdContainer,
+        custom_sr_role_id: Optional[str] = None,
+    ):
+        schema_registry_id = instance.get("properties", {}).get("schemaRegistryRef", {}).get("resourceId")
+        if not schema_registry_id:
+            logger.warning("There is no schema registry associated with the instance.")
+            return
+
+        try:
+            schema_registry_id_parts = parse_resource_id(schema_registry_id)
+            self.permission_manager.apply_role_assignment(
+                scope=schema_registry_id,
+                principal_id=mi_resource["properties"]["principalId"],
+                role_def_id=custom_sr_role_id
+                or ROLE_DEF_FORMAT_STR.format(
+                    subscription_id=schema_registry_id_parts.subscription_id,
+                    role_id=AZURE_DEVICE_REGISTRY_ADMINISTRATOR_ROLE_ID,
+                ),
+                principal_type=PrincipalType.SERVICE_PRINCIPAL.value,
+            )
+        except HttpResponseError as http_exc:
+            raise AzureResponseError(
+                get_ra_user_error_msg(
+                    error_str=str(http_exc),
+                    sp_name=mi_resource_id_container.resource_name,
+                    sp_id=mi_resource["properties"]["principalId"],
+                    expected_role=custom_sr_role_id
+                    if custom_sr_role_id
+                    else "Azure Device Registry Administrator",
+                    scope=schema_registry_id,
+                )
+            )
 
     def enable_secretsync(
         self,

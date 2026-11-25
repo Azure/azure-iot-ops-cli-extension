@@ -103,15 +103,10 @@ class RuntimeContext:
             raise ValidationError("AIO runtime cannot be upgraded: " + "; ".join(issue.message for issue in blockers))
 
 
-def resolve_runtime(
-    instance: dict,
-    custom_location: dict,
-    cluster: dict,
-    extensions: Iterable[dict],
-    qualification_identities: Iterable[RuntimeIdentity] = (),
-    *, allow_unbundled_integration: bool = False,
-) -> RuntimeContext:
-    """Validate live ARM records without guessing an installed version from the requested pin."""
+def resolve_runtime_extension(
+    instance: dict, custom_location: dict, cluster: dict, extensions: Iterable[dict],
+) -> dict:
+    """Return the AIO extension that backs the instance, validated against live ARM records."""
     cluster_id = get_runtime_cluster_id(instance, custom_location)
     returned_id = _resource_id(cluster.get("id"), "Microsoft.Kubernetes", "connectedClusters")
     if cluster_id.lower() != returned_id.lower():
@@ -138,7 +133,21 @@ def resolve_runtime(
         value.lower() for value in associated_ids if isinstance(value, str)
     }:
         raise ValidationError("The custom location is not associated with the AIO extension.")
+    return extension
 
+
+def resolve_runtime(
+    instance: dict,
+    custom_location: dict,
+    cluster: dict,
+    extensions: Iterable[dict],
+    qualification_identities: Iterable[RuntimeIdentity] = (),
+    *, allow_unbundled_integration: bool = False,
+) -> RuntimeContext:
+    """Validate live ARM records without guessing an installed version from the requested pin."""
+    cluster_id = get_runtime_cluster_id(instance, custom_location)
+    extension = resolve_runtime_extension(instance, custom_location, cluster, extensions)
+    extension_id = extension["id"]
     properties = extension.get("properties") or {}
     installed_version = properties.get("currentVersion")
     if not installed_version:

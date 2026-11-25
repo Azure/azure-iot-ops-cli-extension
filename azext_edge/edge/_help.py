@@ -2152,8 +2152,12 @@ def load_iotops_help():
         long-summary: |
             This operation includes federation of the identity for the applicable purpose.
 
-            When --usage 'schema' is present, by default, a role assignment of the identity against the
-            instance schema registry will be made if the expected role does not already exist.
+            When --usage 'schema' is present, the identity is federated with the schema registry
+            service account, chosen from the AIO version installed on the cluster: 'adr-schema-registry'
+            for AIO 1.5 and earlier, 'aio-edge-registry' for AIO 1.6 and later. The change may take several
+            minutes to apply; restart the schema registry if it does not pick up the identity. By default,
+            a role assignment of the identity against the instance schema registry will be made if the
+            expected role does not already exist.
 
         examples:
         - name: Assign and federate a desired user-assigned managed identity for use with dataflows.
