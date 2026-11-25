@@ -952,6 +952,46 @@ def test_runner_isolates_cli_imports_tests_config_and_working_directory(wheel, m
     assert (work / "pytest.ini").read_text() == "[pytest]\njunit_family = xunit1\n"
 
 
+@pytest.mark.parametrize("selection,expected", [
+    ("test_b_int.py,test_a_int.py", ["nested/test_b_int.py", "test_a_int.py"]),
+    ("test_a_int.py,test_a_int.py", None), ("test_missing_int.py", None), ("test_a_unit.py", None),
+])
+def test_runner_runs_selected_test_files_in_order(wheel, mocker, monkeypatch, tmp_path, selection, expected):
+    archive, digest, target = wheel
+    tests = tmp_path / "test-sources"
+    (tests / "nested").mkdir(parents=True)
+    for name in ("test_a_int.py", "nested/test_b_int.py", "test_c_int.py", "test_a_unit.py"):
+        (tests / name).write_text("def test_example(): pass\n", encoding="utf-8")
+    monkeypatch.setenv("azext_edge_wheel", str(archive))
+    monkeypatch.setenv("azext_edge_wheel_sha256", digest)
+    monkeypatch.setenv("azext_edge_upgrade_baseline", "null")
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(runner.sys, "path", list(runner.sys.path))
+    monkeypatch.setenv("PYTHONPATH", str(ROOT))
+    monkeypatch.setenv("AZURE_EXTENSION_DIR", "unused")
+    mocker.patch.object(runner, "install_wheel")
+    mocker.patch.object(runner, "importlib", SimpleNamespace(
+        import_module=mocker.Mock(return_value=SimpleNamespace(__file__=str(target / "azext_edge/__init__.py"))),
+        invalidate_caches=importlib.invalidate_caches,
+    ))
+    mocker.patch.object(runner.subprocess, "run")
+    mocker.patch.object(runner.subprocess, "check_output", return_value=json.dumps({"path": str(target)}))
+    execute = mocker.patch("pytest.main", return_value=0)
+    arguments = [
+        "--extension-dir", str(target), "--tests", str(tests), "--work-dir", str(tmp_path / "work"),
+        "--junit", str(tmp_path / "junit/results.xml"), "--coverage-config", str(ROOT / ".coveragerc"),
+        "--scenario", "require_wlif_setup", "--test-files", selection, "--collect-only",
+    ]
+    if expected is None:
+        with pytest.raises(ValueError, match="exactly one staged"):
+            runner.main(arguments)
+        execute.assert_not_called()
+        return
+    assert runner.main(arguments) == 0
+    selected = [arg for arg in execute.call_args.args[0] if arg.startswith(str(target))]
+    assert selected == [str(target / "azext_edge/tests" / name) for name in expected]
+
+
 @pytest.mark.parametrize("version,train,channel,allowed", [
     ("1.6.0-preview.2", "preview", "preview", True),
     ("1.5.6", "stable", "stable", True),
