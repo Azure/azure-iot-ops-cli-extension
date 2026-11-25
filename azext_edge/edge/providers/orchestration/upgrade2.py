@@ -63,6 +63,7 @@ console = Console()
 
 
 IOT_OPS_DELAY = 30  # seconds
+CONNECTOR_IMAGE_TAG_CONFIG_KEY = "connectors.image.tag"
 
 
 class ExtensionOperation(Enum):
@@ -202,6 +203,30 @@ class UpgradeManager:
             override_map = build_override_map(**override_kwargs)
             policy = self.targets.deployment_policy
             ops_extension = extensions_map.get(EXTENSION_TYPE_OPS)
+            if ops_extension:
+                current_config = ops_extension["properties"].get("configurationSettings") or {}
+                ops_override = override_map.get(EXTENSION_MONIKER_OPS) or ConfigOverride()
+                if override_kwargs.get("clear_connector_tag"):
+                    if ops_override.config.get(CONNECTOR_IMAGE_TAG_CONFIG_KEY) is not None:
+                        raise ValidationError(
+                            "--clear-connector-tag cannot be combined with an --ops-config "
+                            "value for connectors.image.tag."
+                        )
+                    if CONNECTOR_IMAGE_TAG_CONFIG_KEY in current_config:
+                        ops_override.config[CONNECTOR_IMAGE_TAG_CONFIG_KEY] = None
+                        override_map[EXTENSION_MONIKER_OPS] = ops_override
+                if (
+                    CONNECTOR_IMAGE_TAG_CONFIG_KEY in current_config
+                    and ops_override.config.get(
+                        CONNECTOR_IMAGE_TAG_CONFIG_KEY, current_config[CONNECTOR_IMAGE_TAG_CONFIG_KEY]
+                    ) is not None
+                ):
+                    logger.warning(
+                        "The connectors.image.tag extension config override pins the OPC UA connector image "
+                        "version and prevents it from following the AIO release during upgrade. "
+                        "Use --clear-connector-tag to remove the override, or "
+                        "--ops-config connectors.image.tag to remove it explicitly."
+                    )
             if policy.is_fairfax and ops_extension:
                 if not self.force and self.runtime_context.identity.cloud_name != policy.cloud_name:
                     validate_upgrade_boundary(self.runtime_context.identity, self.runtime_profile.identity)

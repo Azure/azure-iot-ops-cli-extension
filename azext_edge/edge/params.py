@@ -1556,6 +1556,14 @@ def load_iotops_arguments(self, _):
 
     with self.argument_context("iot ops upgrade") as context:
         context.argument(
+            "clear_connector_tag",
+            options_list=["--clear-connector-tag", "--cct"],
+            arg_type=get_three_state_flag(),
+            help="Remove the connectors.image.tag extension config override so the OPC UA connector "
+            "uses the image version selected by the AIO release. Preserves unrelated settings.",
+            arg_group="Extension Config",
+        )
+        context.argument(
             "force",
             options_list=["--force"],
             arg_type=get_three_state_flag(),
