@@ -699,6 +699,18 @@ def test_fairfax_runtime_profile_falls_back_to_shared_template(monitor, mocker):
     ]
 
 
+def test_fairfax_shared_fallback_distinguishes_missing_from_invalid_profile(monitor, mocker):
+    download = mocker.patch.object(monitor, "download")
+    missing = "{'VERSIONS': {'iotOperations': '1.4.99'}, 'TRAINS': {'iotOperations': 'stable'}}"
+    download.side_effect = [HTTPError("legacy", 404, "not found", None, None), missing.encode("utf-8")]
+    assert monitor.runtime_profile("Azure/example", SOURCE, "fairfax") is None
+
+    partial = "{'FAIRFAX_VERSIONS': {'iotOperations': '1.5.77'}}"
+    download.side_effect = [HTTPError("legacy", 404, "not found", None, None), partial.encode("utf-8")]
+    with pytest.raises(ValueError, match="unambiguous runtime profile"):
+        monitor.runtime_profile("Azure/example", SOURCE, "fairfax")
+
+
 def test_retry_retains_selection_and_rejects_missing_or_changed_history(monitor, manifest, tmp_path, mocker):
     monitor.write_json(tmp_path / "release-selection-1/manifest.json", manifest)
     discovery = mocker.patch.object(monitor, "resolve")

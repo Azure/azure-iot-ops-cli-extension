@@ -7,6 +7,7 @@
 """Resolve and acquire published CLI releases without Azure credentials or live tests."""
 
 import argparse
+import ast
 from email.parser import Parser
 import hashlib
 import json
@@ -128,6 +129,15 @@ def release_version(release):
     return version
 
 
+def _contains_any_dictionary_key(source, names):
+    for node in ast.walk(ast.parse(source)):
+        if not isinstance(node, ast.Dict):
+            continue
+        if any(isinstance(key, ast.Constant) and key.value in names for key in node.keys):
+            return True
+    return False
+
+
 def parse_runtime_profile(source, cloud, channel="stable", template=None):
     if channel not in {"stable", "preview"} or cloud != "public" and channel != "stable":
         raise ValueError("The selected cloud has no supported runtime channel.")
@@ -162,6 +172,9 @@ def runtime_profile(repository, source_commit, cloud, channel="stable"):
             if error.code == 404:
                 continue
             raise
+        if cloud == "fairfax" and not suffix and not _contains_any_dictionary_key(
+                source, {"FAIRFAX_VERSIONS", "FAIRFAX_TRAINS"}):
+            return None
         return parse_runtime_profile(source, cloud, channel, template)
     return None
 
