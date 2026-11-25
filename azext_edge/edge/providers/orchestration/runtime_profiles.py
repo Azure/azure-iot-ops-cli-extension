@@ -49,6 +49,13 @@ class RuntimeIdentity:
         if not isinstance(self.train, str) or not self.train:
             raise ValidationError("Unable to determine AIO release train.")
         object.__setattr__(self, "train", self.train.lower())
+        # Internal main builds use GA upgrade inputs, not Public Preview capabilities.
+        if (
+            self.train == "dev" and self.channel == RuntimeChannel.STABLE
+            and self.cloud_name == CLOUD_AZURE_PUBLIC
+        ):
+            parse_runtime_version(self.version)
+            return
         artifact_channel = self.channel
         if self.cloud_name == CLOUD_AZURE_US_GOVERNMENT and self.channel == RuntimeChannel.STABLE:
             if self.train == "preview":
@@ -172,13 +179,14 @@ class RuntimeProfileCatalog:
 
 def resolve_runtime_identity(
     version: str, train: str, qualification_identities: Iterable[RuntimeIdentity] = (),
-    *, allow_unbundled_integration: bool = False,
+    *, allow_unbundled_integration: bool = False, allow_unbundled_dev: bool = False,
 ) -> RuntimeIdentity:
     """Resolve public trains directly; integration requires an exact internal qualification mapping.
 
     A version suffix alone is not proof that a runtime is an approved Public Preview.
     Historical integration baselines can be supplied independently of the target catalog.
     Upgrade callers may opt into channel classification for unbundled integration builds.
+    Dev builds use GA upgrade inputs only when the caller explicitly opts in.
     """
     if not isinstance(train, str) or not train:
         raise ValidationError("Unable to determine AIO release train.")
@@ -193,6 +201,8 @@ def resolve_runtime_identity(
         return cloud_matches.pop()
     if normalized_train in (RuntimeChannel.STABLE.value, RuntimeChannel.PREVIEW.value):
         return RuntimeIdentity(RuntimeChannel(normalized_train), version, normalized_train)
+    if normalized_train == "dev" and allow_unbundled_dev:
+        return RuntimeIdentity(RuntimeChannel.STABLE, version, normalized_train)
     if normalized_train == "integration":
         matches = {
             identity for identity in qualification_identities
@@ -224,7 +234,7 @@ def validate_upgrade_boundary(installed: RuntimeIdentity, target: RuntimeIdentit
         raise ValidationError(
             f"Cannot upgrade AIO across cloud runtime identities: {installed.cloud_name} to {target.cloud_name}."
         )
-    if installed.channel != target.channel or installed.train != target.train:
+    if installed.channel != target.channel:
         raise ValidationError(
             f"Cannot upgrade AIO from {installed.channel.value}/{installed.train} "
             f"to {target.channel.value}/{target.train}. "

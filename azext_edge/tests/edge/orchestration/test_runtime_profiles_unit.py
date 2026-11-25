@@ -109,10 +109,24 @@ def test_catalog_missing_and_duplicate_profiles_fail(profiles):
         RuntimeProfileCatalog([profiles[0], profiles[0]])
 
 
-@pytest.mark.parametrize("train", ["integration", "canary", "", None])
+@pytest.mark.parametrize("train", ["integration", "dev", "canary", "", None])
 def test_unmapped_nonpublic_train_is_not_preview(train):
     with pytest.raises(ValidationError):
         resolve_runtime_identity("1.6.0-preview.4", train)
+
+
+@pytest.mark.parametrize("version", ["1.6.999-main.20261114.12", "1.6.999", "invalid"])
+def test_dev_runtime_requires_explicit_opt_in(version):
+    with pytest.raises(ValidationError, match="no supported runtime profile mapping"):
+        resolve_runtime_identity(version, "dev", allow_unbundled_integration=True)
+    if version == "invalid":
+        with pytest.raises(ValidationError, match="Unable to validate AIO runtime version"):
+            resolve_runtime_identity(version, "dev", allow_unbundled_dev=True)
+    else:
+        identity = resolve_runtime_identity(version, "Dev", allow_unbundled_dev=True)
+        assert identity == RuntimeIdentity(RuntimeChannel.STABLE, version, "dev")
+        with pytest.raises(ValidationError, match="conflicts with"):
+            RuntimeIdentity(RuntimeChannel.PREVIEW, version, "dev")
 
 
 def test_integration_requires_exact_mapping():
@@ -167,6 +181,21 @@ def test_cross_profile_upgrade_boundary(profiles, reverse):
         identities.reverse()
     with pytest.raises(ValidationError, match="must remain"):
         validate_upgrade_boundary(*identities)
+
+
+@pytest.mark.parametrize("installed_train,target_train,version", [
+    ("stable", "integration", "1.5.7"),
+    ("stable", "dev", "1.5.7"),
+    ("integration", "dev", "1.5.7"),
+    ("dev", "stable", "1.5.7"),
+    ("integration", "preview", "1.6.0-preview.4"),
+    ("preview", "integration", "1.6.0-preview.4"),
+])
+def test_same_channel_allows_different_deployment_trains(installed_train, target_train, version):
+    channel = RuntimeChannel.PREVIEW if "preview" in version else RuntimeChannel.STABLE
+    installed = RuntimeIdentity(channel, version, installed_train)
+    target = RuntimeIdentity(channel, version, target_train)
+    validate_upgrade_boundary(installed, target)
 
 
 def test_numeric_preview_order_and_downgrade():

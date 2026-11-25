@@ -121,6 +121,32 @@ The cluster version is not used to select connector metadata. Results reflect co
 with the CLI's preview target, not a guarantee of compatibility with an older installed runtime;
 live API and connector compatibility must be verified separately.
 
+For internal upgrade validation, `--ops-train integration` or `--ops-train dev` may
+change the deployment train within the installed runtime channel. `--ops-version`
+is optional: without it, the CLI uses its bundled target without downgrading an
+installed newer version. Use an explicit version to target an unbundled main build,
+for example `--ops-version 1.6.999-main.20261114.12 --ops-train dev`.
+`--force` bypasses GA version compatibility checks, not GA/preview boundaries.
+Dev builds use the GA upgrade profile; integration builds retain their GA or preview
+classification. This does not grant Public Preview capabilities to dev builds or
+qualify a production upgrade path.
+Preview boundaries, cluster readiness, foundation compatibility and manual upgrade
+ownership (`autoUpgradeMinorVersion=false`) remain enforced.
+Changing the AIO release train requires manual ownership even when the installed
+version is unchanged; `--force` does not bypass this requirement. Configuration-only
+updates and reapplying the same train do not transfer upgrade ownership.
+
+For opt-in live GA-to-dev and dev-to-dev validation, use a dedicated Public Azure
+GA instance with automatic upgrades disabled. Set `azext_edge_instance`,
+`azext_edge_rg`, and `azext_edge_internal_upgrade_versions` to two published,
+ascending dev versions separated by a comma. Leave `azext_edge_runtime_channel`
+and `azext_edge_upgrade_args` unset and run
+`tox -e python-upgrade-int -- -k test_internal_dev_upgrades`
+using the existing wheel/SHA256 inputs. The test upgrades the same
+instance twice and verifies each installed version/train and readiness.
+It intentionally leaves the instance on the second dev build; do not use a
+shared GA/preview qualification instance. Ordinary runs skip this test.
+
 #### Workload identity scheduling
 
 Workload-identity jobs (`python-wlif-int`, the `trustbundle` scenario) do not use
