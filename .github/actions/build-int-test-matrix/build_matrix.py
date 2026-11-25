@@ -28,7 +28,10 @@ KNOWN_FIELDS = {
     "manual_only",  # Requires explicit selection instead of scheduled/default runs
     "requires_baseline",  # Opt-in real upgrade, rather than same-version reconciliation
     "min_runtime_version",  # Earliest GA runtime supported by this scenario
+    "shards",  # ADO only: named test-file groups, each run on its own cluster
 }
+SHARD_NAME = re.compile(r"[a-z][a-z0-9]*")
+TEST_FILE = re.compile(r"test_[a-z0-9_]+_int\.py")
 
 
 def process_scenarios(scenarios: list[dict], user_selected: str) -> list[dict]:
@@ -83,6 +86,16 @@ def process_scenarios(scenarios: list[dict], user_selected: str) -> list[dict]:
         ):
             raise ValueError(f"Scenario '{name}' min_runtime_version must be a stable semantic version.")
 
+        shards = scenario.get("shards") or {}
+        valid = isinstance(shards, dict) and len(shards) != 1 and all(
+            SHARD_NAME.fullmatch(str(shard)) and isinstance(tests, list) and tests
+            and all(isinstance(file, str) and TEST_FILE.fullmatch(file) for file in tests)
+            for shard, tests in shards.items()
+        )
+        files = [file for tests in shards.values() for file in tests] if valid else []
+        if not valid or len(files) != len(set(files)):
+            raise ValueError(f"Scenario '{name}' shards must map names to distinct integration test files.")
+
         # Parse scenario custom environment variables
         raw_env = scenario.get("env", [])
         formatted_env = []
@@ -103,6 +116,7 @@ def process_scenarios(scenarios: list[dict], user_selected: str) -> list[dict]:
             "parallel": bool(scenario.get("parallel", True)),
             "requires_baseline": bool(scenario.get("requires_baseline", False)),
             "min_runtime_version": minimum,
+            "shards": shards,
         }
 
         processed_scenarios.append(normalized)
@@ -197,6 +211,27 @@ def expand_channels(
                 row["create_args"] = ""
             rows.append(row)
     return rows
+
+
+def shard_rows(rows: list[dict]) -> list[dict]:
+    """ADO runs each named shard on its own cluster; the first shard keeps the full smoke suite."""
+    result = []
+    for row in rows:
+        row = deepcopy(row)
+        shards = row.pop("shards", {})
+        if not shards:
+            result.append(row)
+        for index, (shard, tests) in enumerate(shards.items()):
+            result.append({
+                **deepcopy(row), "description": f"{row['description']} ({shard})",
+                "shard": shard, "tests": list(tests), "quick_smoke": index > 0,
+            })
+    return result
+
+
+def row_key(row: dict, python: str) -> str:
+    name = row["name"] + (f"-{row['shard']}" if row.get("shard") else "")
+    return f"{name.replace('-', '_')}_py{python.replace('.', '')}"
 
 
 def main() -> None:

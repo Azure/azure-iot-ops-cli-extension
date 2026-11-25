@@ -653,6 +653,19 @@ def test_candidate_inventory_is_full_default_channel_matrix(candidate):
     }
 
 
+def test_pre_shard_source_keeps_unsharded_cohorts(tmp_path):
+    for path in (".github/test-scenarios.yml", ".github/actions/build-int-test-matrix/build_matrix.py"):
+        (tmp_path / path).parent.mkdir(parents=True, exist_ok=True)
+        (tmp_path / path).write_text((ROOT / path).read_text(encoding="utf-8"), encoding="utf-8")
+    matrix = tmp_path / ".github/actions/build-int-test-matrix/build_matrix.py"
+    matrix.write_text(matrix.read_text(encoding="utf-8").split("\ndef shard_rows(")[0], encoding="utf-8")
+    config = tmp_path / ".github/test-scenarios.yml"
+    config.write_text(config.read_text(encoding="utf-8").split("    # ADO runs each shard")[0], encoding="utf-8")
+    cohorts = release.source_cohorts(tmp_path)
+    assert {"trustbundle_stable_py313", "trustbundle_preview_py313", COHORT} <= set(cohorts)
+    assert not any("shard" in key for key in cohorts)
+
+
 @pytest.mark.parametrize("version,already_versioned", [
     ("2.11.1", False), ("2.0.0b1", False), ("2.0.0b1", True),
 ])
@@ -706,10 +719,14 @@ def test_candidate_creation_updates_title_from_wheel_once(
     assert release.verify_candidate(output) == generated
 
 
-@pytest.mark.parametrize("mutation", ["source", "producer", "wheel", "sbom", "cohort", "extra"])
+@pytest.mark.parametrize("mutation", ["source", "producer", "wheel", "sbom", "cohort", "shard", "shard-name", "extra"])
 def test_invalid_candidate_rejected(candidate, mutation):
     directory, value = candidate
-    if mutation == "source":
+    if mutation == "shard":
+        value["cohorts"].pop("trustbundle_preview_trust_py313")
+    elif mutation == "shard-name":
+        value["cohorts"]["trustbundle_preview_trust_py313"]["row"]["scenario"]["shard"] = "other"
+    elif mutation == "source":
         value["sourceCommit"] = AUTOMATION
     elif mutation == "producer":
         value["producer"]["build"] = "899"

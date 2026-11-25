@@ -149,6 +149,78 @@ def test_storage_policy_explicitly_disables_blob_public_access_without_changing_
     assert arguments[arguments.index("--allow-shared-key-access") + 1] == "false"
 
 
+def make_shard_state():
+    state = make_state()
+    state["row"]["scenario"].update(shard="trust", tests=["test_opcua_certs_trust_int.py"], quick_smoke=True)
+    prefix = state["resources"]["cluster"].split("/Microsoft.Kubernetes/")[0]
+    state["resources"] = pipeline.attempt_resources(prefix, state["suffix"], state["row"]["scenario"])
+    return state
+
+
+def test_shard_creates_shared_key_vault_and_identity(monkeypatch):
+    monkeypatch.setenv("AZURE_CLIENT_ID", UUID_VALUE)
+    state = make_shard_state()
+    commands = Mock()
+    cluster.create_resources(commands, state)
+    calls = [call.args[0] for call in commands.run.call_args_list]
+    assert [call[:3] for call in calls[3:]] == [
+        ["az", "keyvault", "create"], ["az", "role", "assignment"], ["az", "identity", "create"],
+    ]
+    assert calls[3][calls[3].index("--name") + 1] == f"opkv{state['suffix']}"
+    assert calls[4][calls[4].index("--scope") + 1] == state["resources"]["keyvault"]
+    assert calls[5][calls[5].index("--name") + 1] == f"opmi{state['suffix']}"
+
+
+@pytest.mark.parametrize("skipped", [False, True])
+def test_shard_scenario_runs_only_its_files_and_rejects_skips(tmp_path, monkeypatch, skipped):
+    monkeypatch.setenv("AZURE_EXTENSION_DIR", str(tmp_path / "extensions"))
+    monkeypatch.setenv("AZURE_CLIENT_ID", UUID_VALUE)
+    state = make_shard_state()
+    state["phases"] = {}
+    case = '<testcase name="skip"><skipped/></testcase>' if skipped else ""
+    commands = Mock()
+    commands.run.side_effect = lambda *args, **kwargs: (
+        (tmp_path / "junit").mkdir(exist_ok=True),
+        (tmp_path / "junit/scenario.xml").write_text(f'<testsuite><testcase name="pass"/>{case}</testsuite>'),
+    )
+    if skipped:
+        with pytest.raises(ValueError, match="must not skip"):
+            cluster.test_phase(commands, state, tmp_path, "scenario", "require_wlif_setup")
+        assert not state["phases"]
+    else:
+        cluster.test_phase(commands, state, tmp_path, "scenario", "require_wlif_setup")
+        assert state["phases"]["scenario"] == "passed"
+    arguments = commands.run.call_args.args[0]
+    assert arguments[arguments.index("--test-files") + 1] == "test_opcua_certs_trust_int.py"
+
+
+def test_quick_smoke_keeps_check_and_secret_store_bundle(tmp_path):
+    commands = Mock()
+    cluster.smoke(commands, make_shard_state(), tmp_path)
+    assert [call.args[0][3:] for call in commands.run.call_args_list] == [
+        ["check"], ["support", "create-bundle", "--ops-service", "acs", "secretstore"],
+    ]
+    assert pipeline.junit_results(tmp_path / "junit/smoke.xml")["passed"] == 2
+
+
+@pytest.mark.parametrize("failures", [0, 4])
+def test_cleanup_purges_owned_key_vault_without_failing_cleanup(tmp_path, monkeypatch, capsys, failures):
+    state = make_shard_state()
+    pipeline.write(tmp_path / "state.json", state)
+    commands = Mock()
+    commands.az_json.side_effect = [{"id": SUBSCRIPTION, "environmentName": "AzureCloud"}, []]
+    commands.run.side_effect = [subprocess.CalledProcessError(1, "az")] * failures + [None]
+    monkeypatch.setattr(cluster, "Commands", Mock(return_value=commands))
+    monkeypatch.setattr(cluster.time, "sleep", Mock())
+    cluster.cleanup(tmp_path)
+    purge = ["az", "keyvault", "purge", "--name", f"opkv{state['suffix']}"]
+    assert [(item.args, item.kwargs) for item in commands.run.call_args_list] == (
+        [((purge,), {"timeout": 300})] * min(failures + 1, 4)
+    )
+    assert ("Could not purge" in capsys.readouterr().out) == bool(failures)
+    assert pipeline.read(tmp_path / "state.json")["cleanup"] == "passed"
+
+
 def test_candidate_retry_restores_original_wheel_instead_of_building(monkeypatch, tmp_path):
     saved = tmp_path / "history/ops-wheel-1"
     saved.mkdir(parents=True)
@@ -416,23 +488,30 @@ def test_trust_bundle_jobs_keep_shared_group_and_distinct_resource_names(monkeyp
     monkeypatch.setattr(pipeline, "verified_candidate", Mock(return_value=wheel))
     monkeypatch.setattr(pipeline.subprocess, "run", Mock())
     monkeypatch.setattr(pipeline.runpy, "run_path", Mock(return_value={"verify_installed": Mock()}))
-    clusters = []
-    for channel, attempt in (("stable", "1"), ("preview", "1"), ("stable", "2")):
-        monkeypatch.setenv("OPS_ROW", f"trustbundle_{channel}_py{version.replace('.', '')}")
+    resources = []
+    for channel, shard, attempt in (
+        ("stable", "secretsync", "1"), ("preview", "secretsync", "1"), ("stable", "secretsync", "2"),
+        ("stable", "trust", "1"),
+    ):
+        monkeypatch.setenv("OPS_ROW", f"trustbundle_{channel}_{shard}_py{version.replace('.', '')}")
         monkeypatch.setenv("SYSTEM_JOBATTEMPT", attempt)
-        output = tmp_path / f"{channel}-{attempt}"
+        output = tmp_path / f"{channel}-{shard}-{attempt}"
         pipeline.prepare(output)
         state = pipeline.read(output / "state.json")
         cluster.validate_state(state)
-        clusters.append(state["resources"]["cluster"])
+        resources.append(state["resources"])
         assert state["resourceGroup"] == "ops-cli-int-test-rg"
         assert "baseResourceGroup" not in state
         assert all(f"/resourceGroups/{state['resourceGroup']}/" in value for value in state["resources"].values())
-        assert cluster.test_environment(state, output)["azext_edge_rg"] == state["resourceGroup"]
+        environment = cluster.test_environment(state, output)
+        assert environment["azext_edge_rg"] == state["resourceGroup"]
+        assert environment["azext_edge_kv"] == state["resources"]["keyvault"]
+        assert environment["azext_edge_user_assigned_mi_id"] == state["resources"]["identity"]
         state["resourceGroup"] = "another-group"
         with pytest.raises(ValueError, match="approved resource group"):
             cluster.validate_state(state)
-    assert len(set(clusters)) == 3
+    for name in ("cluster", "keyvault", "identity"):
+        assert len({value[name] for value in resources}) == 4
 
 
 def test_default_selection_excludes_explicit_scenarios(monkeypatch, tmp_path):
@@ -512,6 +591,18 @@ def test_junit_passed_with_explicit_skips(tmp_path):
     path = tmp_path / "junit.xml"
     path.write_text('<testsuite><testcase name="passed"/><testcase name="skip"><skipped/></testcase></testsuite>')
     assert pipeline.junit_results(path) == {"passed": 1, "skipped": 1, "total": 2}
+    with pytest.raises(ValueError, match="must not skip"):
+        pipeline.junit_results(path, allow_skips=False)
+
+
+@pytest.mark.parametrize("shard,phase,exclusions,strict", [
+    ("trust", "scenario", None, True), ("trust", "scenario", [], True), ("trust", "init", None, False),
+    (None, "scenario", None, False), ("trust", "scenario", [{"test": "excluded"}], False),
+])
+def test_only_shard_scenarios_require_every_test_to_run(shard, phase, exclusions, strict):
+    row = {"scenario": {"shard": shard} if shard else {}}
+    monitor = {"testCompatibility": {"exclusions": exclusions}} if exclusions is not None else None
+    assert pipeline.strict_skips(row, phase, monitor) is strict
 
 
 @pytest.mark.parametrize("field,value", [
@@ -1296,6 +1387,36 @@ def test_run_without_admission_still_cleans_after_provision_failure(monkeypatch,
     assert order == [("diagnostics", True), ("cleanup", True)]
     assert cluster.Commands.call_args.kwargs["budget"] == 360 * 60
     identity.terminate.assert_called_once()
+
+
+@pytest.mark.skipif(sys.platform != "linux", reason="Requires POSIX process groups.")
+def test_cancel_stops_resource_creation_before_cleanup(monkeypatch, tmp_path):
+    pipeline.write(tmp_path / "state.json", make_state())
+    monkeypatch.setattr(cluster, "start_auth", Mock(return_value=Mock(poll=Mock(return_value=None))))
+    monkeypatch.setattr(cluster.Commands, "az_json", Mock())
+    for name in ("check_account", "stop_auth"):
+        monkeypatch.setattr(cluster, name, Mock())
+    monkeypatch.setattr(cluster, "resource_ids", Mock(return_value=set()))
+    monkeypatch.setattr(cluster.diagnostics, "HookCollector", Mock())
+    order = []
+    started = cluster.threading.Event()
+
+    def create_resources(commands, _state):
+        started.set()
+        with pytest.raises(InterruptedError):
+            commands.run([sys.executable, "-c", "import time; time.sleep(60)"])
+        order.append("creation stopped")
+
+    def start_cluster(*_args):
+        started.wait(5)
+        raise InterruptedError("Scenario canceled; cleanup is required.")
+
+    monkeypatch.setattr(cluster, "create_resources", create_resources)
+    monkeypatch.setattr(cluster, "start_cluster", start_cluster)
+    monkeypatch.setattr(cluster, "cleanup", Mock(side_effect=lambda _output: order.append("cleanup")))
+    with pytest.raises(InterruptedError):
+        cluster.run(tmp_path)
+    assert order == ["creation stopped", "cleanup"]
 
 
 @pytest.mark.parametrize("failure", ["scenario", "auth-shutdown"])

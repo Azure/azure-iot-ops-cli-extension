@@ -165,7 +165,7 @@ def select_scenarios(scenario_source=ROOT, skip_unavailable=False):
     if baselines and "upgrade-path" not in selection:
         # Pipeline 164 has no upgrade-path checkbox; an upgrade source opts in.
         scenarios += matrix_tools["process_scenarios"](config, "upgrade-path")
-    return matrix_tools["expand_channels"](scenarios, required("OPS_CHANNELS"), baselines)
+    return matrix_tools["shard_rows"](matrix_tools["expand_channels"](scenarios, required("OPS_CHANNELS"), baselines))
 
 
 def plan(output, scenario_source=ROOT, skip_unavailable=False):
@@ -186,13 +186,11 @@ def plan(output, scenario_source=ROOT, skip_unavailable=False):
     group = required("OPS_RESOURCE_GROUP")
     if not re.fullmatch(r"[A-Za-z0-9_().-]{1,90}", group) or group.endswith("."):
         raise ValueError("Invalid resource group name.")
-    rows = []
-    for scenario in scenarios:
-        for version in versions:
-            rows.append({
-                "key": f"{scenario['name'].replace('-', '_')}_py{version.replace('.', '')}",
-                "python": version, "scenario": scenario,
-            })
+    row_key = runpy.run_path(str(ROOT / ".github/actions/build-int-test-matrix/build_matrix.py"))["row_key"]
+    rows = [
+        {"key": row_key(scenario, version), "python": version, "scenario": scenario}
+        for scenario in scenarios for version in versions
+    ]
     if not rows:
         raise ValueError("The integration matrix is empty.")
     if health and len(rows) > 40:
@@ -394,21 +392,14 @@ def prepare(output):
             raise ValueError("Execution plan does not match the exact release cohorts.")
     suffix = uuid4().hex[:15]
     prefix = f"/subscriptions/{value['subscription']}/resourceGroups/{value['resourceGroup']}/providers"
-    cluster, storage = f"opado{suffix}", f"initstore{suffix}"
-    registry, namespace = f"init-registry{suffix}", f"init-adr-{suffix}"
+    cluster = f"opado{suffix}"
     state = {
         "schema": 1, "producer": producer(), "row": row, "attempt": int(required("SYSTEM_JOBATTEMPT")),
         "subscription": value["subscription"], "resourceGroup": value["resourceGroup"],
         "locations": value["locations"], "cloud": value.get("cloud", "AzureCloud"),
         "customLocationsObjectId": value["customLocationsObjectId"], "suffix": suffix,
         "cluster": cluster, "instance": f"inst{suffix}", "wheel": str(wheel.resolve()), "sha256": digest(wheel),
-        "resources": {
-            "cluster": f"{prefix}/Microsoft.Kubernetes/connectedClusters/{cluster}",
-            "instance": f"{prefix}/Microsoft.IoTOperations/instances/inst{suffix}",
-            "storage": f"{prefix}/Microsoft.Storage/storageAccounts/{storage}",
-            "registry": f"{prefix}/Microsoft.DeviceRegistry/schemaRegistries/{registry}",
-            "namespace": f"{prefix}/Microsoft.DeviceRegistry/namespaces/{namespace}",
-        },
+        "resources": attempt_resources(prefix, suffix, row["scenario"]),
         "ownershipChecked": False, "phases": {}, "cleanup": "not-started", "status": "incomplete",
     }
     if value.get("health"):
@@ -432,6 +423,21 @@ def prepare(output):
         }, check=True)
 
 
+def attempt_resources(prefix, suffix, scenario):
+    resources = {
+        "cluster": f"{prefix}/Microsoft.Kubernetes/connectedClusters/opado{suffix}",
+        "instance": f"{prefix}/Microsoft.IoTOperations/instances/inst{suffix}",
+        "storage": f"{prefix}/Microsoft.Storage/storageAccounts/initstore{suffix}",
+        "registry": f"{prefix}/Microsoft.DeviceRegistry/schemaRegistries/init-registry{suffix}",
+        "namespace": f"{prefix}/Microsoft.DeviceRegistry/namespaces/init-adr-{suffix}",
+    }
+    if scenario.get("shard"):
+        # Shards share one Key Vault and identity across their tests instead of one per test.
+        resources["keyvault"] = f"{prefix}/Microsoft.KeyVault/vaults/opkv{suffix}"
+        resources["identity"] = f"{prefix}/Microsoft.ManagedIdentity/userAssignedIdentities/opmi{suffix}"
+    return resources
+
+
 def ownership_identity(state):
     return {
         "product": "azure-iot-ops", "producer": state["producer"], "scenario": state["row"]["key"],
@@ -450,13 +456,21 @@ def expected_phases(row):
     return phases
 
 
-def junit_results(path):
+def strict_skips(row, phase, monitor=None):
+    # A skipped shard test silently drops coverage no other row runs, unless it is a reviewed monitor exclusion.
+    exclusions = ((monitor or {}).get("testCompatibility") or {}).get("exclusions")
+    return phase == "scenario" and bool(row["scenario"].get("shard")) and not exclusions
+
+
+def junit_results(path, allow_skips=True):
     cases = list(ElementTree.parse(path).getroot().iter("testcase"))
     if not cases or any(case.find("failure") is not None or case.find("error") is not None for case in cases):
         raise ValueError(f"Failed or empty test results: {Path(path).name}")
     passed = sum(case.find("skipped") is None for case in cases)
     if not passed:
         raise ValueError(f"All cases were skipped: {Path(path).name}")
+    if not allow_skips and passed != len(cases):
+        raise ValueError(f"Sharded tests must not skip: {Path(path).name}")
     return {"passed": passed, "skipped": len(cases) - passed, "total": len(cases)}
 
 
@@ -582,7 +596,8 @@ def scenario_evidence(value, history):
                     or receipt.get("releaseQualified") is not False):
                 raise ValueError("Monitor runtime, resource scope or qualification boundary is invalid.")
         for phase in expected_phases(row):
-            junit_results(path.parent / "junit" / f"{phase}.xml")
+            strict = strict_skips(row, phase, value.get("monitor"))
+            junit_results(path.parent / "junit" / f"{phase}.xml", allow_skips=not strict)
         yield row, path, receipt
 
 
