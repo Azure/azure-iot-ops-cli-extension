@@ -35,6 +35,7 @@ from azext_edge.edge.providers.orchestration.resources.instances import (
     KEYVAULT_ROLE_ID_READER,
     KEYVAULT_ROLE_ID_SECRETS_USER,
     SERVICE_ACCOUNT_DATAFLOW,
+    SERVICE_ACCOUNT_EDGE_REGISTRY,
     SERVICE_ACCOUNT_SCHEMA,
     SERVICE_ACCOUNT_SECRETSYNC,
     SERVICE_ACCOUNT_WASM,
@@ -2200,6 +2201,7 @@ def test_add_mi_user_assigned(
     assert federation_payload["properties"]["subject"] == subject
     assert federation_payload["properties"]["issuer"] == oidc_issuer
     assert federation_payload["properties"]["audiences"] == ["api://AzureADTokenExchange"]
+    assert mocked_ga_runtime_context.called == (usage_type == IdentityUsageType.SCHEMA.value)
 
     # Assert schema registry role assignment behavior
     if usage_type == IdentityUsageType.SCHEMA.value:
@@ -2224,3 +2226,104 @@ def test_add_mi_user_assigned(
                 f"/{AZURE_DEVICE_REGISTRY_ADMINISTRATOR_ROLE_ID}"
             )
             assert schema_ra_payload["properties"]["roleDefinitionId"] == expected_role_id
+
+
+RUNTIME_INSTANCE_ID = (
+    "/subscriptions/instance-sub/resourceGroups/instance-rg/providers/Microsoft.IoTOperations/instances/aio"
+)
+RUNTIME_CL_ID = (
+    "/subscriptions/cluster-sub/resourceGroups/cluster-rg/providers/Microsoft.ExtendedLocation/customLocations/cl"
+)
+RUNTIME_CLUSTER_ID = (
+    "/subscriptions/cluster-sub/resourceGroups/cluster-rg/providers/Microsoft.Kubernetes/connectedClusters/arc"
+)
+RUNTIME_EXTENSION_ID = RUNTIME_CLUSTER_ID + "/providers/Microsoft.KubernetesConfiguration/extensions/aio"
+RUNTIME_UAMI_ID = (
+    "/subscriptions/uami-sub/resourceGroups/uami-rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/uami"
+)
+
+
+def _setup_schema_identity_assign(mocked_cmd, mocker, extensions: list) -> tuple:
+    instances = Instances(mocked_cmd)
+    instance = {
+        "id": RUNTIME_INSTANCE_ID,
+        "extendedLocation": {"name": RUNTIME_CL_ID, "type": "CustomLocation"},
+        "properties": {"provisioningState": "Succeeded"},
+    }
+    custom_location = {
+        "id": RUNTIME_CL_ID,
+        "properties": {
+            "namespace": "azure-iot-operations",
+            "hostResourceId": RUNTIME_CLUSTER_ID,
+            "clusterExtensionIds": [RUNTIME_EXTENSION_ID],
+            "provisioningState": "Succeeded",
+        },
+    }
+    mocker.patch.object(instances, "_get_instance_for_write", return_value=instance)
+    mocker.patch.object(
+        instances.resource_client.resources,
+        "get_by_id",
+        side_effect=lambda resource_id, **_: (
+            custom_location if resource_id == RUNTIME_CL_ID else {"properties": {"principalId": generate_uuid()}}
+        ),
+    )
+    mocker.patch.object(instances, "get_resource_map").return_value.connected_cluster.resource = {"name": "arc"}
+    mocker.patch.object(instances, "_ensure_oidc_issuer", return_value="https://issuer.example/")
+    prefix = "azext_edge.edge.providers.orchestration.resources.instances."
+    clusters = mocker.patch(prefix + "get_connectedk8s_mgmt_client")
+    clusters.return_value.connected_cluster.get.return_value = {
+        "id": RUNTIME_CLUSTER_ID, "properties": {"connectivityStatus": "Connected"},
+    }
+    mocker.patch(prefix + "get_clusterconfig_mgmt_client").return_value.extensions.list.return_value = extensions
+    federate = mocker.patch.object(instances, "federate_msi")
+    update = mocker.patch.object(instances, "_update", return_value=instance)
+    return instances, federate, update
+
+
+@pytest.mark.parametrize(
+    "version, train, expected_service_account",
+    [
+        ("1.5.82", "integration", SERVICE_ACCOUNT_SCHEMA),
+        ("1.5.90", "stable", SERVICE_ACCOUNT_SCHEMA),
+        ("1.6.0-preview.103", "integration", SERVICE_ACCOUNT_EDGE_REGISTRY),
+        ("1.6.0-preview.104", "preview", SERVICE_ACCOUNT_EDGE_REGISTRY),
+        ("1.6.0-preview.999", "integration", SERVICE_ACCOUNT_EDGE_REGISTRY),
+    ],
+)
+def test_add_mi_user_assigned_schema_federates_runtime_service_account(
+    mocked_cmd, mocker, version: str, train: str, expected_service_account: str
+):
+    extension = {
+        "id": RUNTIME_EXTENSION_ID,
+        "properties": {
+            "extensionType": "microsoft.iotoperations",
+            "currentVersion": version,
+            "releaseTrain": train,
+            "provisioningState": "Succeeded",
+        },
+    }
+    instances, federate, update = _setup_schema_identity_assign(mocked_cmd, mocker, [extension])
+
+    instances.add_mi_user_assigned(
+        "aio", "instance-rg", RUNTIME_UAMI_ID, IdentityUsageType.SCHEMA.value, skip_sr_ra=True
+    )
+
+    subject = f"system:serviceaccount:azure-iot-operations:{expected_service_account}"
+    federate.assert_called_once()
+    assert federate.call_args.kwargs["subject"] == subject
+    assert federate.call_args.kwargs["federated_credential_name"] == get_fc_name(
+        cluster_name="arc", oidc_issuer="https://issuer.example/", subject=subject
+    )
+    update.assert_called_once()
+
+
+def test_add_mi_user_assigned_schema_runtime_failure_precedes_writes(mocked_cmd, mocker):
+    instances, federate, update = _setup_schema_identity_assign(mocked_cmd, mocker, [])
+
+    with pytest.raises(ValidationError, match="Expected exactly one AIO extension"):
+        instances.add_mi_user_assigned(
+            "aio", "instance-rg", RUNTIME_UAMI_ID, IdentityUsageType.SCHEMA.value, skip_sr_ra=True
+        )
+
+    federate.assert_not_called()
+    update.assert_not_called()

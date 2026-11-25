@@ -2152,7 +2152,9 @@ def load_iotops_help():
         long-summary: |
             This operation includes federation of the identity for the applicable purpose.
 
-            When --usage 'schema' is present, by default, a role assignment of the identity against the
+            When --usage 'schema' is present, the identity is federated with the schema registry
+            service account of the instance runtime: 'adr-schema-registry' for GA runtimes and
+            'aio-edge-registry' for preview runtimes. By default, a role assignment of the identity against the
             instance schema registry will be made if the expected role does not already exist.
 
         examples:

@@ -33,6 +33,7 @@ from azext_edge.edge.common import (
 from azext_edge.edge.providers.orchestration.clone import (
     DEPLOYMENT_CHUNK_LEN,
     SERVICE_ACCOUNT_DATAFLOW,
+    SERVICE_ACCOUNT_EDGE_REGISTRY,
     SERVICE_ACCOUNT_SCHEMA,
     SERVICE_ACCOUNT_SECRETSYNC,
     TEMPLATE_PARAMS_SET,
@@ -1246,6 +1247,7 @@ def test_clone_instance_feature_capture(
         {"subjects": {SERVICE_ACCOUNT_SECRETSYNC}},
         {"subjects": {SERVICE_ACCOUNT_DATAFLOW}},
         {"subjects": {SERVICE_ACCOUNT_SCHEMA}},
+        {"subjects": {SERVICE_ACCOUNT_EDGE_REGISTRY}},
         {"subjects": {SERVICE_ACCOUNT_DATAFLOW, SERVICE_ACCOUNT_SECRETSYNC, SERVICE_ACCOUNT_SCHEMA}},
     ],
 )

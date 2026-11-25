@@ -7,6 +7,10 @@ Release History
 unreleased
 ==========
 
+* ``iot ops identity assign --usage schema``: Federate the ``aio-edge-registry`` service account on preview runtimes,
+  which run the schema registry as ``aio-edge-registry``. GA runtimes still use ``adr-schema-registry``.
+  ``iot ops clone`` also replicates existing ``aio-edge-registry`` federated credentials.
+
 * Prepare CLI ``2.12.0a1`` with AIO 2612 GA-channel and preview-channel qualification inputs.
   Both bundled Public runtimes retain the upstream integration train. The existing Fairfax 2610 inputs are unchanged.
   The Fairfax profile reports release 2612 to align with Public; its source and runtime versions remain unchanged.

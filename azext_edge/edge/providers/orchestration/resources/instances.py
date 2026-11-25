@@ -67,7 +67,7 @@ from ..permissions import (
 )
 from ..resource_map import IoTOperationsResourceMap
 from ..runtime import RuntimeContext, get_runtime_cluster_id, resolve_runtime
-from ..runtime_profiles import RuntimeIdentity, RuntimeProfile
+from ..runtime_profiles import RuntimeChannel, RuntimeIdentity, RuntimeProfile
 from ..runtime_catalog import get_runtime_catalog
 from ..runtime_requirements import get_runtime_requirements, requested_selections, validate_runtime_requirements
 
@@ -81,6 +81,7 @@ SECRET_SYNC_RESOURCE_TYPE = "microsoft.secretsynccontroller/secretsyncs"
 SERVICE_ACCOUNT_DATAFLOW = "aio-dataflow"
 SERVICE_ACCOUNT_SECRETSYNC = "aio-ssc-sa"
 SERVICE_ACCOUNT_SCHEMA = "adr-schema-registry"
+SERVICE_ACCOUNT_EDGE_REGISTRY = "aio-edge-registry"
 SERVICE_ACCOUNT_WASM = "aio-wasm-graph-controller"
 KEYVAULT_ROLE_ID_SECRETS_USER = "4633458b-17de-408a-b874-0445c86b69e6"
 KEYVAULT_ROLE_ID_READER = "21090545-7ca7-4776-b22c-e363652d74d2"
@@ -702,6 +703,16 @@ class Instances(Queryable):
         instance["identity"] = identity
         return self._update(name=name, resource_group_name=resource_group_name, instance=instance, **kwargs)
 
+    def _get_schema_service_account(self, instance: dict) -> str:
+        # Preview runtimes run the schema registry as aio-edge-registry; GA runtimes use adr-schema-registry.
+        catalog = get_runtime_catalog(CloudConfig(self.cmd).name)
+        runtime = self.get_runtime_context(
+            instance, catalog.qualification_identities, allow_unbundled_integration=True
+        )
+        if runtime.identity.channel == RuntimeChannel.PREVIEW:
+            return SERVICE_ACCOUNT_EDGE_REGISTRY
+        return SERVICE_ACCOUNT_SCHEMA
+
     def add_mi_user_assigned(
         self,
         name: str,
@@ -729,7 +740,7 @@ class Instances(Queryable):
         namespace = custom_location["properties"]["namespace"]
 
         if usage_type == IdentityUsageType.SCHEMA.value:
-            service_account_name = SERVICE_ACCOUNT_SCHEMA
+            service_account_name = self._get_schema_service_account(instance)
         elif usage_type == IdentityUsageType.WASM_GRAPH.value:
             service_account_name = SERVICE_ACCOUNT_WASM
         else:
