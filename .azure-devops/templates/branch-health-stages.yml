@@ -203,15 +203,14 @@ stages:
                 subscriptionId: $(TestSubscription)
                 resourceGroup: $(TestResourceGroup)
               matrix: $[ stageDependencies.Build.Build.outputs['plan.parallelMatrix'] ]
+      # Dev tests use unique SecretSync names, so trust-bundle shards run beside Integration.
       - stage: TrustBundle
         displayName: Test selected dev trust bundle
-        dependsOn: [Build, Lint, Unit, Integration]
+        dependsOn: [Build, Lint, Unit]
         condition: >-
           and(not(canceled()), eq(dependencies.Build.result, 'Succeeded'),
               eq(dependencies.Lint.result, 'Succeeded'), eq(dependencies.Unit.result, 'Succeeded'),
-              in(dependencies.Integration.result, 'Succeeded', 'Failed', 'Skipped'),
               eq(dependencies.Build.outputs['Build.plan.hasTrustBundle'], 'true'))
-        lockBehavior: sequential
         variables:
           candidateArtifact: $[ stageDependencies.Build.Build.outputs['bundle.artifact'] ]
           candidateDigest: $[ stageDependencies.Build.Build.outputs['plan.digest'] ]
@@ -220,7 +219,6 @@ stages:
             parameters:
               monitor: true
               monitorKind: branch
-              maxParallel: 1
               configuration:
                 health: false
                 releaseBuildId: 0
@@ -230,20 +228,6 @@ stages:
                 subscriptionId: $(TestSubscription)
                 resourceGroup: $(TestResourceGroup)
               matrix: $[ stageDependencies.Build.Build.outputs['plan.trustBundleMatrix'] ]
-          - ${{ if eq(parameters.cloud, 'public') }}:
-              - deployment: TrustBundleLock
-                displayName: Release shared trust-bundle lock
-                dependsOn: Scenario
-                condition: always()
-                timeoutInMinutes: 5
-                environment: ops-wlif-a386d5ea-ea90-441a-8263-d816368c84a1-ops-cli-int-test-rg
-                strategy:
-                  runOnce:
-                    deploy:
-                      steps:
-                        - checkout: none
-                        - download: none
-                        - bash: echo "Trust Bundle stage finished."
       - stage: Results
         displayName: Qualify Branch Health evidence
         dependsOn: [Build, Lint, Unit, Integration, TrustBundle]

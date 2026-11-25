@@ -16,7 +16,7 @@ from uuid import uuid4
 from azure.cli.core.azclierror import CLIInternalError
 
 from ...generators import generate_random_string
-from ...helpers import run
+from ...helpers import run, wait_for_expected_count
 
 logger = get_logger(__name__)
 ROLE_MAX_RETRIES = 5
@@ -185,8 +185,10 @@ def test_secretsync(cluster_connection, secretsync_int_setup, tracked_files: Lis
     )
     _assert_cluster_side_sync(kv_id=kv_id, tracked_files=tracked_files, spc_name=spc_name)
 
-    # disable
+    # disable, and wait for Resource Graph so the next enable on this instance starts clean
+    list_cmd = f"az iot ops secretsync list -n {instance_name} -g {resource_group}"
     run(f"az iot ops secretsync disable -n {instance_name} -g {resource_group} -y")
+    wait_for_expected_count(list_cmd, expected_count=0, max_retries=20, initial_interval=5, run_fn=run)
 
 
 def _assert_cluster_side_sync(kv_id: str, tracked_files: List[str], spc_name: str):

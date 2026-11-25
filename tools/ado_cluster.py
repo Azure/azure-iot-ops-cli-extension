@@ -7,6 +7,7 @@
 """Execute one ops scenario on fresh resources; never sweep the shared resource group."""
 
 import argparse
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 import hashlib
 import json
@@ -16,6 +17,7 @@ import re
 import signal
 import subprocess
 import sys
+import threading
 import time
 from uuid import UUID
 from xml.etree import ElementTree
@@ -25,8 +27,8 @@ import yaml
 import ado_diagnostics as diagnostics
 import owned_resources
 from ado_integration import (
-    ROOT, expected_locations, expected_phases, junit_results, producer, read, required, scenario_timeout, write,
-    cloud_name, digest, output_variable, ownership_identity,
+    ROOT, attempt_resources, expected_locations, expected_phases, junit_results, producer, read, required,
+    scenario_timeout, strict_skips, write, cloud_name, digest, output_variable, ownership_identity,
 )
 from release_pipeline import validate_cluster_region
 
@@ -65,9 +67,10 @@ def stop_process_group(process):
 
 
 class Commands:
-    def __init__(self, auth=None, budget=None):
+    def __init__(self, auth=None, budget=None, cancel=None):
         self.auth = auth
         self.deadline = time.monotonic() + budget if budget is not None else None
+        self.cancel = cancel
 
     def run(self, arguments, *, capture=False, env=None, cwd=None, timeout=1800):
         if self.deadline is not None:
@@ -84,6 +87,8 @@ class Commands:
             while True:
                 if self.auth is not None and self.auth.poll() is not None:
                     raise RuntimeError("Credential renewal stopped; aborting scenario execution.")
+                if self.cancel is not None and self.cancel.is_set():
+                    raise InterruptedError("Scenario canceled.")
                 remaining = deadline - time.monotonic()
                 if remaining <= 0:
                     raise TimeoutError(f"Command timed out: {arguments[0]}")
@@ -97,6 +102,12 @@ class Commands:
             return stdout
         finally:
             stop_process_group(process)
+
+    def cancellable(self, cancel):
+        """A copy sharing this budget, for another thread, that stops once cancel is set."""
+        commands = Commands(self.auth, cancel=cancel)
+        commands.deadline = self.deadline
+        return commands
 
     def az_json(self, *arguments):
         return json.loads(self.run(["az", *arguments, "--output", "json"], capture=True))
@@ -113,15 +124,8 @@ def validate_state(state):
     if state["resourceGroup"] != required("OPS_RESOURCE_GROUP"):
         raise ValueError("Provisioning state does not match the approved resource group.")
     prefix = f"/subscriptions/{state['subscription']}/resourceGroups/{state['resourceGroup']}/providers"
-    expected = {
-        "cluster": f"{prefix}/Microsoft.Kubernetes/connectedClusters/opado{suffix}",
-        "instance": f"{prefix}/Microsoft.IoTOperations/instances/inst{suffix}",
-        "storage": f"{prefix}/Microsoft.Storage/storageAccounts/initstore{suffix}",
-        "registry": f"{prefix}/Microsoft.DeviceRegistry/schemaRegistries/init-registry{suffix}",
-        "namespace": f"{prefix}/Microsoft.DeviceRegistry/namespaces/init-adr-{suffix}",
-    }
-    if (state["resources"] != expected or state["cluster"] != f"opado{suffix}"
-            or state["instance"] != f"inst{suffix}"):
+    if (state["resources"] != attempt_resources(prefix, suffix, state["row"]["scenario"])
+            or state["cluster"] != f"opado{suffix}" or state["instance"] != f"inst{suffix}"):
         raise ValueError("Refusing resources outside this attempt's exact ownership manifest.")
     cloud = state.get("cloud", "AzureCloud")
     if cloud != cloud_name():
@@ -358,6 +362,16 @@ def create_resources(commands, state):
         "--location", state["locations"].get("namespaceRegion", "australiaeast"),
         "--output", "none",
     ])
+    if "keyvault" in names:
+        commands.run([
+            "az", "keyvault", "create", *common, "--name", names["keyvault"], "--output", "none", *location,
+        ])
+        # Key Vault Secrets Officer, as the tests would assign to a vault they create.
+        commands.run([
+            "az", "role", "assignment", "create", "--role", "b86a8fe4-44ce-4948-aee5-eccb2c155cd7",
+            "--assignee", required("AZURE_CLIENT_ID"), "--scope", state["resources"]["keyvault"], "--output", "none",
+        ])
+        commands.run(["az", "identity", "create", *common, "--name", names["identity"], "--output", "none", *location])
 
 
 def test_environment(state, output):
@@ -376,6 +390,9 @@ def test_environment(state, output):
         "azext_edge_schema_registry_id": state["resources"]["registry"],
         "azext_edge_adr_namespace_id": state["resources"]["namespace"],
         "azext_edge_sp_object_id": required("AZURE_CLIENT_ID"),
+        **({"azext_edge_kv": state["resources"]["keyvault"],
+            "azext_edge_user_assigned_mi_id": state["resources"]["identity"]}
+           if "keyvault" in state["resources"] else {}),
         "AZURE_EXTENSION_USE_DYNAMIC_INSTALL": "no", "AZURE_TEST_RUN_LIVE": "True",
         "COVERAGE_FILE": str(output / "coverage.dat"),
         owned_resources.ENV: str((output / "state.json").resolve()),
@@ -420,13 +437,15 @@ def test_phase(commands, state, output, phase, marker):
     ]
     if state.get("monitor"):
         args.append("--monitor")
+    if phase == "scenario" and state["row"]["scenario"].get("tests"):
+        args += ["--test-files", ",".join(state["row"]["scenario"]["tests"])]
     if phase == "scenario" and state["row"]["scenario"]["parallel"]:
         args += ["-n", "6", "--dist", "worksteal"]
     commands.run(args, env=environment, cwd=output, timeout=18000)
     compatibility = state.get("monitor", {}).get("testCompatibility")
     if compatibility is not None and read(output / "work" / phase / "test-compatibility.json") != compatibility:
         raise ValueError("Executed test compatibility differs from the monitored release plan.")
-    junit_results(junit)
+    junit_results(junit, allow_skips=not strict_skips(state["row"], phase, state.get("monitor")))
     state["phases"][phase] = "passed"
     write(output / "state.json", state)
 
@@ -444,6 +463,9 @@ def smoke(commands, state, output):
          state["locations"].get("namespaceRegion", "westus")],
         ["get-versions", "--inline"],
     ]
+    if state["row"]["scenario"].get("quick_smoke"):
+        # Another shard of the same scenario runs the full suite on the same runtime.
+        arguments = [["check"], ["support", "create-bundle", "--ops-service", "acs", "secretstore"]]
     try:
         for args in arguments:
             case = ElementTree.SubElement(suite, "testcase", classname="ops.smoke", name=" ".join(args))
@@ -462,6 +484,19 @@ def smoke(commands, state, output):
         ElementTree.ElementTree(suite).write(path, encoding="utf-8", xml_declaration=True)
     state["phases"]["smoke"] = "passed"
     write(output / "state.json", state)
+
+
+def purge_key_vault(commands, state):
+    """The owned vault is already deleted and uniquely named; a failed purge only leaves soft-deleted state."""
+    name = state["resources"]["keyvault"].rsplit("/", 1)[-1]
+    for attempt in range(4):
+        try:
+            commands.run(["az", "keyvault", "purge", "--name", name], timeout=300)
+            return
+        except (subprocess.CalledProcessError, TimeoutError):
+            if attempt < 3:
+                time.sleep(15)  # The deleted-vault list can lag the delete.
+    print(f"##vso[task.logissue type=warning]Could not purge deleted Key Vault {name}.", flush=True)
 
 
 def cleanup(output):
@@ -499,6 +534,8 @@ def cleanup(output):
             state["resourceCleanup"] = "passed"
             state["ownershipGuard"] = "passed"
             write(output / "state.json", state)
+            if "keyvault" in state["resources"]:
+                purge_key_vault(commands, state)
     finally:
         if state.get("clusterStarted"):
             _, unit = cluster_paths(state)
@@ -565,12 +602,27 @@ def run(output):
         collector = diagnostics.HookCollector(
             output, directory, unit, f"ops-diagnostics-{state['row']['key']}-{state['attempt']}",
         )
-        start_cluster(commands, state, output)
-        collector.start()
-        if state["row"]["scenario"]["needs_trust"]:
-            configure_trust(commands)
-        connect_cluster(commands, state, output)
-        create_resources(commands, state)
+        # Cloud resources do not need the cluster; create them while it bootstraps.
+        canceled = threading.Event()
+        pool = ThreadPoolExecutor(max_workers=1)
+        resources = pool.submit(create_resources, commands.cancellable(canceled), state)
+        try:
+            start_cluster(commands, state, output)
+            collector.start()
+            if state["row"]["scenario"]["needs_trust"]:
+                configure_trust(commands)
+            connect_cluster(commands, state, output)
+            resources.result()
+        finally:
+            canceled.set()
+            # Cleanup must never race creation, even if another cancel signal interrupts this wait.
+            while True:
+                try:
+                    resources.exception()  # Waits for the worker without raising its error.
+                    break
+                except InterruptedError:
+                    continue
+            pool.shutdown(wait=False)
         scenario = state["row"]["scenario"]
         test_phase(commands, state, output, "init", "init_scenario_test")
         if state.get("monitor"):
