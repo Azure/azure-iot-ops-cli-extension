@@ -187,7 +187,7 @@ if [ "$protocol" = "opcua" ]; then
         -i "$instance" \
         -g "$resource_group" \
         --address "$endpoint_address" \
-        --ac true \
+        --ac false \
         --ad false
 
 elif [ "$protocol" = "onvif" ]; then
