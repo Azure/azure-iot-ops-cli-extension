@@ -3132,13 +3132,14 @@ def test_upgrade_ownership_failure_prevents_all_writes(
 
 @pytest.mark.parametrize("force", [False, True])
 @pytest.mark.parametrize("auto_upgrade", [False, True, None, "false"])
-@pytest.mark.parametrize("operation", ["upgrade", "repair", "config", "noop"])
+@pytest.mark.parametrize("operation", ["upgrade", "repair", "train", "same-train", "config", "noop"])
 def test_ops_version_pinning_requires_manual_ownership(force, auto_upgrade, operation):
     ext = build_ext_upgrade_state(
         ext_type=EXTENSION_TYPE_OPS,
         current_version="1.6.0-preview.9", current_train="preview",
         built_in_version="1.6.0-preview.10" if operation == "upgrade" else "1.6.0-preview.9",
         built_in_train="preview", force=force,
+        train_override="integration" if operation == "train" else "PREVIEW" if operation == "same-train" else None,
         provisioning_state=PROVISIONING_STATE_FAILED if operation == "repair" else PROVISIONING_STATE_SUCCESS,
         desired_config={"setting": "value"} if operation == "config" else None,
     )
@@ -3147,7 +3148,7 @@ def test_ops_version_pinning_requires_manual_ownership(force, auto_upgrade, oper
         properties.pop("autoUpgradeMinorVersion")
     else:
         properties["autoUpgradeMinorVersion"] = auto_upgrade
-    if operation in {"upgrade", "repair"} and auto_upgrade is not False:
+    if operation in {"upgrade", "repair", "train"} and auto_upgrade is not False:
         for validate in (ext.validate_upgrade, ext.get_patch):
             with pytest.raises(ValidationError, match="autoUpgradeMinorVersion is explicitly false") as caught:
                 validate()
@@ -3164,6 +3165,8 @@ def test_ops_version_pinning_requires_manual_ownership(force, auto_upgrade, oper
             assert patch_properties["version"] == ext.desired_version[0]
         else:
             assert "version" not in patch_properties
+        if operation in {"train", "same-train"}:
+            assert patch_properties["releaseTrain"] == ext.override.train
         assert "autoUpgradeMinorVersion" not in patch_properties
 
 
@@ -3510,6 +3513,43 @@ def test_internal_train_command_preserves_channel_boundaries(
                 assert "releaseTrain" not in patches[0]
             else:
                 assert patches[0]["releaseTrain"] == ops_train
+
+
+@pytest.mark.parametrize("target_train", ["integration", "dev"])
+@pytest.mark.parametrize("force", [False, True])
+@pytest.mark.parametrize("current_version", ["1.5.33", "1.5.40"])
+@pytest.mark.parametrize("auto_upgrade", [False, True, None])
+def test_internal_train_only_change_requires_manual_ownership(
+    mocked_cmd, mocked_responses, mocked_sleep, unbundled_upgrade_catalog,
+    target_train, force, current_version, auto_upgrade,
+):
+    from azext_edge.edge.commands_edge import upgrade_instance
+    from azext_edge.edge.providers.orchestration.runtime_profiles import RuntimeChannel
+
+    profile = unbundled_upgrade_catalog.get(RuntimeChannel.STABLE)
+    scenario = UpgradeScenario().set_extension(
+        EXTENSION_TYPE_OPS, ext_vers=current_version, ext_train="stable",
+    )
+    properties = scenario.extensions[EXTENSION_TYPE_OPS]["properties"]
+    if auto_upgrade is None:
+        properties.pop("autoUpgradeMinorVersion")
+    else:
+        properties["autoUpgradeMinorVersion"] = auto_upgrade
+    scenario.set_instance_mock(mocked_responses, "instance", "rg", iotops_api_version=profile.iotops_api_version)
+
+    kwargs = {"ops_train": target_train, "force": force, "confirm_yes": True, "no_progress": True}
+    if auto_upgrade is not False:
+        with pytest.raises(ValidationError, match="autoUpgradeMinorVersion is explicitly false"):
+            upgrade_instance(mocked_cmd, "rg", "instance", **kwargs)
+        assert not [call for call in mocked_responses.calls if call.request.method in {"PUT", "PATCH", "DELETE"}]
+        return
+
+    upgrade_instance(mocked_cmd, "rg", "instance", **kwargs)
+    writes = [call.request for call in mocked_responses.calls if call.request.method in {"PUT", "PATCH", "DELETE"}]
+    assert len(writes) == 1
+    assert writes[0].method == "PATCH"
+    assert f"/extensions/{scenario.extensions[EXTENSION_TYPE_OPS]['name']}?" in writes[0].url
+    assert json.loads(writes[0].body)["properties"] == {"releaseTrain": target_train}
 
 
 @pytest.mark.parametrize("target_train", ["integration", "dev"])

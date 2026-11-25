@@ -1322,6 +1322,8 @@ class ExtensionUpgradeState:
     def _validate_and_resolve_version(self) -> Optional[str]:
         if self.moniker == EXTENSION_MONIKER_OPS:
             self._validate_ops_boundary()
+            if self._has_delta_in_train() and self.desired_version[1].lower() != self.current_version[1].lower():
+                self._require_manual_upgrade()
         if self._has_delta_in_version():
             self._validate_version_upgrade()
             self._require_manual_upgrade()
@@ -1349,9 +1351,10 @@ class ExtensionUpgradeState:
             return
         if self.extension["properties"].get("autoUpgradeMinorVersion") is not False:
             raise ValidationError(
-                "Cannot pin an AIO extension version unless autoUpgradeMinorVersion is explicitly false. "
+                "Cannot pin an AIO extension version or change its release train unless "
+                "autoUpgradeMinorVersion is explicitly false. "
                 "Arc-managed upgrades must be disabled through an explicit ownership decision before CLI upgrade "
-                "or repair. To explicitly transfer ownership, run 'az k8s-extension update "
+                "or repair or a release train change. To explicitly transfer ownership, run 'az k8s-extension update "
                 "--subscription <cluster-subscription> --resource-group <cluster-resource-group> "
                 "--cluster-name <cluster-name> --cluster-type connectedClusters "
                 "--name <aio-extension-name> --auto-upgrade false', then retry."

@@ -131,6 +131,9 @@ classification. This does not grant Public Preview capabilities to dev builds or
 qualify a production upgrade path.
 Preview boundaries, cluster readiness, foundation compatibility and manual upgrade
 ownership (`autoUpgradeMinorVersion=false`) remain enforced.
+Changing the AIO release train requires manual ownership even when the installed
+version is unchanged; `--force` does not bypass this requirement. Configuration-only
+updates and reapplying the same train do not transfer upgrade ownership.
 
 For opt-in live GA-to-dev and dev-to-dev validation, use a dedicated Public Azure
 GA instance with automatic upgrades disabled. Set `azext_edge_instance`,
