@@ -98,7 +98,7 @@ def test_wait_for_terminal_state(mocker, done):
     else:
         from azext_edge.edge.util.az_client import OperationTimeoutError
 
-        with pytest.raises(OperationTimeoutError, match="150 seconds"):
+        with pytest.raises(OperationTimeoutError, match="110 seconds"):
             wait_for_terminal_state(poller)
         poller.result.assert_not_called()
     assert sleep_patch.call_count == (0 if done else poll_num)
@@ -111,10 +111,10 @@ def test_wait_for_terminal_state_default_timeout(mocker):
     poller = mocker.Mock()
     poller.done.return_value = False
 
-    with pytest.raises(OperationTimeoutError, match="3600 seconds") as exc:
+    with pytest.raises(OperationTimeoutError, match="3560 seconds") as exc:
         wait_for_terminal_state(poller)
 
-    assert sleep_patch.call_args_list == [mocker.call(15)] * 240
+    assert sleep_patch.call_args_list == [mocker.call(delay) for delay in (2, 3, 5, 10)] + [mocker.call(15)] * 236
     assert "does not cancel" in str(exc.value)
     poller.result.assert_not_called()
 
@@ -130,6 +130,23 @@ def test_wait_for_terminal_state_completes_during_polling(mocker, completion_che
     assert wait_for_terminal_state(poller) == poller.result.return_value
     assert sleep_patch.call_count == completion_check - 1
     poller.result.assert_called_once_with()
+
+
+@pytest.mark.parametrize("retries, wait_sec, expected", [
+    (240, 15, [2, 3, 5, 10] + [15] * 236),
+    (2, 15, [2, 3]),
+    (6, 4, [2, 3, 4, 4, 4, 4]),
+    (3, 0, [0, 0, 0]),
+])
+def test_wait_for_terminal_states_backs_off(mocker, retries, wait_sec, expected):
+    from azext_edge.edge.util.az_client import wait_for_terminal_states
+
+    sleep_patch = mocker.patch(f"{AZ_CLIENT_PATH}.sleep")
+    poller = mocker.Mock()
+    poller.done.return_value = False
+
+    assert wait_for_terminal_states(poller, retries=retries, wait_sec=wait_sec) == (poller,)
+    assert sleep_patch.call_args_list == [mocker.call(delay) for delay in expected]
 
 
 def _get_http_response_error(mocker, payload, status_code=200, text=""):

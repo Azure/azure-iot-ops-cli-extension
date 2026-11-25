@@ -58,6 +58,7 @@ There are, however, some prerequisites and caveats that users should be made awa
   - `parallel`: Whether tests run in parallel (default: true)
   - `manual_only`: Whether explicit selection is required (excluded from default/scheduled runs)
   - `env`: Custom environment variables for the scenario
+  - `shards`: ADO only; named groups of test files, each run on its own cluster (see below)
 
   ##### **Selecting Scenarios**
 
@@ -171,6 +172,18 @@ tracks via the `ops-wlif-a386d5ea-ea90-441a-8263-d816368c84a1-ops-cli-int-test-r
 environment **Exclusive lock** (`TrustBundleLock`). Retain that environment check
 while any release-monitor track tests a pre-`--secret-sync-name` wheel. Distinct
 resource names do not isolate subscription quotas, throttling, or scheduled cleanup.
+The dev Branch Health `TrustBundle` stage tests the current source, so it has no lock
+and runs beside the `Integration` stage.
+
+ADO splits `trustbundle` into the `shards` listed in `test-scenarios.yml`. Each shard
+and channel is its own job and cluster (for example `trustbundle_stable_client_py313`),
+and runs only its files, in the listed order. Every `require_wlif_setup` file must be
+in exactly one shard. In a shard job, a skipped scenario test fails the job, unless it
+is a reviewed release-monitor exclusion. The runner also creates one Key Vault and one
+user-assigned identity per shard job, passes them as `azext_edge_kv` and
+`azext_edge_user_assigned_mi_id`, then deletes and purges them in cleanup. The first
+shard runs the full smoke suite; the other shards run `check` and the SecretStore
+support bundle. GitHub workflows ignore `shards` and still run `trustbundle` as one job.
 
 Each integration attempt remains responsible for cleaning its own resources.
 Scenario teardown skips its fallback Azure CLI login only when an offline proof
@@ -271,7 +284,7 @@ commit ID. Product bytes are never patched. Published-release rules remain commi
 pytest additionally checks their receipt exclusions against those existing rules.
 
 Dry run performs acquisition/build/lint/unit without Azure integration. Integration mode
-additionally gates native scenarios, serialized Trust Bundle and final evidence on the
+additionally gates native scenarios, sharded Trust Bundle and final evidence on the
 selected source's lint/unit results. Fixed wrappers expose mode, Python and applicable
 Public region controls, never source/cloud/runtime overrides. Existing manual pipeline
 164 remains available for PR/ad-hoc source. Release Health support slots `v1/v2/v3/preview`

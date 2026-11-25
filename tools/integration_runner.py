@@ -130,6 +130,7 @@ def main(argv=None):
     parser.add_argument("--coverage-config")
     parser.add_argument("--scenario")
     parser.add_argument("--monitor", action="store_true")
+    parser.add_argument("--test-files", help="Comma-separated test file names, run in this order.")
     args, pytest_args = parser.parse_known_args(argv)
     wheel = verify_wheel(os.environ.get("azext_edge_wheel", ""), os.environ.get("azext_edge_wheel_sha256", ""))
     target = Path(args.extension_dir).resolve()
@@ -212,7 +213,16 @@ def main(argv=None):
     pytest_config.write_text("[pytest]\njunit_family = xunit1\n", encoding="utf-8")
     import pytest
 
-    integration_files = sorted(str(path) for path in (target / "azext_edge" / "tests").rglob("*_int.py"))
+    staged = sorted((target / "azext_edge" / "tests").rglob("*_int.py"))
+    integration_files = [str(path) for path in staged]
+    if args.test_files:
+        by_name = {}
+        for path in staged:
+            by_name.setdefault(path.name, []).append(str(path))
+        names = args.test_files.split(",")
+        if len(names) != len(set(names)) or any(len(by_name.get(name, [])) != 1 for name in names):
+            raise ValueError("Each selected test file must match exactly one staged integration file.")
+        integration_files = [by_name[name][0] for name in names]
     if not integration_files:
         raise ValueError("No integration test files were staged.")
     result = pytest.main([

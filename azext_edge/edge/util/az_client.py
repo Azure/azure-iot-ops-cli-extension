@@ -8,7 +8,7 @@
 from collections.abc import MutableMapping  # pylint: disable=import-error
 from enum import Enum
 from time import sleep
-from typing import TYPE_CHECKING, Any, NamedTuple, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, List, NamedTuple, Optional, Tuple, Union
 
 from azure.cli.core.azclierror import AzureResponseError, ValidationError
 from knack.log import get_logger
@@ -27,6 +27,8 @@ AZURE_CLI_CREDENTIAL = AzureCliCredential()
 
 POLL_RETRIES = 240
 POLL_WAIT_SEC = 15
+# Short first waits notice quick operations sooner; later waits use the full interval.
+POLL_BACKOFF_SEC = (2, 3, 5, 10)
 _LRO_FAILURE_STATUSES = frozenset({"failed", "canceled", "cancelled"})
 _INVALID_STATUS_MESSAGE = "Operation returned an invalid status"
 
@@ -322,19 +324,23 @@ class OperationTimeoutError(AzureResponseError):
     """The client stopped waiting for a long-running operation."""
 
 
+def poll_delays(retries: int, wait_sec: float) -> List[float]:
+    backoff = [min(delay, wait_sec) for delay in POLL_BACKOFF_SEC]
+    return (backoff + [wait_sec] * max(0, retries - len(backoff)))[:retries]
+
+
 def wait_for_terminal_state(poller: "LROPoller", wait_sec: int = POLL_WAIT_SEC, **_) -> JSON:
     from azure.core.exceptions import HttpResponseError
 
     # resource client does not handle sigint well
-    counter = 0
-    while counter < POLL_RETRIES:
+    delays = poll_delays(POLL_RETRIES, wait_sec)
+    for delay in delays:
         if poller.done():
             break
-        sleep(wait_sec)
-        counter = counter + 1
+        sleep(delay)
     if not poller.done():
         raise OperationTimeoutError(
-            f"Timed out waiting for the operation after {POLL_RETRIES * wait_sec} seconds of polling. "
+            f"Timed out waiting for the operation after {sum(delays)} seconds of polling. "
             "The operation may still be running in Azure; this timeout does not cancel it."
         )
     try:
@@ -422,13 +428,10 @@ def _format_lro_error_detail(detail: Any) -> str:
 def wait_for_terminal_states(
     *pollers: "LROPoller", retries: int = POLL_RETRIES, wait_sec: int = POLL_WAIT_SEC, **_
 ) -> Tuple["LROPoller"]:
-    counter = 0
-    while counter < retries:
-        batch_done = all(poller.done() for poller in pollers)
-        if batch_done:
+    for delay in poll_delays(retries, wait_sec):
+        if all(poller.done() for poller in pollers):
             break
-        sleep(wait_sec)
-        counter = counter + 1
+        sleep(delay)
 
     return pollers
 
