@@ -7,6 +7,7 @@
 
 import json
 import re
+import shlex
 from copy import deepcopy
 from typing import Optional
 from unittest.mock import Mock
@@ -14,7 +15,7 @@ from unittest.mock import Mock
 import pytest
 import responses
 from azure.cli.core.azclierror import InvalidArgumentValueError, ValidationError
-from azure.core.exceptions import HttpResponseError
+from azure.core.exceptions import HttpResponseError, ServiceRequestError
 
 from azext_edge.edge.commands_edge import (
     instance_identity_assign,
@@ -2021,7 +2022,7 @@ def test_secretsync_disable(
 def test_add_mi_user_assigned(
     mocked_cmd,
     mocked_responses: responses,
-    mocked_ga_runtime_context,
+    mocker,
     usage_type: Optional[str],
     use_self_hosted_issuer: Optional[bool],
     fc_name: Optional[str],
@@ -2029,6 +2030,11 @@ def test_add_mi_user_assigned(
     skip_sr_ra: Optional[bool],
     custom_sr_role_id: Optional[str],
 ):
+    mocked_installed_extension = mocker.patch.object(
+        Instances,
+        "get_installed_extension",
+        return_value={"properties": {"currentVersion": "1.5.90", "releaseTrain": "stable"}},
+    )
     oidc_issuer_def = {
         "oidcIssuerProfile": {
             "enabled": True,
@@ -2203,7 +2209,7 @@ def test_add_mi_user_assigned(
     assert federation_payload["properties"]["subject"] == subject
     assert federation_payload["properties"]["issuer"] == oidc_issuer
     assert federation_payload["properties"]["audiences"] == ["api://AzureADTokenExchange"]
-    assert mocked_ga_runtime_context.called == (usage_type == IdentityUsageType.SCHEMA.value)
+    assert mocked_installed_extension.called == (usage_type == IdentityUsageType.SCHEMA.value)
 
     # Assert schema registry role assignment behavior
     if usage_type == IdentityUsageType.SCHEMA.value:
@@ -2243,6 +2249,7 @@ RUNTIME_EXTENSION_ID = RUNTIME_CLUSTER_ID + "/providers/Microsoft.KubernetesConf
 RUNTIME_UAMI_ID = (
     "/subscriptions/uami-sub/resourceGroups/uami-rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/uami"
 )
+RUNTIME_UAMI_ID_SPECIAL_RG = RUNTIME_UAMI_ID.replace("/uami-rg/", "/uami(rg)/")
 RUNTIME_SR_ID = (
     "/subscriptions/sr-sub/resourceGroups/sr-rg/providers/Microsoft.DeviceRegistry/schemaRegistries/sr"
 )
@@ -2301,7 +2308,8 @@ def _setup_schema_identity_assign(mocked_cmd, mocker, extensions) -> tuple:
     writes.attach_mock(mocker.patch.object(instances, "federate_msi"), "federate")
     writes.attach_mock(mocker.patch.object(instances, "_update", return_value=instance), "update")
     writes.attach_mock(mocker.patch.object(instances.permission_manager, "apply_role_assignment"), "role")
-    return instances, writes
+    find_cred = mocker.patch.object(instances, "_find_federated_cred", return_value=None)
+    return instances, writes, find_cred
 
 
 @pytest.mark.parametrize(
@@ -2310,9 +2318,10 @@ def _setup_schema_identity_assign(mocked_cmd, mocker, extensions) -> tuple:
         ("AzureCloud", "1.5.82", "integration", SERVICE_ACCOUNT_SCHEMA),
         ("AzureCloud", "1.5.90", "stable", SERVICE_ACCOUNT_SCHEMA),
         ("AzureUSGovernment", "1.5.46", "stable", SERVICE_ACCOUNT_SCHEMA),
-        ("AzureCloud", "1.6.0-preview.57", "integration", SERVICE_ACCOUNT_EDGE_REGISTRY),
+        ("AzureCloud", "1.6.0-preview.57", "preview", SERVICE_ACCOUNT_EDGE_REGISTRY),
         ("AzureCloud", "1.6.0-preview.103", "integration", SERVICE_ACCOUNT_EDGE_REGISTRY),
-        ("AzureCloud", "1.6.0-preview.104", "preview", SERVICE_ACCOUNT_EDGE_REGISTRY),
+        ("AzureCloud", "1.6.0-preview.103", "dev", SERVICE_ACCOUNT_EDGE_REGISTRY),
+        ("AzureCloud", "1.6.0-rc.1", "integration", SERVICE_ACCOUNT_EDGE_REGISTRY),
         ("AzureCloud", "1.6.0", "stable", SERVICE_ACCOUNT_EDGE_REGISTRY),
         ("AzureCloud", "1.7.2", "stable", SERVICE_ACCOUNT_EDGE_REGISTRY),
     ],
@@ -2321,7 +2330,9 @@ def test_add_mi_user_assigned_schema_federates_runtime_service_account(
     mocked_cmd, mocker, cloud_name: str, version: str, train: str, expected_service_account: str
 ):
     mocked_cmd.cli_ctx.cloud.name = cloud_name
-    instances, writes = _setup_schema_identity_assign(mocked_cmd, mocker, [_runtime_extension(version, train)])
+    instances, writes, find_cred = _setup_schema_identity_assign(
+        mocked_cmd, mocker, [_runtime_extension(version, train)]
+    )
     mocked_logger = mocker.patch(INSTANCES_PATH + "logger")
 
     instances.add_mi_user_assigned(
@@ -2336,15 +2347,24 @@ def test_add_mi_user_assigned_schema_federates_runtime_service_account(
     )
     writes.update.assert_called_once()
     writes.role.assert_not_called()
-    warning = mocked_logger.warning.call_args
-    assert warning.args[1:] == (expected_service_account, expected_service_account, "azure-iot-operations")
+    warning = mocked_logger.warning.call_args_list[0]
+    assert warning.args[1] == expected_service_account
+    assert "Role assignment was skipped" in warning.args[2]
+    assert warning.args[3:] == (expected_service_account, "azure-iot-operations")
+    is_edge = expected_service_account == SERVICE_ACCOUNT_EDGE_REGISTRY
+    assert find_cred.called == is_edge
+    if is_edge:
+        assert find_cred.call_args.kwargs["subject"] == (
+            f"system:serviceaccount:azure-iot-operations:{SERVICE_ACCOUNT_SCHEMA}"
+        )
 
 
 @pytest.mark.parametrize("custom_sr_role_id", [None, "/subscriptions/sr-sub/providers/roleDefinitions/custom"])
 def test_add_mi_user_assigned_schema_role_assignment_on_edge_registry(mocked_cmd, mocker, custom_sr_role_id):
-    instances, writes = _setup_schema_identity_assign(
+    instances, writes, _ = _setup_schema_identity_assign(
         mocked_cmd, mocker, [_runtime_extension("1.6.0-preview.103", "integration")]
     )
+    mocked_logger = mocker.patch(INSTANCES_PATH + "logger")
 
     instances.add_mi_user_assigned(
         "aio", "instance-rg", RUNTIME_UAMI_ID, IdentityUsageType.SCHEMA.value, custom_sr_role_id=custom_sr_role_id
@@ -2362,27 +2382,94 @@ def test_add_mi_user_assigned_schema_role_assignment_on_edge_registry(mocked_cmd
         or "/subscriptions/sr-sub/providers/Microsoft.Authorization/roleDefinitions/"
         f"{AZURE_DEVICE_REGISTRY_ADMINISTRATOR_ROLE_ID}"
     )
+    assert mocked_logger.warning.call_args.args[2] == ""
+
+
+@pytest.mark.parametrize(
+    "stale_cred, lookup_error, expected_warnings",
+    [
+        (None, None, 1),
+        ({"name": "abc1234"}, None, 2),
+        (None, ServiceRequestError("DNS failure"), 1),
+    ],
+)
+def test_add_mi_user_assigned_schema_warns_unused_credential(
+    mocked_cmd, mocker, stale_cred, lookup_error, expected_warnings
+):
+    instances, _, find_cred = _setup_schema_identity_assign(
+        mocked_cmd, mocker, [_runtime_extension("1.6.0-preview.103", "integration")]
+    )
+    find_cred.return_value = stale_cred
+    find_cred.side_effect = lookup_error
+    mocked_logger = mocker.patch(INSTANCES_PATH + "logger")
+
+    instances.add_mi_user_assigned(
+        "aio", "instance-rg", RUNTIME_UAMI_ID_SPECIAL_RG, IdentityUsageType.SCHEMA.value, skip_sr_ra=True
+    )
+
+    assert find_cred.call_args.kwargs["match_trailing_slash"] is True
+    assert mocked_logger.warning.call_count == expected_warnings
+    if stale_cred:
+        message = mocked_logger.warning.call_args.args[0] % mocked_logger.warning.call_args.args[1:]
+        assert "credential 'abc1234' for service account 'adr-schema-registry'" in message
+        assert shlex.split(message.split("run: ", 1)[1]) == [
+            "az", "identity", "federated-credential", "delete", "--subscription", "uami-sub",
+            "-g", "uami(rg)", "--identity-name", "uami", "-n", "abc1234", "--yes",
+        ]
 
 
 @pytest.mark.parametrize(
     "extensions, reason",
     [
         ([], "Expected exactly one AIO extension"),
-        ([_runtime_extension("1.6.0-preview.103", "dev")], "has no supported runtime profile mapping"),
+        (
+            [{"id": RUNTIME_EXTENSION_ID, "properties": {"extensionType": "microsoft.iotoperations"}}],
+            "currentVersion is missing",
+        ),
+        ([_runtime_extension("not-a-version", "stable")], "Unable to validate AIO runtime version"),
         (HttpResponseError(message="(AuthorizationFailed) Forbidden"), "AuthorizationFailed"),
+        (ServiceRequestError("Name or service not known"), "Name or service not known"),
     ],
 )
-def test_add_mi_user_assigned_schema_runtime_failure_precedes_writes(mocked_cmd, mocker, extensions, reason):
-    instances, writes = _setup_schema_identity_assign(mocked_cmd, mocker, extensions)
+@pytest.mark.parametrize("skip_sr_ra", [False, True])
+def test_add_mi_user_assigned_schema_runtime_failure_precedes_writes(
+    mocked_cmd, mocker, extensions, reason, skip_sr_ra
+):
+    instances, writes, _ = _setup_schema_identity_assign(mocked_cmd, mocker, extensions)
+    instances.iotops_api_version = "2026-07-01"
 
     with pytest.raises(ValidationError) as ex:
         instances.add_mi_user_assigned(
-            "aio", "instance-rg", RUNTIME_UAMI_ID, IdentityUsageType.SCHEMA.value
+            "aio", "instance-rg", RUNTIME_UAMI_ID_SPECIAL_RG, IdentityUsageType.SCHEMA.value, skip_sr_ra=skip_sr_ra
         )
 
     error = str(ex.value)
-    assert "Unable to determine the AIO runtime version of instance 'aio'" in error
+    subject = f"system:serviceaccount:azure-iot-operations:{SERVICE_ACCOUNT_EDGE_REGISTRY}"
+    fc_name = get_fc_name(cluster_name="arc", oidc_issuer="https://issuer.example/", subject=subject)
+    assert "Unable to determine the AIO version of instance 'aio'" in error
     assert reason in error
-    assert f"system:serviceaccount:azure-iot-operations:{SERVICE_ACCOUNT_EDGE_REGISTRY}" in error
-    assert f"system:serviceaccount:azure-iot-operations:{SERVICE_ACCOUNT_SCHEMA}" in error
+    identity = json.dumps(
+        {"type": "UserAssigned", "userAssignedIdentities": {RUNTIME_UAMI_ID_SPECIAL_RG: {}}}, separators=(",", ":")
+    )
+    expected_commands = [
+        [
+            "az", "identity", "federated-credential", "create", "--subscription", "uami-sub", "-g", "uami(rg)",
+            "--identity-name", "uami", "-n", fc_name, "--issuer", "https://issuer.example/", "--subject", subject,
+            "--audiences", "api://AzureADTokenExchange",
+        ],
+        [
+            "az", "resource", "update", "--ids", RUNTIME_INSTANCE_ID, "--api-version", "2026-07-01",
+            "--set", f"identity={identity}",
+        ],
+    ]
+    if not skip_sr_ra:
+        expected_commands.append(
+            [
+                "az", "role", "assignment", "create", "--assignee-object-id", RUNTIME_PRINCIPAL_ID,
+                "--assignee-principal-type", "ServicePrincipal", "--role", AZURE_DEVICE_REGISTRY_ADMINISTRATOR_ROLE_ID,
+                "--scope", RUNTIME_SR_ID,
+            ]
+        )
+    commands = [shlex.split(line) for line in error.splitlines() if line.startswith("  az ")]
+    assert commands == expected_commands
     assert not writes.mock_calls

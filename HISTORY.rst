@@ -9,7 +9,8 @@ unreleased
 
 * ``iot ops identity assign --usage schema``: Federate the ``aio-edge-registry`` service account on AIO 1.6 and later,
   including previews. AIO 1.5 and earlier still use ``adr-schema-registry``. Users who already ran the command
-  on AIO 1.6 should run it again; the existing ``adr-schema-registry`` credential is left in place.
+  on AIO 1.6 should run it again; the old ``adr-schema-registry`` credential is left in place, and the command
+  prints how to delete it.
   ``iot ops clone`` now also copies ``aio-edge-registry`` federated credentials.
 
 * Prepare CLI ``2.12.0a1`` with AIO 2612 GA-channel and preview-channel qualification inputs.
