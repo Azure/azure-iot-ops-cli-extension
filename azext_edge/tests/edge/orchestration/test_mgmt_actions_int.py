@@ -498,7 +498,7 @@ def mgmt_actions_setup(request, settings, tracked_files):
 
     run(
         f"az iot ops ns device endpoint inbound add opcua --name {ENDPOINT_NAME} "
-        f"--device {device_name} {common} --address {OPC_PLC_ADDRESS} --ac true --ad false"
+        f"--device {device_name} {common} --address {OPC_PLC_ADDRESS} --ac false --ad false"
     )
 
     # Asset goes in via raw ARM. See _build_asset_body.
