@@ -32,7 +32,9 @@ def expected_runtime(channel, baseline=None):
     return catalog.get(channel).identity
 
 
-def read_runtime(instance_name, resource_group):
+def read_runtime(
+    instance_name, resource_group, *, allow_unbundled_integration=False, allow_unbundled_dev=False,
+):
     instance = run(f"az iot ops show -n {shlex.quote(instance_name)} -g {shlex.quote(resource_group)}")
     location_id = instance["extendedLocation"]["name"]
     location = run(f"az rest --method get --url {shlex.quote(location_id + '?api-version=2021-08-15')}")
@@ -45,7 +47,10 @@ def read_runtime(instance_name, resource_group):
         extensions.extend(page["value"])
         url = page.get("nextLink")
     catalog = get_runtime_catalog(get_default_cli().cloud.name)
-    runtime = resolve_runtime(instance, location, cluster, extensions, catalog.qualification_identities)
+    runtime = resolve_runtime(
+        instance, location, cluster, extensions, catalog.qualification_identities,
+        allow_unbundled_integration=allow_unbundled_integration, allow_unbundled_dev=allow_unbundled_dev,
+    )
     return runtime, instance, extensions
 
 

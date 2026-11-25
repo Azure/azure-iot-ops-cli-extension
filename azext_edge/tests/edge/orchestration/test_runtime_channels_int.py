@@ -118,9 +118,16 @@ def test_cross_channel_upgrade_rejected_without_mutation(channel_target):
     assert_runtime(name, group, channel, configured_baseline())
     _, instance_before, extensions_before = read_runtime(name, group)
     opposite = "preview" if channel == "stable" else "stable"
+    arguments = [
+        "az", "iot", "ops", "upgrade", "-n", name, "-g", group, "--ops-train", opposite,
+        "--force", "--yes", "--no-progress",
+    ]
+    if get_default_cli().cloud.name != "AzureUSGovernment":
+        target = expected_runtime(opposite)
+        arguments[arguments.index("--ops-train") + 1] = target.train
+        arguments.extend(["--ops-version", target.version])
     result = subprocess.run(
-        ["az", "iot", "ops", "upgrade", "-n", name, "-g", group, "--ops-train", opposite,
-         "--force", "--yes", "--no-progress"], capture_output=True, text=True, check=False,
+        arguments, capture_output=True, text=True, check=False,
     )
     assert result.returncode != 0, "Cross-channel upgrade unexpectedly succeeded."
     rejections = [

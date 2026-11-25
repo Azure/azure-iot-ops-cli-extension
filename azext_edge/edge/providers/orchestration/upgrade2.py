@@ -147,6 +147,7 @@ class UpgradeManager:
         self.runtime_context = self.instances.get_runtime_context(
             self.instance_record, self.runtime_catalog.qualification_identities,
             allow_unbundled_integration=True,
+            allow_unbundled_dev=True,
         )
         self.runtime_context.require_upgradeable()
         self.runtime_profile = self.runtime_catalog.for_upgrade(self.runtime_context.identity)
@@ -1346,6 +1347,8 @@ class ExtensionUpgradeState:
     def _validate_and_resolve_version(self) -> Optional[str]:
         if self.moniker == EXTENSION_MONIKER_OPS:
             self._validate_ops_boundary()
+            if self._has_delta_in_train() and self.desired_version[1].lower() != self.current_version[1].lower():
+                self._require_manual_upgrade()
         if self._has_delta_in_version():
             self._validate_version_upgrade()
             self._require_manual_upgrade()
@@ -1373,18 +1376,20 @@ class ExtensionUpgradeState:
             return
         if self.extension["properties"].get("autoUpgradeMinorVersion") is not False:
             raise ValidationError(
-                "Cannot pin an AIO extension version unless autoUpgradeMinorVersion is explicitly false. "
+                "Cannot pin an AIO extension version or change its release train unless "
+                "autoUpgradeMinorVersion is explicitly false. "
                 "Arc-managed upgrades must be disabled through an explicit ownership decision before CLI upgrade "
-                "or repair. To explicitly transfer ownership, run 'az k8s-extension update "
+                "or repair or a release train change. To explicitly transfer ownership, run 'az k8s-extension update "
                 "--subscription <cluster-subscription> --resource-group <cluster-resource-group> "
                 "--cluster-name <cluster-name> --cluster-type connectedClusters "
                 "--name <aio-extension-name> --auto-upgrade false', then retry."
             )
 
-    def _resolve_ops_identity(self, version: str, train: str, *, installed: bool = False) -> RuntimeIdentity:
+    def _resolve_ops_identity(self, version: str, train: str) -> RuntimeIdentity:
         return resolve_runtime_identity(
             version, train, self.qualification_identities,
-            allow_unbundled_integration=installed or bool(self.force and self.override.version),
+            allow_unbundled_integration=True,
+            allow_unbundled_dev=True,
         )
 
     def _resolve_ops_target_identity(self, installed: RuntimeIdentity, version: str, train: str) -> RuntimeIdentity:
@@ -1403,7 +1408,7 @@ class ExtensionUpgradeState:
             raise ValidationError(
                 "Unable to determine release train for installed iotOperations extension. Cannot validate upgrade path."
             )
-        installed = self._resolve_ops_identity(current_version, current_train, installed=True)
+        installed = self._resolve_ops_identity(current_version, current_train)
         desired_version = self.desired_version[0]
         # A stale CLI leaves the installed version alone unless explicitly overridden.
         target_version = self.override.version or current_version
@@ -1412,17 +1417,9 @@ class ExtensionUpgradeState:
         target_train = current_train
         if self._has_delta_in_train():
             target_train = self.desired_version[1]
-        target = None
-        if (
-            self.force and installed.channel == RuntimeChannel.STABLE
-            and target_train.lower() in (RuntimeChannel.STABLE.value, "integration")
-        ):
-            target = self._resolve_ops_target_identity(installed, target_version, target_train)
-            if target.channel == RuntimeChannel.STABLE:
-                return
-        if target_train.lower() != current_train.lower():
-            raise ValidationError("Cross-train upgrades are not supported. GA stays GA; preview stays preview.")
-        target = target or self._resolve_ops_target_identity(installed, target_version, target_train)
+        target = self._resolve_ops_target_identity(installed, target_version, target_train)
+        if self.force and installed.channel == target.channel == RuntimeChannel.STABLE:
+            return
         validate_upgrade_boundary(installed, target)
 
     def _get_reconcile_version(self) -> Optional[str]:
@@ -1601,7 +1598,7 @@ class ExtensionUpgradeState:
             )
 
         if self.moniker == EXTENSION_MONIKER_OPS:
-            installed = self._resolve_ops_identity(self.current_version[0], self.current_version[1], installed=True)
+            installed = self._resolve_ops_identity(self.current_version[0], self.current_version[1])
             target = self._resolve_ops_target_identity(installed, target_version, self.desired_version[1])
             if self.force and installed.channel == target.channel == RuntimeChannel.STABLE:
                 return

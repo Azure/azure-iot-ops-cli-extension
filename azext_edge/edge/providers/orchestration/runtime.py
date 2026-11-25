@@ -109,7 +109,7 @@ def resolve_runtime(
     cluster: dict,
     extensions: Iterable[dict],
     qualification_identities: Iterable[RuntimeIdentity] = (),
-    *, allow_unbundled_integration: bool = False,
+    *, allow_unbundled_integration: bool = False, allow_unbundled_dev: bool = False,
 ) -> RuntimeContext:
     """Validate live ARM records without guessing an installed version from the requested pin."""
     cluster_id = get_runtime_cluster_id(instance, custom_location)
@@ -146,6 +146,7 @@ def resolve_runtime(
     identity = resolve_runtime_identity(
         installed_version, properties.get("releaseTrain"), qualification_identities,
         allow_unbundled_integration=allow_unbundled_integration,
+        allow_unbundled_dev=allow_unbundled_dev,
     )
     issues = []
     for name, record in (("instance", instance), ("custom location", custom_location), ("extension", extension)):

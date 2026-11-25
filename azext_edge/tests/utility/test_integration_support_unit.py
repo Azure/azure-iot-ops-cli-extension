@@ -14,6 +14,7 @@ from io import BytesIO
 import json
 import os
 from pathlib import Path, PurePosixPath
+import shlex
 import shutil
 import subprocess
 from types import SimpleNamespace
@@ -399,6 +400,108 @@ def test_fairfax_upgrade_rejection_preserves_configuration(mocker, mutated, vers
     else:
         tests.test_cross_channel_upgrade_rejected_without_mutation(("instance", "rg", "stable"))
         assert reader.call_count == 2
+
+
+@pytest.mark.parametrize("channel", list(RuntimeChannel))
+def test_cross_channel_it_reaches_the_runtime_boundary(mocker, channel):
+    from azext_edge.edge.providers.orchestration.common import EXTENSION_TYPE_OPS
+    from azext_edge.edge.providers.orchestration.runtime_catalog import get_runtime_catalog
+    from azext_edge.tests.edge.orchestration import test_runtime_channels_int as tests
+    from azext_edge.tests.edge.orchestration.test_upgrade2_unit import build_ext_upgrade_state
+
+    catalog = get_runtime_catalog()
+    installed = catalog.get(channel).identity
+    opposite = RuntimeChannel.PREVIEW if channel == RuntimeChannel.STABLE else RuntimeChannel.STABLE
+    target = catalog.get(opposite).identity
+    mocker.patch.object(tests, "assert_runtime")
+    mocker.patch.object(tests, "expected_runtime", side_effect=lambda selected: catalog.get(selected).identity)
+    mocker.patch.object(tests, "get_default_cli", return_value=SimpleNamespace(
+        cloud=SimpleNamespace(name="AzureCloud"),
+    ))
+    record = (None, {"properties": {"description": "keep"}}, [])
+    reader = mocker.patch.object(tests, "read_runtime", side_effect=[record, deepcopy(record)])
+
+    def invoke(arguments, **_):
+        state = build_ext_upgrade_state(
+            ext_type=EXTENSION_TYPE_OPS, current_version=installed.version, current_train=installed.train,
+            built_in_version=installed.version, built_in_train=installed.train,
+            version_override=arguments[arguments.index("--ops-version") + 1] if "--ops-version" in arguments else None,
+            train_override=arguments[arguments.index("--ops-train") + 1], force=True,
+        )
+        try:
+            state.validate_upgrade()
+        except ValidationError as error:
+            return SimpleNamespace(returncode=1, stderr=str(error))
+        return SimpleNamespace(returncode=0, stderr="")
+
+    command = mocker.patch.object(tests.subprocess, "run", side_effect=invoke)
+    tests.test_cross_channel_upgrade_rejected_without_mutation(("instance", "rg", channel.value))
+    arguments = command.call_args.args[0]
+    assert arguments[arguments.index("--ops-version") + 1] == target.version
+    assert arguments[arguments.index("--ops-train") + 1] == target.train
+    assert reader.call_count == 2
+
+
+@pytest.mark.parametrize("failure", [None, "invalid-version", "descending", "qualification", "wrong-installed"])
+def test_internal_upgrade_it_validates_both_hops(mocker, monkeypatch, failure):
+    from azext_edge.edge.providers.orchestration.runtime_profiles import resolve_runtime_identity
+    from azext_edge.tests.edge.orchestration import test_upgrade_int as tests
+
+    versions = ["1.6.999-main.20261114.12", "1.6.999-main.20261115.1"]
+    configured = ["invalid", versions[1]] if failure == "invalid-version" else versions
+    if failure == "descending":
+        configured = list(reversed(versions))
+    monkeypatch.setenv("azext_edge_internal_upgrade_versions", ",".join(configured))
+    monkeypatch.delenv("azext_edge_runtime_channel", raising=False)
+    if failure == "qualification":
+        monkeypatch.setenv("azext_edge_runtime_channel", "stable")
+    mocker.patch.object(tests, "get_default_cli", return_value=SimpleNamespace(
+        cloud=SimpleNamespace(name="AzureCloud"),
+    ))
+
+    def runtime(version, train):
+        return SimpleNamespace(
+            identity=resolve_runtime_identity(version, train, allow_unbundled_dev=True),
+            instance_id="instance", auto_upgrade_minor_version=False, require_ready=mocker.Mock(),
+        )
+
+    source = runtime("1.5.45", "stable")
+    first = runtime(versions[1] if failure == "wrong-installed" else versions[0], "dev")
+    second = runtime(versions[1], "dev")
+    reader = mocker.patch.object(tests, "read_runtime", side_effect=[
+        (source, {}, []), (first, {}, []), (second, {}, []),
+    ])
+    command = mocker.patch.object(tests, "run")
+    setup = {"instanceName": "instance", "resourceGroup": "rg", "additionalUpgradeArgs": ""}
+    if failure:
+        with pytest.raises((AssertionError, ValidationError)):
+            tests.test_internal_dev_upgrades(setup)
+        assert command.call_count == (1 if failure == "wrong-installed" else 0)
+        return
+    tests.test_internal_dev_upgrades(setup)
+    for call, version in zip(command.call_args_list, versions):
+        arguments = shlex.split(call.args[0])
+        assert arguments[arguments.index("--ops-version") + 1] == version
+        assert arguments[arguments.index("--ops-train") + 1] == "dev"
+        assert "--force" in arguments
+    assert command.call_count == 2
+    assert reader.call_count == 3
+    assert all(call.kwargs == {"allow_unbundled_integration": True, "allow_unbundled_dev": True}
+               for call in reader.call_args_list)
+    for observed in (source, first, second):
+        observed.require_ready.assert_called_once()
+
+
+def test_internal_upgrade_it_is_opt_in(mocker, monkeypatch):
+    from azext_edge.tests.edge.orchestration import test_upgrade_int as tests
+
+    monkeypatch.delenv("azext_edge_internal_upgrade_versions", raising=False)
+    reader = mocker.patch.object(tests, "read_runtime")
+    command = mocker.patch.object(tests, "run")
+    with pytest.raises(pytest.skip.Exception):
+        tests.test_internal_dev_upgrades({})
+    reader.assert_not_called()
+    command.assert_not_called()
 
 
 @pytest.mark.parametrize("government", [False, True])
@@ -1026,6 +1129,22 @@ def test_live_assertions_use_actual_installed_identity(mocker, records, channel)
     assert result.identity == RuntimeIdentity(channel, version, "integration")
     assert run.call_count == 4
     assert all("az rest --method get" in call.args[0] for call in run.call_args_list[1:])
+
+
+@pytest.mark.parametrize("allow_dev", [False, True])
+def test_live_runtime_dev_discovery_is_opt_in(mocker, records, allow_dev):
+    records["extensions"][0]["properties"].update(
+        currentVersion="1.6.999-main.20261114.12", releaseTrain="dev",
+    )
+    mocker.patch.object(runtime_checks, "run", side_effect=[
+        records["instance"], records["custom_location"], records["cluster"], {"value": records["extensions"]},
+    ])
+    if allow_dev:
+        observed, _, _ = runtime_checks.read_runtime("instance", "rg", allow_unbundled_dev=True)
+        assert observed.identity == RuntimeIdentity(RuntimeChannel.STABLE, "1.6.999-main.20261114.12", "dev")
+    else:
+        with pytest.raises(ValidationError, match="no supported runtime profile mapping"):
+            runtime_checks.read_runtime("instance", "rg")
 
 
 def test_live_runtime_assertions_use_fairfax_catalog(mocker):

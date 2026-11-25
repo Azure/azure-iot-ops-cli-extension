@@ -1181,7 +1181,8 @@ def assert_operation_order(target_scenario: UpgradeScenario, upgrade_result: Lis
         ),
         (
             UpgradeScenario("Train update: Explicit train override").set_user_kwargs(ops_train="custom-train")
-            .expecting_validation_error("Cross-train upgrades"),
+            .expecting_validation_error("no supported runtime profile mapping")
+            .set_auxiliary_kwargs(expected_progress_count=1),
             {},
         ),
         (
@@ -1303,28 +1304,31 @@ def assert_operation_order(target_scenario: UpgradeScenario, upgrade_result: Lis
             UpgradeScenario("Preview train blocked: From preview to stable with version change")
             .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.6.0-preview.4", ext_train="preview")
             .set_user_kwargs(ops_version="1.6.0", ops_train="stable")
-            .expecting_validation_error("Cross-train upgrades"),
+            .expecting_validation_error("GA clusters must remain GA"),
             {},
         ),
         (
             UpgradeScenario("Preview train blocked: From stable to preview with version change")
             .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.0.0", ext_train="stable")
             .set_user_kwargs(ops_version="1.1.0", ops_train="preview")
-            .expecting_validation_error("Cross-train upgrades"),
+            .expecting_validation_error("conflicts with")
+            .set_auxiliary_kwargs(expected_progress_count=1),
             {},
         ),
         (
             UpgradeScenario("Preview train blocked: Same version different train")
             .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.1.0", ext_train="stable")
             .set_user_kwargs(ops_version="1.1.0", ops_train="preview")
-            .expecting_validation_error("Cross-train upgrades"),
+            .expecting_validation_error("conflicts with")
+            .set_auxiliary_kwargs(expected_progress_count=1),
             {},
         ),
         (
             UpgradeScenario("Preview train blocked: Preview to different preview with same version")
             .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.6.0-preview.4", ext_train="preview")
             .set_user_kwargs(ops_version="1.6.0-preview.4", ops_train="canary")
-            .expecting_validation_error("Cross-train upgrades"),
+            .expecting_validation_error("no supported runtime profile mapping")
+            .set_auxiliary_kwargs(expected_progress_count=1),
             {},
         ),
         (
@@ -1347,7 +1351,7 @@ def assert_operation_order(target_scenario: UpgradeScenario, upgrade_result: Lis
             UpgradeScenario("Preview conversion blocked with force")
             .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.6.0-preview.4", ext_train="preview")
             .set_user_kwargs(ops_version="1.6.0", ops_train="stable", force=True)
-            .expecting_validation_error("Cross-train upgrades"),
+            .expecting_validation_error("GA clusters must remain GA"),
             {},
         ),
         # ========== Configuration updates ==========
@@ -2271,7 +2275,10 @@ def test_ops_upgrade(
             assert not [call for call in mocked_responses.calls if call.request.method in {"PUT", "PATCH", "DELETE"}]
         assert_displays(
             spy_upgrade_displays, no_progress, error_context=err,
-            progress_count=0 if target_scenario.cluster_connected_status != "Connected" else None,
+            progress_count=(
+                0 if target_scenario.cluster_connected_status != "Connected"
+                else target_scenario.aux_kwargs.get("expected_progress_count")
+            ),
         )
         return
 
@@ -3125,13 +3132,14 @@ def test_upgrade_ownership_failure_prevents_all_writes(
 
 @pytest.mark.parametrize("force", [False, True])
 @pytest.mark.parametrize("auto_upgrade", [False, True, None, "false"])
-@pytest.mark.parametrize("operation", ["upgrade", "repair", "config", "noop"])
+@pytest.mark.parametrize("operation", ["upgrade", "repair", "train", "same-train", "config", "noop"])
 def test_ops_version_pinning_requires_manual_ownership(force, auto_upgrade, operation):
     ext = build_ext_upgrade_state(
         ext_type=EXTENSION_TYPE_OPS,
         current_version="1.6.0-preview.9", current_train="preview",
         built_in_version="1.6.0-preview.10" if operation == "upgrade" else "1.6.0-preview.9",
         built_in_train="preview", force=force,
+        train_override="integration" if operation == "train" else "PREVIEW" if operation == "same-train" else None,
         provisioning_state=PROVISIONING_STATE_FAILED if operation == "repair" else PROVISIONING_STATE_SUCCESS,
         desired_config={"setting": "value"} if operation == "config" else None,
     )
@@ -3140,7 +3148,7 @@ def test_ops_version_pinning_requires_manual_ownership(force, auto_upgrade, oper
         properties.pop("autoUpgradeMinorVersion")
     else:
         properties["autoUpgradeMinorVersion"] = auto_upgrade
-    if operation in {"upgrade", "repair"} and auto_upgrade is not False:
+    if operation in {"upgrade", "repair", "train"} and auto_upgrade is not False:
         for validate in (ext.validate_upgrade, ext.get_patch):
             with pytest.raises(ValidationError, match="autoUpgradeMinorVersion is explicitly false") as caught:
                 validate()
@@ -3157,6 +3165,8 @@ def test_ops_version_pinning_requires_manual_ownership(force, auto_upgrade, oper
             assert patch_properties["version"] == ext.desired_version[0]
         else:
             assert "version" not in patch_properties
+        if operation in {"train", "same-train"}:
+            assert patch_properties["releaseTrain"] == ext.override.train
         assert "autoUpgradeMinorVersion" not in patch_properties
 
 
@@ -3339,9 +3349,9 @@ def test_reconcile_cannot_bypass_release_train_guard(built_in_train, train_overr
         force=force,
     )
 
-    with pytest.raises(ValidationError, match="Cross-train upgrades"):
+    with pytest.raises(ValidationError, match="conflicts with"):
         ext.validate_upgrade()
-    with pytest.raises(ValidationError, match="Cross-train upgrades"):
+    with pytest.raises(ValidationError, match="conflicts with"):
         ext.get_patch()
 
 
@@ -3374,20 +3384,16 @@ def test_ga_catalog_target_upgrade_behavior(explicit_target, force):
             assert properties["releaseTrain"] == target.train
         else:
             assert "releaseTrain" not in properties
-    elif force:
+    else:
         ext.validate_upgrade()
         properties = ext.get_patch()["properties"]
         assert properties["version"] == target.version
         assert properties["releaseTrain"] == target.train
-    else:
-        for validate in (ext.validate_upgrade, ext.get_patch):
-            with pytest.raises(ValidationError, match="Cross-train upgrades"):
-                validate()
 
 
 @pytest.mark.parametrize("current_version,current_train", [("1.4.112", "stable"), ("1.5.40", "integration")])
 @pytest.mark.parametrize("force", [False, True])
-def test_explicit_unbundled_ga_integration_force_upgrade(current_version, current_train, force):
+def test_explicit_unbundled_ga_integration_upgrade(current_version, current_train, force):
     from azext_edge.edge.providers.orchestration.runtime_catalog import get_runtime_catalog
     from azext_edge.edge.providers.orchestration.runtime_profiles import RuntimeChannel
 
@@ -3405,15 +3411,10 @@ def test_explicit_unbundled_ga_integration_force_upgrade(current_version, curren
         qualification_identities=catalog.qualification_identities,
     )
 
-    if force:
-        ext.validate_upgrade()
-        properties = ext.get_patch()["properties"]
-        assert properties["version"] == "1.5.40"
-        assert properties["releaseTrain"] == "integration"
-    else:
-        for validate in (ext.validate_upgrade, ext.get_patch):
-            with pytest.raises(ValidationError):
-                validate()
+    ext.validate_upgrade()
+    properties = ext.get_patch()["properties"]
+    assert properties["version"] == "1.5.40"
+    assert properties["releaseTrain"] == "integration"
 
 
 @pytest.mark.parametrize(
@@ -3421,8 +3422,8 @@ def test_explicit_unbundled_ga_integration_force_upgrade(current_version, curren
     [
         ("1.4.112", "stable", True, "1.5.40", "integration", None),
         ("1.5.40", "integration", True, "1.5.40", "integration", None),
-        ("1.4.112", "stable", False, "1.5.40", "integration", "Cross-train upgrades"),
-        ("1.5.40", "integration", False, "1.5.40", "integration", "supported runtime profile mapping"),
+        ("1.4.112", "stable", False, "1.5.40", "integration", None),
+        ("1.5.40", "integration", False, "1.5.40", "integration", None),
         ("1.5.40", "integration", True, None, "integration", None),
         ("1.5.40", "integration", True, "1.5.40", None, None),
         ("1.4.112", "stable", True, "1.5.40", None, None),
@@ -3435,19 +3436,37 @@ def test_explicit_unbundled_ga_integration_force_upgrade(current_version, curren
         ("1.6.0-preview.50", "integration", False, None, None, None),
         ("1.6.0-preview.50", "integration", True, None, None, None),
         ("preview", "integration", True, "1.5.40", "integration", "GA clusters must remain GA"),
-        ("1.4.112", "stable", True, "1.6.0-preview.999", "integration", "Cross-train upgrades"),
+        ("1.4.112", "stable", True, "1.6.0-preview.999", "integration", "GA clusters must remain GA"),
         ("1.5.40", "integration", True, "1.6.0-preview.50", None, "GA clusters must remain GA"),
         ("1.6.0-preview.50", "integration", True, "1.5.40", None, "GA clusters must remain GA"),
-        ("preview", "integration", False, "1.6.0-preview.50", "integration", "supported runtime profile mapping"),
+        ("preview", "integration", False, "1.6.0-preview.50", "integration", None),
         ("preview", "integration", True, "1.8.0-preview.50", "integration", "more than one minor version"),
         ("preview", "integration", True, "2.0.0-preview.50", "integration", "across major versions"),
         ("1.6.0-preview.50", "integration", True, "preview", "integration", "downgrade"),
         ("preview", "integration", True, "1.6.1-preview.50", "integration", "conflicts with"),
         ("preview", "integration", True, "1.6.0-alpha.50", "integration", "conflicts with"),
         ("1.5.40", "integration", True, "1.5.40", "stable", None),
+        ("1.3.100", "stable", True, "1.6.999-main.20261114.12", "dev", None),
+        ("1.4.41", "stable", True, "1.6.999-main.20261114.12", "Dev", None),
+        ("1.5.40", "integration", True, "1.6.999-main.20261114.12", "dev", None),
+        ("1.6.999-main.20261113.1", "dev", True, "1.6.999-main.20261114.12", "dev", None),
+        ("1.6.999-main.20261114.12", "dev", True, "1.6.999-main.20261114.12", "dev", None),
+        ("1.6.999-main.20261113.1", "dev", True, "1.6.999-main.20261114.12", None, None),
+        ("1.6.999-main.20261114.12", "dev", False, None, None, None),
+        ("1.4.41", "stable", False, "1.6.999-main.20261114.12", "dev", None),
+        ("1.5.33", "stable", True, None, "dev", None),
+        ("1.5.33", "stable", False, None, "dev", None),
+        ("1.6.999-main.20261113.1", "dev", False, "1.6.999-main.20261114.12", "dev", None),
+        ("preview", "preview", True, "1.6.999-main.20261114.12", "dev", "GA clusters must remain GA"),
+        ("preview", "preview", False, "1.6.999-main.20261114.12", "dev", "GA clusters must remain GA"),
+        ("1.6.999-main.20261114.12", "dev", True, "1.7.0-preview.1", "preview", "GA clusters must remain GA"),
+        ("1.6.999-main.20261114.12", "dev", False, "1.7.0-preview.1", "preview", "GA clusters must remain GA"),
+        ("1.6.0-preview.49", "preview", False, "1.6.0-preview.50", "integration", None),
+        ("1.6.0-preview.49", "integration", False, "1.6.0-preview.50", "preview", None),
+        ("1.4.41", "stable", True, "invalid", "dev", "Unable to validate AIO runtime version"),
     ],
 )
-def test_unbundled_integration_force_command_preserves_boundaries(
+def test_internal_train_command_preserves_channel_boundaries(
     mocked_cmd, mocked_responses, mocked_sleep, unbundled_upgrade_catalog,
     current_version, current_train, force, ops_version, ops_train, error,
 ):
@@ -3494,6 +3513,69 @@ def test_unbundled_integration_force_command_preserves_boundaries(
                 assert "releaseTrain" not in patches[0]
             else:
                 assert patches[0]["releaseTrain"] == ops_train
+
+
+@pytest.mark.parametrize("target_train", ["integration", "dev"])
+@pytest.mark.parametrize("force", [False, True])
+@pytest.mark.parametrize("current_version", ["1.5.33", "1.5.40"])
+@pytest.mark.parametrize("auto_upgrade", [False, True, None])
+def test_internal_train_only_change_requires_manual_ownership(
+    mocked_cmd, mocked_responses, mocked_sleep, unbundled_upgrade_catalog,
+    target_train, force, current_version, auto_upgrade,
+):
+    from azext_edge.edge.commands_edge import upgrade_instance
+    from azext_edge.edge.providers.orchestration.runtime_profiles import RuntimeChannel
+
+    profile = unbundled_upgrade_catalog.get(RuntimeChannel.STABLE)
+    scenario = UpgradeScenario().set_extension(
+        EXTENSION_TYPE_OPS, ext_vers=current_version, ext_train="stable",
+    )
+    properties = scenario.extensions[EXTENSION_TYPE_OPS]["properties"]
+    if auto_upgrade is None:
+        properties.pop("autoUpgradeMinorVersion")
+    else:
+        properties["autoUpgradeMinorVersion"] = auto_upgrade
+    scenario.set_instance_mock(mocked_responses, "instance", "rg", iotops_api_version=profile.iotops_api_version)
+
+    kwargs = {"ops_train": target_train, "force": force, "confirm_yes": True, "no_progress": True}
+    if auto_upgrade is not False:
+        with pytest.raises(ValidationError, match="autoUpgradeMinorVersion is explicitly false"):
+            upgrade_instance(mocked_cmd, "rg", "instance", **kwargs)
+        assert not [call for call in mocked_responses.calls if call.request.method in {"PUT", "PATCH", "DELETE"}]
+        return
+
+    upgrade_instance(mocked_cmd, "rg", "instance", **kwargs)
+    writes = [call.request for call in mocked_responses.calls if call.request.method in {"PUT", "PATCH", "DELETE"}]
+    assert len(writes) == 1
+    assert writes[0].method == "PATCH"
+    assert f"/extensions/{scenario.extensions[EXTENSION_TYPE_OPS]['name']}?" in writes[0].url
+    assert json.loads(writes[0].body)["properties"] == {"releaseTrain": target_train}
+
+
+@pytest.mark.parametrize("target_train", ["integration", "dev"])
+@pytest.mark.parametrize("force", [False, True])
+def test_internal_train_override_uses_bundled_version(
+    mocked_cmd, mocked_responses, mocked_sleep, unbundled_upgrade_catalog, target_train, force,
+):
+    from azext_edge.edge.commands_edge import upgrade_instance
+    from azext_edge.edge.providers.orchestration.runtime_profiles import RuntimeChannel
+
+    profile = unbundled_upgrade_catalog.get(RuntimeChannel.STABLE)
+    scenario = UpgradeScenario().set_extension(
+        EXTENSION_TYPE_OPS, ext_vers="1.4.112", ext_train="stable",
+    )
+    scenario.set_instance_mock(mocked_responses, "instance", "rg", iotops_api_version=profile.iotops_api_version)
+
+    upgrade_instance(
+        mocked_cmd, "rg", "instance", ops_train=target_train, force=force, confirm_yes=True, no_progress=True,
+    )
+
+    ops_name = scenario.extensions[EXTENSION_TYPE_OPS]["name"]
+    patches = [
+        json.loads(call.request.body)["properties"] for call in mocked_responses.calls
+        if call.request.method == "PATCH" and f"/extensions/{ops_name}?" in call.request.url
+    ]
+    assert patches == [{"version": profile.identity.version, "releaseTrain": target_train}]
 
 
 @pytest.mark.parametrize("current_version", ["1.5.40", "1.6.0-preview.50"])
@@ -3546,8 +3628,12 @@ def test_unbundled_installed_runtime_force_and_repair_contract(
     assert json.loads(writes[0].body)["properties"] == expected
 
 
-@pytest.mark.parametrize("current_version", ["1.5.40", "1.6.0-preview.50"])
-@pytest.mark.parametrize("ops_train", [None, "integration"])
+@pytest.mark.parametrize("current_version,current_train", [
+    ("1.5.40", "integration"),
+    ("1.6.0-preview.50", "integration"),
+    ("1.6.999-main.20261114.12", "dev"),
+])
+@pytest.mark.parametrize("explicit_train", [False, True])
 @pytest.mark.parametrize(
     "auto_upgrade,connectivity,instance_state,error",
     [
@@ -3557,16 +3643,16 @@ def test_unbundled_installed_runtime_force_and_repair_contract(
         (False, "Connected", "Deleting", "instance provisioning state"),
     ],
 )
-def test_unbundled_integration_force_preserves_readiness_and_ownership(
+def test_internal_train_force_preserves_readiness_and_ownership(
     mocked_cmd, mocked_responses, unbundled_upgrade_catalog,
-    auto_upgrade, connectivity, instance_state, error, current_version, ops_train,
+    auto_upgrade, connectivity, instance_state, error, current_version, current_train, explicit_train,
 ):
     from azext_edge.edge.commands_edge import upgrade_instance
     from azext_edge.edge.providers.orchestration.runtime_catalog import get_runtime_catalog
     from azext_edge.edge.providers.orchestration.runtime_profiles import RuntimeChannel
 
     scenario = UpgradeScenario().set_extension(
-        EXTENSION_TYPE_OPS, ext_vers=current_version, ext_train="integration",
+        EXTENSION_TYPE_OPS, ext_vers=current_version, ext_train=current_train,
     )
     properties = scenario.extensions[EXTENSION_TYPE_OPS]["properties"]
     if auto_upgrade is None:
@@ -3582,7 +3668,8 @@ def test_unbundled_integration_force_preserves_readiness_and_ownership(
 
     with pytest.raises(ValidationError, match=error):
         upgrade_instance(
-            mocked_cmd, "rg", "instance", force=True, ops_version=current_version, ops_train=ops_train,
+            mocked_cmd, "rg", "instance", force=True, ops_version=current_version,
+            ops_train=current_train if explicit_train else None,
             confirm_yes=True, no_progress=True,
         )
     assert not [call for call in mocked_responses.calls if call.request.method in {"PUT", "PATCH", "DELETE"}]
