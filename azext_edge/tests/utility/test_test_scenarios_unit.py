@@ -228,3 +228,38 @@ def test_no_eligible_jobs_fails_before_emitting_matrix(scenario_matrix, monkeypa
     messages = capsys.readouterr().out
     assert "Skipping scenario 'essentials-sku' on N-1 AIO 1.4.112" in messages
     assert "::error::No valid scenarios to run." in messages
+
+
+def test_trustbundle_shards_cover_each_workload_identity_file_once(scenario_matrix):
+    build_matrix, scenarios = scenario_matrix
+    tests = Path(__file__).resolve().parents[1]
+    expected = {path.name for path in tests.rglob("*_int.py") if "require_wlif_setup" in path.read_text()}
+    trust = build_matrix["process_scenarios"](scenarios, "trustbundle")[0]
+    files = [file for shard in trust["shards"].values() for file in shard]
+    assert sorted(files) == sorted(expected)
+
+    rows = build_matrix["shard_rows"](build_matrix["expand_channels"]([trust], "stable,preview"))
+    assert [build_matrix["row_key"](row, "3.13") for row in rows] == [
+        f"trustbundle_{channel}_{shard}_py313" for channel in ("stable", "preview") for shard in trust["shards"]
+    ]
+    assert [row["quick_smoke"] for row in rows] == [False, True, True, True] * 2
+    assert all("shards" not in row for row in rows)
+
+
+def test_unsharded_rows_and_keys_are_unchanged(scenario_matrix):
+    build_matrix, scenarios = scenario_matrix
+    rows = build_matrix["expand_channels"](build_matrix["process_scenarios"](scenarios, "edge"), "stable")
+    assert build_matrix["shard_rows"](rows) == [{key: value for key, value in rows[0].items() if key != "shards"}]
+    assert build_matrix["row_key"](rows[0], "3.13") == "edge_stable_py313"
+
+
+@pytest.mark.parametrize("shards", [
+    {"only": ["test_a_int.py"]}, {"a": ["test_a_int.py"], "b": []}, {"a": ["test_a_int.py"], "B": ["test_b_int.py"]},
+    {"a": ["test_a_int.py"], "b": ["test_a_int.py"]}, {"a": ["test_a.py"], "b": ["test_b_int.py"]},
+    {"a": ["../test_a_int.py"], "b": ["test_b_int.py"]}, ["test_a_int.py"],
+])
+def test_invalid_shards_fail(scenario_matrix, shards):
+    build_matrix, scenarios = scenario_matrix
+    scenario = {**next(item for item in scenarios if item["name"] == "trustbundle"), "shards": shards}
+    with pytest.raises(ValueError, match="shards"):
+        build_matrix["process_scenarios"]([scenario], "trustbundle")
