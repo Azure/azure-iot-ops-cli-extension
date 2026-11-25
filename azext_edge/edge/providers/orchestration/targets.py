@@ -124,9 +124,10 @@ class InitTargets:
             if runtime_profile is None or runtime_profile.cloud_name != cloud_name:
                 runtime_profile = get_runtime_catalog(cloud_name).for_create()
         self.runtime_profile = runtime_profile
+        self._runtime_identity = None
         if runtime_profile is not None:
             self.deployment_policy.validate_runtime(runtime_profile.channel)
-            runtime_profile.validate_overrides(version=ops_version, train=ops_train)
+            self._runtime_identity = runtime_profile.validate_overrides(version=ops_version, train=ops_train)
         self._instance_blueprint = (
             runtime_profile.copy_instance_blueprint()
             if runtime_profile is not None else TEMPLATE_BLUEPRINT_INSTANCE.copy()
@@ -242,6 +243,11 @@ class InitTargets:
         return template_copy, deploy_params
 
     def get_extension_versions(self, for_enablement: bool = True) -> dict:
+        if not for_enablement and self._runtime_identity is not None:
+            identity = self._runtime_identity
+            return {
+                EXTENSION_MONIKER_OPS: {"version": identity.version, "train": identity.train}
+            }
         version_map = {}
         get_template_method = self.get_ops_enablement_template
         if not for_enablement:

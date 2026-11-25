@@ -1,6 +1,6 @@
 ---
 name: sync-aio-bicep-templates
-description: Generate and safely integrate GA, preview, or Fairfax AIO blueprints from azure-iot-operations-tests at explicit refs or active source PRs, excluding GDS Manager. Use for template sync, separate preview blueprints, or release-input refreshes. Keep Fairfax cloud overrides separate from Public runtime profiles and shared init defaults.
+description: Generate and safely integrate shared GA/Fairfax and preview AIO blueprints from azure-iot-operations-tests at explicit refs or active source PRs, excluding GDS Manager. Use for template sync, separate preview blueprints, or release-input refreshes.
 ---
 
 # Synchronize AIO Bicep templates
@@ -36,12 +36,12 @@ generation, do not mix commits; report the new head and obtain approval before r
 Do not use a PR's synthetic merge commit or its target branch unless explicitly requested. A draft/unmerged PR
 provides provisional inputs, not release approval. Do not merge, push, or publish the source PR as part of sync.
 
-### Fairfax / Azure US Government inputs
+### Fairfax inputs
 
-Fairfax uses cloud-specific full deployment blueprints, not a third runtime channel. Read the
-[Fairfax refresh procedure](./references/runtime-profiles.md#fairfax-policy-refresh) when the request involves
-FF inputs or deployment files. Do not regenerate Public GA/shared or preview assignments from an FF-only source.
-An FF refresh and a Public GA/preview template refresh are separate scopes with separate source refs.
+Fairfax shares the GA source and generated instance blueprint. Read the
+[runtime-profile synchronization guide](./references/runtime-profiles.md) when the
+request involves its version, train, configuration, or upgrade inputs. Do not create a separate generated module
+or require a separate source ref.
 
 ## Required inputs
 

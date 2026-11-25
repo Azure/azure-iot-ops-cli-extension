@@ -17,7 +17,6 @@ from .runtime_dependencies import DependencyRequirement
 from .runtime_profiles import RuntimeChannel, RuntimeIdentity, RuntimeProfile, RuntimeProfileCatalog
 from .template import TEMPLATE_BLUEPRINT_INSTANCE
 from .template_preview import TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW
-from .template_fairfax import TEMPLATE_BLUEPRINT_INSTANCE_FAIRFAX
 
 
 PREVIEW_PROFILE: Optional[RuntimeProfile] = RuntimeProfile(
@@ -30,6 +29,10 @@ PREVIEW_PROFILE: Optional[RuntimeProfile] = RuntimeProfile(
     iotops_api_version=IoTOpsMgmtApiVersion.V20261101_preview.value,
 )
 QUALIFICATION_IDENTITIES: Tuple[RuntimeIdentity, ...] = ()
+# Keep the last separately bundled Fairfax runtime upgradeable without --force.
+FAIRFAX_QUALIFICATION_IDENTITIES: Tuple[RuntimeIdentity, ...] = (
+    RuntimeIdentity(RuntimeChannel.STABLE, "1.5.46", "stable", CLOUD_AZURE_US_GOVERNMENT),
+)
 # GA and preview share the same init dependency versions and trains.
 # No additional dependency compatibility constraints are specified for this release.
 # An empty policy leaves the existing shared foundation checks unchanged.
@@ -38,18 +41,23 @@ SHARED_DEPENDENCY_REQUIREMENTS: Tuple[DependencyRequirement, ...] = ()
 
 def get_runtime_catalog(cloud_name: str = CLOUD_AZURE_PUBLIC) -> RuntimeProfileCatalog:
     if cloud_name == CLOUD_AZURE_US_GOVERNMENT:
-        # Cloud release eligibility is independent of the artifact's source train.
-        # Final RC source inputs; CLI live qualification is tracked separately.
-        blueprint = TEMPLATE_BLUEPRINT_INSTANCE_FAIRFAX
-        return RuntimeProfileCatalog([RuntimeProfile(
-            channel=RuntimeChannel.STABLE,
-            release=str(AIO_RELEASE),
-            source_ref="releases/v1.5.x/2610-ff",
-            source_commit="91e541f3b2767cd227aeaf3b8dd51ff9c54af6ce",
-            instance_blueprint=blueprint,
-            opcua_connector_version=blueprint.content["variables"]["VERSIONS"]["connectors"],
-            cloud_name=cloud_name,
-        )])
+        blueprint = TEMPLATE_BLUEPRINT_INSTANCE
+        return RuntimeProfileCatalog(
+            [
+                RuntimeProfile(
+                    channel=RuntimeChannel.STABLE,
+                    release=str(AIO_RELEASE),
+                    source_ref="releases/v1.5.x/2612",
+                    source_commit=blueprint.commit_id,
+                    instance_blueprint=blueprint,
+                    opcua_connector_version=blueprint.content["variables"]["VERSIONS"]["connectors"],
+                    cloud_name=cloud_name,
+                    versions_variable="FAIRFAX_VERSIONS",
+                    trains_variable="FAIRFAX_TRAINS",
+                )
+            ],
+            FAIRFAX_QUALIFICATION_IDENTITIES,
+        )
     stable = RuntimeProfile(
         channel=RuntimeChannel.STABLE,
         release=str(AIO_RELEASE),

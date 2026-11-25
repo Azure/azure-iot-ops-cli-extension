@@ -14,8 +14,10 @@ from azure.cli.core.azclierror import InvalidArgumentValueError, ValidationError
 from ...util.cloud_config import CLOUD_AZURE_US_GOVERNMENT, CloudConfig
 from .common import EXTENSION_MONIKER_CM, EXTENSION_MONIKER_SSC
 from .runtime_profiles import RuntimeChannel
-from .template import TEMPLATE_BLUEPRINT_ENABLEMENT, TemplateBlueprint
-from .template_fairfax import TEMPLATE_BLUEPRINT_ENABLEMENT_FAIRFAX, TEMPLATE_BLUEPRINT_INSTANCE_FAIRFAX
+from .template import TEMPLATE_BLUEPRINT_ENABLEMENT, TEMPLATE_BLUEPRINT_INSTANCE, TemplateBlueprint
+
+# Fairfax deployments are currently supported only in US Gov Virginia.
+FAIRFAX_ALLOWED_LOCATIONS = ("usgovvirginia",)
 
 
 @dataclass(frozen=True)
@@ -27,14 +29,13 @@ class DeploymentPolicy:
         return self.cloud_name == CLOUD_AZURE_US_GOVERNMENT
 
     def copy_enablement_blueprint(self) -> TemplateBlueprint:
-        blueprint = TEMPLATE_BLUEPRINT_ENABLEMENT_FAIRFAX if self.is_fairfax else TEMPLATE_BLUEPRINT_ENABLEMENT
-        return blueprint.copy()
+        return TEMPLATE_BLUEPRINT_ENABLEMENT.copy()
 
     @property
     def foundation_targets(self) -> Dict[str, Dict[str, str]]:
         if not self.is_fairfax:
             return {}
-        variables = TEMPLATE_BLUEPRINT_ENABLEMENT_FAIRFAX.content["variables"]
+        variables = TEMPLATE_BLUEPRINT_ENABLEMENT.content["variables"]
         return {
             moniker: {"version": variables["VERSIONS"][moniker], "train": variables["TRAINS"][moniker]}
             for moniker in (EXTENSION_MONIKER_CM, EXTENSION_MONIKER_SSC)
@@ -44,20 +45,13 @@ class DeploymentPolicy:
     def aio_configuration(self) -> Dict[str, str]:
         if not self.is_fairfax:
             return {}
-        configuration = TEMPLATE_BLUEPRINT_INSTANCE_FAIRFAX.content["variables"]["defaultAioConfigurationSettings"]
-        return {
-            key: configuration[key] for key in (
-                "schemaRegistry.values.armSchemaRegistry.baseUrl",
-                "schemaRegistry.values.armSchemaRegistry.audience",
-                "Azure.Cluster.Cloud",
-            )
-        }
+        return dict(TEMPLATE_BLUEPRINT_INSTANCE.content["variables"]["FAIRFAX_AIO_CONFIGURATION_SETTINGS"])
 
     @property
     def allowed_locations(self) -> Tuple[str, ...]:
         if not self.is_fairfax:
             return ()
-        return tuple(TEMPLATE_BLUEPRINT_INSTANCE_FAIRFAX.parameters["clusterLocation"]["allowedValues"])
+        return FAIRFAX_ALLOWED_LOCATIONS
 
     def validate_runtime(self, channel: RuntimeChannel) -> None:
         if self.is_fairfax and channel == RuntimeChannel.PREVIEW:

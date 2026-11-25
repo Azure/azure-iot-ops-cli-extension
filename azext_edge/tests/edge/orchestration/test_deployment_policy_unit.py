@@ -26,10 +26,6 @@ from azext_edge.edge.providers.orchestration.runtime_profiles import (
 from azext_edge.edge.providers.orchestration.targets import InitTargets
 from azext_edge.edge.providers.orchestration.template import TEMPLATE_BLUEPRINT_ENABLEMENT, TEMPLATE_BLUEPRINT_INSTANCE
 from azext_edge.edge.providers.orchestration.template_preview import TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW
-from azext_edge.edge.providers.orchestration.template_fairfax import (
-    TEMPLATE_BLUEPRINT_ENABLEMENT_FAIRFAX,
-    TEMPLATE_BLUEPRINT_INSTANCE_FAIRFAX,
-)
 from azext_edge.edge.providers.orchestration.upgrade2 import UpgradeManager
 from azext_edge.edge.providers.orchestration.work import WorkManager
 from azext_edge.tests.helpers import build_mock_cmd_for_cloud
@@ -78,12 +74,11 @@ def test_ff_targets_are_isolated_from_public_and_preview_blueprints():
         if cloud_name == "AzureUSGovernment":
             assert targets.get_extension_versions() == FF_FOUNDATION
             assert FF_CONFIGURATION.items() <= configuration.items()
-            assert instance["parameters"]["clusterLocation"]["allowedValues"] == ["usgovvirginia"]
+            assert instance["variables"]["FAIRFAX_VERSIONS"]["iotOperations"] == "1.5.77"
         else:
             assert enablement["variables"]["VERSIONS"] == public_variables["VERSIONS"]
             assert enablement["variables"]["TRAINS"] == public_variables["TRAINS"]
             assert not (FF_CONFIGURATION.keys() & configuration.keys())
-            assert "allowedValues" not in instance["parameters"]["clusterLocation"]
     assert originals == [
         blueprint.content for blueprint in (
             TEMPLATE_BLUEPRINT_ENABLEMENT, TEMPLATE_BLUEPRINT_INSTANCE, TEMPLATE_BLUEPRINT_INSTANCE_PREVIEW,
@@ -207,13 +202,14 @@ def test_ff_preview_command_guard_precedes_runtime_discovery(invocation):  # noq
 
 @pytest.fixture
 def ff_upgrade_manager(mocker):
-    profile = get_runtime_catalog("AzureUSGovernment").for_create()
+    catalog = get_runtime_catalog("AzureUSGovernment")
+    profile = catalog.for_create()
     manager = UpgradeManager.__new__(UpgradeManager)
     manager.cmd = build_mock_cmd_for_cloud("AzureUSGovernment")
     manager.targets = InitTargets("cluster", "rg", runtime_profile=profile, cloud_name="AzureUSGovernment")
     manager.runtime_context = SimpleNamespace(identity=profile.identity)
     manager.runtime_profile = profile
-    manager.runtime_catalog = RuntimeProfileCatalog([profile])
+    manager.runtime_catalog = catalog
     manager.resource_map = SimpleNamespace(connected_cluster=SimpleNamespace(connected=True))
     manager.no_progress = True
     manager.force = False
@@ -291,12 +287,23 @@ def test_unmapped_ff_stable_baseline_preserves_internal_compatibility_bypass(ff_
     ops = next(ext for ext in state.extension_upgrades if ext.moniker == EXTENSION_MONIKER_OPS)
     patch = ops.get_patch()["properties"]
     if version != "9.9.9":
-        assert patch["version"] == "1.5.46"
+        assert patch["version"] == "1.5.77"
     else:
         assert "version" not in patch
     assert FF_CONFIGURATION.items() <= patch["configurationSettings"].items()
     assert "unrelated.setting" not in patch["configurationSettings"]
     assert properties["configurationSettings"] == {"unrelated.setting": "keep"}
+
+
+def test_last_bundled_ff_baseline_is_mapped_without_force(ff_upgrade_manager):
+    manager, extensions = ff_upgrade_manager
+    extensions[EXTENSION_TYPE_OPS]["properties"].update({"version": "1.5.46", "currentVersion": "1.5.46"})
+    manager.runtime_context.identity = resolve_runtime_identity(
+        "1.5.46", "stable", manager.runtime_catalog.qualification_identities,
+    )
+    state = manager.analyze_cluster()
+    ops = next(ext for ext in state.extension_upgrades if ext.moniker == EXTENSION_MONIKER_OPS)
+    assert ops.get_patch()["properties"]["version"] == "1.5.77"
 
 
 @pytest.mark.parametrize("force", [False, True])
@@ -352,9 +359,7 @@ def test_ff_upgrade_constructor_selects_cloud_catalog_and_complete_template(mock
         "version": profile.identity.version, "train": profile.identity.train,
     }
     template, _ = manager.targets.get_ops_instance_template()
-    assert template["variables"]["resolvedVersion"] == (
-        TEMPLATE_BLUEPRINT_INSTANCE_FAIRFAX.content["variables"]["resolvedVersion"]
-    )
+    assert template["variables"]["FAIRFAX_VERSIONS"]["iotOperations"] == profile.identity.version
 
 
 def test_ff_force_does_not_allow_unreviewed_upgrade_version(ff_upgrade_manager):
@@ -370,21 +375,19 @@ def test_policy_consumes_generated_inputs_and_returns_private_copies(mocker):
         "secretStore": {"version": "8.7.6", "train": "test"},
     }
     configuration = {**FF_CONFIGURATION, "Azure.Cluster.Cloud": "TESTCLOUD"}
-    enablement = TEMPLATE_BLUEPRINT_ENABLEMENT_FAIRFAX.copy()
-    instance = TEMPLATE_BLUEPRINT_INSTANCE_FAIRFAX.copy()
+    enablement = TEMPLATE_BLUEPRINT_ENABLEMENT.copy()
+    instance = TEMPLATE_BLUEPRINT_INSTANCE.copy()
     enablement.content["variables"]["VERSIONS"].update({
         moniker: target["version"] for moniker, target in foundation.items()
     })
     enablement.content["variables"]["TRAINS"].update({
         moniker: target["train"] for moniker, target in foundation.items()
     })
-    instance.content["variables"]["defaultAioConfigurationSettings"].update(configuration)
-    instance.parameters["clusterLocation"]["allowedValues"] = ["test-region"]
-    mocker.patch.object(deployment_policy, "TEMPLATE_BLUEPRINT_ENABLEMENT_FAIRFAX", enablement)
-    mocker.patch.object(deployment_policy, "TEMPLATE_BLUEPRINT_INSTANCE_FAIRFAX", instance)
-    mocker.patch(
-        "azext_edge.edge.providers.orchestration.runtime_catalog.TEMPLATE_BLUEPRINT_INSTANCE_FAIRFAX", instance,
-    )
+    instance.content["variables"]["FAIRFAX_AIO_CONFIGURATION_SETTINGS"].update(configuration)
+    mocker.patch.object(deployment_policy, "TEMPLATE_BLUEPRINT_ENABLEMENT", enablement)
+    mocker.patch.object(deployment_policy, "TEMPLATE_BLUEPRINT_INSTANCE", instance)
+    mocker.patch.object(deployment_policy, "FAIRFAX_ALLOWED_LOCATIONS", ("test-region",))
+    mocker.patch("azext_edge.edge.providers.orchestration.runtime_catalog.TEMPLATE_BLUEPRINT_INSTANCE", instance)
     policy = DeploymentPolicy("AzureUSGovernment")
     assert policy.foundation_targets == foundation
     assert policy.aio_configuration == configuration
@@ -396,17 +399,17 @@ def test_policy_consumes_generated_inputs_and_returns_private_copies(mocker):
     targets = InitTargets("cluster", "rg", cloud_name="AzureUSGovernment", location="test-region")
     assert targets.get_extension_versions()["certManager"] == {"version": "9.8.7", "train": "test"}
     template, _ = targets.get_ops_instance_template()
-    assert template["parameters"]["clusterLocation"]["allowedValues"] == ["test-region"]
     assert template["variables"]["defaultAioConfigurationSettings"]["Azure.Cluster.Cloud"] == "TESTCLOUD"
     public = DeploymentPolicy("AzureCloud")
     assert public.foundation_targets == {}
-    assert public.aio_configuration == {}
+    assert not public.aio_configuration
     assert not public.allowed_locations
 
 
-def test_bundled_ff_source_is_pinned_separately_from_public_runtime():
-    assert TEMPLATE_BLUEPRINT_ENABLEMENT_FAIRFAX.commit_id == "486ede1e8e72c25a02c04d07e4bdc3310661beee"
-    assert TEMPLATE_BLUEPRINT_INSTANCE_FAIRFAX.commit_id == "91e541f3b2767cd227aeaf3b8dd51ff9c54af6ce"
-    variables = TEMPLATE_BLUEPRINT_INSTANCE_FAIRFAX.content["variables"]
-    assert variables["VERSIONS"] == {"iotOperations": "1.5.46", "connectors": "1.5.22"}
-    assert variables["TRAINS"] == {"iotOperations": "stable"}
+def test_bundled_ff_inputs_share_public_release_source():
+    assert TEMPLATE_BLUEPRINT_ENABLEMENT.commit_id == "20732e555262fa50ca91302e0d7a4553af4dec99"
+    assert TEMPLATE_BLUEPRINT_INSTANCE.commit_id == "3542da1961157e38ccac600f88cbd2ca127c4faa"
+    variables = TEMPLATE_BLUEPRINT_INSTANCE.content["variables"]
+    assert variables["FAIRFAX_VERSIONS"] == {"iotOperations": "1.5.77"}
+    assert variables["FAIRFAX_TRAINS"] == {"iotOperations": "stable"}
+    assert variables["VERSIONS"]["connectors"] == "1.5.103"

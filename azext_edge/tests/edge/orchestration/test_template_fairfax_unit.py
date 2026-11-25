@@ -4,7 +4,7 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-"""Generated FF source artifacts and cloud-specific deployment selection."""
+"""Shared Public/Fairfax source artifacts and cloud-specific deployment selection."""
 
 import json
 
@@ -16,10 +16,10 @@ from azext_edge.edge.providers.orchestration.runtime_profiles import (
     RuntimeChannel, RuntimeIdentity, resolve_runtime_identity, validate_upgrade_boundary,
 )
 from azext_edge.edge.providers.orchestration.targets import InitTargets, InstancePhase
-from azext_edge.edge.providers.orchestration.template import TemplateBlueprint
-from azext_edge.edge.providers.orchestration.template_fairfax import (
-    TEMPLATE_BLUEPRINT_ENABLEMENT_FAIRFAX,
-    TEMPLATE_BLUEPRINT_INSTANCE_FAIRFAX,
+from azext_edge.edge.providers.orchestration.template import (
+    TEMPLATE_BLUEPRINT_ENABLEMENT,
+    TEMPLATE_BLUEPRINT_INSTANCE,
+    TemplateBlueprint,
 )
 
 from .test_deployment_policy_unit import FF_CONFIGURATION, FF_FOUNDATION
@@ -27,18 +27,18 @@ from .test_template_unit import EXPECTED_INSTANCE_RESOURCE_KEYS
 
 
 @pytest.mark.parametrize("blueprint", [
-    TEMPLATE_BLUEPRINT_ENABLEMENT_FAIRFAX, TEMPLATE_BLUEPRINT_INSTANCE_FAIRFAX,
+    TEMPLATE_BLUEPRINT_ENABLEMENT, TEMPLATE_BLUEPRINT_INSTANCE,
 ])
 def test_ff_uses_existing_blueprint_format_without_gds_or_loaded_blobs(blueprint):
     assert isinstance(blueprint, TemplateBlueprint)
     content = json.dumps(blueprint.content).lower()
     assert "gds" not in content
     assert "$fxv" not in content
-    assert blueprint.content["metadata"]["_generator"]["version"] == "0.48.1.52935"
+    assert blueprint.content["metadata"]["_generator"]["version"] == "0.49.2.45890"
 
 
 def test_ff_enablement_has_source_dependency_targets_and_preserves_install_conditions():
-    content = TEMPLATE_BLUEPRINT_ENABLEMENT_FAIRFAX.content
+    content = TEMPLATE_BLUEPRINT_ENABLEMENT.content
     assert content["variables"]["VERSIONS"] == {
         moniker: target["version"] for moniker, target in FF_FOUNDATION.items()
     }
@@ -53,13 +53,13 @@ def test_ff_enablement_has_source_dependency_targets_and_preserves_install_condi
 
 
 def test_ff_instance_preserves_source_contract():
-    content = TEMPLATE_BLUEPRINT_INSTANCE_FAIRFAX.content
+    content = TEMPLATE_BLUEPRINT_INSTANCE.content
     assert set(content["resources"]) == set(EXPECTED_INSTANCE_RESOURCE_KEYS)
-    assert content["parameters"]["clusterLocation"]["allowedValues"] == ["usgovvirginia"]
-    assert "defaultValue" not in content["parameters"]["clusterLocation"]
-    assert content["variables"]["VERSIONS"] == {"iotOperations": "1.5.46", "connectors": "1.5.22"}
-    assert content["variables"]["TRAINS"] == {"iotOperations": "stable"}
-    assert FF_CONFIGURATION.items() <= content["variables"]["defaultAioConfigurationSettings"].items()
+    assert "allowedValues" not in content["parameters"]["clusterLocation"]
+    assert content["variables"]["FAIRFAX_VERSIONS"] == {"iotOperations": "1.5.77"}
+    assert content["variables"]["FAIRFAX_TRAINS"] == {"iotOperations": "stable"}
+    assert content["variables"]["VERSIONS"]["connectors"] == "1.5.103"
+    assert FF_CONFIGURATION == content["variables"]["FAIRFAX_AIO_CONFIGURATION_SETTINGS"]
     assert content["resources"]["aioExtension"]["properties"]["autoUpgradeMinorVersion"] is False
     resources = [
         resource for resource in content["resources"].values()
@@ -77,16 +77,10 @@ def test_ff_selects_complete_cloud_blueprint_in_every_deployment_phase(phase):
         "cluster", "rg", cloud_name="AzureUSGovernment", runtime_profile=profile, location="usgovvirginia",
     )
     template, _ = targets.get_ops_instance_template(phase=phase)
-    assert template["variables"]["VERSIONS"]["iotOperations"] == profile.identity.version
-    assert template["variables"]["TRAINS"]["iotOperations"] == profile.identity.train
-    assert template["variables"]["VERSIONS"]["connectors"] == "1.5.22"
+    assert template["variables"]["FAIRFAX_VERSIONS"]["iotOperations"] == profile.identity.version
+    assert template["variables"]["FAIRFAX_TRAINS"]["iotOperations"] == profile.identity.train
+    assert template["variables"]["VERSIONS"]["connectors"] == "1.5.103"
     assert FF_CONFIGURATION.items() <= template["variables"]["defaultAioConfigurationSettings"].items()
-    if phase in (None, InstancePhase.EXT):
-        assert template["resources"]["aioExtension"]["properties"]["version"] == "[variables('resolvedVersion')]"
-    assert template["parameters"]["aioExtensionVersion"]["defaultValue"] == ""
-    assert template["variables"]["resolvedVersion"] == (
-        TEMPLATE_BLUEPRINT_INSTANCE_FAIRFAX.content["variables"]["resolvedVersion"]
-    )
     assert public.copy_instance_blueprint().content == original
 
 
@@ -95,10 +89,10 @@ def test_ff_artifact_mapping_does_not_enable_public_preview_or_leak_into_public_
     profile = catalog.for_create()
     assert profile.cloud_name == "AzureUSGovernment"
     assert profile.identity.channel == RuntimeChannel.STABLE
-    assert (profile.identity.version, profile.identity.train) == ("1.5.46", "stable")
-    assert profile.source_ref == "releases/v1.5.x/2610-ff"
-    assert profile.source_commit == "91e541f3b2767cd227aeaf3b8dd51ff9c54af6ce"
-    assert profile.require_opcua_connector_version() == "1.5.22"
+    assert (profile.identity.version, profile.identity.train) == ("1.5.77", "stable")
+    assert profile.source_ref == "releases/v1.5.x/2612"
+    assert profile.source_commit == "3542da1961157e38ccac600f88cbd2ca127c4faa"
+    assert profile.require_opcua_connector_version() == "1.5.103"
     assert profile.iotops_api_version == "2026-10-01"
     assert catalog.for_upgrade(profile.identity) is profile
     assert resolve_runtime_identity(
@@ -134,15 +128,16 @@ def test_upgrade_cannot_cross_cloud_identity_boundary():
 def test_full_ff_generation_preserves_additional_parameters_resources_and_enablement_settings(mocker):
     from azext_edge.edge.providers.orchestration import deployment_policy, runtime_catalog
 
-    instance = TEMPLATE_BLUEPRINT_INSTANCE_FAIRFAX.copy()
+    instance = TEMPLATE_BLUEPRINT_INSTANCE.copy()
     instance.parameters["futureSetting"] = {"type": "string", "defaultValue": "source-default"}
     instance.content["resources"]["futureResource"] = {
         "type": "Microsoft.Example/widgets", "apiVersion": "2026-01-01", "name": "source-resource",
     }
-    enablement = TEMPLATE_BLUEPRINT_ENABLEMENT_FAIRFAX.copy()
+    enablement = TEMPLATE_BLUEPRINT_ENABLEMENT.copy()
     enablement.content["resources"]["certManagerExtension"]["properties"]["configurationSettings"]["future"] = "keep"
-    mocker.patch.object(runtime_catalog, "TEMPLATE_BLUEPRINT_INSTANCE_FAIRFAX", instance)
-    mocker.patch.object(deployment_policy, "TEMPLATE_BLUEPRINT_ENABLEMENT_FAIRFAX", enablement)
+    mocker.patch.object(runtime_catalog, "TEMPLATE_BLUEPRINT_INSTANCE", instance)
+    mocker.patch.object(deployment_policy, "TEMPLATE_BLUEPRINT_INSTANCE", instance)
+    mocker.patch.object(deployment_policy, "TEMPLATE_BLUEPRINT_ENABLEMENT", enablement)
     targets = InitTargets("cluster", "rg", cloud_name="AzureUSGovernment")
     template, _ = targets.get_ops_instance_template()
     foundation, _ = targets.get_ops_enablement_template()
