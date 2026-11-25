@@ -4,10 +4,10 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-"""Bundled Public blueprints from releases/v1.5.x/2610.
+"""Bundled Public blueprints from releases/v1.5.x/2612.
 
-Selected source: 87c6c83e945c318ebf76a3189e8212c3dd17fbc6.
-The instance promotes the upstream integration train to stable and excludes GDS before compilation.
+Selected source: 3542da1961157e38ccac600f88cbd2ca127c4faa.
+The instance retains the upstream integration train and excludes GDS before compilation.
 """
 
 from copy import deepcopy
@@ -55,14 +55,12 @@ class TemplateBlueprint(NamedTuple):
 
 
 TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
-    commit_id="47d35ef275981cb60cb46c4e95e5e6d1606c4fdd",
+    commit_id="20732e555262fa50ca91302e0d7a4553af4dec99",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "languageVersion": "2.0",
         "contentVersion": "1.0.0.0",
-        "metadata": {
-            "_generator": {"name": "bicep", "version": "0.48.1.52935", "templateHash": "12532884713713298736"}
-        },
+        "metadata": {"_generator": {"name": "bicep", "version": "0.49.2.45890", "templateHash": "2154240097593331841"}},
         "definitions": {
             "_1.AdvancedConfig": {
                 "type": "object",
@@ -781,17 +779,17 @@ TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
     },
 )
 
-# Source releases/v1.5.x/2610 @ 97933f54e677de0354b5b6ff144d153b8aff72f2, release 2610.
-# The upstream integration train is promoted to stable before compilation.
+# Source releases/v1.5.x/2612 @ 561705b317b857f4bb0d491ecca8dc09b77e5718, release 2612.
+# The upstream integration train is retained for alpha qualification.
 # GDS Manager input and reader are excluded in exported source before compilation.
 TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
-    commit_id="97933f54e677de0354b5b6ff144d153b8aff72f2",
+    commit_id="3542da1961157e38ccac600f88cbd2ca127c4faa",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "languageVersion": "2.0",
         "contentVersion": "1.0.0.0",
         "metadata": {
-            "_generator": {"name": "bicep", "version": "0.48.1.52935", "templateHash": "17707065636206652024"}
+            "_generator": {"name": "bicep", "version": "0.49.2.45890", "templateHash": "18286292354827482394"}
         },
         "definitions": {
             "_1.AdvancedConfig": {
@@ -1497,8 +1495,18 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
             "advancedConfig": {"$ref": "#/definitions/_1.AdvancedConfig", "defaultValue": {}},
         },
         "variables": {
-            "VERSIONS": {"iotOperations": "1.5.45", "connectors": "1.5.22"},
-            "TRAINS": {"iotOperations": "stable"},
+            "VERSIONS": {"iotOperations": "1.5.82", "connectors": "1.5.103"},
+            "TRAINS": {"iotOperations": "integration"},
+            "FAIRFAX_VERSIONS": {"iotOperations": "1.5.77"},
+            "FAIRFAX_TRAINS": {"iotOperations": "stable"},
+            "FAIRFAX_AIO_CONFIGURATION_SETTINGS": {
+                "schemaRegistry.values.armSchemaRegistry.baseUrl": "https://management.usgovcloudapi.net",
+                "schemaRegistry.values.armSchemaRegistry.audience": "https://management.core.usgovcloudapi.net/",
+                "Azure.Cluster.Cloud": "AZUREUSGOVERNMENTCLOUD",
+            },
+            "IS_FAIRFAX": "[equals(environment().name, 'AzureUSGovernment')]",
+            "DEFAULT_VERSIONS": "[if(variables('IS_FAIRFAX'), variables('FAIRFAX_VERSIONS'), variables('VERSIONS'))]",
+            "DEFAULT_TRAINS": "[if(variables('IS_FAIRFAX'), variables('FAIRFAX_TRAINS'), variables('TRAINS'))]",
             "HASH": "[coalesce(tryGet(parameters('advancedConfig'), 'resourceSuffix'), take(uniqueString(resourceGroup().id, parameters('clusterName'), parameters('clusterNamespace')), 5))]",
             "AIO_EXTENSION_SUFFIX": "[take(uniqueString(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName'))), 5)]",
             "CUSTOM_LOCATION_NAMESPACE": "[parameters('clusterNamespace')]",
@@ -1578,11 +1586,11 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
                 "identity": {"type": "SystemAssigned"},
                 "properties": {
                     "extensionType": "microsoft.iotoperations",
-                    "version": "[coalesce(tryGet(tryGet(parameters('advancedConfig'), 'aio'), 'version'), variables('VERSIONS').iotOperations)]",
-                    "releaseTrain": "[coalesce(tryGet(tryGet(parameters('advancedConfig'), 'aio'), 'train'), variables('TRAINS').iotOperations)]",
+                    "version": "[coalesce(tryGet(tryGet(parameters('advancedConfig'), 'aio'), 'version'), variables('DEFAULT_VERSIONS').iotOperations)]",
+                    "releaseTrain": "[coalesce(tryGet(tryGet(parameters('advancedConfig'), 'aio'), 'train'), variables('DEFAULT_TRAINS').iotOperations)]",
                     "autoUpgradeMinorVersion": False,
                     "scope": "[variables('AIO_EXTENSION_SCOPE')]",
-                    "configurationSettings": "[union(variables('defaultAioConfigurationSettings'), coalesce(tryGet(tryGet(parameters('advancedConfig'), 'aio'), 'configurationSettingsOverride'), createObject()))]",
+                    "configurationSettings": "[union(variables('defaultAioConfigurationSettings'), if(variables('IS_FAIRFAX'), variables('FAIRFAX_AIO_CONFIGURATION_SETTINGS'), createObject()), coalesce(tryGet(tryGet(parameters('advancedConfig'), 'aio'), 'configurationSettingsOverride'), createObject()))]",
                 },
             },
             "customLocation": {

@@ -520,8 +520,8 @@ def generate_self_signed_cert(
     return out_path
 
 
-def generate_self_signed_der_cert() -> Path:
-    return generate_self_signed_cert("trusttest.der")
+def generate_self_signed_der_cert(filename: str = "trusttest.der") -> Path:
+    return generate_self_signed_cert(filename)
 
 
 def generate_ca_cert() -> Path:
