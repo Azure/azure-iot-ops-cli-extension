@@ -299,6 +299,40 @@ def test_title_uses_frozen_scenarios_channels_and_selected_region(monkeypatch, t
         assert (tmp_path / "plan.json").read_bytes() == original
 
 
+def test_title_reads_fairfax_runtime_from_shared_candidate(monkeypatch, tmp_path, capsys):
+    monkeypatch.setenv("OPS_MODE", "Integration tests")
+    monkeypatch.setenv("OPS_CLOUD", "AzureUSGovernment")
+    monkeypatch.setenv("OPS_CLUSTER_REGION", "usgovvirginia")
+    pipeline.plan(tmp_path)
+    capsys.readouterr()
+    candidate_dir = tmp_path / "candidate"
+    candidate_dir.mkdir()
+    wheel = candidate_dir / "azure_iot_ops-2.12.0a2-py3-none-any.whl"
+    with ZipFile(wheel, "w") as archive:
+        archive.writestr("azext_edge/__init__.py", "")
+        archive.writestr(
+            "azure_iot_ops-2.12.0a2.dist-info/METADATA", "Name: azure-iot-ops\nVersion: 2.12.0a2\n",
+        )
+        archive.writestr(
+            "azext_edge/edge/providers/orchestration/template.py",
+            repr({
+                "VERSIONS": {"iotOperations": "1.5.82"},
+                "TRAINS": {"iotOperations": "integration"},
+                "FAIRFAX_VERSIONS": {"iotOperations": "1.5.77"},
+                "FAIRFAX_TRAINS": {"iotOperations": "stable"},
+            }),
+        )
+    pipeline.write(candidate_dir / "candidate.json", {
+        "schema": 1, "producer": pipeline.producer(),
+        "wheel": {"file": wheel.name, "sha256": pipeline.digest(wheel)},
+    })
+    pipeline.title(tmp_path, candidate_dir)
+    assert capsys.readouterr().out.splitlines()[0] == (
+        "##vso[build.updatebuildnumber]ops-123 (2.12.0a2) "
+        "(edge) (usgovvirginia) (runtime 1.5.77) (stable)"
+    )
+
+
 @pytest.mark.parametrize("release_build_id", [None, "456"])
 def test_title_compacts_large_selection_without_release_label(monkeypatch, tmp_path, release_build_id):
     catalog = yaml.safe_load((ROOT / ".github/test-scenarios.yml").read_text())["scenarios"]

@@ -83,16 +83,30 @@ def wheel_version(path):
     return release["wheel_metadata"](wheels[0])
 
 
-def runtime_identity(source):
+def runtime_template_options(channel, fairfax=False):
+    if channel not in {"stable", "preview"} or fairfax and channel != "stable":
+        raise ValueError("The selected cloud has no supported runtime channel.")
+    if channel == "preview":
+        return (("_preview", "VERSIONS", "TRAINS"),)
+    if fairfax:
+        return (
+            ("_fairfax", "VERSIONS", "TRAINS"),
+            ("", "FAIRFAX_VERSIONS", "FAIRFAX_TRAINS"),
+        )
+    return (("", "VERSIONS", "TRAINS"),)
+
+
+def runtime_identity(source, versions_variable="VERSIONS", trains_variable="TRAINS"):
     profiles = []
     for node in ast.walk(ast.parse(source)):
         if not isinstance(node, ast.Dict):
             continue
         values = {key.value: value for key, value in zip(node.keys, node.values)
                   if isinstance(key, ast.Constant) and isinstance(key.value, str)}
-        if "VERSIONS" not in values or "TRAINS" not in values:
+        if versions_variable not in values or trains_variable not in values:
             continue
-        versions, trains = ast.literal_eval(values["VERSIONS"]), ast.literal_eval(values["TRAINS"])
+        versions = ast.literal_eval(values[versions_variable])
+        trains = ast.literal_eval(values[trains_variable])
         if "iotOperations" not in versions:
             continue
         train = trains.get("iotOperations")
@@ -108,17 +122,24 @@ def wheel_runtimes(path, channels, cloud="AzureCloud"):
     if cloud not in {"AzureCloud", "AzureUSGovernment"}:
         raise ValueError("Unsupported Ops runtime cloud.")
     channels = _values(channels, r"stable|preview", "channel")
-    cloud_key = "fairfax" if cloud == "AzureUSGovernment" else "public"
     result = []
     with ZipFile(path) as archive:
         for channel in ("stable", "preview"):
             if channel not in channels:
                 continue
-            suffix = "_preview" if channel == "preview" else "_fairfax" if cloud_key == "fairfax" else ""
-            name = f"azext_edge/edge/providers/orchestration/template{suffix}.py"
-            if name not in archive.namelist() or archive.getinfo(name).file_size > 1024 * 1024:
+            selected = None
+            for suffix, versions_variable, trains_variable in runtime_template_options(
+                    channel, cloud == "AzureUSGovernment"):
+                name = f"azext_edge/edge/providers/orchestration/template{suffix}.py"
+                if name in archive.namelist():
+                    selected = name, versions_variable, trains_variable
+                    break
+            if selected is None or archive.getinfo(selected[0]).file_size > 1024 * 1024:
                 raise ValueError("The frozen wheel is missing its bounded target runtime profile.")
-            profile = runtime_identity(archive.read(name).decode("utf-8"))
+            name, versions_variable, trains_variable = selected
+            profile = runtime_identity(
+                archive.read(name).decode("utf-8"), versions_variable, trains_variable,
+            )
             result.append(profile["version"])
     return result
 

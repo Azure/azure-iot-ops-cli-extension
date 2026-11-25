@@ -100,8 +100,18 @@ def test_title_reads_bundled_runtime_without_executing_code_or_applying_health_p
         archive.writestr(
             "azext_edge/edge/providers/orchestration/template.py",
             "raise AssertionError('must not execute product code')\n"
-            "P = {'VERSIONS': {'iotOperations': '1.99.0-dev.1'}, 'TRAINS': {'iotOperations': 'integration'}}\n",
+            "P = {'VERSIONS': {'iotOperations': '1.99.0-dev.1'}, "
+            "'TRAINS': {'iotOperations': 'integration'}, "
+            "'FAIRFAX_VERSIONS': {'iotOperations': '1.5.77'}, "
+            "'FAIRFAX_TRAINS': {'iotOperations': 'stable'}}\n",
         )
     assert TITLE["wheel_runtimes"](wheel, ["stable"]) == ["1.99.0-dev.1"]
+    assert TITLE["wheel_runtimes"](wheel, ["stable"], "AzureUSGovernment") == ["1.5.77"]
     with pytest.raises(ValueError, match="missing"):
         TITLE["wheel_runtimes"](wheel, ["preview"])
+    with ZipFile(wheel, "a") as archive:
+        archive.writestr(
+            "azext_edge/edge/providers/orchestration/template_fairfax.py",
+            "P = {'VERSIONS': {'iotOperations': '1.5.46'}, 'TRAINS': {'iotOperations': 'stable'}}\n",
+        )
+    assert TITLE["wheel_runtimes"](wheel, ["stable"], "AzureUSGovernment") == ["1.5.46"]

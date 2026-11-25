@@ -61,35 +61,25 @@ This preflight does not make multi-resource workflows transactional: later servi
 failures can still leave partial state. Other child-resource commands and explicit
 runtime API selection for deployment and upgrade workflows are unchanged.
 
-### Azure US Government deployment configuration
+### Fairfax deployment configuration
 
-With `AzureUSGovernment` selected in Azure CLI, `iot ops init` uses Government-specific Cert Manager and
-Secret Store version/train defaults from the full Government enablement blueprint. `iot ops create` selects
-the full Government instance blueprint, including its parameters, resources, Schema Registry ARM endpoint/audience,
-and top-level chart cloud settings. No additional cloud flag is required.
-These settings configure deployed components separately from the CLI's own cloud-aware management clients.
-Public GA/preview deployment defaults are unchanged.
+With `AzureUSGovernment` selected as the Azure CLI cloud, `iot ops init` uses the shared Cert Manager and
+Secret Store defaults. `iot ops create` uses the same generated instance template as Public GA while selecting
+the Fairfax AIO version, train, Schema Registry endpoints, and chart cloud settings. No additional cloud flag
+is required, and Public GA/preview deployment defaults are unchanged.
 
-Government instance deployment is restricted to `usgovvirginia`; accepted display-form location values are
-normalized to the source-declared region before use. `--use-preview` and Public preview-runtime-only
-operations are not supported there. The FF release's artifact train is independent of this eligibility:
-the current source deploys `1.5.42` on the `stable` train without enabling Public preview
-features. Required Government chart settings reject conflicting `--ops-config` values. Upgrade
-planning repairs those settings independently of optional configuration-sync modes without removing unrelated
-extension settings. Explicit dependency version/train override options retain their existing behavior.
+Fairfax instance deployment is restricted to `usgovvirginia`. `--use-preview` and Public preview-runtime-only
+operations are not supported. The current profile deploys `1.5.77` on the `stable` train, with `1.5.46` on
+`stable` retained as a reviewed upgrade source. Required Fairfax chart settings reject conflicting `--ops-config`
+values, and upgrade planning repairs those settings without removing unrelated extension settings.
 
-Government blueprints use the same generated `TemplateBlueprint` format as GA and preview, from a separately
-pinned FF Bicep export through the template-sync skill. Create, runtime discovery, update, and upgrade planning
-use a cloud-specific runtime catalog; Public release inputs are not substituted into Government deployments.
-Only the exact bundled FF artifact identity is currently mapped; normal upgrade planning requires reviewed mappings
-for additional installed FF baselines. The existing internal stable-upgrade compatibility bypass is unchanged;
-it does not qualify an FF migration or allow unreviewed target version/train overrides.
-GDS Manager is excluded from both Government blueprints.
-Follow the [FF refresh procedure](.github/skills/sync-aio-bicep-templates/references/runtime-profiles.md#fairfax-policy-refresh)
-to update them without replacing Public templates.
+Create, runtime discovery, update, and upgrade planning use the Fairfax runtime catalog and dedicated values
+from the shared instance template. GDS Manager remains excluded. Follow the
+[Fairfax refresh procedure](.github/skills/sync-aio-bicep-templates/references/runtime-profiles.md#fairfax-policy-refresh)
+when updating these inputs.
 
-The current Government inputs are provisional pending the final AIO release handoff and live qualification;
-this configuration support is not a claim that an FF release has been published or qualified.
+These inputs remain subject to the final AIO release handoff and live qualification; their presence does not
+claim that a Fairfax release has been published or qualified.
 
 ## Contributing
 

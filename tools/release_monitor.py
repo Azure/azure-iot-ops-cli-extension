@@ -23,7 +23,7 @@ from zipfile import ZipFile
 from packaging.version import InvalidVersion, Version
 
 from ado_schedule import check_scheduled_overlap
-from pipeline_title import format_title, runtime_identity
+from pipeline_title import format_title, runtime_identity, runtime_template_options
 
 
 REPOSITORIES = {
@@ -128,11 +128,20 @@ def release_version(release):
     return version
 
 
-def parse_runtime_profile(source, cloud, channel="stable"):
+def parse_runtime_profile(source, cloud, channel="stable", template=None):
     if channel not in {"stable", "preview"} or cloud != "public" and channel != "stable":
         raise ValueError("The selected cloud has no supported runtime channel.")
-    suffix = "_preview" if channel == "preview" else "_fairfax" if cloud == "fairfax" else ""
-    profile = runtime_identity(source)
+    options = runtime_template_options(channel, cloud == "fairfax")
+    if template is None:
+        suffix, versions_variable, trains_variable = options[0]
+    else:
+        selected = next((
+            option for option in options if TEMPLATE.format(option[0]) == template
+        ), None)
+        if selected is None:
+            raise ValueError("Runtime template does not match the selected cloud and channel.")
+        suffix, versions_variable, trains_variable = selected
+    profile = runtime_identity(source, versions_variable, trains_variable)
     version = Version(profile["version"])
     profile.update(milestone=f"{version.major}.{version.minor}", template=TEMPLATE.format(suffix))
     if channel == "stable" and (version.is_prerelease or version.is_devrelease or profile["train"] != "stable"):
@@ -143,15 +152,18 @@ def parse_runtime_profile(source, cloud, channel="stable"):
 
 
 def runtime_profile(repository, source_commit, cloud, channel="stable"):
-    suffix = "_preview" if channel == "preview" else "_fairfax" if cloud == "fairfax" else ""
-    url = f"https://raw.githubusercontent.com/{repository}/{commit(source_commit)}/{TEMPLATE.format(suffix)}"
-    try:
-        source = download(url).decode("utf-8")
-    except HTTPError as error:
-        if error.code == 404:
-            return None
-        raise
-    return parse_runtime_profile(source, cloud, channel)
+    source_commit = commit(source_commit)
+    for suffix, _, _ in runtime_template_options(channel, cloud == "fairfax"):
+        template = TEMPLATE.format(suffix)
+        url = f"https://raw.githubusercontent.com/{repository}/{source_commit}/{template}"
+        try:
+            source = download(url).decode("utf-8")
+        except HTTPError as error:
+            if error.code == 404:
+                continue
+            raise
+        return parse_runtime_profile(source, cloud, channel, template)
+    return None
 
 
 def wheel_asset(release, extension, version):
@@ -282,7 +294,10 @@ def validate_manifest(manifest, *, extension=None, cloud=None, track=None, slot=
         if (version.is_prerelease or not re.fullmatch(r"[1-9][0-9]*\.[0-9]+", manifest["track"])
                 or runtime is not None and (
                     runtime["milestone"] != manifest["track"] or runtime["train"] != "stable"
-                    or runtime["template"] != TEMPLATE.format("_fairfax" if cloud_key == "fairfax" else ""))):
+                    or runtime["template"] not in {
+                        TEMPLATE.format(option[0])
+                        for option in runtime_template_options("stable", cloud_key == "fairfax")
+                    })):
             raise ValueError("Invalid AIO milestone profile.")
         runtimes = manifest.get("runtimes")
         if (not isinstance(runtimes, dict) or set(runtimes) - {"stable", "preview"}
@@ -325,6 +340,7 @@ def verify_wheel(path, manifest):
                 continue
             profile = parse_runtime_profile(
                 archive.read(runtime["template"]).decode("utf-8"), manifest["cloudKey"], channel,
+                runtime["template"],
             )
             if profile != runtime:
                 raise ValueError("Wheel runtime differs from the resolved release source.")

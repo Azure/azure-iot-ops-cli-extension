@@ -15,6 +15,7 @@ import shutil
 import subprocess
 import tarfile
 from unittest.mock import Mock
+from urllib.error import HTTPError
 from urllib.parse import parse_qs, urlsplit
 from zipfile import ZipFile
 
@@ -39,6 +40,8 @@ def branch_selection(branch, monitor, mocker, tmp_path, cloud="public", track="g
     mocker.patch.object(branch.subprocess, "run", return_value=Mock(stdout=f"{SOURCE}\trefs/heads/dev\n"))
     mocker.patch.object(monitor, "download", return_value=b'VERSION = "2.12.0b1"\n')
     runtime = profile("1.5.45", cloud)
+    if cloud == "fairfax":
+        runtime["template"] = monitor.TEMPLATE.format("")
     if track == "preview":
         runtime = {**runtime, "train": "preview", "template": monitor.TEMPLATE.format("_preview")}
     mocker.patch.object(monitor, "runtime_profile", return_value=runtime)
@@ -664,6 +667,36 @@ def test_runtime_metadata_is_parsed_without_executing_release_code(monitor):
     assert monitor.parse_runtime_profile(source, "public") == profile("1.5.45")
     with pytest.raises(ValueError, match="stable bundled"):
         monitor.parse_runtime_profile(source.replace("'stable'", "'integration'"), "public")
+    shared = (
+        "{'VERSIONS': {'iotOperations': '1.5.82'}, 'TRAINS': {'iotOperations': 'integration'}, "
+        "'FAIRFAX_VERSIONS': {'iotOperations': '1.5.77'}, "
+        "'FAIRFAX_TRAINS': {'iotOperations': 'stable'}}"
+    )
+    assert monitor.parse_runtime_profile(
+        shared, "fairfax", template=monitor.TEMPLATE.format(""),
+    ) == {
+        "version": "1.5.77", "train": "stable", "milestone": "1.5",
+        "template": monitor.TEMPLATE.format(""),
+    }
+
+
+def test_fairfax_runtime_profile_falls_back_to_shared_template(monitor, mocker):
+    source = (
+        "{'VERSIONS': {'iotOperations': '1.5.82'}, 'TRAINS': {'iotOperations': 'integration'}, "
+        "'FAIRFAX_VERSIONS': {'iotOperations': '1.5.77'}, "
+        "'FAIRFAX_TRAINS': {'iotOperations': 'stable'}}"
+    )
+    download = mocker.patch.object(monitor, "download", side_effect=[
+        HTTPError("legacy", 404, "not found", None, None),
+        source.encode("utf-8"),
+    ])
+    assert monitor.runtime_profile("Azure/example", SOURCE, "fairfax") == {
+        "version": "1.5.77", "train": "stable", "milestone": "1.5",
+        "template": monitor.TEMPLATE.format(""),
+    }
+    assert [call.args[0].rsplit("/", 1)[-1] for call in download.call_args_list] == [
+        "template_fairfax.py", "template.py",
+    ]
 
 
 def test_retry_retains_selection_and_rejects_missing_or_changed_history(monitor, manifest, tmp_path, mocker):
