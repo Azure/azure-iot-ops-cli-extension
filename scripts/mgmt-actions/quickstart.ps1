@@ -209,7 +209,7 @@ switch ($protocol) {
             -i $instance `
             -g $resourceGroup `
             --address $endpointAddress `
-            --ac true `
+            --ac false `
             --ad false
     }
     "onvif" {
