@@ -7,9 +7,9 @@ Release History
 unreleased
 ==========
 
-* Prepare CLI ``2.12.0a1`` with AIO 2612 GA-channel and preview-channel qualification inputs.
-  Both bundled Public runtimes retain the upstream integration train. The existing Fairfax 2610 inputs are unchanged.
-  The Fairfax profile reports release 2612 to align with Public; its source and runtime versions remain unchanged.
+* Prepare CLI ``2.12.0a2`` with AIO 2612 GA-channel, preview-channel, and Fairfax qualification inputs.
+  Public GA and preview retain the upstream integration train. Fairfax uses the shared 2612 instance template
+  with AIO ``1.5.77 stable`` while retaining ``1.5.46 stable`` as a supported upgrade source.
 * Preview deployments use the public connector registry and updated MCP policy actions.
   The source Edge Registry resource remains disabled by default, and the MCP Reader policy includes ``broker_metadata``.
   Both Public runtime channels support ``--sku Standard`` and ``--sku Essentials``; leaving SKU unset preserves defaults.

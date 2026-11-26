@@ -175,7 +175,7 @@ def test_inline_versions_select_active_government_cloud_without_network(mocker):
     assert result["extensions"] == {
         "certManager": {"version": "1.2.3", "train": "stable"},
         "secretStore": {"version": "1.6.1", "train": "stable"},
-        "iotOperations": {"version": "1.5.46", "train": "stable"},
+        "iotOperations": {"version": "1.5.77", "train": "stable"},
     }
     assert set(result["runtimeProfiles"]) == {"stable"}
-    assert result["runtimeProfiles"]["stable"]["sourceRef"] == "releases/v1.5.x/2610-ff"
+    assert result["runtimeProfiles"]["stable"]["sourceRef"] == "releases/v1.5.x/2612"

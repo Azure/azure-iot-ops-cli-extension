@@ -81,6 +81,8 @@ class RuntimeProfile:
     opcua_connector_version: Optional[str] = None
     iotops_api_version: str = DEFAULT_IOTOPS_MGMT_API_VERSION.value
     cloud_name: str = CLOUD_AZURE_PUBLIC
+    versions_variable: str = "VERSIONS"
+    trains_variable: str = "TRAINS"
     identity: RuntimeIdentity = field(init=False)
     _instance_blueprint: TemplateBlueprint = field(init=False, repr=False, compare=False)
 
@@ -90,10 +92,12 @@ class RuntimeProfile:
             raise ValidationError("Runtime profiles require a release, source ref and resolved source commit.")
         blueprint = instance_blueprint.copy()
         variables = blueprint.content.get("variables", {})
+        versions = variables.get(self.versions_variable, {})
+        trains = variables.get(self.trains_variable, {})
         identity = RuntimeIdentity(
             channel=self.channel,
-            version=variables.get("VERSIONS", {}).get(EXTENSION_MONIKER_OPS),
-            train=variables.get("TRAINS", {}).get(EXTENSION_MONIKER_OPS),
+            version=versions.get(EXTENSION_MONIKER_OPS),
+            train=trains.get(EXTENSION_MONIKER_OPS),
             cloud_name=self.cloud_name,
         )
         object.__setattr__(self, "identity", identity)

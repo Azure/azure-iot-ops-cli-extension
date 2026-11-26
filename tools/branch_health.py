@@ -55,9 +55,12 @@ def validate_manifest(manifest, **expected):
         raise ValueError("Branch Health must use the selected dev product and test commit.")
     runtime = manifest["runtime"]
     parsed = Version(runtime["version"])
-    suffix = "_preview" if channel == "preview" else "_fairfax" if manifest["cloudKey"] == "fairfax" else ""
+    templates = {
+        monitor.TEMPLATE.format(option[0])
+        for option in monitor.runtime_template_options(channel, manifest["cloudKey"] == "fairfax")
+    }
     if (manifest.get("runtimes") != {channel: runtime} or runtime["train"] != channel
-            or runtime["template"] != monitor.TEMPLATE.format(suffix)
+            or runtime["template"] not in templates
             or runtime["milestone"] != f"{parsed.major}.{parsed.minor}"
             or channel == "stable" and (parsed.is_prerelease or parsed.is_devrelease)):
         raise ValueError("Branch Health runtime does not match its fixed logical track.")
