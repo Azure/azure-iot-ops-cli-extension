@@ -79,8 +79,25 @@ def test_ff_selects_complete_cloud_blueprint_in_every_deployment_phase(phase):
     template, _ = targets.get_ops_instance_template(phase=phase)
     assert template["variables"]["FAIRFAX_VERSIONS"]["iotOperations"] == profile.identity.version
     assert template["variables"]["FAIRFAX_TRAINS"]["iotOperations"] == profile.identity.train
+    assert template["variables"]["IS_FAIRFAX"] == "[equals(environment().name, 'AzureUSGovernment')]"
+    assert template["variables"]["DEFAULT_VERSIONS"] == (
+        "[if(variables('IS_FAIRFAX'), variables('FAIRFAX_VERSIONS'), variables('VERSIONS'))]"
+    )
+    assert template["variables"]["DEFAULT_TRAINS"] == (
+        "[if(variables('IS_FAIRFAX'), variables('FAIRFAX_TRAINS'), variables('TRAINS'))]"
+    )
     assert template["variables"]["VERSIONS"]["connectors"] == "1.5.103"
     assert FF_CONFIGURATION.items() <= template["variables"]["defaultAioConfigurationSettings"].items()
+    if phase in (None, InstancePhase.EXT):
+        aio_properties = template["resources"]["aioExtension"]["properties"]
+        assert aio_properties["version"] == (
+            "[coalesce(tryGet(tryGet(parameters('advancedConfig'), 'aio'), 'version'), "
+            "variables('DEFAULT_VERSIONS').iotOperations)]"
+        )
+        assert aio_properties["releaseTrain"] == (
+            "[coalesce(tryGet(tryGet(parameters('advancedConfig'), 'aio'), 'train'), "
+            "variables('DEFAULT_TRAINS').iotOperations)]"
+        )
     assert public.copy_instance_blueprint().content == original
 
 
